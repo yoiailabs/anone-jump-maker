@@ -26,15 +26,22 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   root.innerHTML = `
     <div class="app">
+      <div class="sky" aria-hidden="true">
+        <span class="blob blob-lime"></span>
+        <span class="blob blob-teal"></span>
+        <span class="blob blob-coral"></span>
+        <span class="wind"></span>
+      </div>
       <header class="hero">
         <div class="breeze" aria-hidden="true"></div>
-        <p class="eyebrow">ファン試作</p>
+        <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を選ぶと、縦テンプレのジャンプに合わせて差し込みます。処理はすべてこの端末の中だけです。</p>
+        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。この端末の中だけの、小さな夏。</p>
       </header>
 
       <section class="stage-wrap">
         <div class="stage" id="stage"></div>
+        <p class="empty-hint" id="emptyHint">まだ写真はありません。下から選ぶと、ここに色が入ります。</p>
         <p class="slot-meter" id="slotMeter">スロット — / ${timeline.slots.length}</p>
       </section>
 
@@ -48,11 +55,11 @@ export async function boot(root: HTMLElement): Promise<void> {
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
         </div>
-        <p class="status" id="status" data-kind="idle">写真を選んでプレビューできます</p>
+        <p class="status" id="status" data-kind="idle">何枚でも。足りないカットはくり返します。</p>
       </section>
 
       <footer class="notes">
-        <p>選んだ写真はサーバーに送らず、ブラウザ内だけで合成します。</p>
+        <p>選んだ写真はどこにも送りません。ブラウザの中だけで重ねます。</p>
         <p>テンプレートはナナツカゼさんの YouTube Short「#あのねジャンプ 縦ver.テンプレート」に基づくファン試作です。権利関係の正式確認は今後行います。公式テンプレート配布はファン制作を想定しています。</p>
       </footer>
     </div>
@@ -60,6 +67,7 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const stage = must(root, "#stage");
   const thumbs = must(root, "#thumbs");
+  const emptyHint = must(root, "#emptyHint");
   const slotMeter = must(root, "#slotMeter");
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
@@ -76,6 +84,7 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const renderThumbs = () => {
     thumbs.hidden = photos.length === 0;
+    emptyHint.hidden = photos.length > 0;
     thumbs.replaceChildren(
       ...photos.map((photo, index) => {
         const img = document.createElement("img");
