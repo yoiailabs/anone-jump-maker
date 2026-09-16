@@ -30,7 +30,7 @@ export const BLUR_COVER_SCALE = 1;
 export const PANEL_DIVIDER_PX = 1;
 
 /** 上下帯の暗転。参考 Short の帯は本編の約 0.33–0.40 輝度。 */
-export const BLUR_DIM = "rgba(4, 3, 3, 0.56)";
+export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
 
 /**
  * 参考 Short の本編キャラ。緑帯 1:1 より大きく、下辺揃えで拡大する。
