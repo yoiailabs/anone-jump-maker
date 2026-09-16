@@ -1,20 +1,19 @@
 import { KEY_PARAMS, keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
+  OUTPUT,
   PANEL_DIVIDER_PX,
   coverDest,
   jumpOffsetPx,
   mainPanelRect,
-  outputSize,
   rectToUvBottomLeft,
-  usesBlurBackdrop,
+  sharpCoverScale,
   videoOverlayRect,
-  type AspectMode,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import { photoForSlot, slotForTime } from "./timeline.ts";
 
-export { OUTPUT, OUTPUTS, type AspectMode } from "./layout.ts";
+export { OUTPUT } from "./layout.ts";
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -87,18 +86,14 @@ void main() {
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => number;
-  setAspect: (mode: AspectMode) => void;
-  aspect: () => AspectMode;
   destroy: () => void;
   kind: "webgl" | "2d";
 };
 
 export function createCompositor(): Compositor {
-  let mode: AspectMode = "portrait";
-  const size = outputSize(mode);
   const canvas = document.createElement("canvas");
-  canvas.width = size.width;
-  canvas.height = size.height;
+  canvas.width = OUTPUT.width;
+  canvas.height = OUTPUT.height;
   canvas.className = "stage-canvas";
   canvas.setAttribute("aria-label", "合成プレビュー");
   const gl = canvas.getContext("webgl", {
@@ -109,22 +104,17 @@ export function createCompositor(): Compositor {
   });
   if (gl) {
     try {
-      return createWebGlCompositor(canvas, gl, () => mode, (next) => {
-        mode = next;
-      });
+      return createWebGlCompositor(canvas, gl);
     } catch {
       // fall through
     }
   }
-  return createCanvas2dCompositor(canvas, () => mode, (next) => {
-    mode = next;
-  });
+  return createCanvas2dCompositor(canvas);
 }
 
-function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
-  const size = outputSize(mode);
-  canvas.width = size.width;
-  canvas.height = size.height;
+function applyCanvasSize(canvas: HTMLCanvasElement): void {
+  canvas.width = OUTPUT.width;
+  canvas.height = OUTPUT.height;
 }
 
 function createBackdrop(): {
@@ -145,12 +135,11 @@ function createBackdrop(): {
 function drawBackdrop(
   target: ReturnType<typeof createBackdrop>,
   photo: LoadedPhoto | undefined,
-  mode: AspectMode,
   time: number,
   slots: readonly number[],
 ): HTMLCanvasElement {
   const { canvas, ctx, scratch, scratchCtx } = target;
-  applyCanvasSize(canvas, mode);
+  applyCanvasSize(canvas);
   const w = canvas.width;
   const h = canvas.height;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -160,13 +149,7 @@ function drawBackdrop(
   if (!photo) return canvas;
 
   const bitmap = photo.bitmap;
-  if (!usesBlurBackdrop(mode)) {
-    const dest = coverDest(bitmap.width, bitmap.height, w, h);
-    ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
-    return canvas;
-  }
-
-  const jumpY = jumpOffsetPx(time, slots, h, mode);
+  const jumpY = jumpOffsetPx(time, slots, h);
   scratch.width = Math.max(40, Math.round(w * 0.1));
   scratch.height = Math.max(40, Math.round(h * 0.1));
   const sw = scratch.width;
@@ -187,7 +170,7 @@ function drawBackdrop(
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
-  const panel = mainPanelRect(w, h, mode);
+  const panel = mainPanelRect(w, h);
   ctx.save();
   ctx.beginPath();
   ctx.rect(panel.x, panel.y, panel.w, panel.h);
@@ -195,6 +178,8 @@ function drawBackdrop(
   const sharp = coverDest(bitmap.width, bitmap.height, panel.w, panel.h, {
     dx: panel.x,
     dy: panel.y,
+    scale: sharpCoverScale(h, panel.h),
+    offsetY: jumpY,
   });
   ctx.drawImage(bitmap, sharp.x, sharp.y, sharp.w, sharp.h);
   ctx.restore();
@@ -206,12 +191,7 @@ function drawBackdrop(
   return canvas;
 }
 
-function createWebGlCompositor(
-  canvas: HTMLCanvasElement,
-  gl: WebGLRenderingContext,
-  getMode: () => AspectMode,
-  setMode: (mode: AspectMode) => void,
-): Compositor {
+function createWebGlCompositor(canvas: HTMLCanvasElement, gl: WebGLRenderingContext): Compositor {
   const program = linkProgram(gl, VERT, FRAG);
   const aPos = gl.getAttribLocation(program, "aPos");
   const uniforms = {
@@ -232,10 +212,9 @@ function createWebGlCompositor(
   const backdrop = createBackdrop();
 
   const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
-    const mode = getMode();
     const slot = slotForTime(video.currentTime, slots);
     const photo = photoForSlot(photos, slot);
-    const bg = drawBackdrop(backdrop, photo, mode, video.currentTime, slots);
+    const bg = drawBackdrop(backdrop, photo, video.currentTime, slots);
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.useProgram(program);
@@ -255,9 +234,9 @@ function createWebGlCompositor(
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
     }
 
-    const vw = video.videoWidth || outputSize(mode).width;
-    const vh = video.videoHeight || outputSize(mode).height;
-    const overlay = videoOverlayRect(canvas.width, canvas.height, vw, vh, mode);
+    const vw = video.videoWidth || OUTPUT.width;
+    const vh = video.videoHeight || OUTPUT.height;
+    const overlay = videoOverlayRect(canvas.width, canvas.height, vw, vh);
     const uv = rectToUvBottomLeft(overlay, canvas.width, canvas.height);
 
     gl.uniform1i(uniforms.uBg, 0);
@@ -275,11 +254,6 @@ function createWebGlCompositor(
     canvas,
     draw,
     kind: "webgl",
-    aspect: getMode,
-    setAspect(mode: AspectMode) {
-      setMode(mode);
-      applyCanvasSize(canvas, mode);
-    },
     destroy() {
       gl.deleteTexture(bgTex);
       gl.deleteTexture(videoTex);
@@ -293,11 +267,7 @@ function createWebGlCompositor(
   };
 }
 
-function createCanvas2dCompositor(
-  canvas: HTMLCanvasElement,
-  getMode: () => AspectMode,
-  setMode: (mode: AspectMode) => void,
-): Compositor {
+function createCanvas2dCompositor(canvas: HTMLCanvasElement): Compositor {
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) {
     throw new Error("Canvas2D が使えません");
@@ -310,22 +280,21 @@ function createCanvas2dCompositor(
   const backdrop = createBackdrop();
 
   const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
-    const mode = getMode();
     const slot = slotForTime(video.currentTime, slots);
     const photo = photoForSlot(photos, slot);
-    const bg = drawBackdrop(backdrop, photo, mode, video.currentTime, slots);
+    const bg = drawBackdrop(backdrop, photo, video.currentTime, slots);
     ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      const vw = video.videoWidth || outputSize(mode).width;
-      const vh = video.videoHeight || outputSize(mode).height;
+      const vw = video.videoWidth || OUTPUT.width;
+      const vh = video.videoHeight || OUTPUT.height;
       work.width = vw;
       work.height = vh;
       workCtx.drawImage(video, 0, 0, vw, vh);
       const image = workCtx.getImageData(0, 0, vw, vh);
       keyImageData(image);
       workCtx.putImageData(image, 0, 0);
-      const dest = videoOverlayRect(canvas.width, canvas.height, vw, vh, mode);
+      const dest = videoOverlayRect(canvas.width, canvas.height, vw, vh);
       ctx.drawImage(work, dest.x, dest.y, dest.w, dest.h);
     }
     return slot;
@@ -335,11 +304,6 @@ function createCanvas2dCompositor(
     canvas,
     draw,
     kind: "2d",
-    aspect: getMode,
-    setAspect(mode: AspectMode) {
-      setMode(mode);
-      applyCanvasSize(canvas, mode);
-    },
     destroy() {
       work.width = 0;
       work.height = 0;

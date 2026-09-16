@@ -1,5 +1,4 @@
 import { createCompositor } from "./compositor.ts";
-import { isAspectMode, type AspectMode } from "./layout.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import {
   captureCanvasStream,
@@ -37,29 +36,16 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="breeze" aria-hidden="true"></div>
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。たてにも、よこにも。この端末の中だけの、小さな夏。</p>
+        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。この端末の中だけの、小さな夏。</p>
       </header>
 
       <section class="stage-wrap">
-        <div class="stage" id="stage" data-aspect="portrait"></div>
-        <p class="empty-hint" id="emptyHint">まだ写真はありません。向きを選んで、下から置くと色が入ります。</p>
+        <div class="stage" id="stage"></div>
+        <p class="empty-hint" id="emptyHint">まだ写真はありません。下から選ぶと、ここに色が入ります。</p>
         <p class="slot-meter" id="slotMeter">スロット — / ${timeline.slots.length}</p>
       </section>
 
       <section class="panel">
-        <fieldset class="aspect-field">
-          <legend>書き出す向き</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="書き出す向き">
-            <label>
-              <input type="radio" name="aspect" value="portrait" checked />
-              <span>縦の動画<small>9:16</small></span>
-            </label>
-            <label>
-              <input type="radio" name="aspect" value="landscape" />
-              <span>横の動画<small>16:9</small></span>
-            </label>
-          </div>
-        </fieldset>
         <label class="file-btn">
           <input id="picker" type="file" accept="image/*" multiple />
           写真を選ぶ
@@ -89,20 +75,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   const picker = must(root, "#picker") as HTMLInputElement;
 
   stage.append(compositor.canvas);
-
-  const applyAspect = (mode: AspectMode) => {
-    compositor.setAspect(mode);
-    stage.dataset.aspect = mode;
-    paint();
-  };
-
-  root.querySelectorAll<HTMLInputElement>('input[name="aspect"]').forEach((input) => {
-    input.addEventListener("change", () => {
-      if (!input.checked || !isAspectMode(input.value)) return;
-      applyAspect(input.value);
-      setStatus(input.value === "portrait" ? "たて（9:16）。中央が本編、まわりは跳ねるブラー。" : "よこ（16:9）。本編を横いっぱいに。");
-    });
-  });
   document.body.append(video);
 
   const setStatus = (text: string, kind: StatusKind = "idle") => {
@@ -232,8 +204,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       await startLoop();
       const blob = await blobPromise;
       const mime = blob.type || pickRecorderMime();
-      const aspectTag = compositor.aspect() === "landscape" ? "16x9" : "9x16";
-      downloadBlob(blob, `anone-jump-${aspectTag}.${extensionForMime(mime)}`);
+      downloadBlob(blob, `anone-jump.${extensionForMime(mime)}`);
       setStatus(`保存しました（${extensionForMime(mime).toUpperCase()}）`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");

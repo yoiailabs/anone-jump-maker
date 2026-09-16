@@ -2,40 +2,27 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_COVER_SCALE,
   JUMP_AMPLITUDE,
-  PANEL_DIVIDER_PX,
   JUMP_DURATION,
-  OUTPUTS,
-  containDest,
+  MAIN_PANEL_Y_SHIFT,
+  OUTPUT,
+  PANEL_DIVIDER_PX,
   coverDest,
-  isAspectMode,
   jumpAmount,
   jumpOffsetPx,
   mainPanelRect,
   outputSize,
   rectToUvBottomLeft,
-  usesBlurBackdrop,
+  sharpCoverScale,
   videoOverlayRect,
 } from "./layout.ts";
 
 const slots = [0, 0.467, 0.933, 1.467];
 
-describe("aspect helpers", () => {
-  it("accepts only the two export modes", () => {
-    expect(isAspectMode("portrait")).toBe(true);
-    expect(isAspectMode("landscape")).toBe(true);
-    expect(isAspectMode("square")).toBe(false);
-  });
-
-  it("sizes portrait 9:16 and landscape 16:9", () => {
-    expect(outputSize("portrait")).toEqual({ width: 720, height: 1280 });
-    expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
-    expect(OUTPUTS.portrait.width / OUTPUTS.portrait.height).toBeCloseTo(9 / 16, 5);
-    expect(OUTPUTS.landscape.width / OUTPUTS.landscape.height).toBeCloseTo(16 / 9, 5);
-  });
-
-  it("uses the blur backdrop only in portrait", () => {
-    expect(usesBlurBackdrop("portrait")).toBe(true);
-    expect(usesBlurBackdrop("landscape")).toBe(false);
+describe("output size", () => {
+  it("is portrait 9:16 only", () => {
+    expect(outputSize()).toEqual({ width: 720, height: 1280 });
+    expect(OUTPUT).toEqual({ width: 720, height: 1280 });
+    expect(OUTPUT.width / OUTPUT.height).toBeCloseTo(9 / 16, 5);
   });
 
   it("zooms the blur cover more than the sharp panel and keeps a thin divider", () => {
@@ -46,24 +33,24 @@ describe("aspect helpers", () => {
 });
 
 describe("mainPanelRect", () => {
-  it("fills the landscape canvas (no letterbox panel)", () => {
-    expect(mainPanelRect(1280, 720, "landscape")).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
-  });
-
-  it("places a centered 16:9 panel on the portrait canvas", () => {
-    const panel = mainPanelRect(720, 1280, "portrait");
+  it("places a full-width 16:9 panel below canvas center, on the character band", () => {
+    const panel = mainPanelRect(720, 1280);
+    const centeredY = (1280 - panel.h) / 2;
     expect(panel.x).toBe(0);
     expect(panel.w).toBe(720);
     expect(panel.w / panel.h).toBeCloseTo(16 / 9, 5);
-    expect(panel.y).toBeCloseTo((1280 - panel.h) / 2, 5);
-    expect(panel.y).toBeGreaterThan(100);
-    expect(panel.y + panel.h).toBeLessThan(1280 - 100);
-    expect(panel.x).toBe(0);
+    expect(MAIN_PANEL_Y_SHIFT).toBeGreaterThan(0);
+    expect(panel.y).toBeCloseTo(centeredY + 1280 * MAIN_PANEL_Y_SHIFT, 5);
+    expect(panel.y).toBeGreaterThan(centeredY + 80);
+    // テンプレキャラの胴〜足元（およそ 0.50–0.76）に下端が乗る
+    expect(panel.y + panel.h).toBeGreaterThan(1280 * 0.73);
+    expect(panel.y + panel.h).toBeLessThan(1280 * 0.82);
+    expect(panel.y + panel.h).toBeLessThan(1280 - 80);
     expect(panel.x + panel.w).toBe(720);
   });
 });
 
-describe("coverDest / containDest", () => {
+describe("coverDest / sharpCoverScale", () => {
   it("covers a landscape photo onto 9:16 by cropping the sides", () => {
     const dest = coverDest(1920, 1080, 720, 1280);
     expect(dest.h).toBeCloseTo(1280, 5);
@@ -77,25 +64,28 @@ describe("coverDest / containDest", () => {
     expect(dest.y).toBeLessThan((1280 - dest.h) / 2);
   });
 
-  it("contains 9:16 video on a 16:9 canvas", () => {
-    const dest = containDest(360, 640, 1280, 720);
-    expect(dest.h).toBeCloseTo(720, 5);
-    expect(dest.w).toBeLessThan(1280);
-    expect(dest.x).toBeGreaterThan(0);
+  it("scales the sharp 16:9 photo enough that a full hop stays inside the panel", () => {
+    const panel = mainPanelRect(720, 1280);
+    const scale = sharpCoverScale(1280, panel.h);
+    const hop = 1280 * JUMP_AMPLITUDE;
+    expect(scale).toBeGreaterThan(1);
+    expect((scale - 1) * panel.h).toBeGreaterThanOrEqual(2 * hop - 1e-6);
+    const dest = coverDest(1920, 1080, panel.w, panel.h, {
+      dx: panel.x,
+      dy: panel.y,
+      scale,
+      offsetY: -hop,
+    });
+    expect(dest.y).toBeLessThanOrEqual(panel.y + 1e-6);
+    expect(dest.y + dest.h).toBeGreaterThanOrEqual(panel.y + panel.h - 1e-6);
   });
 });
 
 describe("videoOverlayRect", () => {
   it("covers the portrait canvas", () => {
-    const dest = videoOverlayRect(720, 1280, 360, 640, "portrait");
+    const dest = videoOverlayRect(720, 1280, 360, 640);
     expect(dest.w).toBeCloseTo(720, 5);
     expect(dest.h).toBeCloseTo(1280, 5);
-  });
-
-  it("contains the template on landscape so the jump is not cropped", () => {
-    const dest = videoOverlayRect(1280, 720, 360, 640, "landscape");
-    expect(dest.h).toBeCloseTo(720, 5);
-    expect(dest.w).toBeLessThan(500);
   });
 });
 
@@ -124,14 +114,23 @@ describe("jumpAmount", () => {
     expect(jumpAmount(0.4, slots)).toBe(0);
   });
 
-  it("offsets only the portrait blur layer, upward in canvas space", () => {
-    expect(jumpOffsetPx(0.12, slots, 1280, "landscape")).toBe(0);
-    const up = jumpOffsetPx(0.12, slots, 1280, "portrait");
+  it("offsets upward in canvas space for both blur and the sharp 16:9 photo", () => {
+    const up = jumpOffsetPx(0.12, slots, 1280);
     expect(up).toBeLessThan(0);
     expect(Math.abs(up)).toBeLessThan(1280 * JUMP_AMPLITUDE + 1e-6);
+    const panel = mainPanelRect(720, 1280);
+    const rest = coverDest(1920, 1080, panel.w, panel.h, { dx: panel.x, dy: panel.y });
+    const hopped = coverDest(1920, 1080, panel.w, panel.h, {
+      dx: panel.x,
+      dy: panel.y,
+      offsetY: up,
+    });
+    expect(hopped.y).toBeLessThan(rest.y);
+    expect(hopped.y - rest.y).toBeCloseTo(up, 5);
   });
 
   it("handles an empty slot list", () => {
     expect(jumpAmount(1, [])).toBe(0);
+    expect(jumpOffsetPx(0.12, [], 1280)).toBe(0);
   });
 });
