@@ -1,0 +1,28 @@
+{
+  "name": "anone",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "あのねジャンプ — ブラウザだけで写真を差し込むジャンプ動画メーカー（試作）",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "deploy": "pnpm build && wrangler deploy"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.37.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "workerd"]
+  }
+}

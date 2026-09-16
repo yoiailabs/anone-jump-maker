@@ -1,0 +1,186 @@
+:root {
+  color-scheme: dark;
+  --soko: #132440;
+  --kami: #e2e6ec;
+  --kasumi: #8a97a8;
+  --mizu: #7eb6c9;
+  --fuchi: #1c3556;
+  --omote: #1a2f4d;
+  --danger: #e07a7a;
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+    "Yu Gothic UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--soko);
+  color: var(--kami);
+}
+
+body {
+  min-height: 100svh;
+}
+
+#app {
+  min-height: 100svh;
+}
+
+.app {
+  width: min(28rem, 100%);
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.hero h1 {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 1.7rem;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--mizu);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+}
+
+.lede,
+.notes p,
+.status,
+.slot-meter {
+  margin: 0;
+  color: var(--kasumi);
+  line-height: 1.65;
+  font-size: 0.88rem;
+}
+
+.stage-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stage {
+  width: min(100%, 22rem, calc((100svh - 22rem) * 9 / 16));
+  aspect-ratio: 9 / 16;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #0c1a2e;
+  box-shadow: 0 18px 48px rgb(8 16 28 / 45%);
+  border: 1px solid var(--fuchi);
+}
+
+.stage-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.slot-meter {
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.file-btn,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--fuchi);
+  font: inherit;
+  cursor: pointer;
+}
+
+.file-btn {
+  background: var(--kami);
+  color: var(--soko);
+  font-weight: 600;
+}
+
+.file-btn input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.btn {
+  background: var(--mizu);
+  color: var(--soko);
+  font-weight: 600;
+}
+
+.btn.ghost {
+  background: var(--omote);
+  color: var(--kami);
+}
+
+.btn:disabled,
+.file-btn:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.thumbs {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+}
+
+.thumbs img {
+  width: 3.2rem;
+  height: 3.2rem;
+  object-fit: cover;
+  border-radius: 0.45rem;
+  border: 1px solid var(--fuchi);
+  flex: 0 0 auto;
+}
+
+.status[data-kind="busy"] {
+  color: var(--mizu);
+}
+
+.status[data-kind="error"] {
+  color: var(--danger);
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.offscreen-video {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
