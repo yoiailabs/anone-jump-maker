@@ -23,6 +23,7 @@ async function loadPhoto(file: File): Promise<LoadedPhoto> {
 
 async function decodeBitmap(file: File): Promise<ImageBitmap> {
   try {
+    // EXIF だけここで直す。WebGL へ直接上げず、合成は Canvas2D 経由（上下反転防止）。
     return await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
     const url = URL.createObjectURL(file);
