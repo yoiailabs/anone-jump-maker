@@ -27,8 +27,5 @@
       "esbuild",
       "workerd"
     ]
-  },
-  "dependencies": {
-    "mediabunny": "^1.56.3"
   }
 }

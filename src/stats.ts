@@ -3,7 +3,6 @@ import {
   parseStatsCount,
   sanitizeGenerateAttrs,
   summarizeUserAgent,
-  type ExportMode,
   type GenerateAttrs,
 } from "./stats-shared.ts";
 
@@ -20,7 +19,6 @@ export async function fetchGenerateCount(): Promise<number | null> {
 }
 
 export async function recordGenerate(partial: {
-  exportMode: ExportMode;
   mime: string;
   width?: number;
   height?: number;
@@ -40,7 +38,6 @@ export async function recordGenerate(partial: {
 }
 
 export function collectClientAttrs(partial: {
-  exportMode: ExportMode;
   mime: string;
   width?: number;
   height?: number;
@@ -59,7 +56,7 @@ export function collectClientAttrs(partial: {
     screenW,
     screenH,
     dpr,
-    exportMode: partial.exportMode,
+    exportMode: "record",
     mime: partial.mime.split(";")[0]?.trim(),
     width: partial.width ?? OUTPUT.width,
     height: partial.height ?? OUTPUT.height,
