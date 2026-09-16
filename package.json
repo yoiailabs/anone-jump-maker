@@ -23,6 +23,12 @@
   },
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "workerd"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd"
+    ]
+  },
+  "dependencies": {
+    "mediabunny": "^1.56.3"
   }
 }

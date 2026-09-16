@@ -1,13 +1,7 @@
 import { createCompositor } from "./compositor.ts";
+import { EXPORT_FPS, exportJumpVideo } from "./export.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
-import {
-  captureCanvasStream,
-  combineStreams,
-  downloadBlob,
-  extensionForMime,
-  pickRecorderMime,
-  recordStream,
-} from "./recorder.ts";
+import { downloadBlob } from "./recorder.ts";
 import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
@@ -188,30 +182,42 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (recording || photos.length === 0) return;
     recording = true;
     playing = false;
+    video.pause();
     refreshButtons();
-    setStatus("書き出し中… 画面を消さずにお待ちください", "busy");
+    setStatus("書き出しを準備しています…", "busy");
     try {
-      await audio.resume();
-      video.pause();
-      video.currentTime = 0;
-      await waitForSeek(video);
-      const canvasStream = captureCanvasStream(compositor.canvas, 30);
-      const mixed = combineStreams(canvasStream, audio.stream);
-      video.muted = false;
-      const finished = whenEnded(video);
-      const blobPromise = recordStream(mixed, finished);
-      await video.play();
-      await startLoop();
-      const blob = await blobPromise;
-      const mime = blob.type || pickRecorderMime();
-      downloadBlob(blob, `anone-jump.${extensionForMime(mime)}`);
-      setStatus(`保存しました（${extensionForMime(mime).toUpperCase()}）`);
+      const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : timeline.duration;
+      const fps = timeline.fps && timeline.fps > 0 ? timeline.fps : EXPORT_FPS;
+      const result = await exportJumpVideo({
+        video,
+        canvas: compositor.canvas,
+        draw: paint,
+        duration,
+        fps,
+        audioStream: audio.stream,
+        resumeAudio: audio.resume,
+        startLoop,
+        onProgress: (progress) => {
+          if (progress.mode === "offline") {
+            setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
+            return;
+          }
+          setStatus("録画で保存しています… 画面を消さずにお待ちください", "busy");
+        },
+      });
+      downloadBlob(result.blob, `anone-jump.${result.extension}`);
+      setStatus(
+        result.mode === "offline"
+          ? `保存しました（${result.extension.toUpperCase()}・生成）`
+          : `保存しました（${result.extension.toUpperCase()}・録画）`,
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
     } finally {
       recording = false;
       playing = false;
       video.pause();
+      video.muted = true;
       refreshButtons();
       paint();
     }
@@ -263,29 +269,6 @@ function createAudioTap(video: HTMLVideoElement): {
       }
     },
   };
-}
-
-function whenEnded(video: HTMLVideoElement): Promise<void> {
-  return new Promise((resolve) => {
-    const done = () => {
-      video.removeEventListener("ended", done);
-      resolve();
-    };
-    video.addEventListener("ended", done);
-  });
-}
-
-function waitForSeek(video: HTMLVideoElement): Promise<void> {
-  if (video.seekable.length === 0 || video.currentTime === 0) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const done = () => {
-      video.removeEventListener("seeked", done);
-      resolve();
-    };
-    video.addEventListener("seeked", done);
-  });
 }
 
 function must(root: ParentNode, selector: string): HTMLElement {

@@ -12,12 +12,12 @@ function isAppleWebKit(): boolean {
   return /iP(hone|ad|od)|Macintosh/.test(ua) && /WebKit/.test(ua) && !/Chrom(e|ium)|Android/.test(ua);
 }
 
-export function extensionForMime(mime: string): string {
+export function extensionForMime(mime: string): "mp4" | "webm" {
   return mime.includes("mp4") ? "mp4" : "webm";
 }
 
 export function combineStreams(video: MediaStream, audio: MediaStream | null): MediaStream {
-  const tracks = [...video.getVideoTracks()];
+  const tracks: MediaStreamTrack[] = [...video.getVideoTracks()];
   if (audio) {
     tracks.push(...audio.getAudioTracks());
   }

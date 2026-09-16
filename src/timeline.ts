@@ -1,6 +1,7 @@
 export type CutTimeline = {
   duration: number;
   slots: number[];
+  fps?: number;
 };
 
 export function slotForTime(time: number, slots: readonly number[]): number {
