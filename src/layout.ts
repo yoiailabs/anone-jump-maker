@@ -5,31 +5,32 @@ export type Rect = {
   h: number;
 };
 
-export const OUTPUT = { width: 720, height: 1280 } as const;
+/** 新テンプレ miWuv4NK9Qk / 参考 Short と同じ 608×1080。 */
+export const OUTPUT = { width: 608, height: 1080 } as const;
 
-/**
- * テンプレ（miWuv4NK9Qk）と参考 Short（o1ROhNU0UNw）の 16:9 帯。
- * 9:16 フレーム高さに対する上端。720px サムネ実測 208/720 = 13/45。
- */
-export const MAIN_PANEL_Y_FRAC = 13 / 45;
+/** テンプレ緑 16:9 帯（実測 312–654、高さ 342 = 608×9/16）。 */
+export const TEMPLATE_BAND_Y = 312;
+export const TEMPLATE_BAND_H = 342;
 
-/** カット拍での hop。参考 Short は 360×640 で約 ±20px。 */
-export const JUMP_AMPLITUDE = 20 / 640;
+export const MAIN_PANEL_Y_FRAC = TEMPLATE_BAND_Y / OUTPUT.height;
+
+/** 参考 Short の hop。1080p で約 30px 上。 */
+export const JUMP_AMPLITUDE = 30 / OUTPUT.height;
 
 /** 1 ジャンプの長さ（秒）。スロット間隔より長くはしない。 */
 export const JUMP_DURATION = 0.36;
 
 /**
- * 16:9 本編を 9:16 に cover したあと、さらに少しズームして
- * hop とボケのはみ出しを隠す。
+ * 本編 16:9 をキャンバスへ cover する倍率。
+ * 1 で本編上端→キャンバス上端、本編下端→キャンバス下端（参考と同じ）。
  */
-export const BLUR_COVER_SCALE = 1.22;
+export const BLUR_COVER_SCALE = 1;
 
-/** 本編とブラー帯の境。参考は細い暗線。 */
-export const PANEL_DIVIDER_PX = 2;
+/** 参考は本編上端の 1px 暗線。 */
+export const PANEL_DIVIDER_PX = 1;
 
 /** 上下帯の暗転。 */
-export const BLUR_DIM = "rgba(8, 6, 4, 0.55)";
+export const BLUR_DIM = "rgba(6, 4, 4, 0.52)";
 
 export const BLUR_SOURCE = "main-frame" as const;
 
@@ -37,19 +38,22 @@ export function outputSize(): { width: number; height: number } {
   return OUTPUT;
 }
 
-/** 縦 9:16 上のシャープな 16:9。左右端まで。テンプレ緑帯に一致。 */
+/** 縦キャンバス上のシャープな 16:9。左右端まで。テンプレ緑帯に一致。 */
 export function mainPanelRect(canvasW: number, canvasH: number): Rect {
   const w = canvasW;
-  const h = (canvasW * 9) / 16;
-  const y = canvasH * MAIN_PANEL_Y_FRAC;
-  return { x: 0, y, w, h };
+  const h = canvasW * (TEMPLATE_BAND_H / OUTPUT.width);
+  const y = canvasH * (TEMPLATE_BAND_Y / OUTPUT.height);
+  return { x: 0, y: Math.round(y), w, h: Math.round(h) };
 }
 
 /** テンプレ映像から緑 16:9 帯を切り出す矩形。 */
 export function templateBandRect(videoW: number, videoH: number): Rect {
-  const h = videoW * (9 / 16);
-  const y = videoH * MAIN_PANEL_Y_FRAC;
-  return { x: 0, y, w: videoW, h };
+  return {
+    x: 0,
+    y: Math.round(videoH * (TEMPLATE_BAND_Y / OUTPUT.height)),
+    w: videoW,
+    h: Math.round(videoW * (TEMPLATE_BAND_H / OUTPUT.width)),
+  };
 }
 
 /** 本編パネル内の写真が hop しても端が見えないだけの cover 倍率。 */

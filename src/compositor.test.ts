@@ -15,10 +15,10 @@ describe("backdrop hop", () => {
 
   it("uses the same cut-synced offset for the sharp 16:9 photo", () => {
     const slots = [0, 0.467];
-    const hop = jumpOffsetPx(0.12, slots, 1280);
-    const panel = mainPanelRect(720, 1280);
+    const hop = jumpOffsetPx(0.12, slots, 1080);
+    const panel = mainPanelRect(608, 1080);
     expect(hop).toBeLessThan(0);
-    expect(Math.abs(hop)).toBeLessThanOrEqual(1280 * JUMP_AMPLITUDE + 1e-6);
-    expect(sharpCoverScale(1280, panel.h) * panel.h).toBeGreaterThan(panel.h + 2 * Math.abs(hop));
+    expect(Math.abs(hop)).toBeLessThanOrEqual(1080 * JUMP_AMPLITUDE + 1e-6);
+    expect(sharpCoverScale(1080, panel.h) * panel.h).toBeGreaterThan(panel.h + 2 * Math.abs(hop));
   });
 });

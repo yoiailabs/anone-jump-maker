@@ -6,7 +6,7 @@ describe("collectClientAttrs", () => {
     const attrs = collectClientAttrs({ mime: "video/webm;codecs=vp9,opus" });
     expect(attrs.exportMode).toBe("record");
     expect(attrs.mime).toBe("video/webm");
-    expect(attrs.width).toBe(720);
-    expect(attrs.height).toBe(1280);
+    expect(attrs.width).toBe(608);
+    expect(attrs.height).toBe(1080);
   });
 });

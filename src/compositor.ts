@@ -149,8 +149,8 @@ function paintOutput(
   scratchCtx.drawImage(main, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
 
   ctx.save();
-  ctx.filter = "blur(38px)";
-  ctx.drawImage(scratch, -48, -48, w + 96, h + 96);
+  ctx.filter = "blur(42px)";
+  ctx.drawImage(scratch, -56, -56, w + 112, h + 112);
   ctx.filter = "none";
   ctx.fillStyle = BLUR_DIM;
   ctx.fillRect(0, 0, w, h);
