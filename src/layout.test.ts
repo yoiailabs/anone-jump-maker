@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_COVER_SCALE,
   JUMP_AMPLITUDE,
+  PANEL_DIVIDER_PX,
   JUMP_DURATION,
   OUTPUTS,
   containDest,
@@ -36,6 +37,12 @@ describe("aspect helpers", () => {
     expect(usesBlurBackdrop("portrait")).toBe(true);
     expect(usesBlurBackdrop("landscape")).toBe(false);
   });
+
+  it("zooms the blur cover more than the sharp panel and keeps a thin divider", () => {
+    expect(BLUR_COVER_SCALE).toBeGreaterThan(1.4);
+    expect(PANEL_DIVIDER_PX).toBeGreaterThanOrEqual(2);
+    expect(PANEL_DIVIDER_PX).toBeLessThanOrEqual(5);
+  });
 });
 
 describe("mainPanelRect", () => {
@@ -51,6 +58,8 @@ describe("mainPanelRect", () => {
     expect(panel.y).toBeCloseTo((1280 - panel.h) / 2, 5);
     expect(panel.y).toBeGreaterThan(100);
     expect(panel.y + panel.h).toBeLessThan(1280 - 100);
+    expect(panel.x).toBe(0);
+    expect(panel.x + panel.w).toBe(720);
   });
 });
 

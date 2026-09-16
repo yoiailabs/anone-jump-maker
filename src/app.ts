@@ -74,7 +74,7 @@ export async function boot(root: HTMLElement): Promise<void> {
 
       <footer class="notes">
         <p>選んだ写真はどこにも送りません。ブラウザの中だけで重ねます。</p>
-        <p>テンプレートはナナツカゼさんの YouTube Short「#あのねジャンプ 縦ver.テンプレート」に基づくファン試作です。権利関係の正式確認は今後行います。公式テンプレート配布はファン制作を想定しています。</p>
+        <p>ファン制作です。</p>
       </footer>
     </div>
   `;

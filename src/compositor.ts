@@ -1,6 +1,7 @@
 import { KEY_PARAMS, keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
+  PANEL_DIVIDER_PX,
   coverDest,
   jumpOffsetPx,
   mainPanelRect,
@@ -166,8 +167,8 @@ function drawBackdrop(
   }
 
   const jumpY = jumpOffsetPx(time, slots, h, mode);
-  scratch.width = Math.max(64, Math.round(w * 0.2));
-  scratch.height = Math.max(64, Math.round(h * 0.2));
+  scratch.width = Math.max(40, Math.round(w * 0.1));
+  scratch.height = Math.max(40, Math.round(h * 0.1));
   const sw = scratch.width;
   const sh = scratch.height;
   scratchCtx.fillStyle = "#F3EDE0";
@@ -179,10 +180,10 @@ function drawBackdrop(
   scratchCtx.drawImage(bitmap, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
 
   ctx.save();
-  ctx.filter = "blur(18px)";
-  ctx.drawImage(scratch, -28, -28, w + 56, h + 56);
+  ctx.filter = "blur(36px)";
+  ctx.drawImage(scratch, -40, -40, w + 80, h + 80);
   ctx.filter = "none";
-  ctx.fillStyle = "rgba(16, 12, 10, 0.38)";
+  ctx.fillStyle = "rgba(10, 8, 6, 0.48)";
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
@@ -197,6 +198,11 @@ function drawBackdrop(
   });
   ctx.drawImage(bitmap, sharp.x, sharp.y, sharp.w, sharp.h);
   ctx.restore();
+
+  ctx.fillStyle = "#1a1a1a";
+  const half = PANEL_DIVIDER_PX / 2;
+  ctx.fillRect(0, panel.y - half, w, PANEL_DIVIDER_PX);
+  ctx.fillRect(0, panel.y + panel.h - half, w, PANEL_DIVIDER_PX);
   return canvas;
 }
 

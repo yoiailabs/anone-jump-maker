@@ -21,8 +21,11 @@ export const JUMP_AMPLITUDE = 0.058;
 /** 1 ジャンプの長さ（秒）。スロット間隔より長くはしない。 */
 export const JUMP_DURATION = 0.36;
 
-/** ブラー用に cover を少し拡大して、ジャンプとボケのはみ出しを隠す。 */
-export const BLUR_COVER_SCALE = 1.24;
+/** 上下帯は本編より大きく cover ズームする。ジャンプとボケのはみ出しも隠す。 */
+export const BLUR_COVER_SCALE = 1.58;
+
+/** 中央 16:9 とブラー帯の境の細い黒線。 */
+export const PANEL_DIVIDER_PX = 3;
 
 export function isAspectMode(value: string): value is AspectMode {
   return value === "portrait" || value === "landscape";
@@ -43,7 +46,7 @@ export function mainPanelRect(canvasW: number, canvasH: number, mode: AspectMode
   }
   const w = canvasW;
   const h = (canvasW * 9) / 16;
-  return { x: 0, y: (canvasH - h) / 2, w, h };
+  return { x: 0, y: (canvasH - h) / 2, w, h }; // 左右端まで。パディングなし。
 }
 
 export function coverDest(

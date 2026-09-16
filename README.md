@@ -33,9 +33,9 @@ pnpm deploy    # = pnpm build && wrangler deploy
 
 Worker 名は `anone`。Cloudflare Workers の静的アセットとして `dist` を配信します。
 
-## テンプレートと権利
+## テンプレート
 
-`public/template/vertical.mp4` はナナツカゼさんの YouTube Short「#あのねジャンプ 縦ver.テンプレート」から取り込んだ縦（9:16）素材です。ファン試作であり、権利関係の正式確認は今後行います。公式テンプレート配布はファン制作を想定しています。
+ファン制作です。`public/template/vertical.mp4` はナナツカゼさんの YouTube Short「#あのねジャンプ 縦ver.テンプレート」から取り込んだ縦（9:16）素材です。
 
 カット表 `public/template/cuts.json` は、15fps で抜いたフレームの背景色差と画素差から検出しました（閾値 pix>12 または bgd>20、最短間隔 0.2 秒）。CapCut で使われるおおよそ 32 スロットに合わせています。
 
