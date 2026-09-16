@@ -8,36 +8,12 @@ import {
 
 export const EXPORT_FPS = 30;
 
-export type ExportMode = "offline" | "record";
-
-export type ExportProgress = {
-  mode: ExportMode;
-  current: number;
-  total: number;
-};
-
 export type ExportResult = {
   blob: Blob;
   mime: string;
   extension: "mp4" | "webm";
-  mode: ExportMode;
+  mode: "record";
 };
-
-export function frameTimes(duration: number, fps: number): number[] {
-  const safeFps = fps > 0 ? fps : EXPORT_FPS;
-  if (!(duration > 0)) return [0];
-  const count = Math.max(1, Math.round(duration * safeFps));
-  const last = Math.max(0, duration - 1 / safeFps / 2);
-  const times: number[] = [];
-  for (let i = 0; i < count; i += 1) {
-    times.push(Math.min(i / safeFps, last));
-  }
-  return times;
-}
-
-export function hasWebCodecsVideoEncoder(): boolean {
-  return typeof VideoEncoder === "function";
-}
 
 export async function seekVideo(video: HTMLVideoElement, time: number): Promise<void> {
   const duration = Number.isFinite(video.duration) ? video.duration : 0;
@@ -81,10 +57,8 @@ export async function recordRealtime(options: {
   audioStream: MediaStream | null;
   resumeAudio: () => Promise<void>;
   startLoop: () => Promise<void>;
-  onProgress?: (progress: ExportProgress) => void;
 }): Promise<ExportResult> {
-  const { canvas, video, audioStream, resumeAudio, startLoop, onProgress } = options;
-  onProgress?.({ mode: "record", current: 0, total: 1 });
+  const { canvas, video, audioStream, resumeAudio, startLoop } = options;
   await resumeAudio();
   video.pause();
   video.currentTime = 0;
@@ -107,29 +81,6 @@ export async function recordRealtime(options: {
     extension: extensionForMime(mime),
     mode: "record",
   };
-}
-
-export async function exportJumpVideo(options: {
-  video: HTMLVideoElement;
-  canvas: HTMLCanvasElement;
-  draw: () => void;
-  duration: number;
-  fps: number;
-  audioStream: MediaStream | null;
-  resumeAudio: () => Promise<void>;
-  startLoop: () => Promise<void>;
-  onProgress?: (progress: ExportProgress) => void;
-}): Promise<ExportResult> {
-  try {
-    const offline = await import("./offline-encode.ts");
-    const plan = await offline.pickOfflinePlan(options.canvas.width, options.canvas.height);
-    if (plan) {
-      return await offline.encodeOffline({ ...options, plan });
-    }
-  } catch {
-    // WebCodecs / mux が使えない・途中で落ちたら録画へ
-  }
-  return recordRealtime(options);
 }
 
 function whenEnded(video: HTMLVideoElement): Promise<void> {

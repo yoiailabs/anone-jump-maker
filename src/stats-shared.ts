@@ -22,6 +22,7 @@ export type GenerateEvent = GenerateAttrs & {
 const BROWSERS = new Set(["chrome", "safari", "firefox", "edge", "opera", "other"]);
 const OSES = new Set(["ios", "android", "macos", "windows", "linux", "other"]);
 const DEVICES = new Set(["mobile", "tablet", "desktop"]);
+/** 新規保存は record 固定。offline は過去イベント用に受け付ける。 */
 const EXPORT_MODES = new Set(["offline", "record"]);
 
 export function formatCountLabel(count: number | null): string {

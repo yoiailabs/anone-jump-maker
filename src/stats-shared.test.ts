@@ -41,7 +41,7 @@ describe("sanitizeGenerateAttrs", () => {
       screenW: 1440,
       screenH: 900,
       dpr: 2,
-      exportMode: "offline",
+      exportMode: "record",
       mime: "video/mp4",
       width: 720,
       height: 1280,
@@ -58,11 +58,12 @@ describe("sanitizeGenerateAttrs", () => {
       screenW: 1440,
       screenH: 900,
       dpr: 2,
-      exportMode: "offline",
+      exportMode: "record",
       mime: "video/mp4",
       width: 720,
       height: 1280,
     });
+    expect(sanitizeGenerateAttrs({ exportMode: "offline" }).exportMode).toBe("offline");
     expect(sanitizeGenerateAttrs({ browser: "netscape", mime: "not a mime" })).toEqual({});
   });
 });

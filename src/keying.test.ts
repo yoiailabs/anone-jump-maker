@@ -20,6 +20,9 @@ describe("keyAlpha", () => {
     const lime = [184, 224, 108] as const;
     expect(keyAlpha(...lime, ...lime)).toBe(0);
     expect(keyAlpha(40, 220, 40, 10, 10, 10)).toBeLessThan(0.3);
+    const plate = [20, 182, 54] as const;
+    expect(keyAlpha(...plate, ...plate)).toBe(0);
+    expect(keyAlpha(24, 176, 58, ...plate)).toBeLessThan(0.2);
   });
 
   it("uses the shared thresholds", () => {

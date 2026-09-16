@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   BLUR_COVER_SCALE,
+  BLUR_SOURCE,
+  CHAR_OUTLINE_PX,
+  CHAR_SCALE,
   JUMP_AMPLITUDE,
   JUMP_DURATION,
-  MAIN_PANEL_Y_SHIFT,
   OUTPUT,
   PANEL_DIVIDER_PX,
+  TEMPLATE_BAND_H,
+  TEMPLATE_BAND_Y,
+  characterDest,
   coverDest,
   jumpAmount,
   jumpOffsetPx,
@@ -13,61 +18,78 @@ import {
   outputSize,
   rectToUvBottomLeft,
   sharpCoverScale,
-  videoOverlayRect,
+  templateBandRect,
 } from "./layout.ts";
 
 const slots = [0, 0.467, 0.933, 1.467];
 
 describe("output size", () => {
-  it("is portrait 9:16 only", () => {
-    expect(outputSize()).toEqual({ width: 720, height: 1280 });
-    expect(OUTPUT).toEqual({ width: 720, height: 1280 });
-    expect(OUTPUT.width / OUTPUT.height).toBeCloseTo(9 / 16, 5);
+  it("matches the 608x1080 template", () => {
+    expect(outputSize()).toEqual({ width: 608, height: 1080 });
+    expect(OUTPUT).toEqual({ width: 608, height: 1080 });
+    expect(OUTPUT.width / OUTPUT.height).toBeCloseTo(608 / 1080, 5);
   });
 
-  it("zooms the blur cover more than the sharp panel and keeps a thin divider", () => {
-    expect(BLUR_COVER_SCALE).toBeGreaterThan(1.4);
-    expect(PANEL_DIVIDER_PX).toBeGreaterThanOrEqual(2);
-    expect(PANEL_DIVIDER_PX).toBeLessThanOrEqual(5);
+  it("uses a main-frame blur with a 1px divider", () => {
+    expect(BLUR_COVER_SCALE).toBe(1);
+    expect(PANEL_DIVIDER_PX).toBe(1);
+    expect(BLUR_SOURCE).toBe("main-frame");
+  });
+});
+
+describe("characterDest", () => {
+  it("scales the keyed band up and bottom-aligns it in the 16:9", () => {
+    expect(CHAR_SCALE).toBeCloseTo(1.7, 5);
+    expect(CHAR_OUTLINE_PX).toBe(2);
+    const dest = characterDest(608, 342);
+    expect(dest.w).toBeCloseTo(608 * CHAR_SCALE, 5);
+    expect(dest.h).toBeCloseTo(342 * CHAR_SCALE, 5);
+    expect(dest.x).toBeCloseTo((608 - dest.w) / 2, 5);
+    expect(dest.y + dest.h).toBeCloseTo(342, 5);
+    expect(dest.y).toBeLessThan(0);
   });
 });
 
 describe("mainPanelRect", () => {
-  it("places a full-width 16:9 panel below canvas center, on the character band", () => {
-    const panel = mainPanelRect(720, 1280);
-    const centeredY = (1280 - panel.h) / 2;
+  it("places a full-width 16:9 panel on the measured green band", () => {
+    const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
     expect(panel.x).toBe(0);
-    expect(panel.w).toBe(720);
+    expect(panel.w).toBe(608);
+    expect(panel.y).toBe(TEMPLATE_BAND_Y);
+    expect(panel.h).toBe(TEMPLATE_BAND_H);
     expect(panel.w / panel.h).toBeCloseTo(16 / 9, 5);
-    expect(MAIN_PANEL_Y_SHIFT).toBeGreaterThan(0);
-    expect(panel.y).toBeCloseTo(centeredY + 1280 * MAIN_PANEL_Y_SHIFT, 5);
-    expect(panel.y).toBeGreaterThan(centeredY + 80);
-    // テンプレキャラの胴〜足元（およそ 0.50–0.76）に下端が乗る
-    expect(panel.y + panel.h).toBeGreaterThan(1280 * 0.73);
-    expect(panel.y + panel.h).toBeLessThan(1280 * 0.82);
-    expect(panel.y + panel.h).toBeLessThan(1280 - 80);
-    expect(panel.x + panel.w).toBe(720);
+    expect(panel.y / OUTPUT.height).toBeCloseTo(0.2889, 3);
+    expect((panel.y + panel.h) / OUTPUT.height).toBeCloseTo(0.6056, 3);
+  });
+});
+
+describe("templateBandRect", () => {
+  it("crops the same 16:9 band from the template", () => {
+    const band = templateBandRect(608, 1080);
+    expect(band).toEqual({ x: 0, y: 312, w: 608, h: 342 });
   });
 });
 
 describe("coverDest / sharpCoverScale", () => {
-  it("covers a landscape photo onto 9:16 by cropping the sides", () => {
-    const dest = coverDest(1920, 1080, 720, 1280);
-    expect(dest.h).toBeCloseTo(1280, 5);
-    expect(dest.w).toBeGreaterThan(720);
+  it("covers a landscape photo onto 608x1080 by cropping the sides", () => {
+    const dest = coverDest(1920, 1080, 608, 1080);
+    expect(dest.h).toBeCloseTo(1080, 5);
+    expect(dest.w).toBeGreaterThan(608);
     expect(dest.x).toBeLessThan(0);
   });
 
-  it("applies extra scale and a vertical jump without shrinking below the dest", () => {
-    const dest = coverDest(1920, 1080, 720, 1280, { scale: BLUR_COVER_SCALE, offsetY: -40 });
-    expect(dest.h).toBeGreaterThan(1280);
-    expect(dest.y).toBeLessThan((1280 - dest.h) / 2);
+  it("cover-maps the 16:9 main frame onto the full canvas", () => {
+    const dest = coverDest(608, 342, 608, 1080, { scale: BLUR_COVER_SCALE });
+    expect(dest.h).toBeCloseTo(1080, 5);
+    expect(dest.w).toBeGreaterThan(608);
+    expect(dest.y).toBeCloseTo(0, 5);
   });
 
   it("scales the sharp 16:9 photo enough that a full hop stays inside the panel", () => {
-    const panel = mainPanelRect(720, 1280);
-    const scale = sharpCoverScale(1280, panel.h);
-    const hop = 1280 * JUMP_AMPLITUDE;
+    const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
+    const scale = sharpCoverScale(OUTPUT.height, panel.h);
+    const hop = OUTPUT.height * JUMP_AMPLITUDE;
+    expect(hop).toBeCloseTo(30, 5);
     expect(scale).toBeGreaterThan(1);
     expect((scale - 1) * panel.h).toBeGreaterThanOrEqual(2 * hop - 1e-6);
     const dest = coverDest(1920, 1080, panel.w, panel.h, {
@@ -78,14 +100,6 @@ describe("coverDest / sharpCoverScale", () => {
     });
     expect(dest.y).toBeLessThanOrEqual(panel.y + 1e-6);
     expect(dest.y + dest.h).toBeGreaterThanOrEqual(panel.y + panel.h - 1e-6);
-  });
-});
-
-describe("videoOverlayRect", () => {
-  it("covers the portrait canvas", () => {
-    const dest = videoOverlayRect(720, 1280, 360, 640);
-    expect(dest.w).toBeCloseTo(720, 5);
-    expect(dest.h).toBeCloseTo(1280, 5);
   });
 });
 
@@ -114,11 +128,11 @@ describe("jumpAmount", () => {
     expect(jumpAmount(0.4, slots)).toBe(0);
   });
 
-  it("offsets upward in canvas space for both blur and the sharp 16:9 photo", () => {
-    const up = jumpOffsetPx(0.12, slots, 1280);
+  it("offsets upward in canvas space for the sharp 16:9 photo", () => {
+    const up = jumpOffsetPx(0.12, slots, OUTPUT.height);
     expect(up).toBeLessThan(0);
-    expect(Math.abs(up)).toBeLessThan(1280 * JUMP_AMPLITUDE + 1e-6);
-    const panel = mainPanelRect(720, 1280);
+    expect(Math.abs(up)).toBeCloseTo(OUTPUT.height * JUMP_AMPLITUDE * jumpAmount(0.12, slots), 5);
+    const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
     const rest = coverDest(1920, 1080, panel.w, panel.h, { dx: panel.x, dy: panel.y });
     const hopped = coverDest(1920, 1080, panel.w, panel.h, {
       dx: panel.x,
@@ -131,6 +145,6 @@ describe("jumpAmount", () => {
 
   it("handles an empty slot list", () => {
     expect(jumpAmount(1, [])).toBe(0);
-    expect(jumpOffsetPx(0.12, [], 1280)).toBe(0);
+    expect(jumpOffsetPx(0.12, [], OUTPUT.height)).toBe(0);
   });
 });

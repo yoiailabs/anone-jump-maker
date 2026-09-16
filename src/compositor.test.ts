@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PHOTO_UPLOAD_PATH } from "./compositor.ts";
-import { JUMP_AMPLITUDE, jumpOffsetPx, mainPanelRect, sharpCoverScale } from "./layout.ts";
+import { BLUR_SOURCE, PHOTO_UPLOAD_PATH } from "./compositor.ts";
+import { CHAR_SCALE, JUMP_AMPLITUDE, characterDest, jumpOffsetPx, mainPanelRect, sharpCoverScale } from "./layout.ts";
 
 describe("photo orientation", () => {
   it("uploads photos via Canvas2D so UNPACK_FLIP_Y_WEBGL does not invert ImageBitmap", () => {
@@ -9,12 +9,23 @@ describe("photo orientation", () => {
 });
 
 describe("backdrop hop", () => {
-  it("uses the same cut-synced offset for blur and the sharp 16:9 photo", () => {
+  it("blurs the composed 16:9 main frame, not the photo alone", () => {
+    expect(BLUR_SOURCE).toBe("main-frame");
+  });
+
+  it("places a larger bottom-aligned character so the cover-blur matches the official close-up", () => {
+    const dest = characterDest(608, 342);
+    expect(CHAR_SCALE).toBeGreaterThan(1.5);
+    expect(dest.y).toBeLessThan(0);
+    expect(dest.w).toBeGreaterThan(608);
+  });
+
+  it("uses the same cut-synced offset for the sharp 16:9 photo", () => {
     const slots = [0, 0.467];
-    const hop = jumpOffsetPx(0.12, slots, 1280);
-    const panel = mainPanelRect(720, 1280);
+    const hop = jumpOffsetPx(0.12, slots, 1080);
+    const panel = mainPanelRect(608, 1080);
     expect(hop).toBeLessThan(0);
-    expect(Math.abs(hop)).toBeLessThanOrEqual(1280 * JUMP_AMPLITUDE + 1e-6);
-    expect(sharpCoverScale(1280, panel.h) * panel.h).toBeGreaterThan(panel.h + 2 * Math.abs(hop));
+    expect(Math.abs(hop)).toBeLessThanOrEqual(1080 * JUMP_AMPLITUDE + 1e-6);
+    expect(sharpCoverScale(1080, panel.h) * panel.h).toBeGreaterThan(panel.h + 2 * Math.abs(hop));
   });
 });

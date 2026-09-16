@@ -1,5 +1,5 @@
 import { createCompositor } from "./compositor.ts";
-import { EXPORT_FPS, exportJumpVideo } from "./export.ts";
+import { recordRealtime } from "./export.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { downloadBlob } from "./recorder.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
@@ -191,35 +191,18 @@ export async function boot(root: HTMLElement): Promise<void> {
     playing = false;
     video.pause();
     refreshButtons();
-    setStatus("書き出しを準備しています…", "busy");
+    setStatus("録画中… 画面を消さずにお待ちください", "busy");
     try {
-      const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : timeline.duration;
-      const fps = timeline.fps && timeline.fps > 0 ? timeline.fps : EXPORT_FPS;
-      const result = await exportJumpVideo({
+      const result = await recordRealtime({
         video,
         canvas: compositor.canvas,
-        draw: paint,
-        duration,
-        fps,
         audioStream: audio.stream,
         resumeAudio: audio.resume,
         startLoop,
-        onProgress: (progress) => {
-          if (progress.mode === "offline") {
-            setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
-            return;
-          }
-          setStatus("録画で保存しています… 画面を消さずにお待ちください", "busy");
-        },
       });
       downloadBlob(result.blob, `anone-jump.${result.extension}`);
-      setStatus(
-        result.mode === "offline"
-          ? `保存しました（${result.extension.toUpperCase()}・生成）`
-          : `保存しました（${result.extension.toUpperCase()}・録画）`,
-      );
+      setStatus(`保存しました（${result.extension.toUpperCase()}）`);
       const nextCount = await recordGenerate({
-        exportMode: result.mode,
         mime: result.mime,
       });
       if (nextCount !== null) {

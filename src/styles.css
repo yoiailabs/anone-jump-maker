@@ -151,8 +151,8 @@ body {
 }
 
 .stage {
-  width: min(100%, 21rem, calc((100svh - 27rem) * 9 / 16));
-  aspect-ratio: 9 / 16;
+  width: min(100%, 21rem, calc((100svh - 27rem) * 608 / 1080));
+  aspect-ratio: 608 / 1080;
   border-radius: 1.5rem;
   overflow: hidden;
   background: var(--teal);
