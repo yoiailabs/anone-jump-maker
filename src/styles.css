@@ -77,12 +77,12 @@ body {
 }
 
 .blob-coral {
-  width: 14rem;
-  height: 14rem;
+  width: 9rem;
+  height: 9rem;
   background: var(--coral);
-  bottom: -6rem;
-  left: 42%;
-  opacity: 0.88;
+  bottom: -3.2rem;
+  right: -2.6rem;
+  left: auto;
 }
 
 .wind {
@@ -317,8 +317,3 @@ body {
   }
 }
 
-@media (max-width: 420px) {
-  .blob-coral {
-    left: 28%;
-  }
-}
