@@ -1,6 +1,6 @@
 # あのねジャンプメーカー
 
-写真を置くと、縦テンプレのジャンプに合わせて入れ替わる小さなメーカーです。本番予定 URL は [https://anone.yoiailabs.com](https://anone.yoiailabs.com) です。写真はサーバーに出さず、この端末の中だけで重ねます。
+写真を置くと、縦テンプレのジャンプに合わせて入れ替わる小さなメーカーです。ファン制作です。本番予定 URL は [https://anone.yoiailabs.com](https://anone.yoiailabs.com) です。写真はサーバーに出さず、この端末の中だけで重ねます。
 
 画面はナナツカゼさんのテンプレの空気に寄せています。太い線、ベタ塗りの色面、少し昔の電子ポップのような夏の残像。よいらぼの紺や金は使いません。フォントは Klee One と Zen Maru Gothic（Google Fonts）です。
 
@@ -32,10 +32,6 @@ pnpm deploy    # = pnpm build && wrangler deploy
 ```
 
 Worker 名は `anone`。Cloudflare Workers の静的アセットとして `dist` を配信します。
-
-## テンプレート
-
-ファン制作です。`public/template/vertical.mp4` はナナツカゼさんの YouTube Short「#あのねジャンプ 縦ver.テンプレート」から取り込んだ縦（9:16）素材です。
 
 カット表 `public/template/cuts.json` は、15fps で抜いたフレームの背景色差と画素差から検出しました（閾値 pix>12 または bgd>20、最短間隔 0.2 秒）。CapCut で使われるおおよそ 32 スロットに合わせています。
 
