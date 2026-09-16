@@ -1,14 +1,8 @@
 import { createCompositor } from "./compositor.ts";
-import { isAspectMode, type AspectMode } from "./layout.ts";
+import { EXPORT_FPS, exportJumpVideo } from "./export.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
-import {
-  captureCanvasStream,
-  combineStreams,
-  downloadBlob,
-  extensionForMime,
-  pickRecorderMime,
-  recordStream,
-} from "./recorder.ts";
+import { downloadBlob } from "./recorder.ts";
+import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
@@ -37,29 +31,17 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="breeze" aria-hidden="true"></div>
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。たてにも、よこにも。この端末の中だけの、小さな夏。</p>
+        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。この端末の中だけの、小さな夏。</p>
+        <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
       <section class="stage-wrap">
-        <div class="stage" id="stage" data-aspect="portrait"></div>
-        <p class="empty-hint" id="emptyHint">まだ写真はありません。向きを選んで、下から置くと色が入ります。</p>
+        <div class="stage" id="stage"></div>
+        <p class="empty-hint" id="emptyHint">まだ写真はありません。下から選ぶと、ここに色が入ります。</p>
         <p class="slot-meter" id="slotMeter">スロット — / ${timeline.slots.length}</p>
       </section>
 
       <section class="panel">
-        <fieldset class="aspect-field">
-          <legend>書き出す向き</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="書き出す向き">
-            <label>
-              <input type="radio" name="aspect" value="portrait" checked />
-              <span>縦の動画<small>9:16</small></span>
-            </label>
-            <label>
-              <input type="radio" name="aspect" value="landscape" />
-              <span>横の動画<small>16:9</small></span>
-            </label>
-          </div>
-        </fieldset>
         <label class="file-btn">
           <input id="picker" type="file" accept="image/*" multiple />
           写真を選ぶ
@@ -87,27 +69,18 @@ export async function boot(root: HTMLElement): Promise<void> {
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
+  const madeCount = must(root, "#madeCount");
 
   stage.append(compositor.canvas);
-
-  const applyAspect = (mode: AspectMode) => {
-    compositor.setAspect(mode);
-    stage.dataset.aspect = mode;
-    paint();
-  };
-
-  root.querySelectorAll<HTMLInputElement>('input[name="aspect"]').forEach((input) => {
-    input.addEventListener("change", () => {
-      if (!input.checked || !isAspectMode(input.value)) return;
-      applyAspect(input.value);
-      setStatus(input.value === "portrait" ? "たて（9:16）。中央が本編、まわりは跳ねるブラー。" : "よこ（16:9）。本編を横いっぱいに。");
-    });
-  });
   document.body.append(video);
 
   const setStatus = (text: string, kind: StatusKind = "idle") => {
     statusEl.textContent = text;
     statusEl.dataset.kind = kind;
+  };
+
+  const setMadeCount = (count: number | null) => {
+    madeCount.textContent = formatCountLabel(count);
   };
 
   const renderThumbs = () => {
@@ -216,37 +189,56 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (recording || photos.length === 0) return;
     recording = true;
     playing = false;
+    video.pause();
     refreshButtons();
-    setStatus("書き出し中… 画面を消さずにお待ちください", "busy");
+    setStatus("書き出しを準備しています…", "busy");
     try {
-      await audio.resume();
-      video.pause();
-      video.currentTime = 0;
-      await waitForSeek(video);
-      const canvasStream = captureCanvasStream(compositor.canvas, 30);
-      const mixed = combineStreams(canvasStream, audio.stream);
-      video.muted = false;
-      const finished = whenEnded(video);
-      const blobPromise = recordStream(mixed, finished);
-      await video.play();
-      await startLoop();
-      const blob = await blobPromise;
-      const mime = blob.type || pickRecorderMime();
-      const aspectTag = compositor.aspect() === "landscape" ? "16x9" : "9x16";
-      downloadBlob(blob, `anone-jump-${aspectTag}.${extensionForMime(mime)}`);
-      setStatus(`保存しました（${extensionForMime(mime).toUpperCase()}）`);
+      const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : timeline.duration;
+      const fps = timeline.fps && timeline.fps > 0 ? timeline.fps : EXPORT_FPS;
+      const result = await exportJumpVideo({
+        video,
+        canvas: compositor.canvas,
+        draw: paint,
+        duration,
+        fps,
+        audioStream: audio.stream,
+        resumeAudio: audio.resume,
+        startLoop,
+        onProgress: (progress) => {
+          if (progress.mode === "offline") {
+            setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
+            return;
+          }
+          setStatus("録画で保存しています… 画面を消さずにお待ちください", "busy");
+        },
+      });
+      downloadBlob(result.blob, `anone-jump.${result.extension}`);
+      setStatus(
+        result.mode === "offline"
+          ? `保存しました（${result.extension.toUpperCase()}・生成）`
+          : `保存しました（${result.extension.toUpperCase()}・録画）`,
+      );
+      const nextCount = await recordGenerate({
+        exportMode: result.mode,
+        mime: result.mime,
+      });
+      if (nextCount !== null) {
+        setMadeCount(nextCount);
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
     } finally {
       recording = false;
       playing = false;
       video.pause();
+      video.muted = true;
       refreshButtons();
       paint();
     }
   });
 
   void video.load();
+  void fetchGenerateCount().then(setMadeCount);
 }
 
 async function loadTimeline(): Promise<CutTimeline> {
@@ -292,29 +284,6 @@ function createAudioTap(video: HTMLVideoElement): {
       }
     },
   };
-}
-
-function whenEnded(video: HTMLVideoElement): Promise<void> {
-  return new Promise((resolve) => {
-    const done = () => {
-      video.removeEventListener("ended", done);
-      resolve();
-    };
-    video.addEventListener("ended", done);
-  });
-}
-
-function waitForSeek(video: HTMLVideoElement): Promise<void> {
-  if (video.seekable.length === 0 || video.currentTime === 0) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const done = () => {
-      video.removeEventListener("seeked", done);
-      resolve();
-    };
-    video.addEventListener("seeked", done);
-  });
 }
 
 function must(root: ParentNode, selector: string): HTMLElement {

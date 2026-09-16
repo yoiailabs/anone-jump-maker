@@ -6,9 +6,9 @@
   "description": "あのねジャンプメーカー — ブラウザだけで写真を差し込むジャンプ動画メーカー（試作）",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json && vite build",
     "preview": "vite preview",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json",
     "test": "vitest run",
     "deploy": "pnpm build && wrangler deploy"
   },
@@ -23,6 +23,12 @@
   },
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "workerd"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd"
+    ]
+  },
+  "dependencies": {
+    "mediabunny": "^1.56.3"
   }
 }
