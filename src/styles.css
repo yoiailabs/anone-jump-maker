@@ -135,6 +135,14 @@ body {
   text-wrap: pretty;
 }
 
+.made-count {
+  margin: 0.55rem 0 0;
+  color: var(--mute);
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
 .stage-wrap {
   display: flex;
   flex-direction: column;

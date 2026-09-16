@@ -30,7 +30,12 @@ pnpm build
 pnpm deploy    # = pnpm build && wrangler deploy
 ```
 
-Worker 名は `anone`。Cloudflare Workers の静的アセットとして `dist` を配信します。
+Worker 名は `anone`。Cloudflare Workers の静的アセットとして `dist` を配信します。`/api/*` だけ Worker が先に処理します。
+
+生成が成功したあと、写真や動画は送らず「1回作った」イベントだけをサーバーに残します。公開 UI は件数（「○回作られたよ」）だけ出します。永続化は Durable Object（バインディング `GENERATE_STATS` / クラス `GenerateStats`、SQLite）です。単なる整数カウンタにせず、サーバー付与の UTC 時刻と、ブラウザ／OS／画面の粗い属性だけを行として残します。IP・Cookie・端末 ID は保存しません。API が落ちても保存自体は成功のままです。
+
+- `GET /api/stats` → `{ count }`
+- `POST /api/stats/generate` → イベントを足して `{ count }`
 
 カット表 `public/template/cuts.json` は、15fps で抜いたフレームの背景色差と画素差から検出しました（閾値 pix>12 または bgd>20、最短間隔 0.2 秒）。CapCut で使われるおおよそ 32 スロットに合わせています。
 

@@ -2,6 +2,7 @@ import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo } from "./export.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { downloadBlob } from "./recorder.ts";
+import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
@@ -31,6 +32,7 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
         <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。この端末の中だけの、小さな夏。</p>
+        <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
       <section class="stage-wrap">
@@ -67,6 +69,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
+  const madeCount = must(root, "#madeCount");
 
   stage.append(compositor.canvas);
   document.body.append(video);
@@ -74,6 +77,10 @@ export async function boot(root: HTMLElement): Promise<void> {
   const setStatus = (text: string, kind: StatusKind = "idle") => {
     statusEl.textContent = text;
     statusEl.dataset.kind = kind;
+  };
+
+  const setMadeCount = (count: number | null) => {
+    madeCount.textContent = formatCountLabel(count);
   };
 
   const renderThumbs = () => {
@@ -211,6 +218,13 @@ export async function boot(root: HTMLElement): Promise<void> {
           ? `保存しました（${result.extension.toUpperCase()}・生成）`
           : `保存しました（${result.extension.toUpperCase()}・録画）`,
       );
+      const nextCount = await recordGenerate({
+        exportMode: result.mode,
+        mime: result.mime,
+      });
+      if (nextCount !== null) {
+        setMadeCount(nextCount);
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
     } finally {
@@ -224,6 +238,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   void video.load();
+  void fetchGenerateCount().then(setMadeCount);
 }
 
 async function loadTimeline(): Promise<CutTimeline> {

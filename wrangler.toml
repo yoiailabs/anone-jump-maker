@@ -1,4 +1,5 @@
 name = "anone"
+main = "worker/index.ts"
 compatibility_date = "2026-09-16"
 workers_dev = true
 
@@ -10,7 +11,20 @@ routes = [
 enabled = true
 
 # Vite の dist を Workers 静的アセットとして配信する。
+# /api/* だけ Worker を先に走らせ、写真・動画は受け取らない。
 [assets]
 directory = "./dist"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
+run_worker_first = ["/api/*"]
+
+# 生成イベント（時刻 + 非識別属性）と件数。デプロイ時にクラスが作られる。
+# バインディング名: GENERATE_STATS / クラス: GenerateStats / idFromName("anone")
+[[durable_objects.bindings]]
+name = "GENERATE_STATS"
+class_name = "GenerateStats"
+
+[[migrations]]
+tag = "v1-generate-stats"
+new_sqlite_classes = ["GenerateStats"]
