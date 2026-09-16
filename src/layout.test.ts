@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_COVER_SCALE,
   BLUR_SOURCE,
+  CHAR_OUTLINE_PX,
+  CHAR_SCALE,
   JUMP_AMPLITUDE,
   JUMP_DURATION,
   OUTPUT,
   PANEL_DIVIDER_PX,
   TEMPLATE_BAND_H,
   TEMPLATE_BAND_Y,
+  characterDest,
   coverDest,
   jumpAmount,
   jumpOffsetPx,
@@ -31,6 +34,19 @@ describe("output size", () => {
     expect(BLUR_COVER_SCALE).toBe(1);
     expect(PANEL_DIVIDER_PX).toBe(1);
     expect(BLUR_SOURCE).toBe("main-frame");
+  });
+});
+
+describe("characterDest", () => {
+  it("scales the keyed band up and bottom-aligns it in the 16:9", () => {
+    expect(CHAR_SCALE).toBeCloseTo(1.64, 5);
+    expect(CHAR_OUTLINE_PX).toBe(2);
+    const dest = characterDest(608, 342);
+    expect(dest.w).toBeCloseTo(608 * CHAR_SCALE, 5);
+    expect(dest.h).toBeCloseTo(342 * CHAR_SCALE, 5);
+    expect(dest.x).toBeCloseTo((608 - dest.w) / 2, 5);
+    expect(dest.y + dest.h).toBeCloseTo(342, 5);
+    expect(dest.y).toBeLessThan(0);
   });
 });
 

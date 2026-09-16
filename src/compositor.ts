@@ -2,8 +2,10 @@ import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
   BLUR_DIM,
+  CHAR_OUTLINE_PX,
   OUTPUT,
   PANEL_DIVIDER_PX,
+  characterDest,
   coverDest,
   jumpOffsetPx,
   mainPanelRect,
@@ -50,6 +52,10 @@ export function createCompositor(): Compositor {
   const scratchCtx = scratch.getContext("2d", { alpha: false });
   if (!scratchCtx) throw new Error("Canvas2D が使えません");
 
+  const halo = document.createElement("canvas");
+  const haloCtx = halo.getContext("2d");
+  if (!haloCtx) throw new Error("Canvas2D が使えません");
+
   const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
     const slot = slotForTime(video.currentTime, slots);
     const photo = photoForSlot(photos, slot);
@@ -60,7 +66,7 @@ export function createCompositor(): Compositor {
     const panel = mainPanelRect(w, h);
     const hopY = jumpOffsetPx(video.currentTime, slots, h);
 
-    composeMain(main, mainCtx, keyed, keyedCtx, photo, video, hopY, panel, h);
+    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, panel, h);
     paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     return slot;
   };
@@ -78,6 +84,8 @@ export function createCompositor(): Compositor {
       keyed.height = 0;
       scratch.width = 0;
       scratch.height = 0;
+      halo.width = 0;
+      halo.height = 0;
     },
   };
 }
@@ -87,6 +95,8 @@ function composeMain(
   mainCtx: CanvasRenderingContext2D,
   keyed: HTMLCanvasElement,
   keyedCtx: CanvasRenderingContext2D,
+  halo: HTMLCanvasElement,
+  haloCtx: CanvasRenderingContext2D,
   photo: LoadedPhoto | undefined,
   video: HTMLVideoElement,
   hopY: number,
@@ -121,7 +131,33 @@ function composeMain(
     const image = keyedCtx.getImageData(0, 0, mw, mh);
     keyImageData(image);
     keyedCtx.putImageData(image, 0, 0);
-    mainCtx.drawImage(keyed, 0, 0);
+
+    halo.width = mw;
+    halo.height = mh;
+    haloCtx.clearRect(0, 0, mw, mh);
+    haloCtx.globalCompositeOperation = "source-over";
+    haloCtx.drawImage(keyed, 0, 0);
+    haloCtx.globalCompositeOperation = "source-in";
+    haloCtx.fillStyle = "#ffffff";
+    haloCtx.fillRect(0, 0, mw, mh);
+    haloCtx.globalCompositeOperation = "source-over";
+
+    const dest = characterDest(mw, mh);
+    const o = CHAR_OUTLINE_PX;
+    const ring: ReadonlyArray<readonly [number, number]> = [
+      [-o, 0],
+      [o, 0],
+      [0, -o],
+      [0, o],
+      [-o, -o],
+      [o, -o],
+      [-o, o],
+      [o, o],
+    ];
+    for (const [ox, oy] of ring) {
+      mainCtx.drawImage(halo, dest.x + ox, dest.y + oy, dest.w, dest.h);
+    }
+    mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
   }
 }
 
@@ -149,8 +185,8 @@ function paintOutput(
   scratchCtx.drawImage(main, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
 
   ctx.save();
-  ctx.filter = "blur(42px)";
-  ctx.drawImage(scratch, -56, -56, w + 112, h + 112);
+  ctx.filter = "blur(48px)";
+  ctx.drawImage(scratch, -64, -64, w + 128, h + 128);
   ctx.filter = "none";
   ctx.fillStyle = BLUR_DIM;
   ctx.fillRect(0, 0, w, h);

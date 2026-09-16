@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BLUR_SOURCE, PHOTO_UPLOAD_PATH } from "./compositor.ts";
-import { JUMP_AMPLITUDE, jumpOffsetPx, mainPanelRect, sharpCoverScale } from "./layout.ts";
+import { CHAR_SCALE, JUMP_AMPLITUDE, characterDest, jumpOffsetPx, mainPanelRect, sharpCoverScale } from "./layout.ts";
 
 describe("photo orientation", () => {
   it("uploads photos via Canvas2D so UNPACK_FLIP_Y_WEBGL does not invert ImageBitmap", () => {
@@ -11,6 +11,13 @@ describe("photo orientation", () => {
 describe("backdrop hop", () => {
   it("blurs the composed 16:9 main frame, not the photo alone", () => {
     expect(BLUR_SOURCE).toBe("main-frame");
+  });
+
+  it("places a larger bottom-aligned character so the cover-blur matches the official close-up", () => {
+    const dest = characterDest(608, 342);
+    expect(CHAR_SCALE).toBeGreaterThan(1.5);
+    expect(dest.y).toBeLessThan(0);
+    expect(dest.w).toBeGreaterThan(608);
   });
 
   it("uses the same cut-synced offset for the sharp 16:9 photo", () => {

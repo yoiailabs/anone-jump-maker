@@ -29,10 +29,31 @@ export const BLUR_COVER_SCALE = 1;
 /** 参考は本編上端の 1px 暗線。 */
 export const PANEL_DIVIDER_PX = 1;
 
-/** 上下帯の暗転。 */
-export const BLUR_DIM = "rgba(6, 4, 4, 0.52)";
+/** 上下帯の暗転。参考 Short の帯は本編の約 0.33–0.40 輝度。 */
+export const BLUR_DIM = "rgba(4, 3, 3, 0.64)";
+
+/**
+ * 参考 Short の本編キャラ。緑帯 1:1 より大きく、下辺揃えで拡大する。
+ * 公式 16:9 とテンプレ緑帯の実測（0.13 / 0.50 / 1.00 / 5.00s）から。
+ */
+export const CHAR_SCALE = 1.64;
+
+/** 公式のステッカー縁（白、本編ピクセル）。 */
+export const CHAR_OUTLINE_PX = 2;
 
 export const BLUR_SOURCE = "main-frame" as const;
+
+/** キー済み緑帯を本編 16:9 へ置く矩形。下揃え・左右中央。 */
+export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE): Rect {
+  const w = panelW * scale;
+  const h = panelH * scale;
+  return {
+    x: (panelW - w) / 2,
+    y: panelH - h,
+    w,
+    h,
+  };
+}
 
 export function outputSize(): { width: number; height: number } {
   return OUTPUT;
