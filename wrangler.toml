@@ -1,0 +1,13 @@
+name = "anone"
+compatibility_date = "2026-09-16"
+workers_dev = true
+
+[observability]
+enabled = true
+
+# Vite の dist を Workers 静的アセットとして配信する。
+# DNS は設定しない。デプロイは `wrangler deploy`。
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+html_handling = "auto-trailing-slash"
