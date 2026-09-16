@@ -1,12 +1,15 @@
 export function pickRecorderMime(): string {
-  const types = [
-    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-    "video/mp4",
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
-    "video/webm",
-  ];
+  const safari = isAppleWebKit();
+  const webm = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+  const mp4 = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4"];
+  // Chromium reports video/mp4 then often writes VP9 into an .mp4 name. Prefer WebM there.
+  const types = safari ? [...mp4, ...webm] : [...webm, ...mp4];
   return types.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+}
+
+function isAppleWebKit(): boolean {
+  const ua = navigator.userAgent;
+  return /iP(hone|ad|od)|Macintosh/.test(ua) && /WebKit/.test(ua) && !/Chrom(e|ium)|Android/.test(ua);
 }
 
 export function extensionForMime(mime: string): string {
