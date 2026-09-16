@@ -27,8 +27,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   root.innerHTML = `
     <div class="app">
       <header class="hero">
-        <p class="eyebrow">よいらぼ試作</p>
-        <h1>あのねジャンプ</h1>
+        <div class="breeze" aria-hidden="true"></div>
+        <p class="eyebrow">ファン試作</p>
+        <h1>あのねジャンプメーカー</h1>
         <p class="lede">写真を選ぶと、縦テンプレのジャンプに合わせて差し込みます。処理はすべてこの端末の中だけです。</p>
       </header>
 

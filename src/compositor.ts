@@ -65,7 +65,7 @@ void main() {
   vec3 gray = vec3(y);
   vec3 fgDespill = mix(fg.rgb, gray, spill * 0.7);
 
-  vec3 bg = vec3(0.075, 0.141, 0.251);
+  vec3 bg = vec3(0.953, 0.929, 0.878);
   if (uHasPhoto > 0.5) {
     vec2 puv = coverUv(vUv, uPhotoSize, uOutSize);
     bg = texture2D(uPhoto, clamp(puv, 0.0, 1.0)).rgb;
@@ -193,7 +193,7 @@ function createCanvas2dCompositor(canvas: HTMLCanvasElement): Compositor {
     const vh = video.videoHeight || OUTPUT.height;
     work.width = vw;
     work.height = vh;
-    ctx.fillStyle = "#132440";
+    ctx.fillStyle = "#F3EDE0";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (photo) {
       drawCover(ctx, photo.bitmap, canvas.width, canvas.height);
@@ -241,7 +241,7 @@ function createTexture(gl: WebGLRenderingContext): WebGLTexture {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([19, 36, 64, 255]));
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([243, 237, 224, 255]));
   return texture;
 }
 
