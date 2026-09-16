@@ -39,7 +39,7 @@ describe("output size", () => {
 
 describe("characterDest", () => {
   it("scales the keyed band up and bottom-aligns it in the 16:9", () => {
-    expect(CHAR_SCALE).toBeCloseTo(1.64, 5);
+    expect(CHAR_SCALE).toBeCloseTo(1.7, 5);
     expect(CHAR_OUTLINE_PX).toBe(2);
     const dest = characterDest(608, 342);
     expect(dest.w).toBeCloseTo(608 * CHAR_SCALE, 5);

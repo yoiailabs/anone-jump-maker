@@ -175,8 +175,8 @@ function paintOutput(
   ctx.fillStyle = "#0a0806";
   ctx.fillRect(0, 0, w, h);
 
-  scratch.width = Math.max(40, Math.round(w * 0.12));
-  scratch.height = Math.max(40, Math.round(h * 0.12));
+  scratch.width = Math.max(40, Math.round(w * 0.22));
+  scratch.height = Math.max(40, Math.round(h * 0.22));
   const sw = scratch.width;
   const sh = scratch.height;
   scratchCtx.fillStyle = "#0a0806";
@@ -185,8 +185,8 @@ function paintOutput(
   scratchCtx.drawImage(main, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
 
   ctx.save();
-  ctx.filter = "blur(48px)";
-  ctx.drawImage(scratch, -64, -64, w + 128, h + 128);
+  ctx.filter = "blur(28px)";
+  ctx.drawImage(scratch, -40, -40, w + 80, h + 80);
   ctx.filter = "none";
   ctx.fillStyle = BLUR_DIM;
   ctx.fillRect(0, 0, w, h);
