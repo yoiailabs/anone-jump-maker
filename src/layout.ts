@@ -7,35 +7,49 @@ export type Rect = {
 
 export const OUTPUT = { width: 720, height: 1280 } as const;
 
-/** カット拍での背景ジャンプ。キャンバス高さに対する最大変位。 */
-export const JUMP_AMPLITUDE = 0.058;
+/**
+ * テンプレ（miWuv4NK9Qk）と参考 Short（o1ROhNU0UNw）の 16:9 帯。
+ * 9:16 フレーム高さに対する上端。720px サムネ実測 208/720 = 13/45。
+ */
+export const MAIN_PANEL_Y_FRAC = 13 / 45;
+
+/** カット拍での hop。参考 Short は 360×640 で約 ±20px。 */
+export const JUMP_AMPLITUDE = 20 / 640;
 
 /** 1 ジャンプの長さ（秒）。スロット間隔より長くはしない。 */
 export const JUMP_DURATION = 0.36;
 
-/** 上下帯は本編より大きく cover ズームする。ジャンプとボケのはみ出しも隠す。 */
-export const BLUR_COVER_SCALE = 1.58;
-
-/** 中央 16:9 とブラー帯の境の細い黒線。 */
-export const PANEL_DIVIDER_PX = 3;
-
 /**
- * 本編 16:9 を厳密中央から下へずらす（キャンバス高さ比）。
- * テンプレ映像のキャラはおよそ y=0.45–0.76（胴〜足元）に乗る。
- * 0.10 だと 720×1280 でパネル下端が約 0.758 になり、その帯に重なる。
+ * 16:9 本編を 9:16 に cover したあと、さらに少しズームして
+ * hop とボケのはみ出しを隠す。
  */
-export const MAIN_PANEL_Y_SHIFT = 0.1;
+export const BLUR_COVER_SCALE = 1.22;
+
+/** 本編とブラー帯の境。参考は細い暗線。 */
+export const PANEL_DIVIDER_PX = 2;
+
+/** 上下帯の暗転。 */
+export const BLUR_DIM = "rgba(8, 6, 4, 0.55)";
+
+export const BLUR_SOURCE = "main-frame" as const;
 
 export function outputSize(): { width: number; height: number } {
   return OUTPUT;
 }
 
-/** 縦 9:16 キャンバス上のシャープな 16:9。左右端まで。キャラ位置に合わせて下げる。 */
+/** 縦 9:16 上のシャープな 16:9。左右端まで。テンプレ緑帯に一致。 */
 export function mainPanelRect(canvasW: number, canvasH: number): Rect {
   const w = canvasW;
   const h = (canvasW * 9) / 16;
-  const y = (canvasH - h) / 2 + canvasH * MAIN_PANEL_Y_SHIFT;
+  const y = canvasH * MAIN_PANEL_Y_FRAC;
   return { x: 0, y, w, h };
+}
+
+/** テンプレ映像から緑 16:9 帯を切り出す矩形。 */
+export function templateBandRect(videoW: number, videoH: number): Rect {
+  const h = videoW * (9 / 16);
+  const y = videoH * MAIN_PANEL_Y_FRAC;
+  return { x: 0, y, w: videoW, h };
 }
 
 /** 本編パネル内の写真が hop しても端が見えないだけの cover 倍率。 */
@@ -60,11 +74,6 @@ export function coverDest(
     w,
     h,
   };
-}
-
-/** テンプレ映像の置き場。キャンバス全面を cover。 */
-export function videoOverlayRect(canvasW: number, canvasH: number, videoW: number, videoH: number): Rect {
-  return coverDest(videoW, videoH, canvasW, canvasH);
 }
 
 /** Canvas2D（左上原点）の矩形 → WebGL UV（左下原点）。 */
@@ -92,14 +101,13 @@ export function jumpAmount(time: number, slots: readonly number[]): number {
   const duration = Math.min(JUMP_DURATION, Math.max(0.2, next - start));
   const u = (time - start) / duration;
   if (u <= 0 || u >= 1) return 0;
-  // 速い上昇 → ゆるい落下（跳ね）
   if (u < 0.34) {
     return Math.sin(((u / 0.34) * Math.PI) / 2);
   }
   return Math.cos((((u - 0.34) / 0.66) * Math.PI) / 2);
 }
 
-/** 上方向が負（Canvas2D）。ブラー帯と本編 16:9 内の写真で同じ値を使う。 */
+/** 上方向が負（Canvas2D）。本編 16:9 内の写真 hop に使う。 */
 export function jumpOffsetPx(time: number, slots: readonly number[], canvasHeight: number): number {
   const amount = jumpAmount(time, slots);
   if (amount === 0) return 0;

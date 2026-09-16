@@ -1,93 +1,32 @@
-import { KEY_PARAMS, keyImageData } from "./keying.ts";
+import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
+  BLUR_DIM,
   OUTPUT,
   PANEL_DIVIDER_PX,
   coverDest,
   jumpOffsetPx,
   mainPanelRect,
-  rectToUvBottomLeft,
   sharpCoverScale,
-  videoOverlayRect,
+  templateBandRect,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import { photoForSlot, slotForTime } from "./timeline.ts";
 
-export { OUTPUT } from "./layout.ts";
+export { BLUR_SOURCE, OUTPUT } from "./layout.ts";
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
  * ブラウザによっては（ImageBitmap が既に GL 向け Y 反転済みのため）写真だけ上下逆になる。
- * 写真は Canvas2D に描いてからキャンバスを上げる。HTMLVideoElement はそのまま FLIP_Y=1。
+ * 写真は Canvas2D に描いてから使う。
  */
 export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
-
-const VERT = `
-attribute vec2 aPos;
-varying vec2 vUv;
-void main() {
-  vUv = vec2(aPos.x * 0.5 + 0.5, aPos.y * 0.5 + 0.5);
-  gl_Position = vec4(aPos, 0.0, 1.0);
-}
-`;
-
-const FRAG = `
-precision highp float;
-varying vec2 vUv;
-uniform sampler2D uBg;
-uniform sampler2D uVideo;
-uniform vec4 uVideoRect;
-uniform float uHasVideo;
-uniform float uTolerance;
-uniform float uSoftness;
-uniform float uDarkProtect;
-
-vec3 sampleKey(sampler2D tex) {
-  vec3 acc = vec3(0.0);
-  acc += texture2D(tex, vec2(0.02, 0.015)).rgb;
-  acc += texture2D(tex, vec2(0.98, 0.015)).rgb;
-  acc += texture2D(tex, vec2(0.50, 0.02)).rgb;
-  acc += texture2D(tex, vec2(0.15, 0.06)).rgb;
-  acc += texture2D(tex, vec2(0.85, 0.06)).rgb;
-  acc += texture2D(tex, vec2(0.02, 0.985)).rgb;
-  acc += texture2D(tex, vec2(0.98, 0.985)).rgb;
-  return acc / 7.0;
-}
-
-void main() {
-  vec3 bg = texture2D(uBg, vUv).rgb;
-  if (uHasVideo < 0.5) {
-    gl_FragColor = vec4(bg, 1.0);
-    return;
-  }
-  vec2 rel = (vUv - uVideoRect.xy) / max(uVideoRect.zw, vec2(1e-5));
-  if (rel.x < 0.0 || rel.x > 1.0 || rel.y < 0.0 || rel.y > 1.0) {
-    gl_FragColor = vec4(bg, 1.0);
-    return;
-  }
-  vec3 key = sampleKey(uVideo);
-  vec4 fg = texture2D(uVideo, rel);
-  float dist = distance(fg.rgb, key);
-  float y = dot(fg.rgb, vec3(0.299, 0.587, 0.114));
-  float gscreen = max(0.0, fg.g - max(fg.r, fg.b));
-  float alpha = smoothstep(uTolerance, uTolerance + uSoftness, dist);
-  float gKill = smoothstep(0.07, 0.22, gscreen);
-  alpha = min(alpha, 1.0 - gKill * 0.85);
-  if (y < uDarkProtect) {
-    alpha = 1.0;
-  }
-  float spill = 1.0 - smoothstep(uTolerance * 0.4, uTolerance + uSoftness, dist);
-  vec3 gray = vec3(y);
-  vec3 fgDespill = mix(fg.rgb, gray, spill * 0.7);
-  gl_FragColor = vec4(mix(bg, fgDespill, alpha), 1.0);
-}
-`;
 
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => number;
   destroy: () => void;
-  kind: "webgl" | "2d";
+  kind: "2d";
 };
 
 export function createCompositor(): Compositor {
@@ -96,207 +35,33 @@ export function createCompositor(): Compositor {
   canvas.height = OUTPUT.height;
   canvas.className = "stage-canvas";
   canvas.setAttribute("aria-label", "合成プレビュー");
-  const gl = canvas.getContext("webgl", {
-    alpha: false,
-    antialias: false,
-    preserveDrawingBuffer: true,
-    premultipliedAlpha: false,
-  });
-  if (gl) {
-    try {
-      return createWebGlCompositor(canvas, gl);
-    } catch {
-      // fall through
-    }
-  }
-  return createCanvas2dCompositor(canvas);
-}
-
-function applyCanvasSize(canvas: HTMLCanvasElement): void {
-  canvas.width = OUTPUT.width;
-  canvas.height = OUTPUT.height;
-}
-
-function createBackdrop(): {
-  canvas: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
-  scratch: HTMLCanvasElement;
-  scratchCtx: CanvasRenderingContext2D;
-} {
-  const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) throw new Error("Canvas2D が使えません");
+
+  const main = document.createElement("canvas");
+  const mainCtx = main.getContext("2d", { alpha: false });
+  if (!mainCtx) throw new Error("Canvas2D が使えません");
+
+  const keyed = document.createElement("canvas");
+  const keyedCtx = keyed.getContext("2d", { willReadFrequently: true });
+  if (!keyedCtx) throw new Error("Canvas2D が使えません");
+
   const scratch = document.createElement("canvas");
   const scratchCtx = scratch.getContext("2d", { alpha: false });
   if (!scratchCtx) throw new Error("Canvas2D が使えません");
-  return { canvas, ctx, scratch, scratchCtx };
-}
-
-function drawBackdrop(
-  target: ReturnType<typeof createBackdrop>,
-  photo: LoadedPhoto | undefined,
-  time: number,
-  slots: readonly number[],
-): HTMLCanvasElement {
-  const { canvas, ctx, scratch, scratchCtx } = target;
-  applyCanvasSize(canvas);
-  const w = canvas.width;
-  const h = canvas.height;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.filter = "none";
-  ctx.fillStyle = "#F3EDE0";
-  ctx.fillRect(0, 0, w, h);
-  if (!photo) return canvas;
-
-  const bitmap = photo.bitmap;
-  const jumpY = jumpOffsetPx(time, slots, h);
-  scratch.width = Math.max(40, Math.round(w * 0.1));
-  scratch.height = Math.max(40, Math.round(h * 0.1));
-  const sw = scratch.width;
-  const sh = scratch.height;
-  scratchCtx.fillStyle = "#F3EDE0";
-  scratchCtx.fillRect(0, 0, sw, sh);
-  const blurDest = coverDest(bitmap.width, bitmap.height, sw, sh, {
-    scale: BLUR_COVER_SCALE,
-    offsetY: jumpY * (sh / h),
-  });
-  scratchCtx.drawImage(bitmap, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
-
-  ctx.save();
-  ctx.filter = "blur(36px)";
-  ctx.drawImage(scratch, -40, -40, w + 80, h + 80);
-  ctx.filter = "none";
-  ctx.fillStyle = "rgba(10, 8, 6, 0.48)";
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
-
-  const panel = mainPanelRect(w, h);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(panel.x, panel.y, panel.w, panel.h);
-  ctx.clip();
-  const sharp = coverDest(bitmap.width, bitmap.height, panel.w, panel.h, {
-    dx: panel.x,
-    dy: panel.y,
-    scale: sharpCoverScale(h, panel.h),
-    offsetY: jumpY,
-  });
-  ctx.drawImage(bitmap, sharp.x, sharp.y, sharp.w, sharp.h);
-  ctx.restore();
-
-  ctx.fillStyle = "#1a1a1a";
-  const half = PANEL_DIVIDER_PX / 2;
-  ctx.fillRect(0, panel.y - half, w, PANEL_DIVIDER_PX);
-  ctx.fillRect(0, panel.y + panel.h - half, w, PANEL_DIVIDER_PX);
-  return canvas;
-}
-
-function createWebGlCompositor(canvas: HTMLCanvasElement, gl: WebGLRenderingContext): Compositor {
-  const program = linkProgram(gl, VERT, FRAG);
-  const aPos = gl.getAttribLocation(program, "aPos");
-  const uniforms = {
-    uBg: gl.getUniformLocation(program, "uBg"),
-    uVideo: gl.getUniformLocation(program, "uVideo"),
-    uVideoRect: gl.getUniformLocation(program, "uVideoRect"),
-    uHasVideo: gl.getUniformLocation(program, "uHasVideo"),
-    uTolerance: gl.getUniformLocation(program, "uTolerance"),
-    uSoftness: gl.getUniformLocation(program, "uSoftness"),
-    uDarkProtect: gl.getUniformLocation(program, "uDarkProtect"),
-  };
-  const buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-
-  const bgTex = createTexture(gl);
-  const videoTex = createTexture(gl);
-  const backdrop = createBackdrop();
 
   const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
     const slot = slotForTime(video.currentTime, slots);
     const photo = photoForSlot(photos, slot);
-    const bg = drawBackdrop(backdrop, photo, video.currentTime, slots);
+    canvas.width = OUTPUT.width;
+    canvas.height = OUTPUT.height;
+    const w = canvas.width;
+    const h = canvas.height;
+    const panel = mainPanelRect(w, h);
+    const hopY = jumpOffsetPx(video.currentTime, slots, h);
 
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.useProgram(program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.enableVertexAttribArray(aPos);
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, bgTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bg);
-
-    const hasVideo = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, videoTex);
-    if (hasVideo) {
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-    }
-
-    const vw = video.videoWidth || OUTPUT.width;
-    const vh = video.videoHeight || OUTPUT.height;
-    const overlay = videoOverlayRect(canvas.width, canvas.height, vw, vh);
-    const uv = rectToUvBottomLeft(overlay, canvas.width, canvas.height);
-
-    gl.uniform1i(uniforms.uBg, 0);
-    gl.uniform1i(uniforms.uVideo, 1);
-    gl.uniform4f(uniforms.uVideoRect, uv[0], uv[1], uv[2], uv[3]);
-    gl.uniform1f(uniforms.uHasVideo, hasVideo ? 1 : 0);
-    gl.uniform1f(uniforms.uTolerance, KEY_PARAMS.tolerance / 255);
-    gl.uniform1f(uniforms.uSoftness, KEY_PARAMS.softness / 255);
-    gl.uniform1f(uniforms.uDarkProtect, KEY_PARAMS.darkProtect / 255);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    return slot;
-  };
-
-  return {
-    canvas,
-    draw,
-    kind: "webgl",
-    destroy() {
-      gl.deleteTexture(bgTex);
-      gl.deleteTexture(videoTex);
-      gl.deleteBuffer(buffer);
-      gl.deleteProgram(program);
-      backdrop.canvas.width = 0;
-      backdrop.canvas.height = 0;
-      backdrop.scratch.width = 0;
-      backdrop.scratch.height = 0;
-    },
-  };
-}
-
-function createCanvas2dCompositor(canvas: HTMLCanvasElement): Compositor {
-  const ctx = canvas.getContext("2d", { alpha: false });
-  if (!ctx) {
-    throw new Error("Canvas2D が使えません");
-  }
-  const work = document.createElement("canvas");
-  const workCtx = work.getContext("2d", { willReadFrequently: true });
-  if (!workCtx) {
-    throw new Error("Canvas2D が使えません");
-  }
-  const backdrop = createBackdrop();
-
-  const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
-    const slot = slotForTime(video.currentTime, slots);
-    const photo = photoForSlot(photos, slot);
-    const bg = drawBackdrop(backdrop, photo, video.currentTime, slots);
-    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      const vw = video.videoWidth || OUTPUT.width;
-      const vh = video.videoHeight || OUTPUT.height;
-      work.width = vw;
-      work.height = vh;
-      workCtx.drawImage(video, 0, 0, vw, vh);
-      const image = workCtx.getImageData(0, 0, vw, vh);
-      keyImageData(image);
-      workCtx.putImageData(image, 0, 0);
-      const dest = videoOverlayRect(canvas.width, canvas.height, vw, vh);
-      ctx.drawImage(work, dest.x, dest.y, dest.w, dest.h);
-    }
+    composeMain(main, mainCtx, keyed, keyedCtx, photo, video, hopY, panel, h);
+    paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     return slot;
   };
 
@@ -305,49 +70,96 @@ function createCanvas2dCompositor(canvas: HTMLCanvasElement): Compositor {
     draw,
     kind: "2d",
     destroy() {
-      work.width = 0;
-      work.height = 0;
-      backdrop.canvas.width = 0;
-      backdrop.canvas.height = 0;
+      canvas.width = 0;
+      canvas.height = 0;
+      main.width = 0;
+      main.height = 0;
+      keyed.width = 0;
+      keyed.height = 0;
+      scratch.width = 0;
+      scratch.height = 0;
     },
   };
 }
 
-function createTexture(gl: WebGLRenderingContext): WebGLTexture {
-  const texture = gl.createTexture();
-  if (!texture) throw new Error("WebGL texture を作れません");
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([243, 237, 224, 255]));
-  return texture;
+function composeMain(
+  main: HTMLCanvasElement,
+  mainCtx: CanvasRenderingContext2D,
+  keyed: HTMLCanvasElement,
+  keyedCtx: CanvasRenderingContext2D,
+  photo: LoadedPhoto | undefined,
+  video: HTMLVideoElement,
+  hopY: number,
+  panel: { w: number; h: number },
+  canvasH: number,
+): void {
+  main.width = Math.max(1, Math.round(panel.w));
+  main.height = Math.max(1, Math.round(panel.h));
+  const mw = main.width;
+  const mh = main.height;
+  mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+  mainCtx.filter = "none";
+  mainCtx.fillStyle = "#0a0806";
+  mainCtx.fillRect(0, 0, mw, mh);
+
+  if (photo) {
+    const dest = coverDest(photo.bitmap.width, photo.bitmap.height, mw, mh, {
+      scale: sharpCoverScale(canvasH, mh),
+      offsetY: hopY,
+    });
+    mainCtx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+  }
+
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    const vw = video.videoWidth || OUTPUT.width;
+    const vh = video.videoHeight || OUTPUT.height;
+    const band = templateBandRect(vw, vh);
+    keyed.width = mw;
+    keyed.height = mh;
+    keyedCtx.clearRect(0, 0, mw, mh);
+    keyedCtx.drawImage(video, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
+    const image = keyedCtx.getImageData(0, 0, mw, mh);
+    keyImageData(image);
+    keyedCtx.putImageData(image, 0, 0);
+    mainCtx.drawImage(keyed, 0, 0);
+  }
 }
 
-function linkProgram(gl: WebGLRenderingContext, vertSrc: string, fragSrc: string): WebGLProgram {
-  const vert = compile(gl, gl.VERTEX_SHADER, vertSrc);
-  const frag = compile(gl, gl.FRAGMENT_SHADER, fragSrc);
-  const program = gl.createProgram();
-  if (!program) throw new Error("WebGL program を作れません");
-  gl.attachShader(program, vert);
-  gl.attachShader(program, frag);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    throw new Error(gl.getProgramInfoLog(program) || "link failed");
-  }
-  gl.deleteShader(vert);
-  gl.deleteShader(frag);
-  return program;
-}
+function paintOutput(
+  ctx: CanvasRenderingContext2D,
+  scratch: HTMLCanvasElement,
+  scratchCtx: CanvasRenderingContext2D,
+  main: HTMLCanvasElement,
+  panel: { x: number; y: number; w: number; h: number },
+  w: number,
+  h: number,
+): void {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.fillStyle = "#0a0806";
+  ctx.fillRect(0, 0, w, h);
 
-function compile(gl: WebGLRenderingContext, type: number, source: string): WebGLShader {
-  const shader = gl.createShader(type);
-  if (!shader) throw new Error("shader を作れません");
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw new Error(gl.getShaderInfoLog(shader) || "compile failed");
-  }
-  return shader;
+  scratch.width = Math.max(40, Math.round(w * 0.12));
+  scratch.height = Math.max(40, Math.round(h * 0.12));
+  const sw = scratch.width;
+  const sh = scratch.height;
+  scratchCtx.fillStyle = "#0a0806";
+  scratchCtx.fillRect(0, 0, sw, sh);
+  const blurDest = coverDest(main.width, main.height, sw, sh, { scale: BLUR_COVER_SCALE });
+  scratchCtx.drawImage(main, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
+
+  ctx.save();
+  ctx.filter = "blur(38px)";
+  ctx.drawImage(scratch, -48, -48, w + 96, h + 96);
+  ctx.filter = "none";
+  ctx.fillStyle = BLUR_DIM;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  ctx.drawImage(main, panel.x, panel.y, panel.w, panel.h);
+
+  ctx.fillStyle = "rgba(8, 6, 4, 0.85)";
+  const half = PANEL_DIVIDER_PX / 2;
+  ctx.fillRect(0, panel.y - half, w, PANEL_DIVIDER_PX);
+  ctx.fillRect(0, panel.y + panel.h - half, w, PANEL_DIVIDER_PX);
 }

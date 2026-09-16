@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PHOTO_UPLOAD_PATH } from "./compositor.ts";
+import { BLUR_SOURCE, PHOTO_UPLOAD_PATH } from "./compositor.ts";
 import { JUMP_AMPLITUDE, jumpOffsetPx, mainPanelRect, sharpCoverScale } from "./layout.ts";
 
 describe("photo orientation", () => {
@@ -9,7 +9,11 @@ describe("photo orientation", () => {
 });
 
 describe("backdrop hop", () => {
-  it("uses the same cut-synced offset for blur and the sharp 16:9 photo", () => {
+  it("blurs the composed 16:9 main frame, not the photo alone", () => {
+    expect(BLUR_SOURCE).toBe("main-frame");
+  });
+
+  it("uses the same cut-synced offset for the sharp 16:9 photo", () => {
     const slots = [0, 0.467];
     const hop = jumpOffsetPx(0.12, slots, 1280);
     const panel = mainPanelRect(720, 1280);
