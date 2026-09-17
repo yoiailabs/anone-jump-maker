@@ -4,6 +4,8 @@ import {
   canShareVideoFile,
   openExternalTab,
   SHARE_HASHTAG,
+  SHARE_MAKER_HASHTAG,
+  SHARE_TEXT,
   shareJumpVideo,
   toShareFile,
   type ShareNavigatorLike,
@@ -12,11 +14,13 @@ import {
 const videoFile = () => toShareFile(new Blob(["x"], { type: "video/mp4" }), "anone-jump-9x16.mp4");
 
 describe("X への投稿", () => {
-  it("投稿画面にハッシュタグを載せる", () => {
+  it("投稿画面に両方のハッシュタグを載せる", () => {
     const url = new URL(buildXIntentUrl());
     expect(url.origin + url.pathname).toBe("https://x.com/intent/post");
-    expect(url.searchParams.get("text")).toBe(SHARE_HASHTAG);
-    expect(buildXIntentUrl()).toContain(encodeURIComponent(SHARE_HASHTAG));
+    expect(url.searchParams.get("text")).toBe(SHARE_TEXT);
+    expect(SHARE_TEXT).toContain(SHARE_HASHTAG);
+    expect(SHARE_TEXT).toContain(SHARE_MAKER_HASHTAG);
+    expect(buildXIntentUrl()).toContain(encodeURIComponent(SHARE_TEXT));
   });
 
   it("共有シートがファイルを扱えるときだけ動画ごと渡す", () => {
@@ -40,7 +44,7 @@ describe("X への投稿", () => {
       openUrl,
     });
     expect(outcome).toBe("files");
-    expect(share).toHaveBeenCalledWith({ files: [file], text: SHARE_HASHTAG });
+    expect(share).toHaveBeenCalledWith({ files: [file], text: SHARE_TEXT });
     expect(openUrl).not.toHaveBeenCalled();
   });
 
