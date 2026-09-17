@@ -36,6 +36,7 @@ import {
   filterBlurPx,
   hasFrameFx,
   hasImageFilter,
+  IMAGE_FILTERS,
   isAspectMode,
   isImageFilter,
   isSwapStyle,
@@ -396,6 +397,7 @@ describe("zoom cycle (hagikaze_sami)", () => {
 
 describe("image filter", () => {
   it("offers none plus two photo-plate blurs", () => {
+    expect(IMAGE_FILTERS).toEqual(["none", "blur-weak", "blur-strong"]);
     expect(isImageFilter("none")).toBe(true);
     expect(isImageFilter("blur-strong")).toBe(true);
     expect(isImageFilter("blur-weak")).toBe(true);

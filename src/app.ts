@@ -110,12 +110,12 @@ export async function boot(root: HTMLElement): Promise<void> {
               <span>なし</span>
             </label>
             <label>
-              <input type="radio" name="filter" value="blur-strong" />
-              <span>ブラー(強)</span>
-            </label>
-            <label>
               <input type="radio" name="filter" value="blur-weak" />
               <span>ブラー(弱)</span>
+            </label>
+            <label>
+              <input type="radio" name="filter" value="blur-strong" />
+              <span>ブラー(強)</span>
             </label>
           </div>
         </fieldset>
@@ -201,12 +201,12 @@ export async function boot(root: HTMLElement): Promise<void> {
                 <span>なし</span>
               </label>
               <label>
-                <input type="radio" name="preview-filter" value="blur-strong" />
-                <span>ブラー(強)</span>
-              </label>
-              <label>
                 <input type="radio" name="preview-filter" value="blur-weak" />
                 <span>ブラー(弱)</span>
+              </label>
+              <label>
+                <input type="radio" name="preview-filter" value="blur-strong" />
+                <span>ブラー(強)</span>
               </label>
             </div>
           </fieldset>

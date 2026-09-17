@@ -73,7 +73,7 @@ export function isSwapStyle(value: string): value is SwapStyle {
  */
 export type ImageFilter = "none" | "blur-strong" | "blur-weak";
 
-export const IMAGE_FILTERS = ["none", "blur-strong", "blur-weak"] as const;
+export const IMAGE_FILTERS = ["none", "blur-weak", "blur-strong"] as const;
 
 export const IMAGE_FILTER_LABELS: Record<ImageFilter, string> = {
   none: "なし",
@@ -86,13 +86,13 @@ export function isImageFilter(value: string): value is ImageFilter {
 }
 
 /**
- * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強は今までの弱より少し弱い。
+ * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強はその一段上。
  * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
  */
 export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
   none: 0,
-  "blur-weak": 0.008,
-  "blur-strong": 0.016,
+  "blur-weak": 0.005,
+  "blur-strong": 0.011,
 };
 
 export function filterBlurPx(filter: ImageFilter, shortSide: number): number {
