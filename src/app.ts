@@ -1,7 +1,7 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
-import { describePhotoCount, exportFileName } from "./modes.ts";
+import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
@@ -265,7 +265,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus(
         photos.length === 0
           ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。${describePhotoCount(photos.length)}`,
+          : `${photos.length} 枚を読み込みました`,
       );
     } catch (error) {
       renderThumbs();
