@@ -83,7 +83,7 @@ export function createCompositor(): Compositor {
     } else {
       paintLandscape(ctx, main, w, h);
     }
-    paintSongCredit(ctx, w, h);
+    paintSongCredit(ctx, w, h, mode);
     return slot;
   };
 
@@ -269,54 +269,69 @@ function paintOutput(
 
 export const SONG_CREDIT = "♪ あのね - ナナツカゼ";
 
+/** 旧 short×0.022（縦 13 / 横 16）の約 2.5 倍。ピルなし白文字。 */
+export const SONG_CREDIT_FONT_FRAC = 0.055;
+
 export type SongCreditLayout = {
   fontSize: number;
   pad: number;
-  boxPadX: number;
-  boxPadY: number;
+  /** 右寄せアンカーの x。 */
+  x: number;
+  /** 縦はパネル直下（top）、横は画面下端（bottom）。 */
+  y: number;
+  textAlign: CanvasTextAlign;
+  textBaseline: CanvasTextBaseline;
 };
 
-/** 出力キャンバス右下。縦 608×1080 / 横 1280×720 の両方で小さめに読む。 */
-export function songCreditLayout(canvasW: number, canvasH: number): SongCreditLayout {
+/**
+ * 縦: 中央 16:9 本編の真下・下帯の右上。
+ * 横: 画面全体の右下。どちらも小さな inset。
+ */
+export function songCreditLayout(
+  canvasW: number,
+  canvasH: number,
+  mode: AspectMode = canvasW < canvasH ? "portrait" : "landscape",
+): SongCreditLayout {
   const short = Math.min(canvasW, canvasH);
-  const fontSize = Math.max(12, Math.round(short * 0.022));
-  const pad = Math.max(10, Math.round(short * 0.02));
+  const fontSize = Math.max(28, Math.round(short * SONG_CREDIT_FONT_FRAC));
+  const pad = Math.max(8, Math.round(short * 0.016));
+  const x = canvasW - pad;
+  if (mode === "portrait") {
+    const panel = mainPanelRect(canvasW, canvasH, mode);
+    return {
+      fontSize,
+      pad,
+      x,
+      y: panel.y + panel.h + pad,
+      textAlign: "right",
+      textBaseline: "top",
+    };
+  }
   return {
     fontSize,
     pad,
-    boxPadX: Math.max(6, Math.round(fontSize * 0.5)),
-    boxPadY: Math.max(3, Math.round(fontSize * 0.28)),
+    x,
+    y: canvasH - pad,
+    textAlign: "right",
+    textBaseline: "bottom",
   };
 }
 
-function paintSongCredit(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const { fontSize, pad, boxPadX, boxPadY } = songCreditLayout(w, h);
+function paintSongCredit(ctx: CanvasRenderingContext2D, w: number, h: number, mode: AspectMode): void {
+  const { fontSize, x, y, textAlign, textBaseline } = songCreditLayout(w, h, mode);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-  ctx.shadowColor = "transparent";
   ctx.font = `500 ${fontSize}px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif`;
-  ctx.textAlign = "right";
-  ctx.textBaseline = "middle";
-  const textW = ctx.measureText(SONG_CREDIT).width;
-  const boxW = textW + boxPadX * 2;
-  const boxH = fontSize + boxPadY * 2;
-  const boxX = w - pad - boxW;
-  const boxY = h - pad - boxH;
-  ctx.fillStyle = "rgba(8, 6, 4, 0.45)";
-  ctx.beginPath();
-  if (typeof ctx.roundRect === "function") {
-    ctx.roundRect(boxX, boxY, boxW, boxH, boxH / 2);
-  } else {
-    ctx.rect(boxX, boxY, boxW, boxH);
-  }
-  ctx.fill();
-  ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
-  ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.2));
-  ctx.shadowOffsetY = 1;
-  ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
-  ctx.fillText(SONG_CREDIT, boxX + boxW - boxPadX, boxY + boxH / 2);
+  ctx.textAlign = textAlign;
+  ctx.textBaseline = textBaseline;
+  ctx.shadowColor = "rgba(0, 0, 0, 0.65)";
+  ctx.shadowBlur = Math.max(3, Math.round(fontSize * 0.32));
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = Math.max(1, Math.round(fontSize * 0.06));
+  ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+  ctx.fillText(SONG_CREDIT, x, y);
   ctx.restore();
 }
