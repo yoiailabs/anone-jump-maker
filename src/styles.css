@@ -118,7 +118,8 @@ body {
 
 .hero,
 .stage-wrap,
-.panel {
+.panel,
+.notes {
   position: relative;
   z-index: 1;
 }
@@ -145,6 +146,7 @@ body {
 }
 
 .lede,
+.notes p,
 .status,
 .slot-meter {
   margin: 0;
@@ -510,6 +512,22 @@ body {
   color: var(--ink);
 }
 
+/* 投稿は保存の下に一段で置く（グリッドの 2 列ぶん） */
+.btn.share {
+  grid-column: 1 / -1;
+  gap: 0.45rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.92rem;
+}
+
+.btn.share svg {
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
 .btn:disabled,
 .file-btn:has(input:disabled) {
   opacity: 0.38;
@@ -540,6 +558,91 @@ body {
 
 .status[data-kind="error"] {
   color: #c44b45;
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  text-wrap: pretty;
+}
+
+/* 画面最下部の参考リンク。公式の配信先とアカウントへ別タブで飛ばすだけ。 */
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.links-title {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+}
+
+.link-banners {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-banner {
+  --accent: var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.85rem;
+  padding: 0.4rem 0.6rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--accent) 22%, var(--card));
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 3px 4px 0 var(--ink);
+  transition: transform 0.16s ease;
+}
+
+.link-banner:hover {
+  transform: translateY(-2px);
+}
+
+.link-banner:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.link-banner[data-service="x"] {
+  --accent: var(--teal);
+}
+
+.link-banner[data-service="youtube"] {
+  --accent: var(--coral);
+}
+
+.link-banner[data-service="spotify"] {
+  --accent: var(--lime);
+}
+
+.link-banner[data-service="apple-music"] {
+  --accent: var(--peach);
+}
+
+.link-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .offscreen-video {
