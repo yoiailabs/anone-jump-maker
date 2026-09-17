@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_SOURCE,
   FRAME_FX_TARGET,
+  IMAGE_FILTER_CREDIT,
+  IMAGE_FILTER_TARGET,
   JUMP_FLASH_TARGET,
   PHOTO_UPLOAD_PATH,
   SONG_CREDIT,
@@ -40,6 +42,11 @@ describe("swap fx draw path", () => {
   it("applies the zoom blur / rgb split to the composited frame and the jump flash to the photo layer", () => {
     expect(FRAME_FX_TARGET).toBe("composited-main");
     expect(JUMP_FLASH_TARGET).toBe("photo-plate");
+  });
+
+  it("applies the image filter to the whole composed frame, then paints the song credit", () => {
+    expect(IMAGE_FILTER_TARGET).toBe("composited-frame");
+    expect(IMAGE_FILTER_CREDIT).toBe("after-filter");
   });
 
   it("places a larger bottom-aligned character so the cover-blur matches the official close-up", () => {

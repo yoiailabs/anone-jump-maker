@@ -66,6 +66,45 @@ export function isSwapStyle(value: string): value is SwapStyle {
   return value === "jump" || value === "zoom";
 }
 
+/**
+ * 画像全体フィルター。向き・切替と独立に選べる。
+ * - none: 加工なし
+ * - blur-strong / blur-weak: 合成後のフレーム全体にガウスぼかし（ボケ感）
+ */
+export type ImageFilter = "none" | "blur-strong" | "blur-weak";
+
+export const IMAGE_FILTERS = ["none", "blur-strong", "blur-weak"] as const;
+
+export const IMAGE_FILTER_LABELS: Record<ImageFilter, string> = {
+  none: "なし",
+  "blur-strong": "ブラー(強)",
+  "blur-weak": "ブラー(弱)",
+};
+
+export function isImageFilter(value: string): value is ImageFilter {
+  return value === "none" || value === "blur-strong" || value === "blur-weak";
+}
+
+/**
+ * 短辺に対するブラー半径。弱は軽いボケ、強ははっきりしたボケ。
+ * プレビューと保存で同じ関数を使う。
+ */
+export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
+  none: 0,
+  "blur-weak": 0.012,
+  "blur-strong": 0.028,
+};
+
+export function filterBlurPx(filter: ImageFilter, shortSide: number): number {
+  const frac = FILTER_BLUR_FRAC[filter];
+  if (frac <= 0) return 0;
+  return Math.max(2, Math.round(shortSide * frac));
+}
+
+export function hasImageFilter(filter: ImageFilter): boolean {
+  return filterBlurPx(filter, 100) > 0;
+}
+
 /*
  * ───────────── ジャンプ系（参考 Short o1ROhNU0UNw、30fps）─────────────
  * 本編 16:9 の写真を SIFT + RANSAC で同一ショットの静止フレーム（カット +7）に合わせて実測。

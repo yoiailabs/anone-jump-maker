@@ -33,8 +33,11 @@ import {
   characterScale,
   characterShiftY,
   coverDest,
+  filterBlurPx,
   hasFrameFx,
+  hasImageFilter,
   isAspectMode,
+  isImageFilter,
   isSwapStyle,
   jumpCycle,
   jumpFlashEnvelope,
@@ -373,6 +376,10 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(isSwapStyle("jump")).toBe(true);
     expect(isSwapStyle("zoom")).toBe(true);
     expect(isSwapStyle("slide")).toBe(false);
+    expect(isImageFilter("none")).toBe(true);
+    expect(isImageFilter("blur-strong")).toBe(true);
+    expect(isImageFilter("blur-weak")).toBe(true);
+    expect(isImageFilter("blur")).toBe(false);
     // the fx model is aspect-agnostic: fractions of panel size
     const slots = [0, 0.5, 1.0];
     const zoom = swapFx(0.5, slots, "zoom");
@@ -384,5 +391,25 @@ describe("zoom cycle (hagikaze_sami)", () => {
       expect(zoom.blur * w).toBeGreaterThan(5);
       expect(Math.abs(jump.dy) * h).toBeGreaterThan(20);
     }
+  });
+});
+
+describe("image filter", () => {
+  it("offers none plus two whole-frame blurs", () => {
+    expect(isImageFilter("none")).toBe(true);
+    expect(isImageFilter("blur-strong")).toBe(true);
+    expect(isImageFilter("blur-weak")).toBe(true);
+    expect(isImageFilter("blur")).toBe(false);
+    expect(hasImageFilter("none")).toBe(false);
+    expect(hasImageFilter("blur-weak")).toBe(true);
+    expect(hasImageFilter("blur-strong")).toBe(true);
+  });
+
+  it("uses a stronger radius for 強 than 弱, and none is zero", () => {
+    const short = 720;
+    expect(filterBlurPx("none", short)).toBe(0);
+    expect(filterBlurPx("blur-weak", short)).toBeGreaterThan(0);
+    expect(filterBlurPx("blur-strong", short)).toBeGreaterThan(filterBlurPx("blur-weak", short));
+    expect(filterBlurPx("blur-strong", 1440)).toBeGreaterThan(filterBlurPx("blur-strong", short));
   });
 });

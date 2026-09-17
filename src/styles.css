@@ -267,6 +267,10 @@ body {
   gap: 0.28rem;
 }
 
+.preview-field-span {
+  grid-column: 1 / -1;
+}
+
 .preview-field legend {
   font-size: 0.66rem;
 }
@@ -448,6 +452,14 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
+}
+
+.aspect-toggle.cols-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.aspect-toggle.cols-3 label {
+  padding: 0.35rem 0.25rem;
 }
 
 .aspect-toggle label {

@@ -10,7 +10,9 @@ import {
   characterScale,
   characterShiftY,
   coverDest,
+  filterBlurPx,
   hasFrameFx,
+  hasImageFilter,
   mainPanelRect,
   OUTPUTS,
   outputSize,
@@ -21,6 +23,7 @@ import {
   templateBandRect,
   usesBlurBackdrop,
   type AspectMode,
+  type ImageFilter,
   type SwapFx,
   type SwapStyle,
 } from "./layout.ts";
@@ -34,6 +37,12 @@ export const FRAME_FX_TARGET = "composited-main" as const;
 
 /** ジャンプのフラッシュは写真層に乗せ、キャラは薄い全面分だけ。 */
 export const JUMP_FLASH_TARGET = "photo-plate" as const;
+
+/** 画像フィルターは合成後の出力フレーム全体に掛ける。写真だけではない。 */
+export const IMAGE_FILTER_TARGET = "composited-frame" as const;
+
+/** 曲クレジットはフィルターの後に描き、ボケで潰れないようにする。 */
+export const IMAGE_FILTER_CREDIT = "after-filter" as const;
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -50,6 +59,7 @@ export type Compositor = {
     timeline: SlotTimeline,
     time?: number,
     swapStyle?: SwapStyle,
+    imageFilter?: ImageFilter,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   aspect: () => AspectMode;
@@ -98,6 +108,7 @@ export function createCompositor(): Compositor {
     timeline: SlotTimeline,
     time = video.currentTime,
     swapStyle: SwapStyle = "jump",
+    imageFilter: ImageFilter = "none",
   ) => {
     const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
@@ -114,6 +125,7 @@ export function createCompositor(): Compositor {
     } else {
       paintLandscape(ctx, main, w, h);
     }
+    applyImageFilter(ctx, scratch, scratchCtx, imageFilter, w, h);
     paintSongCredit(ctx, w, h, mode);
     return slot;
   };
@@ -414,6 +426,31 @@ function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.drawImage(main, 0, 0, w, h);
+}
+
+/**
+ * 合成済みフレーム全体にガウスぼかしを掛ける。端の透明化を隠すため少し拡大して描く。
+ * 曲クレジットはこの後に載せる。
+ */
+export function applyImageFilter(
+  ctx: CanvasRenderingContext2D,
+  scratch: HTMLCanvasElement,
+  scratchCtx: CanvasRenderingContext2D,
+  filter: ImageFilter,
+  w: number,
+  h: number,
+): void {
+  if (!hasImageFilter(filter)) return;
+  const px = filterBlurPx(filter, Math.min(w, h));
+  scratch.width = Math.max(1, w);
+  scratch.height = Math.max(1, h);
+  resetCtx(scratchCtx);
+  scratchCtx.drawImage(ctx.canvas, 0, 0);
+  resetCtx(ctx);
+  ctx.filter = `blur(${px}px)`;
+  const pad = Math.max(8, px * 2);
+  ctx.drawImage(scratch, -pad, -pad, w + pad * 2, h + pad * 2);
+  ctx.filter = "none";
 }
 
 function paintOutput(

@@ -1,6 +1,14 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
-import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
+import {
+  isAspectMode,
+  isImageFilter,
+  isSwapStyle,
+  TEMPLATES,
+  type AspectMode,
+  type ImageFilter,
+  type SwapStyle,
+} from "./layout.ts";
 import { linkBannersHtml } from "./links.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
@@ -27,6 +35,7 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   let mode: AspectMode = "portrait";
   let swapStyle: SwapStyle = "jump";
+  let imageFilter: ImageFilter = "none";
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
@@ -90,6 +99,23 @@ export async function boot(root: HTMLElement): Promise<void> {
             <label>
               <input type="radio" name="swap" value="zoom" />
               <span>ズーム</span>
+            </label>
+          </div>
+        </fieldset>
+        <fieldset class="aspect-field" id="filterField">
+          <legend>フィルター</legend>
+          <div class="aspect-toggle cols-3" role="radiogroup" aria-label="フィルター">
+            <label>
+              <input type="radio" name="filter" value="none" checked />
+              <span>なし</span>
+            </label>
+            <label>
+              <input type="radio" name="filter" value="blur-strong" />
+              <span>ブラー(強)</span>
+            </label>
+            <label>
+              <input type="radio" name="filter" value="blur-weak" />
+              <span>ブラー(弱)</span>
             </label>
           </div>
         </fieldset>
@@ -167,6 +193,23 @@ export async function boot(root: HTMLElement): Promise<void> {
               </label>
             </div>
           </fieldset>
+          <fieldset class="aspect-field preview-field preview-field-span">
+            <legend>フィルター</legend>
+            <div class="aspect-toggle preview-toggle cols-3" role="radiogroup" aria-label="プレビューのフィルター">
+              <label>
+                <input type="radio" name="preview-filter" value="none" checked />
+                <span>なし</span>
+              </label>
+              <label>
+                <input type="radio" name="preview-filter" value="blur-strong" />
+                <span>ブラー(強)</span>
+              </label>
+              <label>
+                <input type="radio" name="preview-filter" value="blur-weak" />
+                <span>ブラー(弱)</span>
+              </label>
+            </div>
+          </fieldset>
         </div>
         <div class="stage-wrap">
           <button
@@ -208,6 +251,9 @@ export async function boot(root: HTMLElement): Promise<void> {
     ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
   ];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
+  const filterInputs = [
+    ...root.querySelectorAll<HTMLInputElement>('input[name="filter"], input[name="preview-filter"]'),
+  ];
 
   stage.prepend(compositor.canvas);
   compositor.canvas.setAttribute("aria-hidden", "true");
@@ -229,6 +275,12 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const syncSwapRadios = (value: SwapStyle) => {
     for (const input of swapInputs) {
+      input.checked = input.value === value;
+    }
+  };
+
+  const syncFilterRadios = (value: ImageFilter) => {
+    for (const input of filterInputs) {
       input.checked = input.value === value;
     }
   };
@@ -266,11 +318,14 @@ export async function boot(root: HTMLElement): Promise<void> {
     for (const input of swapInputs) {
       input.disabled = recording;
     }
+    for (const input of filterInputs) {
+      input.disabled = recording;
+    }
   };
 
   const paint = (time?: number) => {
     const cuts = timeline();
-    const slot = compositor.draw(video, photos, cuts, time, swapStyle);
+    const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter);
     if (slot !== lastSlot) {
       lastSlot = slot;
       slotMeter.textContent = `スロット ${slot + 1} / ${cuts.slots.length}`;
@@ -396,6 +451,13 @@ export async function boot(root: HTMLElement): Promise<void> {
     paint();
   };
 
+  const applyFilter = (next: ImageFilter) => {
+    if (next === imageFilter) return;
+    imageFilter = next;
+    syncFilterRadios(imageFilter);
+    paint();
+  };
+
   video.addEventListener("loadeddata", () => {
     paint();
     refreshButtons();
@@ -440,6 +502,13 @@ export async function boot(root: HTMLElement): Promise<void> {
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isSwapStyle(input.value)) return;
       applySwap(input.value);
+    });
+  }
+
+  for (const input of filterInputs) {
+    input.addEventListener("change", () => {
+      if (recording || !input.checked || !isImageFilter(input.value)) return;
+      applyFilter(input.value);
     });
   }
 
@@ -559,7 +628,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
         },
       });
-      const filename = exportFileName(mode, swapStyle, result.extension);
+      const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
       downloadBlob(result.blob, filename);
       savedVideo = toShareFile(result.blob, filename);
       setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
