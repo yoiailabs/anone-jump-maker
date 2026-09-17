@@ -3,6 +3,7 @@ import {
   formatCountLabel,
   parseStatsCount,
   sanitizeGenerateAttrs,
+  shouldCountPreview,
   summarizeUserAgent,
 } from "./stats-shared.ts";
 
@@ -45,6 +46,7 @@ describe("sanitizeGenerateAttrs", () => {
       mime: "video/mp4",
       width: 720,
       height: 1280,
+      action: "save",
       ip: "1.2.3.4",
       email: "a@b.c",
       userAgent: "raw-ua-should-not-pass",
@@ -62,9 +64,22 @@ describe("sanitizeGenerateAttrs", () => {
       mime: "video/mp4",
       width: 720,
       height: 1280,
+      action: "save",
     });
     expect(sanitizeGenerateAttrs({ exportMode: "offline" }).exportMode).toBe("offline");
+    expect(sanitizeGenerateAttrs({ action: "preview" }).action).toBe("preview");
+    expect(sanitizeGenerateAttrs({ action: "save" }).action).toBe("save");
+    expect(sanitizeGenerateAttrs({ action: "download" })).toEqual({});
     expect(sanitizeGenerateAttrs({ browser: "netscape", mime: "not a mime" })).toEqual({});
+  });
+});
+
+describe("shouldCountPreview", () => {
+  it("counts only a finished preview, not a mid-play stop or a save recording", () => {
+    expect(shouldCountPreview({ event: "ended", playing: true, recording: false })).toBe(true);
+    expect(shouldCountPreview({ event: "ended", playing: true, recording: true })).toBe(false);
+    expect(shouldCountPreview({ event: "ended", playing: false, recording: false })).toBe(false);
+    expect(shouldCountPreview({ event: "stop", playing: true, recording: false })).toBe(false);
   });
 });
 

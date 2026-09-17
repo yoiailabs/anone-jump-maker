@@ -5,13 +5,14 @@ import { prepareRealtimeClock, RECORD_AUDIO_SOURCE, RECORD_START_ORDER } from ".
 describe("record sync plan", () => {
   it("uses the video element as the only clock and audio source", () => {
     expect(PAINT_CLOCK).toBe("video.currentTime");
-    expect(RECORD_AUDIO_SOURCE).toBe("element-captureStream");
+    expect(RECORD_AUDIO_SOURCE).toBe("media-element-source");
     expect(RECORD_START_ORDER).toEqual([
       "seek",
       "unmute",
       "paint-loop",
       "play",
       "first-frame",
+      "audio-tap",
       "media-recorder",
     ]);
   });

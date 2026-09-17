@@ -1,7 +1,7 @@
 import { waitForPresentedFrame } from "./playback.ts";
 import {
   captureCanvasStream,
-  captureElementAudio,
+  captureRecordingAudio,
   combineStreams,
   extensionForMime,
   pickRecorderMime,
@@ -19,7 +19,7 @@ export function signalCanvasPainted(): void {
 /** Capture sample rate. Each paint also calls requestFrame so frames follow the video clock. */
 export const EXPORT_FPS = 30;
 
-export const RECORD_AUDIO_SOURCE = "element-captureStream" as const;
+export const RECORD_AUDIO_SOURCE = "media-element-source" as const;
 
 export const RECORD_START_ORDER = [
   "seek",
@@ -27,6 +27,7 @@ export const RECORD_START_ORDER = [
   "paint-loop",
   "play",
   "first-frame",
+  "audio-tap",
   "media-recorder",
 ] as const;
 
@@ -99,8 +100,6 @@ export async function recordRealtime(options: {
   await seekVideo(video, 0);
 
   const canvasStream = captureCanvasStream(canvas, EXPORT_FPS);
-  const audioStream = captureElementAudio(video);
-  const mixed = combineStreams(canvasStream, audioStream.getAudioTracks().length > 0 ? audioStream : null);
   const unbind = bindPaintCapture(canvasStream);
 
   const finished = whenEnded(video);
@@ -111,6 +110,8 @@ export async function recordRealtime(options: {
       waitForFrame: () => waitForPresentedFrame(video),
     });
     requestCanvasFrame(canvasStream);
+    const audioStream = await captureRecordingAudio(video);
+    const mixed = combineStreams(canvasStream, audioStream.getAudioTracks().length > 0 ? audioStream : null);
     const blob = await recordStream(mixed, finished);
     for (const track of canvasStream.getTracks()) {
       track.stop();

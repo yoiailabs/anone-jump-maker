@@ -17,13 +17,21 @@ CREATE TABLE IF NOT EXISTS generates (
   export_mode TEXT,
   mime TEXT,
   width INTEGER,
-  height INTEGER
+  height INTEGER,
+  action TEXT
 )
 `;
+
+const MIGRATE_ACTION = `ALTER TABLE generates ADD COLUMN action TEXT`;
 
 export class GenerateStats {
   constructor(private readonly ctx: DurableObjectState) {
     this.ctx.storage.sql.exec(SCHEMA);
+    try {
+      this.ctx.storage.sql.exec(MIGRATE_ACTION);
+    } catch {
+      // already migrated
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -48,8 +56,8 @@ export class GenerateStats {
     this.ctx.storage.sql.exec(
       `INSERT INTO generates (
         created_at, browser, os, device, language, timezone,
-        screen_w, screen_h, dpr, export_mode, mime, width, height
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        screen_w, screen_h, dpr, export_mode, mime, width, height, action
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       createdAt,
       attrs.browser ?? null,
       attrs.os ?? null,
@@ -63,6 +71,7 @@ export class GenerateStats {
       attrs.mime ?? null,
       attrs.width ?? null,
       attrs.height ?? null,
+      attrs.action ?? null,
     );
   }
 }
