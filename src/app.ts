@@ -634,7 +634,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (!canShareVideoFile(file, shareNavigator)) {
       // リンクの遷移をそのまま使う。ここで止めて JS から開くと、スマホでも X アプリではなく
       // ブラウザの X が出てしまう。
-      setStatus("X の投稿画面を開きます。保存した動画を添付して投稿してください。");
+      setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
       return;
     }
     event.preventDefault();
