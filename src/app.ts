@@ -1,7 +1,7 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
-import { describeMode, exportFileName, formatModeLabel } from "./modes.ts";
+import { describeMode, describePhotoCount, exportFileName, formatModeLabel } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
@@ -83,7 +83,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
         </div>
-        <p class="status" id="status" data-kind="idle">何枚でも。足りないカットはくり返します。</p>
+        <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
       </section>
 
       <footer class="notes">
@@ -151,11 +151,11 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   const paint = (time?: number) => {
-    const slots = timeline().slots;
-    const slot = compositor.draw(video, photos, slots, time, swapStyle);
+    const cuts = timeline();
+    const slot = compositor.draw(video, photos, cuts, time, swapStyle);
     if (slot !== lastSlot) {
       lastSlot = slot;
-      slotMeter.textContent = `スロット ${slot + 1} / ${slots.length}`;
+      slotMeter.textContent = `スロット ${slot + 1} / ${cuts.slots.length}`;
     }
   };
 
@@ -264,7 +264,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus(
         photos.length === 0
           ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。足りないスロットは循環します。`,
+          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。${describePhotoCount(photos.length)}`,
       );
     } catch (error) {
       renderThumbs();

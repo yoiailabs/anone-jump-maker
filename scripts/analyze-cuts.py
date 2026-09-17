@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 """Write the photo-slot tables (public/template/cuts.json, landscape-cuts.json).
 
-The slot times are the template's pose-change frames that the two official
-references swap photos on (30 fps):
+Source of truth for the slot timing is the colour-coded Short utNIG60-li0: the
+template rendered with each of its 10 photo slots filled by a flat colour, so
+every photo swap is an unambiguous colour change. Frames were extracted with
+ffmpeg (30 fps) and the video aligned to public/template/vertical.mp4 by
+cross-correlating the character-silhouette difference signal (template frame =
+video frame + 1, corr 0.92, stable in every 60-frame window).
 
-* jump reference (Short o1ROhNU0UNw): the frame where the new photo appears
-  together with the white flash.
-* zoom reference (X post hagikaze_sami): the frame where the outgoing photo is
-  at its smallest / most blurred (the new photo appears one frame later).
+Each swap is a two-frame dip-to-white: S-1 shows the old colour lifted, S shows
+the old/new blend (and the character pose change), S+1 the clean new colour.
+`slots` is S. The earlier photo references agree within a frame: the jump
+Short (o1ROhNU0UNw) shows the new photo with its flash on S, the zoom post
+(hagikaze_sami) shows the blur peak on S and the new photo on S+1.
 
-Both references were frame-extracted with ffmpeg and aligned to the template
-by cross-correlating per-frame difference signals (lag +1 frame for both).
-The two beat lists agree within one frame; where only one reference has a cut
-(the Short holds its last photo from 11.7 s) the other one is used. The
-vertical and landscape templates share the same animation frame for frame, so
-both tables get the same slots.
+The same video gives the photo count and order: 10 distinct colours over 32
+slots, A B C D E F G B E A H B A I F I B D H I G H J C H F I J G D A I
+(`slotPhotoOrder`, A..J -> 0..9). The vertical and landscape templates share
+the animation frame for frame, so both tables get the same slots.
 
-Detecting the beats from the template alone (15 fps or 30 fps pixel
-difference) is not reliable: the character animates at ~10 fps and the beat
-cut is not always the biggest change, which is how 4.067 / 8.0 / 9.933 crept
-into the old tables.
+Detecting the beats from the template alone (pixel difference of the character)
+is not reliable: the character animates on its own ~3-frame grid and the photo
+cut can sit a frame or two away from the nearest pose change (233 vs 236,
+426 vs 424 ...), which is how 4.067 / 8.0 / 9.933 crept into the old tables.
 
 Usage: python3 scripts/analyze-cuts.py [--check]
   --check  also print the template's per-frame difference at each beat frame
@@ -39,17 +42,24 @@ FPS = 30
 PORTRAIT_BAND_Y = 312
 PORTRAIT_BAND_H = 342
 
-# Template frame index of each photo swap (frame 0 = first slot). Where the two
-# references disagreed by a frame, the template's own pose-change frame (the
-# `--check` peak) decides: 236, 309, 353, 367.
+# Template frame index of each photo swap (frame 0 = first slot), from the
+# colour-coded Short utNIG60-li0 (video frame + 1).
 BEAT_FRAMES = [
-    0, 15, 30, 45, 59, 74, 88, 102, 118, 133, 148, 163, 177, 192, 206, 220,
-    236, 250, 264, 279, 294, 309, 323, 338, 353, 367, 381, 396, 411, 424, 440, 455,
+    0, 15, 30, 45, 59, 74, 88, 102, 118, 134, 148, 163, 178, 192, 205, 219,
+    233, 250, 264, 279, 294, 308, 322, 338, 352, 366, 380, 396, 411, 426, 441, 457,
 ]
 
+# Which of the template's 10 photos each slot shows (colour sequence of the same video).
+PHOTO_COUNT = 10
+SLOT_PHOTO_ORDER = [
+    0, 1, 2, 3, 4, 5, 6, 1, 4, 0, 7, 1, 0, 8, 5, 8, 1, 3, 7, 8, 6, 7, 9, 2, 7, 5, 8, 9, 6, 3, 0, 8,
+]
+assert len(SLOT_PHOTO_ORDER) == len(BEAT_FRAMES)
+assert max(SLOT_PHOTO_ORDER) + 1 == PHOTO_COUNT
+
 NOTE = (
-    "参考 2 本（Short o1ROhNU0UNw / X hagikaze_sami）の写真切替フレームをテンプレのポーズ切替に合わせた 30fps の拍。"
-    " 値は frame/30。"
+    "色分け Short utNIG60-li0（10 色＝10 枚のスロット）の色が切り替わるフレームをテンプレ時刻に合わせた 30fps の拍。"
+    " 値は frame/30。slotPhotoOrder は各カットに入る写真番号（0..9）。"
 )
 
 
@@ -101,6 +111,8 @@ def payload_for(mode: str, video: Path, width: int, height: int, duration: float
         "band": band,
         "slotFrames": BEAT_FRAMES,
         "slots": slot_seconds(BEAT_FRAMES),
+        "photoCount": PHOTO_COUNT,
+        "slotPhotoOrder": SLOT_PHOTO_ORDER,
     }
 
 

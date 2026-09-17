@@ -25,7 +25,7 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
-import { photoForSlot, slotForTime } from "./timeline.ts";
+import { photoForSlot, slotForTime, type SlotTimeline } from "./timeline.ts";
 
 export { BLUR_SOURCE, OUTPUT, OUTPUTS, STAGE_MAX_REM, type AspectMode } from "./layout.ts";
 
@@ -47,7 +47,7 @@ export type Compositor = {
   draw: (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
-    slots: readonly number[],
+    timeline: SlotTimeline,
     time?: number,
     swapStyle?: SwapStyle,
   ) => number;
@@ -95,17 +95,18 @@ export function createCompositor(): Compositor {
   const draw = (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
-    slots: readonly number[],
+    timeline: SlotTimeline,
     time = video.currentTime,
     swapStyle: SwapStyle = "jump",
   ) => {
+    const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
     applyCanvasSize(canvas, mode);
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle);
-    const plate = photoForSlot(photos, fx.plateSlot);
+    const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
 
     composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode);
     if (usesBlurBackdrop(mode)) {

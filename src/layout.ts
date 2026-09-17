@@ -36,7 +36,11 @@ export const TEMPLATE_BAND_H = 342;
 
 export const MAIN_PANEL_Y_FRAC = TEMPLATE_BAND_Y / OUTPUT.height;
 
-/** テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。 */
+/**
+ * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
+ * スロット時刻 S（cuts.json）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
+ * ジャンプは S に新写真、ズームは S+1 に新写真（S はブラー頂点）。
+ */
 export const TEMPLATE_FPS = 30;
 
 /**
