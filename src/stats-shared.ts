@@ -91,13 +91,13 @@ export function sanitizeGenerateAttrs(input: unknown): GenerateAttrs {
   return attrs;
 }
 
-/** プレビューは再生が最後まで終わったときだけ数える。停止は数えない。 */
+/** プレビューは開始時に数える。同じ再生中の再スタートは数えない。停止・完走では増やさない。 */
 export function shouldCountPreview(input: {
-  event: "ended" | "stop";
-  playing: boolean;
+  event: "start" | "stop" | "ended";
   recording: boolean;
+  countedThisPlayback: boolean;
 }): boolean {
-  return input.event === "ended" && input.playing && !input.recording;
+  return input.event === "start" && !input.recording && !input.countedThisPlayback;
 }
 
 export function parseStatsCount(payload: unknown): number | null {

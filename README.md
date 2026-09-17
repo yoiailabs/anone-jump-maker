@@ -39,7 +39,7 @@ pnpm deploy    # = pnpm build && wrangler deploy
 
 Worker 名は `anone`。Cloudflare Workers の静的アセットとして `dist` を配信します。`/api/*` だけ Worker が先に処理します。
 
-プレビューが最後まで終わったときと、保存が成功したあとに、写真や動画は送らず「1回作った」イベントだけをサーバーに残します。同じ人が何度作っても毎回数えます（IP・Cookie・端末による重複排除はしません）。プレビューを途中で止めたときは数えません。公開 UI は合計件数（「○回作られたよ」）だけ出します。永続化は Durable Object（バインディング `GENERATE_STATS` / クラス `GenerateStats`、SQLite）です。単なる整数カウンタにせず、サーバー付与の UTC 時刻と、ブラウザ／OS／画面の粗い属性だけを行として残します。属性の `action` は `preview` または `save` です。保存の `exportMode` は録画固定（`record`）です。API が落ちても保存自体は成功のままです。
+プレビューを開始したときと、保存が成功したあとに、写真や動画は送らず「1回作った」イベントだけをサーバーに残します。同じ人が何度作っても毎回数えます（IP・Cookie・端末による重複排除はしません）。プレビューを途中で止めても、開始時にすでに数えているので減らしません。同じプレビュー再生で開始を二度数えることはありません（停止してから再開すればまた +1）。公開 UI は合計件数（「○回作られたよ」）だけ出します。永続化は Durable Object（バインディング `GENERATE_STATS` / クラス `GenerateStats`、SQLite）です。単なる整数カウンタにせず、サーバー付与の UTC 時刻と、ブラウザ／OS／画面の粗い属性だけを行として残します。属性の `action` は `preview` または `save` です。保存の `exportMode` は録画固定（`record`）です。API が落ちても保存自体は成功のままです。
 
 - `GET /api/stats` → `{ count }`
 - `POST /api/stats/generate` → イベントを足して `{ count }`

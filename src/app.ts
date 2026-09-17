@@ -19,6 +19,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
+  let previewCounted = false;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
 
@@ -159,8 +160,17 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   };
 
+  const countPreviewStart = () => {
+    if (!shouldCountPreview({ event: "start", recording, countedThisPlayback: previewCounted })) {
+      return;
+    }
+    previewCounted = true;
+    void reportMade({ action: "preview" });
+  };
+
   const stopPlayback = () => {
     playing = false;
+    previewCounted = false;
     haltLoop();
     video.pause();
     refreshButtons();
@@ -186,14 +196,10 @@ export async function boot(root: HTMLElement): Promise<void> {
     setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
   });
   video.addEventListener("ended", () => {
-    const countPreview = shouldCountPreview({ event: "ended", playing, recording });
     if (!recording) {
       stopPlayback();
       paint();
       setStatus("プレビューが終わりました");
-    }
-    if (countPreview) {
-      void reportMade({ action: "preview" });
     }
   });
 
@@ -232,7 +238,9 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus("停止しました");
       return;
     }
+    if (previewCounted) return;
     try {
+      countPreviewStart();
       video.muted = false;
       video.volume = 1;
       await seekVideo(video, 0);
@@ -243,6 +251,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       await video.play();
     } catch (error) {
       playing = false;
+      previewCounted = false;
       haltLoop();
       refreshButtons();
       setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
@@ -253,6 +262,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (recording || photos.length === 0) return;
     recording = true;
     playing = false;
+    previewCounted = false;
     video.pause();
     refreshButtons();
     setStatus("録画中… 画面を消さずにお待ちください", "busy");
@@ -271,6 +281,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     } finally {
       recording = false;
       playing = false;
+      previewCounted = false;
       haltLoop();
       video.pause();
       video.muted = true;
