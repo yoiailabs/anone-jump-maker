@@ -54,10 +54,35 @@ export const SWAP_SLIDE_FRAC = 0.016;
 export const SWAP_CHROMA_FRAC = 0.007;
 export const SWAP_SKEW = 0.04;
 
+/** 横専用。参考 Short（hagikaze_sami）は hop なし・短い放射ズームワープ。 */
+export type SwapStyle = "jump" | "zoom";
+
+export const SWAP_STYLES = ["jump", "zoom"] as const;
+
+export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
+  jump: "ジャンプ",
+  zoom: "ズーム",
+};
+
+/**
+ * 参考横（hagikaze_sami）のズーム切り。2–5 フレ（≈0.05–0.15s）。
+ * 放射ズームブラー＋横ストリーク＋ RGB ずれ。長い白フラッシュは使わない。
+ */
+export const ZOOM_PRE_ROLL = 1 / 30;
+export const ZOOM_DURATION = 3 / 30;
+export const ZOOM_PUNCH = 0.14;
+export const ZOOM_FLASH_PEAK = 0;
+export const ZOOM_BLUR_PEAK = 1;
+export const ZOOM_CHROMA_FRAC = 0.016;
+export const ZOOM_WHIP_PEAK = 0.85;
+export const ZOOM_WAVE_PEAK = 0.5;
+export const ZOOM_SMEAR_PEAK = 0.62;
+export const ZOOM_GROW = 0.92;
+
 export type SwapFx = {
   /** 0–1。窓の外は 0。 */
   amount: number;
-  /** 白フラッシュ 0–1。カットで最大。 */
+  /** 白フラッシュ 0–1。カットで最大。ズームではごく弱いハイライト。 */
   flash: number;
   /** cover 倍率（静止時 1）。 */
   punch: number;
@@ -67,9 +92,43 @@ export type SwapFx = {
   chroma: number;
   /** せん断。 */
   skew: number;
+  /** 放射ズームブラー 0–1。ジャンプでは 0。 */
+  zoomBlur: number;
+  /** 0=出ていく写真、1=入ってくる写真。 */
+  mix: number;
+  /** 横方向のモーションストリーク 0–1。 */
+  whip: number;
+  /** 波打ち／リキッド歪み 0–1。 */
+  wave: number;
+  /** 切替瞬間のキャラスミア 0–1。 */
+  smear: number;
+  /** この窓が向かうスロット。無効時は 0。 */
+  cutIndex: number;
 };
 
-const SWAP_NONE: SwapFx = { amount: 0, flash: 0, punch: 1, slide: 0, chroma: 0, skew: 0 };
+const SWAP_NONE: SwapFx = {
+  amount: 0,
+  flash: 0,
+  punch: 1,
+  slide: 0,
+  chroma: 0,
+  skew: 0,
+  zoomBlur: 0,
+  mix: 1,
+  whip: 0,
+  wave: 0,
+  smear: 0,
+  cutIndex: 0,
+};
+
+export function isSwapStyle(value: string): value is SwapStyle {
+  return value === "jump" || value === "zoom";
+}
+
+/** 縦は常にジャンプ。横だけ UI の選択を使う。 */
+export function effectiveSwapStyle(mode: AspectMode, style: SwapStyle = "jump"): SwapStyle {
+  return mode === "landscape" ? style : "jump";
+}
 
 /**
  * 本編 16:9 をキャンバスへ cover する倍率。
@@ -224,8 +283,14 @@ export function jumpAmount(time: number, slots: readonly number[]): number {
   return Math.sin(Math.PI * u);
 }
 
-/** 上方向が負（Canvas2D）。本編 16:9 内の写真 hop に使う。 */
-export function jumpOffsetPx(time: number, slots: readonly number[], canvasHeight: number): number {
+/** 上方向が負（Canvas2D）。本編 16:9 内の写真 hop に使う。ズーム切りでは 0。 */
+export function jumpOffsetPx(
+  time: number,
+  slots: readonly number[],
+  canvasHeight: number,
+  style: SwapStyle = "jump",
+): number {
+  if (style === "zoom") return 0;
   const amount = jumpAmount(time, slots);
   if (amount === 0) return 0;
   return -amount * canvasHeight * JUMP_AMPLITUDE;
@@ -248,21 +313,39 @@ function slotStartAt(time: number, slots: readonly number[], lookahead: number):
 
 /**
  * カット前後の写真切替エンベロープ。先頭スロットは「切替」ではないので無効。
- * フラッシュはカットでピーク、パンチ／ズレはそのまま hop に接続する。
+ * ジャンプはフラッシュ＋パンチ。ズームは短い放射ワープ（白飛びなし）。
  */
-export function swapFx(time: number, slots: readonly number[]): SwapFx {
+export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
   if (slots.length < 2) return SWAP_NONE;
-  const { start, index } = slotStartAt(time, slots, SWAP_PRE_ROLL);
+  const preRoll = style === "zoom" ? ZOOM_PRE_ROLL : SWAP_PRE_ROLL;
+  const duration = style === "zoom" ? ZOOM_DURATION : SWAP_DURATION;
+  const { start, index } = slotStartAt(time, slots, preRoll);
   if (index === 0) return SWAP_NONE;
-  const span = SWAP_PRE_ROLL + SWAP_DURATION;
-  const tau = time - (start - SWAP_PRE_ROLL);
+  const span = preRoll + duration;
+  const tau = time - (start - preRoll);
   if (tau < 0 || tau >= span) return SWAP_NONE;
   const u = tau / span;
-  const uPeak = SWAP_PRE_ROLL / span;
+  const uPeak = preRoll / span;
   const flashEnv = u <= uPeak ? u / Math.max(uPeak, 1e-6) : 1 - (u - uPeak) / Math.max(1 - uPeak, 1e-6);
   const env = clamp01(flashEnv);
   const amount = env ** 0.65;
   const dir = index % 2 === 0 ? 1 : -1;
+  if (style === "zoom") {
+    return {
+      amount,
+      flash: 0,
+      punch: 1 + ZOOM_PUNCH * amount,
+      slide: 0,
+      chroma: amount,
+      skew: 0,
+      zoomBlur: env ** 0.4 * ZOOM_BLUR_PEAK,
+      mix: smoothstep(uPeak * 0.2, 0.78, u),
+      whip: env ** 0.45 * ZOOM_WHIP_PEAK,
+      wave: env ** 0.75 * ZOOM_WAVE_PEAK,
+      smear: env ** 0.55 * ZOOM_SMEAR_PEAK,
+      cutIndex: index,
+    };
+  }
   return {
     amount,
     flash: env ** 0.85 * SWAP_FLASH_PEAK,
@@ -270,6 +353,12 @@ export function swapFx(time: number, slots: readonly number[]): SwapFx {
     slide: dir * SWAP_SLIDE_FRAC * amount,
     chroma: amount * amount,
     skew: dir * SWAP_SKEW * amount,
+    zoomBlur: 0,
+    mix: 1,
+    whip: 0,
+    wave: 0,
+    smear: 0,
+    cutIndex: index,
   };
 }
 
@@ -278,9 +367,15 @@ export function swapSlidePx(fx: SwapFx, panelW: number): number {
 }
 
 export function swapChromaPx(fx: SwapFx, panelW: number): number {
-  return fx.chroma * SWAP_CHROMA_FRAC * panelW;
+  const frac = fx.zoomBlur > 0 ? ZOOM_CHROMA_FRAC : SWAP_CHROMA_FRAC;
+  return fx.chroma * frac * panelW;
 }
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = clamp01((x - edge0) / Math.max(edge1 - edge0, 1e-6));
+  return t * t * (3 - 2 * t);
 }

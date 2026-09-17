@@ -59,7 +59,7 @@ export function collectClientAttrs(partial: {
     screenW,
     screenH,
     dpr,
-    exportMode: partial.action === "save" ? "record" : undefined,
+    exportMode: partial.action === "save" ? "offline" : undefined,
     mime: partial.mime?.split(";")[0]?.trim(),
     width: partial.width ?? OUTPUT.width,
     height: partial.height ?? OUTPUT.height,

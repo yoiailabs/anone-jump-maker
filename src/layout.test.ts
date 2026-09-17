@@ -12,6 +12,9 @@ import {
   SWAP_DURATION,
   SWAP_FLASH_PEAK,
   SWAP_PRE_ROLL,
+  ZOOM_DURATION,
+  ZOOM_FLASH_PEAK,
+  ZOOM_PRE_ROLL,
   OUTPUT,
   OUTPUTS,
   PANEL_DIVIDER_PX,
@@ -29,6 +32,8 @@ import {
   outputSize,
   rectToUvBottomLeft,
   sharpCoverScale,
+  effectiveSwapStyle,
+  isSwapStyle,
   swapChromaPx,
   swapFx,
   swapSlidePx,
@@ -271,5 +276,51 @@ describe("swapFx", () => {
   it("is idle with one slot or none", () => {
     expect(swapFx(0.5, [0]).flash).toBe(0);
     expect(swapFx(0.5, []).flash).toBe(0);
+  });
+});
+
+describe("landscape swap styles", () => {
+  it("keeps zoom as a landscape-only choice", () => {
+    expect(isSwapStyle("jump")).toBe(true);
+    expect(isSwapStyle("zoom")).toBe(true);
+    expect(isSwapStyle("slide")).toBe(false);
+    expect(effectiveSwapStyle("portrait", "zoom")).toBe("jump");
+    expect(effectiveSwapStyle("landscape", "zoom")).toBe("zoom");
+    expect(effectiveSwapStyle("landscape", "jump")).toBe("jump");
+  });
+
+  it("drops hop on zoom and keeps the jump envelope otherwise", () => {
+    const hopped = jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height, "jump");
+    expect(hopped).toBeLessThan(0);
+    expect(jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height, "zoom")).toBe(0);
+    expect(jumpOffsetPx(0.12, slots, OUTPUT.height, "zoom")).toBe(0);
+  });
+
+  it("uses a short radial warp with rgb split, not a white flash", () => {
+    const jump = swapFx(slots[1]!, slots, "jump");
+    const zoom = swapFx(slots[1]!, slots, "zoom");
+    const rest = swapFx(0.8, slots, "zoom");
+    const after = swapFx(slots[1]! + ZOOM_DURATION + 0.01, slots, "zoom");
+    expect(zoom.flash).toBe(0);
+    expect(zoom.flash).toBeLessThanOrEqual(ZOOM_FLASH_PEAK);
+    expect(jump.flash).toBeGreaterThan(0.7);
+    expect(zoom.punch).toBeGreaterThan(1.05);
+    expect(zoom.punch).toBeLessThan(1.25);
+    expect(zoom.zoomBlur).toBeGreaterThan(0.5);
+    expect(jump.zoomBlur).toBe(0);
+    expect(zoom.slide).toBe(0);
+    expect(zoom.skew).toBe(0);
+    expect(zoom.chroma).toBeGreaterThan(0.5);
+    expect(zoom.whip).toBeGreaterThan(0.3);
+    expect(zoom.wave).toBeGreaterThan(0.1);
+    expect(zoom.smear).toBeGreaterThan(0.2);
+    expect(zoom.mix).toBeGreaterThan(0.1);
+    expect(zoom.mix).toBeLessThan(0.75);
+    expect(zoom.cutIndex).toBe(1);
+    expect(rest.zoomBlur).toBe(0);
+    expect(rest.flash).toBe(0);
+    expect(after.zoomBlur).toBe(0);
+    expect(ZOOM_PRE_ROLL + ZOOM_DURATION).toBeGreaterThanOrEqual(0.05);
+    expect(ZOOM_PRE_ROLL + ZOOM_DURATION).toBeLessThanOrEqual(0.15);
   });
 });

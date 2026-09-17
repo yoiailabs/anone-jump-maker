@@ -205,6 +205,10 @@ body {
   gap: 0.45rem;
 }
 
+.aspect-field[hidden] {
+  display: none;
+}
+
 .aspect-field legend {
   padding: 0;
   font-size: 0.74rem;

@@ -50,6 +50,12 @@ describe("backdrop hop", () => {
     const hop = jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height);
     expect(hop).toBeLessThan(0);
     expect(sharpCoverScale(OUTPUTS.landscape.height, OUTPUTS.landscape.height)).toBeGreaterThan(1);
+    expect(jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height, "zoom")).toBe(0);
+    const zoomCut = swapFx(0.467, [0, 0.467, 0.933], "zoom");
+    expect(zoomCut.flash).toBeLessThan(0.2);
+    expect(zoomCut.zoomBlur).toBeGreaterThan(0.5);
+    expect(zoomCut.whip).toBeGreaterThan(0);
+    expect(zoomCut.smear).toBeGreaterThan(0);
   });
 
   it("flashes and punches the photo on a cut instead of swapping it raw", () => {
@@ -73,14 +79,32 @@ describe("song credit", () => {
     expect(SONG_CREDIT).toBe("♪ あのね - ナナツカゼ");
   });
 
-  it("keeps a small bottom-right inset on both output sizes", () => {
-    const portrait = songCreditLayout(OUTPUTS.portrait.width, OUTPUTS.portrait.height);
-    const landscape = songCreditLayout(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
-    expect(portrait.fontSize).toBeGreaterThanOrEqual(12);
-    expect(landscape.fontSize).toBeGreaterThanOrEqual(12);
-    expect(portrait.fontSize / OUTPUTS.portrait.height).toBeLessThan(0.03);
-    expect(landscape.fontSize / OUTPUTS.landscape.height).toBeLessThan(0.04);
-    expect(portrait.pad).toBeGreaterThanOrEqual(10);
-    expect(landscape.pad).toBeGreaterThanOrEqual(10);
+  it("sits just under the portrait 16:9 panel, top-right of the lower band", () => {
+    const { width: w, height: h } = OUTPUTS.portrait;
+    const panel = mainPanelRect(w, h, "portrait");
+    const credit = songCreditLayout(w, h, "portrait");
+    expect(credit.fontSize).toBeGreaterThanOrEqual(26);
+    expect(credit.fontSize).toBeLessThanOrEqual(40);
+    expect(credit.x).toBe(w - credit.pad);
+    expect(credit.y).toBe(panel.y + panel.h + credit.pad);
+    expect(credit.pad).toBeGreaterThanOrEqual(8);
+    expect(credit.pad).toBeLessThan(20);
+    expect(credit.y).toBeGreaterThan(panel.y + panel.h);
+    expect(credit.y + credit.fontSize).toBeLessThan(h);
+    expect(credit.textAlign).toBe("right");
+    expect(credit.textBaseline).toBe("top");
+  });
+
+  it("keeps landscape credit at the canvas bottom-right with a small inset", () => {
+    const { width: w, height: h } = OUTPUTS.landscape;
+    const credit = songCreditLayout(w, h, "landscape");
+    expect(credit.fontSize).toBeGreaterThanOrEqual(32);
+    expect(credit.fontSize).toBeLessThanOrEqual(48);
+    expect(credit.x).toBe(w - credit.pad);
+    expect(credit.y).toBe(h - credit.pad);
+    expect(credit.pad).toBeGreaterThanOrEqual(8);
+    expect(credit.pad).toBeLessThan(20);
+    expect(credit.textAlign).toBe("right");
+    expect(credit.textBaseline).toBe("bottom");
   });
 });

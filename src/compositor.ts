@@ -9,6 +9,7 @@ import {
   characterScale,
   characterShiftY,
   coverDest,
+  effectiveSwapStyle,
   jumpOffsetPx,
   mainPanelRect,
   outputSize,
@@ -18,7 +19,10 @@ import {
   swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
+  ZOOM_GROW,
   type AspectMode,
+  type SwapFx,
+  type SwapStyle,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import { photoForSlot, slotForTime } from "./timeline.ts";
@@ -34,7 +38,13 @@ export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 
 export type Compositor = {
   canvas: HTMLCanvasElement;
-  draw: (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => number;
+  draw: (
+    video: HTMLVideoElement,
+    photos: readonly LoadedPhoto[],
+    slots: readonly number[],
+    time?: number,
+    swapStyle?: SwapStyle,
+  ) => number;
   setAspect: (mode: AspectMode) => void;
   aspect: () => AspectMode;
   destroy: () => void;
@@ -66,24 +76,54 @@ export function createCompositor(): Compositor {
   const haloCtx = halo.getContext("2d");
   if (!haloCtx) throw new Error("Canvas2D が使えません");
 
-  const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
-    const time = video.currentTime;
+  const warp = document.createElement("canvas");
+  const warpCtx = warp.getContext("2d", { alpha: false });
+  if (!warpCtx) throw new Error("Canvas2D が使えません");
+
+  const draw = (
+    video: HTMLVideoElement,
+    photos: readonly LoadedPhoto[],
+    slots: readonly number[],
+    time = video.currentTime,
+    swapStyle: SwapStyle = "jump",
+  ) => {
+    const style = effectiveSwapStyle(mode, swapStyle);
     const slot = slotForTime(time, slots);
     const photo = photoForSlot(photos, slot);
     applyCanvasSize(canvas, mode);
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
-    const hopY = jumpOffsetPx(time, slots, h);
-    const fx = swapFx(time, slots);
+    const hopY = jumpOffsetPx(time, slots, h, style);
+    const fx = swapFx(time, slots, style);
+    const incoming = fx.cutIndex > 0 ? photoForSlot(photos, fx.cutIndex) : photo;
+    const outgoing = fx.cutIndex > 0 ? photoForSlot(photos, fx.cutIndex - 1) : undefined;
 
-    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, fx, panel, h, mode);
+    composeMain(
+      main,
+      mainCtx,
+      keyed,
+      keyedCtx,
+      halo,
+      haloCtx,
+      warp,
+      warpCtx,
+      photo,
+      outgoing,
+      incoming,
+      video,
+      hopY,
+      fx,
+      panel,
+      h,
+      mode,
+    );
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
       paintLandscape(ctx, main, w, h);
     }
-    paintSongCredit(ctx, w, h);
+    paintSongCredit(ctx, w, h, mode);
     return slot;
   };
 
@@ -109,6 +149,8 @@ export function createCompositor(): Compositor {
       scratch.height = 0;
       halo.width = 0;
       halo.height = 0;
+      warp.width = 0;
+      warp.height = 0;
     },
   };
 }
@@ -125,10 +167,14 @@ function composeMain(
   keyedCtx: CanvasRenderingContext2D,
   halo: HTMLCanvasElement,
   haloCtx: CanvasRenderingContext2D,
+  warp: HTMLCanvasElement,
+  warpCtx: CanvasRenderingContext2D,
   photo: LoadedPhoto | undefined,
+  outgoing: LoadedPhoto | undefined,
+  incoming: LoadedPhoto | undefined,
   video: HTMLVideoElement,
   hopY: number,
-  fx: ReturnType<typeof swapFx>,
+  fx: SwapFx,
   panel: { w: number; h: number },
   canvasH: number,
   mode: AspectMode,
@@ -142,13 +188,18 @@ function composeMain(
   mainCtx.fillStyle = "#0a0806";
   mainCtx.fillRect(0, 0, mw, mh);
 
-  if (photo) {
-    const dest = coverDest(photo.bitmap.width, photo.bitmap.height, mw, mh, {
+  const plate = incoming ?? photo;
+  if (plate) {
+    const dest = coverDest(plate.bitmap.width, plate.bitmap.height, mw, mh, {
       scale: sharpCoverScale(canvasH, mh) * fx.punch,
       offsetY: hopY,
       dx: swapSlidePx(fx, mw),
     });
-    drawPhotoPlate(mainCtx, photo, dest, fx.skew, swapChromaPx(fx, mw));
+    if (fx.zoomBlur > 0.02) {
+      drawZoomWarpPlate(mainCtx, warp, warpCtx, outgoing ?? plate, plate, dest, fx, swapChromaPx(fx, mw));
+    } else {
+      drawPhotoPlate(mainCtx, plate, dest, fx.skew, swapChromaPx(fx, mw));
+    }
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -186,6 +237,9 @@ function composeMain(
       [-o, o],
       [o, o],
     ];
+    if (fx.smear > 0.03) {
+      smearCharacter(mainCtx, keyed, halo, dest, ring, fx.smear);
+    }
     for (const [ox, oy] of ring) {
       mainCtx.drawImage(halo, dest.x + ox, dest.y + oy, dest.w, dest.h);
     }
@@ -218,6 +272,182 @@ function drawPhotoPlate(
     ctx.drawImage(photo.bitmap, dest.x + chromaPx, dest.y, dest.w, dest.h);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
+  }
+  ctx.restore();
+}
+
+function smearCharacter(
+  ctx: CanvasRenderingContext2D,
+  keyed: HTMLCanvasElement,
+  halo: HTMLCanvasElement,
+  dest: { x: number; y: number; w: number; h: number },
+  ring: ReadonlyArray<readonly [number, number]>,
+  amount: number,
+): void {
+  const smearPx = Math.max(3, dest.w * 0.011 * amount);
+  const copies: ReadonlyArray<readonly [number, number, number]> = [
+    [-smearPx, 0, 0.34],
+    [smearPx, 0, 0.34],
+    [0, smearPx * 0.22, 0.16],
+  ];
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-over";
+  for (const [sx, sy, alpha] of copies) {
+    ctx.globalAlpha = alpha * amount;
+    for (const [ox, oy] of ring) {
+      ctx.drawImage(halo, dest.x + ox + sx, dest.y + oy + sy, dest.w, dest.h);
+    }
+    ctx.drawImage(keyed, dest.x + sx, dest.y + sy, dest.w, dest.h);
+  }
+  const grow = 1 + 0.04 * amount;
+  const w = dest.w * grow;
+  const h = dest.h * grow;
+  ctx.globalAlpha = 0.14 * amount;
+  ctx.drawImage(keyed, dest.x - (w - dest.w) / 2, dest.y - (h - dest.h) / 2, w, h);
+  ctx.restore();
+}
+
+/**
+ * 参考横のズーム切り。出ていく写真を中心から伸ばし、入ってくる写真をその内側に出す。
+ * 放射ブラー＋横ストリーク＋ RGB ずれ＋軽い波打ち。
+ */
+function drawZoomWarpPlate(
+  ctx: CanvasRenderingContext2D,
+  warp: HTMLCanvasElement,
+  warpCtx: CanvasRenderingContext2D,
+  outgoing: LoadedPhoto,
+  incoming: LoadedPhoto,
+  dest: { x: number; y: number; w: number; h: number },
+  fx: SwapFx,
+  chromaPx: number,
+): void {
+  const mw = ctx.canvas.width;
+  const mh = ctx.canvas.height;
+  warp.width = mw;
+  warp.height = mh;
+  warpCtx.setTransform(1, 0, 0, 1, 0, 0);
+  warpCtx.filter = "none";
+  warpCtx.globalAlpha = 1;
+  warpCtx.globalCompositeOperation = "source-over";
+  warpCtx.fillStyle = "#0a0806";
+  warpCtx.fillRect(0, 0, mw, mh);
+
+  const outAlpha = (1 - fx.mix) * 0.88;
+  if (outAlpha > 0.02) {
+    paintRadialStreaks(
+      warpCtx,
+      outgoing,
+      dest,
+      1 + ZOOM_GROW * fx.zoomBlur,
+      outAlpha,
+      fx.zoomBlur,
+      fx.whip,
+      chromaPx,
+    );
+  }
+  const inScale = 0.5 + 0.5 * fx.mix;
+  const inAlpha = Math.min(1, 0.4 + fx.mix * 0.6);
+  paintRadialStreaks(
+    warpCtx,
+    incoming,
+    dest,
+    inScale,
+    inAlpha,
+    fx.zoomBlur * Math.max(0.4, fx.mix),
+    fx.whip * 0.7,
+    chromaPx * 0.8,
+  );
+
+  blitWavedPlate(ctx, warp, fx.wave, fx.zoomBlur);
+}
+
+function paintCopy(
+  ctx: CanvasRenderingContext2D,
+  bitmap: ImageBitmap,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  alpha: number,
+  chromaPx: number,
+): void {
+  if (chromaPx >= 0.5 && alpha > 0.04) {
+    ctx.globalAlpha = alpha * 0.55;
+    ctx.filter = "sepia(1) saturate(14) hue-rotate(-22deg)";
+    ctx.drawImage(bitmap, x - chromaPx, y, w, h);
+    ctx.filter = "sepia(1) saturate(14) hue-rotate(158deg)";
+    ctx.drawImage(bitmap, x + chromaPx, y, w, h);
+    ctx.filter = "none";
+  }
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(bitmap, x, y, w, h);
+}
+
+function paintRadialStreaks(
+  ctx: CanvasRenderingContext2D,
+  photo: LoadedPhoto,
+  dest: { x: number; y: number; w: number; h: number },
+  scale: number,
+  alpha: number,
+  blur: number,
+  whip: number,
+  chromaPx: number,
+): void {
+  const cx = dest.x + dest.w / 2;
+  const cy = dest.y + dest.h / 2;
+  const steps = Math.max(6, Math.round(5 + 8 * blur));
+  const grow = 0.48 * blur + Math.max(0, scale - 1) * 0.28;
+  const bitmap = photo.bitmap;
+
+  ctx.save();
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-over";
+
+  for (let i = steps; i >= 1; i -= 1) {
+    const t = i / steps;
+    const s = scale * (1 + grow * t);
+    const w = dest.w * s;
+    const h = dest.h * s;
+    paintCopy(ctx, bitmap, cx - w / 2, cy - h / 2, w, h, alpha * 0.18 * (1 - t * 0.45), chromaPx);
+  }
+
+  const streak = dest.w * 0.046 * whip;
+  const n = Math.max(0, Math.round(5 * whip));
+  const w0 = dest.w * scale;
+  const h0 = dest.h * scale;
+  for (let i = n; i >= 1; i -= 1) {
+    const t = i / n;
+    const ghost = alpha * 0.16 * (1 - t * 0.35);
+    paintCopy(ctx, bitmap, cx - w0 / 2 - streak * t, cy - h0 / 2, w0, h0, ghost, chromaPx);
+    paintCopy(ctx, bitmap, cx - w0 / 2 + streak * t, cy - h0 / 2, w0, h0, ghost, chromaPx);
+  }
+
+  paintCopy(ctx, bitmap, cx - w0 / 2, cy - h0 / 2, w0, h0, alpha, chromaPx);
+  ctx.restore();
+}
+
+function blitWavedPlate(ctx: CanvasRenderingContext2D, plate: HTMLCanvasElement, wave: number, amount: number): void {
+  const w = plate.width;
+  const h = plate.height;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  const waveAmp = h * 0.018 * wave;
+  const bands = wave > 0.04 ? 16 : 1;
+  if (bands <= 1) {
+    ctx.drawImage(plate, 0, 0);
+    ctx.restore();
+    return;
+  }
+  const bh = h / bands;
+  for (let i = 0; i < bands; i += 1) {
+    const y = i * bh;
+    const dx = Math.sin((i / bands) * Math.PI * 3.4 + amount * 6) * waveAmp;
+    ctx.drawImage(plate, 0, y, w, bh, dx, y, w, bh);
   }
   ctx.restore();
 }
@@ -269,54 +499,69 @@ function paintOutput(
 
 export const SONG_CREDIT = "♪ あのね - ナナツカゼ";
 
+/** 旧 short×0.022（縦 13 / 横 16）の約 2.5 倍。ピルなし白文字。 */
+export const SONG_CREDIT_FONT_FRAC = 0.055;
+
 export type SongCreditLayout = {
   fontSize: number;
   pad: number;
-  boxPadX: number;
-  boxPadY: number;
+  /** 右寄せアンカーの x。 */
+  x: number;
+  /** 縦はパネル直下（top）、横は画面下端（bottom）。 */
+  y: number;
+  textAlign: CanvasTextAlign;
+  textBaseline: CanvasTextBaseline;
 };
 
-/** 出力キャンバス右下。縦 608×1080 / 横 1280×720 の両方で小さめに読む。 */
-export function songCreditLayout(canvasW: number, canvasH: number): SongCreditLayout {
+/**
+ * 縦: 中央 16:9 本編の真下・下帯の右上。
+ * 横: 画面全体の右下。どちらも小さな inset。
+ */
+export function songCreditLayout(
+  canvasW: number,
+  canvasH: number,
+  mode: AspectMode = canvasW < canvasH ? "portrait" : "landscape",
+): SongCreditLayout {
   const short = Math.min(canvasW, canvasH);
-  const fontSize = Math.max(12, Math.round(short * 0.022));
-  const pad = Math.max(10, Math.round(short * 0.02));
+  const fontSize = Math.max(28, Math.round(short * SONG_CREDIT_FONT_FRAC));
+  const pad = Math.max(8, Math.round(short * 0.016));
+  const x = canvasW - pad;
+  if (mode === "portrait") {
+    const panel = mainPanelRect(canvasW, canvasH, mode);
+    return {
+      fontSize,
+      pad,
+      x,
+      y: panel.y + panel.h + pad,
+      textAlign: "right",
+      textBaseline: "top",
+    };
+  }
   return {
     fontSize,
     pad,
-    boxPadX: Math.max(6, Math.round(fontSize * 0.5)),
-    boxPadY: Math.max(3, Math.round(fontSize * 0.28)),
+    x,
+    y: canvasH - pad,
+    textAlign: "right",
+    textBaseline: "bottom",
   };
 }
 
-function paintSongCredit(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const { fontSize, pad, boxPadX, boxPadY } = songCreditLayout(w, h);
+function paintSongCredit(ctx: CanvasRenderingContext2D, w: number, h: number, mode: AspectMode): void {
+  const { fontSize, x, y, textAlign, textBaseline } = songCreditLayout(w, h, mode);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-  ctx.shadowColor = "transparent";
   ctx.font = `500 ${fontSize}px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif`;
-  ctx.textAlign = "right";
-  ctx.textBaseline = "middle";
-  const textW = ctx.measureText(SONG_CREDIT).width;
-  const boxW = textW + boxPadX * 2;
-  const boxH = fontSize + boxPadY * 2;
-  const boxX = w - pad - boxW;
-  const boxY = h - pad - boxH;
-  ctx.fillStyle = "rgba(8, 6, 4, 0.45)";
-  ctx.beginPath();
-  if (typeof ctx.roundRect === "function") {
-    ctx.roundRect(boxX, boxY, boxW, boxH, boxH / 2);
-  } else {
-    ctx.rect(boxX, boxY, boxW, boxH);
-  }
-  ctx.fill();
-  ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
-  ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.2));
-  ctx.shadowOffsetY = 1;
-  ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
-  ctx.fillText(SONG_CREDIT, boxX + boxW - boxPadX, boxY + boxH / 2);
+  ctx.textAlign = textAlign;
+  ctx.textBaseline = textBaseline;
+  ctx.shadowColor = "rgba(0, 0, 0, 0.65)";
+  ctx.shadowBlur = Math.max(3, Math.round(fontSize * 0.32));
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = Math.max(1, Math.round(fontSize * 0.06));
+  ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+  ctx.fillText(SONG_CREDIT, x, y);
   ctx.restore();
 }
