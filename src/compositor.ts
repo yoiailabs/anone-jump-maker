@@ -19,7 +19,9 @@ import {
   swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
+  ZOOM_GROW,
   type AspectMode,
+  type SwapFx,
   type SwapStyle,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
@@ -74,6 +76,10 @@ export function createCompositor(): Compositor {
   const haloCtx = halo.getContext("2d");
   if (!haloCtx) throw new Error("Canvas2D が使えません");
 
+  const warp = document.createElement("canvas");
+  const warpCtx = warp.getContext("2d", { alpha: false });
+  if (!warpCtx) throw new Error("Canvas2D が使えません");
+
   const draw = (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
@@ -90,8 +96,28 @@ export function createCompositor(): Compositor {
     const panel = mainPanelRect(w, h, mode);
     const hopY = jumpOffsetPx(time, slots, h, style);
     const fx = swapFx(time, slots, style);
+    const incoming = fx.cutIndex > 0 ? photoForSlot(photos, fx.cutIndex) : photo;
+    const outgoing = fx.cutIndex > 0 ? photoForSlot(photos, fx.cutIndex - 1) : undefined;
 
-    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, fx, panel, h, mode);
+    composeMain(
+      main,
+      mainCtx,
+      keyed,
+      keyedCtx,
+      halo,
+      haloCtx,
+      warp,
+      warpCtx,
+      photo,
+      outgoing,
+      incoming,
+      video,
+      hopY,
+      fx,
+      panel,
+      h,
+      mode,
+    );
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -123,6 +149,8 @@ export function createCompositor(): Compositor {
       scratch.height = 0;
       halo.width = 0;
       halo.height = 0;
+      warp.width = 0;
+      warp.height = 0;
     },
   };
 }
@@ -139,10 +167,14 @@ function composeMain(
   keyedCtx: CanvasRenderingContext2D,
   halo: HTMLCanvasElement,
   haloCtx: CanvasRenderingContext2D,
+  warp: HTMLCanvasElement,
+  warpCtx: CanvasRenderingContext2D,
   photo: LoadedPhoto | undefined,
+  outgoing: LoadedPhoto | undefined,
+  incoming: LoadedPhoto | undefined,
   video: HTMLVideoElement,
   hopY: number,
-  fx: ReturnType<typeof swapFx>,
+  fx: SwapFx,
   panel: { w: number; h: number },
   canvasH: number,
   mode: AspectMode,
@@ -156,16 +188,17 @@ function composeMain(
   mainCtx.fillStyle = "#0a0806";
   mainCtx.fillRect(0, 0, mw, mh);
 
-  if (photo) {
-    const dest = coverDest(photo.bitmap.width, photo.bitmap.height, mw, mh, {
+  const plate = incoming ?? photo;
+  if (plate) {
+    const dest = coverDest(plate.bitmap.width, plate.bitmap.height, mw, mh, {
       scale: sharpCoverScale(canvasH, mh) * fx.punch,
       offsetY: hopY,
       dx: swapSlidePx(fx, mw),
     });
     if (fx.zoomBlur > 0.02) {
-      drawZoomBlurPlate(mainCtx, photo, dest, fx.zoomBlur);
+      drawZoomWarpPlate(mainCtx, warp, warpCtx, outgoing ?? plate, plate, dest, fx, swapChromaPx(fx, mw));
     } else {
-      drawPhotoPlate(mainCtx, photo, dest, fx.skew, swapChromaPx(fx, mw));
+      drawPhotoPlate(mainCtx, plate, dest, fx.skew, swapChromaPx(fx, mw));
     }
   }
 
@@ -204,6 +237,9 @@ function composeMain(
       [-o, o],
       [o, o],
     ];
+    if (fx.smear > 0.03) {
+      smearCharacter(mainCtx, keyed, halo, dest, ring, fx.smear);
+    }
     for (const [ox, oy] of ring) {
       mainCtx.drawImage(halo, dest.x + ox, dest.y + oy, dest.w, dest.h);
     }
@@ -240,29 +276,155 @@ function drawPhotoPlate(
   ctx.restore();
 }
 
-/** 参考横動画の放射ズーム。中心から何枚か拡大して重ね、切替を伸ばす。 */
-function drawZoomBlurPlate(
+function smearCharacter(
+  ctx: CanvasRenderingContext2D,
+  keyed: HTMLCanvasElement,
+  halo: HTMLCanvasElement,
+  dest: { x: number; y: number; w: number; h: number },
+  ring: ReadonlyArray<readonly [number, number]>,
+  amount: number,
+): void {
+  const smearPx = Math.max(3, dest.w * 0.011 * amount);
+  const copies: ReadonlyArray<readonly [number, number, number]> = [
+    [-smearPx, 0, 0.34],
+    [smearPx, 0, 0.34],
+    [0, smearPx * 0.22, 0.16],
+  ];
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-over";
+  for (const [sx, sy, alpha] of copies) {
+    ctx.globalAlpha = alpha * amount;
+    for (const [ox, oy] of ring) {
+      ctx.drawImage(halo, dest.x + ox + sx, dest.y + oy + sy, dest.w, dest.h);
+    }
+    ctx.drawImage(keyed, dest.x + sx, dest.y + sy, dest.w, dest.h);
+  }
+  const grow = 1 + 0.04 * amount;
+  const w = dest.w * grow;
+  const h = dest.h * grow;
+  ctx.globalAlpha = 0.14 * amount;
+  ctx.drawImage(keyed, dest.x - (w - dest.w) / 2, dest.y - (h - dest.h) / 2, w, h);
+  ctx.restore();
+}
+
+/**
+ * 参考横のズーム切り。出ていく写真を中心から伸ばし、入ってくる写真をその内側に出す。
+ * 放射ブラー＋横ストリーク＋ RGB ずれ＋軽い波打ち。
+ */
+function drawZoomWarpPlate(
+  ctx: CanvasRenderingContext2D,
+  warp: HTMLCanvasElement,
+  warpCtx: CanvasRenderingContext2D,
+  outgoing: LoadedPhoto,
+  incoming: LoadedPhoto,
+  dest: { x: number; y: number; w: number; h: number },
+  fx: SwapFx,
+  chromaPx: number,
+): void {
+  const mw = ctx.canvas.width;
+  const mh = ctx.canvas.height;
+  warp.width = mw;
+  warp.height = mh;
+  warpCtx.setTransform(1, 0, 0, 1, 0, 0);
+  warpCtx.filter = "none";
+  warpCtx.globalAlpha = 1;
+  warpCtx.globalCompositeOperation = "source-over";
+  warpCtx.fillStyle = "#0a0806";
+  warpCtx.fillRect(0, 0, mw, mh);
+
+  const outAlpha = (1 - fx.mix) * 0.96;
+  if (outAlpha > 0.02) {
+    paintRadialStreaks(warpCtx, outgoing, dest, 1 + ZOOM_GROW * fx.zoomBlur, outAlpha, fx.zoomBlur, fx.whip);
+  }
+  const inScale = 0.58 + 0.42 * fx.mix;
+  const inAlpha = Math.min(1, 0.22 + fx.mix * 0.92);
+  paintRadialStreaks(warpCtx, incoming, dest, inScale, inAlpha, fx.zoomBlur * Math.max(0.35, fx.mix), fx.whip * 0.7);
+
+  blitWarpPlate(ctx, warp, fx.wave, chromaPx, fx.zoomBlur);
+}
+
+function paintRadialStreaks(
   ctx: CanvasRenderingContext2D,
   photo: LoadedPhoto,
   dest: { x: number; y: number; w: number; h: number },
+  scale: number,
+  alpha: number,
+  blur: number,
+  whip: number,
+): void {
+  const cx = dest.x + dest.w / 2;
+  const cy = dest.y + dest.h / 2;
+  const steps = Math.max(5, Math.round(8 + 7 * blur));
+  const grow = Math.max(0, scale - 1) + 0.62 * blur;
+  const w0 = dest.w * scale;
+  const h0 = dest.h * scale;
+
+  ctx.save();
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(photo.bitmap, cx - w0 / 2, cy - h0 / 2, w0, h0);
+
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 1; i <= steps; i += 1) {
+    const t = i / steps;
+    const s = scale * (1 + grow * t);
+    ctx.globalAlpha = (alpha * 0.26 * (1 - t * 0.4)) / Math.sqrt(steps);
+    const w = dest.w * s;
+    const h = dest.h * s;
+    ctx.drawImage(photo.bitmap, cx - w / 2, cy - h / 2, w, h);
+  }
+
+  const streak = dest.w * 0.05 * whip;
+  const n = Math.max(0, Math.round(6 * whip));
+  for (let i = 1; i <= n; i += 1) {
+    const t = i / (n + 1);
+    ctx.globalAlpha = (alpha * 0.2 * (1 - t)) / Math.max(n, 1);
+    const dx = streak * (i / n);
+    ctx.drawImage(photo.bitmap, cx - w0 / 2 - dx, cy - h0 / 2, w0, h0);
+    ctx.drawImage(photo.bitmap, cx - w0 / 2 + dx, cy - h0 / 2, w0, h0);
+  }
+  ctx.restore();
+}
+
+function blitWarpPlate(
+  ctx: CanvasRenderingContext2D,
+  plate: HTMLCanvasElement,
+  wave: number,
+  chromaPx: number,
   amount: number,
 ): void {
-  const steps = Math.max(5, Math.round(10 * amount));
-  const grow = 0.38 * amount;
+  const w = plate.width;
+  const h = plate.height;
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-  ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
-  ctx.globalCompositeOperation = "lighter";
-  for (let i = 1; i <= steps; i += 1) {
-    const t = i / steps;
-    const scale = 1 + grow * t;
-    ctx.globalAlpha = (0.28 * amount) / steps;
-    const w = dest.w * scale;
-    const h = dest.h * scale;
-    ctx.drawImage(photo.bitmap, dest.x - (w - dest.w) / 2, dest.y - (h - dest.h) / 2, w, h);
+
+  const waveAmp = h * 0.02 * wave;
+  const bands = wave > 0.04 ? 18 : 1;
+  if (bands <= 1) {
+    ctx.drawImage(plate, 0, 0);
+  } else {
+    const bh = h / bands;
+    for (let i = 0; i < bands; i += 1) {
+      const y = i * bh;
+      const dx = Math.sin((i / bands) * Math.PI * 3.4 + amount * 6) * waveAmp;
+      ctx.drawImage(plate, 0, y, w, bh, dx, y, w, bh);
+    }
+  }
+
+  if (chromaPx >= 0.5) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.58 * Math.min(1, amount + 0.2);
+    ctx.filter = "sepia(1) saturate(18) hue-rotate(-18deg)";
+    ctx.drawImage(plate, -chromaPx, 0);
+    ctx.filter = "sepia(1) saturate(18) hue-rotate(158deg)";
+    ctx.drawImage(plate, chromaPx, 0);
+    ctx.filter = "none";
   }
   ctx.restore();
 }
