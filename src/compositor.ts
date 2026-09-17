@@ -2,20 +2,22 @@ import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
   BLUR_DIM,
-  CHAR_OUTLINE_PX,
-  OUTPUT,
   PANEL_DIVIDER_PX,
   characterDest,
+  characterOutlinePx,
   coverDest,
   jumpOffsetPx,
   mainPanelRect,
+  outputSize,
   sharpCoverScale,
   templateBandRect,
+  usesBlurBackdrop,
+  type AspectMode,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import { photoForSlot, slotForTime } from "./timeline.ts";
 
-export { BLUR_SOURCE, OUTPUT } from "./layout.ts";
+export { BLUR_SOURCE, OUTPUT, OUTPUTS, type AspectMode } from "./layout.ts";
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -27,14 +29,16 @@ export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => number;
+  setAspect: (mode: AspectMode) => void;
+  aspect: () => AspectMode;
   destroy: () => void;
   kind: "2d";
 };
 
 export function createCompositor(): Compositor {
+  let mode: AspectMode = "portrait";
   const canvas = document.createElement("canvas");
-  canvas.width = OUTPUT.width;
-  canvas.height = OUTPUT.height;
+  applyCanvasSize(canvas, mode);
   canvas.className = "stage-canvas";
   canvas.setAttribute("aria-label", "合成プレビュー");
   const ctx = canvas.getContext("2d", { alpha: false });
@@ -59,15 +63,18 @@ export function createCompositor(): Compositor {
   const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
     const slot = slotForTime(video.currentTime, slots);
     const photo = photoForSlot(photos, slot);
-    canvas.width = OUTPUT.width;
-    canvas.height = OUTPUT.height;
+    applyCanvasSize(canvas, mode);
     const w = canvas.width;
     const h = canvas.height;
-    const panel = mainPanelRect(w, h);
+    const panel = mainPanelRect(w, h, mode);
     const hopY = jumpOffsetPx(video.currentTime, slots, h);
 
-    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, panel, h);
-    paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
+    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, panel, h, mode);
+    if (usesBlurBackdrop(mode)) {
+      paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
+    } else {
+      paintLandscape(ctx, main, w, h);
+    }
     return slot;
   };
 
@@ -75,6 +82,13 @@ export function createCompositor(): Compositor {
     canvas,
     draw,
     kind: "2d",
+    setAspect(next) {
+      mode = next;
+      applyCanvasSize(canvas, mode);
+    },
+    aspect() {
+      return mode;
+    },
     destroy() {
       canvas.width = 0;
       canvas.height = 0;
@@ -90,6 +104,12 @@ export function createCompositor(): Compositor {
   };
 }
 
+function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
+  const size = outputSize(mode);
+  canvas.width = size.width;
+  canvas.height = size.height;
+}
+
 function composeMain(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
@@ -102,6 +122,7 @@ function composeMain(
   hopY: number,
   panel: { w: number; h: number },
   canvasH: number,
+  mode: AspectMode,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -121,9 +142,10 @@ function composeMain(
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    const vw = video.videoWidth || OUTPUT.width;
-    const vh = video.videoHeight || OUTPUT.height;
-    const band = templateBandRect(vw, vh);
+    const fallback = outputSize(mode);
+    const vw = video.videoWidth || fallback.width;
+    const vh = video.videoHeight || fallback.height;
+    const band = templateBandRect(vw, vh, mode);
     keyed.width = mw;
     keyed.height = mh;
     keyedCtx.clearRect(0, 0, mw, mh);
@@ -143,7 +165,7 @@ function composeMain(
     haloCtx.globalCompositeOperation = "source-over";
 
     const dest = characterDest(mw, mh);
-    const o = CHAR_OUTLINE_PX;
+    const o = characterOutlinePx(mw);
     const ring: ReadonlyArray<readonly [number, number]> = [
       [-o, 0],
       [o, 0],
@@ -159,6 +181,12 @@ function composeMain(
     }
     mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
   }
+}
+
+function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, w: number, h: number): void {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.drawImage(main, 0, 0, w, h);
 }
 
 function paintOutput(

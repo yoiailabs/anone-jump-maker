@@ -1,3 +1,5 @@
+export type AspectMode = "portrait" | "landscape";
+
 export type Rect = {
   x: number;
   y: number;
@@ -5,8 +7,19 @@ export type Rect = {
   h: number;
 };
 
+/** 縦はテンプレ miWuv4NK9Qk と同じ 608×1080。横は 1280×720（プレビュー＝保存）。 */
+export const OUTPUTS = {
+  portrait: { width: 608, height: 1080 },
+  landscape: { width: 1280, height: 720 },
+} as const;
+
 /** 新テンプレ miWuv4NK9Qk / 参考 Short と同じ 608×1080。 */
-export const OUTPUT = { width: 608, height: 1080 } as const;
+export const OUTPUT = OUTPUTS.portrait;
+
+export const TEMPLATES = {
+  portrait: { video: "/template/vertical.mp4", cuts: "/template/cuts.json" },
+  landscape: { video: "/template/landscape.mp4", cuts: "/template/landscape-cuts.json" },
+} as const;
 
 /** テンプレ緑 16:9 帯（実測 312–654、高さ 342 = 608×9/16）。 */
 export const TEMPLATE_BAND_Y = 312;
@@ -38,10 +51,18 @@ export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
  */
 export const CHAR_SCALE = 1.7;
 
-/** 公式のステッカー縁（白、本編ピクセル）。 */
+/** 公式のステッカー縁（白、縦本編 608px 幅でのピクセル）。 */
 export const CHAR_OUTLINE_PX = 2;
 
 export const BLUR_SOURCE = "main-frame" as const;
+
+export function isAspectMode(value: string): value is AspectMode {
+  return value === "portrait" || value === "landscape";
+}
+
+export function usesBlurBackdrop(mode: AspectMode): boolean {
+  return mode === "portrait";
+}
 
 /** キー済み緑帯を本編 16:9 へ置く矩形。下揃え・左右中央。 */
 export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE): Rect {
@@ -55,20 +76,31 @@ export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE
   };
 }
 
-export function outputSize(): { width: number; height: number } {
-  return OUTPUT;
+/** 本編幅に合わせてステッカー縁を太らせる。縦 608 では 2px のまま。 */
+export function characterOutlinePx(panelW: number): number {
+  return Math.max(CHAR_OUTLINE_PX, Math.round((CHAR_OUTLINE_PX * panelW) / OUTPUT.width));
 }
 
-/** 縦キャンバス上のシャープな 16:9。左右端まで。テンプレ緑帯に一致。 */
-export function mainPanelRect(canvasW: number, canvasH: number): Rect {
+export function outputSize(mode: AspectMode = "portrait"): { width: number; height: number } {
+  return OUTPUTS[mode];
+}
+
+/** 縦: 中央のシャープな 16:9。横: キャンバス全体が本編。 */
+export function mainPanelRect(canvasW: number, canvasH: number, mode: AspectMode = "portrait"): Rect {
+  if (mode === "landscape") {
+    return { x: 0, y: 0, w: canvasW, h: canvasH };
+  }
   const w = canvasW;
   const h = canvasW * (TEMPLATE_BAND_H / OUTPUT.width);
   const y = canvasH * (TEMPLATE_BAND_Y / OUTPUT.height);
   return { x: 0, y: Math.round(y), w, h: Math.round(h) };
 }
 
-/** テンプレ映像から緑 16:9 帯を切り出す矩形。 */
-export function templateBandRect(videoW: number, videoH: number): Rect {
+/** テンプレ映像から切り出す矩形。縦は緑 16:9 帯、横は全面。 */
+export function templateBandRect(videoW: number, videoH: number, mode: AspectMode = "portrait"): Rect {
+  if (mode === "landscape") {
+    return { x: 0, y: 0, w: videoW, h: videoH };
+  }
   return {
     x: 0,
     y: Math.round(videoH * (TEMPLATE_BAND_Y / OUTPUT.height)),
