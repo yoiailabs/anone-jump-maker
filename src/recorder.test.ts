@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combineStreams, extensionForMime } from "./recorder.ts";
+import { combineStreams, extensionForMime, requestCanvasFrame } from "./recorder.ts";
 
 describe("extensionForMime", () => {
   it("maps containers", () => {
@@ -30,5 +30,16 @@ describe("combineStreams", () => {
     } finally {
       (globalThis as unknown as { MediaStream: typeof previous }).MediaStream = previous;
     }
+  });
+});
+
+describe("requestCanvasFrame", () => {
+  it("calls requestFrame on video tracks when present", () => {
+    let calls = 0;
+    const stream = {
+      getVideoTracks: () => [{ requestFrame: () => { calls += 1; } }],
+    };
+    requestCanvasFrame(stream as unknown as MediaStream);
+    expect(calls).toBe(1);
   });
 });

@@ -11,6 +11,7 @@ describe("startVideoPaintLoop", () => {
   it("paints immediately then follows requestVideoFrameCallback", () => {
     const pending: Array<() => void> = [];
     const video = {
+      currentTime: 0,
       requestVideoFrameCallback(cb: () => void) {
         pending.push(cb);
         return pending.length;
@@ -19,18 +20,58 @@ describe("startVideoPaintLoop", () => {
         pending.length = 0;
       },
     };
-    let paints = 0;
-    const stop = startVideoPaintLoop(video as unknown as HTMLVideoElement, () => {
-      paints += 1;
-    });
-    expect(paints).toBe(1);
-    expect(pending).toHaveLength(1);
-    pending.shift()?.();
-    expect(paints).toBe(2);
-    expect(pending).toHaveLength(1);
-    stop();
-    pending.shift()?.();
-    expect(paints).toBe(2);
+    const previousRaf = globalThis.requestAnimationFrame;
+    const previousCancel = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = (() => 0) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = (() => undefined) as typeof cancelAnimationFrame;
+    try {
+      let paints = 0;
+      const stop = startVideoPaintLoop(video as unknown as HTMLVideoElement, () => {
+        paints += 1;
+      });
+      expect(paints).toBe(1);
+      expect(pending).toHaveLength(1);
+      video.currentTime = 0.03;
+      pending.shift()?.();
+      expect(paints).toBe(2);
+      expect(pending).toHaveLength(1);
+      stop();
+      pending.shift()?.();
+      expect(paints).toBe(2);
+    } finally {
+      globalThis.requestAnimationFrame = previousRaf;
+      globalThis.cancelAnimationFrame = previousCancel;
+    }
+  });
+
+  it("watchdog paints when currentTime moves without a video frame callback", () => {
+    const rafs: Array<() => void> = [];
+    const previousRaf = globalThis.requestAnimationFrame;
+    const previousCancel = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      rafs.push(() => cb(0));
+      return rafs.length;
+    }) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = (() => {
+      rafs.length = 0;
+    }) as typeof cancelAnimationFrame;
+    const video = { currentTime: 0 };
+    try {
+      let paints = 0;
+      const stop = startVideoPaintLoop(video as HTMLVideoElement, () => {
+        paints += 1;
+      });
+      expect(paints).toBe(1);
+      rafs.shift()?.();
+      expect(paints).toBe(1);
+      video.currentTime = 0.2;
+      rafs.shift()?.();
+      expect(paints).toBe(2);
+      stop();
+    } finally {
+      globalThis.requestAnimationFrame = previousRaf;
+      globalThis.cancelAnimationFrame = previousCancel;
+    }
   });
 
   it("falls back to requestAnimationFrame when rVFC is missing", () => {
@@ -44,12 +85,14 @@ describe("startVideoPaintLoop", () => {
     globalThis.cancelAnimationFrame = (() => {
       pending.length = 0;
     }) as typeof cancelAnimationFrame;
+    const video = { currentTime: 0 };
     try {
       let paints = 0;
-      const stop = startVideoPaintLoop({} as HTMLVideoElement, () => {
+      const stop = startVideoPaintLoop(video as HTMLVideoElement, () => {
         paints += 1;
       });
       expect(paints).toBe(1);
+      video.currentTime = 0.04;
       pending.shift()?.();
       expect(paints).toBe(2);
       stop();

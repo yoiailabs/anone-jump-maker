@@ -6,9 +6,17 @@ import {
   extensionForMime,
   pickRecorderMime,
   recordStream,
+  requestCanvasFrame,
 } from "./recorder.ts";
 
-/** Template fps (reference only). Capture is draw-driven so it follows the video clock. */
+let onPainted: (() => void) | null = null;
+
+/** Called after each composited frame so the capture track can emit it. */
+export function signalCanvasPainted(): void {
+  onPainted?.();
+}
+
+/** Capture sample rate. Each paint also calls requestFrame so frames follow the video clock. */
 export const EXPORT_FPS = 30;
 
 export const RECORD_AUDIO_SOURCE = "element-captureStream" as const;
@@ -90,26 +98,40 @@ export async function recordRealtime(options: {
   video.volume = 1;
   await seekVideo(video, 0);
 
-  const canvasStream = captureCanvasStream(canvas, 0);
+  const canvasStream = captureCanvasStream(canvas, EXPORT_FPS);
   const audioStream = captureElementAudio(video);
   const mixed = combineStreams(canvasStream, audioStream.getAudioTracks().length > 0 ? audioStream : null);
+  const unbind = bindPaintCapture(canvasStream);
 
   const finished = whenEnded(video);
-  await prepareRealtimeClock({
-    startLoop,
-    play: () => video.play(),
-    waitForFrame: () => waitForPresentedFrame(video),
-  });
-  const blob = await recordStream(mixed, finished);
-  for (const track of canvasStream.getTracks()) {
-    track.stop();
+  try {
+    await prepareRealtimeClock({
+      startLoop,
+      play: () => video.play(),
+      waitForFrame: () => waitForPresentedFrame(video),
+    });
+    requestCanvasFrame(canvasStream);
+    const blob = await recordStream(mixed, finished);
+    for (const track of canvasStream.getTracks()) {
+      track.stop();
+    }
+    const mime = blob.type || pickRecorderMime();
+    return {
+      blob,
+      mime,
+      extension: extensionForMime(mime),
+      mode: "record",
+    };
+  } finally {
+    unbind();
   }
-  const mime = blob.type || pickRecorderMime();
-  return {
-    blob,
-    mime,
-    extension: extensionForMime(mime),
-    mode: "record",
+}
+
+function bindPaintCapture(stream: MediaStream): () => void {
+  onPainted = () => requestCanvasFrame(stream);
+  requestCanvasFrame(stream);
+  return () => {
+    onPainted = null;
   };
 }
 

@@ -25,9 +25,8 @@ export function combineStreams(video: MediaStream, audio: MediaStream | null): M
 }
 
 /**
- * Canvas capture. `fps` omitted or 0 = a frame when the canvas is drawn
- * (same clock as the paint loop). A positive fps samples on a wall clock
- * and drifts from `video.currentTime`.
+ * Canvas capture. A positive fps keeps MediaRecorder fed; we still push a
+ * frame after each paint via `requestCanvasFrame` so it follows the video clock.
  */
 export function captureCanvasStream(canvas: HTMLCanvasElement, fps?: number): MediaStream {
   const withWebkit = canvas as HTMLCanvasElement & {
@@ -41,6 +40,14 @@ export function captureCanvasStream(canvas: HTMLCanvasElement, fps?: number): Me
     return fps === undefined ? withWebkit.webkitCaptureStream() : withWebkit.webkitCaptureStream(fps);
   }
   throw new Error("このブラウザは canvas.captureStream に未対応です");
+}
+
+/** Force the capture track to emit the current canvas (needed when fps is 0, also helps 30fps). */
+export function requestCanvasFrame(stream: MediaStream): void {
+  for (const track of stream.getVideoTracks()) {
+    const capturable = track as MediaStreamTrack & { requestFrame?: () => void };
+    capturable.requestFrame?.();
+  }
 }
 
 type CapturableMedia = HTMLMediaElement & {

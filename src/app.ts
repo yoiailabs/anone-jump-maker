@@ -1,5 +1,5 @@
 import { createCompositor } from "./compositor.ts";
-import { recordRealtime } from "./export.ts";
+import { recordRealtime, signalCanvasPainted } from "./export.ts";
 import { isAspectMode, TEMPLATES, type AspectMode } from "./layout.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
@@ -132,6 +132,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       lastSlot = slot;
       slotMeter.textContent = `スロット ${slot + 1} / ${slots.length}`;
     }
+    signalCanvasPainted();
   };
 
   const haltLoop = () => {

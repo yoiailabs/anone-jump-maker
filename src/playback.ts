@@ -7,7 +7,8 @@ type VideoWithFrameCallback = HTMLVideoElement & {
 };
 
 /**
- * Paint whenever the video presents a frame (rVFC), falling back to rAF.
+ * Paint on each presented video frame (rVFC). An rAF watchdog also paints
+ * when `currentTime` moved but rVFC did not fire (headless / background).
  * The paint callback must read `video.currentTime` itself.
  */
 export function startVideoPaintLoop(video: HTMLVideoElement, paint: () => void): () => void {
@@ -15,6 +16,7 @@ export function startVideoPaintLoop(video: HTMLVideoElement, paint: () => void):
   let raf = 0;
   let rvfc = 0;
   let running = true;
+  let lastTime = Number.NaN;
 
   const clearScheduled = () => {
     if (raf) {
@@ -27,27 +29,36 @@ export function startVideoPaintLoop(video: HTMLVideoElement, paint: () => void):
     }
   };
 
-  const schedule = () => {
-    if (!running) return;
-    if (typeof media.requestVideoFrameCallback === "function") {
-      rvfc = media.requestVideoFrameCallback(() => {
-        rvfc = 0;
-        if (!running) return;
-        paint();
-        schedule();
-      });
-      return;
-    }
-    raf = requestAnimationFrame(() => {
-      raf = 0;
+  const runPaint = () => {
+    lastTime = video.currentTime;
+    paint();
+  };
+
+  const scheduleRvfc = () => {
+    if (!running || typeof media.requestVideoFrameCallback !== "function") return;
+    rvfc = media.requestVideoFrameCallback(() => {
+      rvfc = 0;
       if (!running) return;
-      paint();
-      schedule();
+      runPaint();
+      scheduleRvfc();
     });
   };
 
-  paint();
-  schedule();
+  const scheduleWatchdog = () => {
+    if (!running || typeof requestAnimationFrame !== "function") return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (!running) return;
+      if (video.currentTime !== lastTime) {
+        runPaint();
+      }
+      scheduleWatchdog();
+    });
+  };
+
+  runPaint();
+  scheduleRvfc();
+  scheduleWatchdog();
 
   return () => {
     running = false;
