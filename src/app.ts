@@ -173,7 +173,16 @@ export async function boot(root: HTMLElement): Promise<void> {
           </fieldset>
         </div>
         <div class="stage-wrap">
-          <div class="stage" id="stage" data-aspect="portrait"></div>
+          <button
+            type="button"
+            class="stage"
+            id="stage"
+            data-aspect="portrait"
+            aria-pressed="false"
+            aria-label="プレビュー。クリックで再生と一時停止"
+          >
+            <span class="stage-play-hint" aria-hidden="true"></span>
+          </button>
         </div>
         <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
@@ -205,7 +214,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   ];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
 
-  stage.append(compositor.canvas);
+  stage.prepend(compositor.canvas);
+  compositor.canvas.setAttribute("aria-hidden", "true");
+  compositor.canvas.removeAttribute("aria-label");
   document.body.append(video);
 
   const timeline = () => timelines[mode];
@@ -256,6 +267,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     const active = isPreviewPlaying();
     modalPlayBtn.textContent = playPauseLabel(active);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    stage.setAttribute("aria-pressed", active ? "true" : "false");
     previewState.textContent = active ? "再生中" : "停止中";
     for (const input of aspectInputs) {
       input.disabled = recording;
@@ -378,16 +390,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   const openPreview = async () => {
     if (recording || !canUse() || previewDialog.open) return;
     previewDialog.showModal();
-    try {
-      video.muted = true;
-      await seekVideo(video, 0);
-      lastSlot = -1;
-      paint();
-    } catch {
-      paint();
-    }
-    refreshButtons();
-    modalPlayBtn.focus();
+    lastSlot = -1;
+    paint();
+    await startPlayback(true);
   };
 
   const closePreview = () => {
@@ -511,7 +516,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   const togglePreviewPlay = () => {
-    if (isPreviewPlaying()) {
+    if (isPreviewPlaying() || playbackBusy) {
       pausePlayback();
       return;
     }
@@ -533,6 +538,18 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
     togglePreviewPlay();
   });
+
+  previewDialog.addEventListener(
+    "click",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Node) || !stage.contains(target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      togglePreviewPlay();
+    },
+    true,
+  );
 
   restartBtn.addEventListener("click", (event) => {
     event.preventDefault();
