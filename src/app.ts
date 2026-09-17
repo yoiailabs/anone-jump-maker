@@ -28,6 +28,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
+  let aspectResume: { play: boolean; time: number; counted: boolean } | null = null;
 
   root.innerHTML = `
     <div class="sky" aria-hidden="true">
@@ -107,6 +108,34 @@ export async function boot(root: HTMLElement): Promise<void> {
           <h2 id="previewTitle">プレビュー</h2>
           <button type="button" id="closePreviewBtn" class="preview-close" aria-label="閉じる">×</button>
         </header>
+        <div class="preview-options">
+          <fieldset class="aspect-field preview-field">
+            <legend>向き</legend>
+            <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューの向き">
+              <label>
+                <input type="radio" name="preview-aspect" value="portrait" checked />
+                <span>縦</span>
+              </label>
+              <label>
+                <input type="radio" name="preview-aspect" value="landscape" />
+                <span>横</span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="aspect-field preview-field">
+            <legend>エフェクト</legend>
+            <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューのエフェクト">
+              <label>
+                <input type="radio" name="preview-swap" value="jump" checked />
+                <span>ジャンプ</span>
+              </label>
+              <label>
+                <input type="radio" name="preview-swap" value="zoom" />
+                <span>ズーム</span>
+              </label>
+            </div>
+          </fieldset>
+        </div>
         <div class="stage-wrap">
           <div class="stage" id="stage" data-aspect="portrait"></div>
         </div>
@@ -133,8 +162,10 @@ export async function boot(root: HTMLElement): Promise<void> {
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
   const previewState = must(root, "#previewState");
-  const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
-  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
+  const aspectInputs = [
+    ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
+  ];
+  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
 
   stage.append(compositor.canvas);
   document.body.append(video);
@@ -148,6 +179,18 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const setMadeCount = (count: number | null) => {
     madeCount.textContent = formatCountLabel(count);
+  };
+
+  const syncAspectRadios = (value: AspectMode) => {
+    for (const input of aspectInputs) {
+      input.checked = input.value === value;
+    }
+  };
+
+  const syncSwapRadios = (value: SwapStyle) => {
+    for (const input of swapInputs) {
+      input.checked = input.value === value;
+    }
   };
 
   const renderThumbs = () => {
@@ -317,21 +360,61 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
-    stopPlayback();
+    const inPreview = previewDialog.open;
+    aspectResume = inPreview
+      ? { play: isPreviewPlaying(), time: video.currentTime, counted: previewCounted }
+      : null;
+    playGen += 1;
+    playbackBusy = false;
+    playing = false;
+    haltLoop();
+    video.pause();
+    if (!inPreview) {
+      previewCounted = false;
+    }
     mode = next;
     compositor.setAspect(mode);
     stage.dataset.aspect = mode;
     lastSlot = -1;
     slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
+    syncAspectRadios(mode);
     video.src = TEMPLATES[mode].video;
     video.load();
     refreshButtons();
   };
 
+  const applySwap = (next: SwapStyle) => {
+    if (next === swapStyle) return;
+    swapStyle = next;
+    syncSwapRadios(swapStyle);
+    paint();
+  };
+
   video.addEventListener("loadeddata", () => {
     paint();
     refreshButtons();
-    setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
+    if (!recording) {
+      setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
+    }
+    const resume = aspectResume;
+    aspectResume = null;
+    if (!resume || !previewDialog.open || recording) return;
+    previewCounted = resume.counted;
+    void (async () => {
+      try {
+        await seekVideo(video, resume.time);
+        lastSlot = -1;
+        paint();
+        if (resume.play) {
+          await startPlayback(false);
+        } else {
+          refreshButtons();
+        }
+      } catch {
+        paint();
+        refreshButtons();
+      }
+    })();
   });
   video.addEventListener("ended", () => {
     if (!recording) {
@@ -351,10 +434,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   for (const input of swapInputs) {
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isSwapStyle(input.value)) return;
-      swapStyle = input.value;
-      if (!playing) {
-        paint();
-      }
+      applySwap(input.value);
     });
   }
 

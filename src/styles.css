@@ -263,6 +263,32 @@ body {
   letter-spacing: 0.04em;
 }
 
+.preview-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.6rem;
+  flex: 0 0 auto;
+}
+
+.preview-field {
+  gap: 0.28rem;
+}
+
+.preview-field legend {
+  font-size: 0.66rem;
+}
+
+.preview-toggle {
+  gap: 0.35rem;
+}
+
+.preview-toggle label {
+  min-height: 2rem;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .preview-close {
   display: inline-flex;
   align-items: center;
@@ -315,11 +341,10 @@ body {
   overflow: hidden;
 }
 
-/* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える。
-   モーダル内のヘッダーと再生ボタンが残る高さだけを縦の上限にする。 */
+/* プレビュー確認用。向き／エフェクト切替が残るよう、表示は小さめ。 */
 .stage {
-  width: min(100%, 21rem, calc((100svh - 16rem) * 608 / 1080));
-  max-height: calc(100svh - 16rem);
+  width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
+  max-height: calc(100svh - 20rem);
   aspect-ratio: 608 / 1080;
   height: auto;
   flex: 0 0 auto;
@@ -332,8 +357,8 @@ body {
 }
 
 .stage[data-aspect="landscape"] {
-  width: min(100%, 26rem);
-  max-height: calc(100svh - 16rem);
+  width: min(100%, 22rem);
+  max-height: calc(100svh - 20rem);
   aspect-ratio: 16 / 9;
 }
 
