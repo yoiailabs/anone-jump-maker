@@ -320,10 +320,40 @@ body {
   z-index: 3;
   text-align: center;
   line-height: 1.25;
+  gap: 0.38rem;
+}
+
+.preview-actions .btn svg {
+  width: 1.12rem;
+  height: 1.12rem;
+  flex: 0 0 auto;
+}
+
+.preview-ctrl-label {
+  line-height: 1.2;
+}
+
+.preview-ctrl-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
 }
 
 .preview-actions #muteBtn {
   grid-column: 1 / -1;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-height: 0;
+  padding: 0.55rem 0.85rem 0.48rem;
+  border-radius: 1.15rem;
+}
+
+.preview-mute-hint {
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  color: var(--mute);
 }
 
 .stage-wrap {
