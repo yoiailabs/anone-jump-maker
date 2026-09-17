@@ -4,6 +4,7 @@ import {
   BLUR_SOURCE,
   CHAR_OUTLINE_PX,
   CHAR_SCALE,
+  LANDSCAPE_CHAR_SCALE,
   JUMP_AMPLITUDE,
   JUMP_DURATION,
   OUTPUT,
@@ -13,6 +14,7 @@ import {
   TEMPLATE_BAND_Y,
   characterDest,
   characterOutlinePx,
+  characterScale,
   coverDest,
   isAspectMode,
   jumpAmount,
@@ -67,10 +69,14 @@ describe("characterDest", () => {
     expect(dest.y).toBeLessThan(0);
   });
 
-  it("uses the same scale and bottom-align on the landscape 16:9 canvas", () => {
-    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
-    expect(dest.w).toBeCloseTo(1280 * CHAR_SCALE, 5);
-    expect(dest.h).toBeCloseTo(720 * CHAR_SCALE, 5);
+  it("uses a slightly smaller scale on landscape so the photo stays visible", () => {
+    expect(characterScale("portrait")).toBe(CHAR_SCALE);
+    expect(characterScale("landscape")).toBe(LANDSCAPE_CHAR_SCALE);
+    expect(LANDSCAPE_CHAR_SCALE).toBeGreaterThan(1);
+    expect(LANDSCAPE_CHAR_SCALE).toBeLessThan(CHAR_SCALE);
+    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
+    expect(dest.w).toBeCloseTo(1280 * LANDSCAPE_CHAR_SCALE, 5);
+    expect(dest.h).toBeCloseTo(720 * LANDSCAPE_CHAR_SCALE, 5);
     expect(dest.x).toBeCloseTo((1280 - dest.w) / 2, 5);
     expect(dest.y + dest.h).toBeCloseTo(720, 5);
     expect(dest.y).toBeLessThan(0);

@@ -3,6 +3,7 @@ import { BLUR_SOURCE, PHOTO_UPLOAD_PATH } from "./compositor.ts";
 import {
   CHAR_SCALE,
   JUMP_AMPLITUDE,
+  LANDSCAPE_CHAR_SCALE,
   OUTPUTS,
   characterDest,
   jumpOffsetPx,
@@ -40,8 +41,9 @@ describe("backdrop hop", () => {
 
   it("keeps landscape as a full 16:9 plate with a larger bottom-aligned character", () => {
     expect(usesBlurBackdrop("landscape")).toBe(false);
-    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
+    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
     expect(CHAR_SCALE).toBeGreaterThan(1.5);
+    expect(LANDSCAPE_CHAR_SCALE).toBeGreaterThan(1);
     expect(dest.y).toBeLessThan(0);
     expect(dest.w).toBeGreaterThan(OUTPUTS.landscape.width);
     const hop = jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height);

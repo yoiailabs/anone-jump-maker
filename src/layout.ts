@@ -51,6 +51,12 @@ export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
  */
 export const CHAR_SCALE = 1.7;
 
+/**
+ * 横の公式例（全面 16:9）に合わせた拡大。
+ * 縦の 1.7 を横全面にそのまま使うとキャラがフレームを埋めすぎる。
+ */
+export const LANDSCAPE_CHAR_SCALE = 1.35;
+
 /** 公式のステッカー縁（白、縦本編 608px 幅でのピクセル）。 */
 export const CHAR_OUTLINE_PX = 2;
 
@@ -62,6 +68,10 @@ export function isAspectMode(value: string): value is AspectMode {
 
 export function usesBlurBackdrop(mode: AspectMode): boolean {
   return mode === "portrait";
+}
+
+export function characterScale(mode: AspectMode = "portrait"): number {
+  return mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
 }
 
 /** キー済み緑帯を本編 16:9 へ置く矩形。下揃え・左右中央。 */
