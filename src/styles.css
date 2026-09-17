@@ -348,12 +348,17 @@ body {
   aspect-ratio: 608 / 1080;
   height: auto;
   flex: 0 0 auto;
-  pointer-events: none;
+  cursor: pointer;
   border-radius: 1.5rem;
   overflow: hidden;
   background: var(--teal);
   border: 3.5px solid var(--ink);
   box-shadow: 7px 8px 0 var(--ink);
+}
+
+.stage:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 4px;
 }
 
 .stage[data-aspect="landscape"] {
