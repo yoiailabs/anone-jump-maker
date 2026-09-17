@@ -13,6 +13,15 @@ export const OUTPUTS = {
   landscape: { width: 1280, height: 720 },
 } as const;
 
+/**
+ * `.stage` の max-width（styles.css と揃える）。
+ * 縦 21rem / 横 26rem。クレジットの画面上の大きさはこの比で換算する。
+ */
+export const STAGE_MAX_REM = {
+  portrait: 21,
+  landscape: 26,
+} as const;
+
 /** 新テンプレ miWuv4NK9Qk / 参考 Short と同じ 608×1080。 */
 export const OUTPUT = OUTPUTS.portrait;
 

@@ -17,6 +17,7 @@ import {
   ZOOM_PRE_ROLL,
   OUTPUT,
   OUTPUTS,
+  STAGE_MAX_REM,
   PANEL_DIVIDER_PX,
   TEMPLATE_BAND_H,
   TEMPLATE_BAND_Y,
@@ -56,6 +57,8 @@ describe("output size", () => {
     expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
     expect(OUTPUTS.landscape).toEqual({ width: 1280, height: 720 });
     expect(OUTPUTS.landscape.width / OUTPUTS.landscape.height).toBeCloseTo(16 / 9, 5);
+    expect(STAGE_MAX_REM.portrait).toBe(21);
+    expect(STAGE_MAX_REM.landscape).toBe(26);
   });
 
   it("treats only portrait as a blur-band canvas", () => {

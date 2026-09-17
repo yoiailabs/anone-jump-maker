@@ -160,6 +160,7 @@ body {
   gap: 0.5rem;
 }
 
+/* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える */
 .stage {
   width: min(100%, 21rem, calc((100svh - 27rem) * 608 / 1080));
   aspect-ratio: 608 / 1080;

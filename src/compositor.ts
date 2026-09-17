@@ -14,6 +14,7 @@ import {
   mainPanelRect,
   OUTPUTS,
   outputSize,
+  STAGE_MAX_REM,
   sharpCoverScale,
   swapChromaPx,
   swapFx,
@@ -28,7 +29,7 @@ import {
 import type { LoadedPhoto } from "./photos.ts";
 import { photoForSlot, slotForTime } from "./timeline.ts";
 
-export { BLUR_SOURCE, OUTPUT, OUTPUTS, type AspectMode } from "./layout.ts";
+export { BLUR_SOURCE, OUTPUT, OUTPUTS, STAGE_MAX_REM, type AspectMode } from "./layout.ts";
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -501,8 +502,18 @@ function paintOutput(
 
 export const SONG_CREDIT = "♪ あのね - ナナツカゼ";
 
-/** 横短辺×この比。縦も同じ fontSize を使う（短辺基準だと縦だけ大きく見える）。 */
+/** 横短辺×この比。縦はプレビュー CSS スケールで横と同じ見た目になるよう小さくする。 */
 export const SONG_CREDIT_FONT_FRAC = 0.055;
+
+/** 横プレビュー（26rem / 1280）でのクレジットの画面上サイズに、縦を合わせる。 */
+export function songCreditFontSize(mode: AspectMode): number {
+  const landscapeShort = Math.min(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
+  const landscapeFont = Math.max(12, Math.round(landscapeShort * SONG_CREDIT_FONT_FRAC));
+  if (mode === "landscape") return landscapeFont;
+  const canvasPerRem =
+    (OUTPUTS.portrait.width / STAGE_MAX_REM.portrait) * (STAGE_MAX_REM.landscape / OUTPUTS.landscape.width);
+  return Math.max(12, Math.round(landscapeFont * canvasPerRem));
+}
 
 export type SongCreditLayout = {
   fontSize: number;
@@ -525,8 +536,7 @@ export function songCreditLayout(
   mode: AspectMode = canvasW < canvasH ? "portrait" : "landscape",
 ): SongCreditLayout {
   const short = Math.min(canvasW, canvasH);
-  const landscapeShort = Math.min(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
-  const fontSize = Math.max(28, Math.round(landscapeShort * SONG_CREDIT_FONT_FRAC));
+  const fontSize = songCreditFontSize(mode);
   const pad = Math.max(8, Math.round(short * 0.016));
   const x = canvasW - pad;
   if (mode === "portrait") {

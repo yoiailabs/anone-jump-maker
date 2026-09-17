@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BLUR_SOURCE, PHOTO_UPLOAD_PATH, SONG_CREDIT, songCreditLayout } from "./compositor.ts";
+import { BLUR_SOURCE, PHOTO_UPLOAD_PATH, SONG_CREDIT, songCreditFontSize, songCreditLayout } from "./compositor.ts";
 import {
   CHAR_SCALE,
   JUMP_AMPLITUDE,
   LANDSCAPE_CHAR_SCALE,
   OUTPUTS,
+  STAGE_MAX_REM,
   characterDest,
   jumpOffsetPx,
   mainPanelRect,
@@ -89,9 +90,13 @@ describe("song credit", () => {
     const panel = mainPanelRect(w, h, "portrait");
     const credit = songCreditLayout(w, h, "portrait");
     const landscape = songCreditLayout(OUTPUTS.landscape.width, OUTPUTS.landscape.height, "landscape");
-    expect(credit.fontSize).toBe(landscape.fontSize);
-    expect(credit.fontSize).toBeGreaterThanOrEqual(32);
-    expect(credit.fontSize).toBeLessThanOrEqual(48);
+    expect(credit.fontSize).toBe(songCreditFontSize("portrait"));
+    expect(credit.fontSize).toBeLessThan(landscape.fontSize);
+    expect(credit.fontSize).toBeGreaterThanOrEqual(12);
+    expect(credit.fontSize).toBeLessThanOrEqual(28);
+    const portraitVisual = credit.fontSize * (STAGE_MAX_REM.portrait / w);
+    const landscapeVisual = landscape.fontSize * (STAGE_MAX_REM.landscape / OUTPUTS.landscape.width);
+    expect(portraitVisual).toBeCloseTo(landscapeVisual, 1);
     expect(credit.x).toBe(w - credit.pad);
     expect(credit.y).toBe(panel.y + panel.h + credit.pad);
     expect(credit.pad).toBeGreaterThanOrEqual(8);
