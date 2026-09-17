@@ -9,20 +9,18 @@ import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from 
 import { downloadBlob } from "./recorder.ts";
 import {
   buildXAppComposeUrl,
-  buildXIntentUrl,
   canShareVideoFile,
   copyTextToClipboard,
   mobilePlatform,
   openExternalTab,
-  openXAppCompose,
   openXCompose,
   SHARE_HASHTAG,
   SHARE_TEXT,
   shareAppUrl,
   shareJumpVideo,
+  shouldOpenXApp,
   toShareFile,
   xComposeLinkAttrs,
-  type AppComposeDeps,
 } from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
@@ -234,23 +232,17 @@ export async function boot(root: HTMLElement): Promise<void> {
   if (composeLink.target) shareBtn.target = composeLink.target;
   if (composeLink.rel) shareBtn.rel = composeLink.rel;
 
-  const appComposeDeps: AppComposeDeps = {
-    navigate: (url) => window.location.assign(url),
-    isHidden: () => document.hidden,
-    onHidden: (listener) => {
-      const onVisibility = () => {
-        if (document.hidden) listener();
-      };
-      document.addEventListener("visibilitychange", onVisibility);
-      window.addEventListener("pagehide", listener);
-      return () => {
-        document.removeEventListener("visibilitychange", onVisibility);
-        window.removeEventListener("pagehide", listener);
-      };
-    },
-    setTimer: (listener, ms) => window.setTimeout(listener, ms),
-    clearTimer: (id) => window.clearTimeout(id),
-  };
+  // iOS で X アプリのスキームを叩いた時刻。画面が隠れた（＝アプリが前に出た）ら忘れる。
+  let xAppTriedAt: number | null = null;
+  if (platform === "ios") {
+    const forgetAppTry = () => {
+      xAppTriedAt = null;
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) forgetAppTry();
+    });
+    window.addEventListener("pagehide", forgetAppTry);
+  }
 
   const timeline = () => timelines[mode];
 
@@ -678,16 +670,17 @@ export async function boot(root: HTMLElement): Promise<void> {
       })();
       return;
     }
-    if (platform === "ios") {
+    if (platform === "ios" && shouldOpenXApp(xAppTriedAt, Date.now())) {
       // iOS は https の投稿画面を渡すとアプリが内蔵ブラウザで開いてしまうので、
-      // アプリのネイティブ投稿画面を直接叩く。アプリが出てこなければ Web に落ちる。
+      // まずアプリのネイティブ投稿画面を叩く。出てこなければ押し直してもらう。
       event.preventDefault();
-      openXAppCompose(appComposeDeps, {
-        appUrl: buildXAppComposeUrl(),
-        webUrl: buildXIntentUrl(),
-      });
+      xAppTriedAt = Date.now();
+      window.location.assign(buildXAppComposeUrl());
+      setStatus("X アプリの投稿画面を開きました。開かないときは、もう一度押してください。");
+      return;
     }
-    // Android と PC はリンクの遷移そのままでよい（intent URI / 別タブ）。
+    // iOS の 2 回目、Android と PC はリンクの遷移そのまま（Web の投稿画面 / intent URI / 別タブ）。
+    xAppTriedAt = null;
     setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
   });
 

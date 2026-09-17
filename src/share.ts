@@ -114,8 +114,8 @@ export function buildXAndroidComposeUrl(
 /**
  * 投稿ボタンのリンク先。
  * Android はブラウザが intent URI を解決してアプリの投稿画面を開く（無ければ Web に落ちる）ので
- * リンクだけで完結する。iOS はアプリのスキームに落とし穴（未インストール時に戻れない）があるため、
- * リンク自体は Web の投稿画面にしておき、クリック時に `openXAppCompose` で上書きする。
+ * リンクだけで完結する。iOS には同じ仕掛けが無いので、リンク自体は Web の投稿画面にしておき、
+ * 1 回目のタップだけ `buildXAppComposeUrl` で上書きする（`shouldOpenXApp`）。
  */
 export function xComposeLinkAttrs(options: {
   platform: MobilePlatform | null;
@@ -128,6 +128,26 @@ export function xComposeLinkAttrs(options: {
   const href =
     options.platform === "android" ? buildXAndroidComposeUrl(options.text, webUrl) : webUrl;
   return { href, target: null, rel: null };
+}
+
+/** アプリを叩いたことを忘れるまでの時間。これを過ぎたタップは、また 1 回目として扱う。 */
+export const X_APP_RETRY_WINDOW_MS = 30_000;
+
+/**
+ * iOS のタップで、アプリのスキームを叩くか Web の投稿画面（リンクの遷移）に回すか。
+ *
+ * スキームには「開けなかった」の通知が無い。時間で見切って Web に落とすと、アプリが前に出るのが
+ * 間に合わなかったときに投稿画面の上へ内蔵ブラウザが重なってしまうので、待たずにユーザーの
+ * 2 回目のタップを合図にする。叩いた直後（30 秒以内）にまだこの画面に居るなら、アプリは
+ * 出てこなかったとみなして Web に回す。時間が空いたタップは、また 1 回目として扱う。
+ */
+export function shouldOpenXApp(
+  lastTryAt: number | null,
+  now: number,
+  windowMs: number = X_APP_RETRY_WINDOW_MS,
+): boolean {
+  if (lastTryAt === null) return true;
+  return now - lastTryAt > windowMs;
 }
 
 /**
@@ -216,48 +236,6 @@ export function openXCompose(options: {
     return true;
   }
   return options.openTab(options.url);
-}
-
-/** アプリに移ったかどうかを見るための、画面まわりの入り口。 */
-export type AppComposeDeps = {
-  navigate: (url: string) => void;
-  /** 画面が隠れた（＝アプリが前に出た）ら呼ぶ。購読をやめる関数を返す。 */
-  onHidden: (listener: () => void) => () => void;
-  isHidden: () => boolean;
-  setTimer: (listener: () => void, ms: number) => number;
-  clearTimer: (id: number) => void;
-};
-
-/** アプリが出てくるのを待つ時間。 */
-export const X_APP_COMPOSE_FALLBACK_MS = 1200;
-
-/**
- * iOS で X アプリのネイティブ投稿画面を開く。
- * アプリが受け取れば画面は隠れるので、隠れないまま待ち時間が過ぎたとき（＝アプリが無い）だけ
- * Web の投稿画面へ落とす。スキームには「開けなかった」の通知が無いので、この見分け方しかない。
- */
-export function openXAppCompose(
-  deps: AppComposeDeps,
-  urls: { appUrl: string; webUrl: string },
-  delayMs: number = X_APP_COMPOSE_FALLBACK_MS,
-): void {
-  let timer = 0;
-  let stopWatching = () => {};
-  let settled = false;
-  /** 先に決着した側が後片付けする。true を返したときだけ後続の処理を進める。 */
-  const settle = () => {
-    if (settled) return false;
-    settled = true;
-    stopWatching();
-    deps.clearTimer(timer);
-    return true;
-  };
-  stopWatching = deps.onHidden(settle);
-  timer = deps.setTimer(() => {
-    if (!settle()) return;
-    if (!deps.isHidden()) deps.navigate(urls.webUrl);
-  }, delayMs);
-  deps.navigate(urls.appUrl);
 }
 
 /**

@@ -10,16 +10,16 @@ import {
   copyTextToClipboard,
   mobilePlatform,
   openExternalTab,
-  openXAppCompose,
   openXCompose,
   SHARE_HASHTAG,
   SHARE_MAKER_HASHTAG,
   SHARE_TEXT,
   shareAppUrl,
   shareJumpVideo,
+  shouldOpenXApp,
   toShareFile,
+  X_APP_RETRY_WINDOW_MS,
   xComposeLinkAttrs,
-  type AppComposeDeps,
   type ShareNavigatorLike,
 } from "./share.ts";
 
@@ -33,45 +33,6 @@ const MAC_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 const videoFile = () => toShareFile(new Blob(["x"], { type: "video/mp4" }), "anone-jump-9x16.mp4");
-
-/** アプリに移ったかどうかを手で動かせる `openXAppCompose` の足回り。 */
-function fakeAppCompose(options: { hidden: boolean }) {
-  const navigated: string[] = [];
-  let hidden = options.hidden;
-  let onHidden: (() => void) | null = null;
-  let timerFn: (() => void) | null = null;
-  let cleared = false;
-  const deps: AppComposeDeps = {
-    navigate: (url) => navigated.push(url),
-    isHidden: () => hidden,
-    onHidden: (listener) => {
-      onHidden = listener;
-      return () => {
-        onHidden = null;
-      };
-    },
-    setTimer: (listener) => {
-      timerFn = listener;
-      return 7;
-    },
-    clearTimer: (id) => {
-      expect(id).toBe(7);
-      cleared = true;
-    },
-  };
-  return {
-    deps,
-    navigated,
-    get cleared() {
-      return cleared;
-    },
-    hide: () => {
-      hidden = true;
-      onHidden?.();
-    },
-    runTimer: () => timerFn?.(),
-  };
-}
 
 describe("X への投稿", () => {
   it("投稿画面に両方のハッシュタグを載せる", () => {
@@ -216,31 +177,18 @@ describe("X への投稿", () => {
     expect(desktop.rel).toBe("noopener noreferrer");
   });
 
-  it("iOS はアプリを叩き、出てこなければ Web の投稿画面に落とす", () => {
-    const { deps, navigated, runTimer } = fakeAppCompose({ hidden: false });
-    openXAppCompose(deps, { appUrl: "twitter://post?message=a", webUrl: "https://x.com/intent/post" });
-    expect(navigated).toEqual(["twitter://post?message=a"]);
-    runTimer();
-    expect(navigated).toEqual(["twitter://post?message=a", "https://x.com/intent/post"]);
+  it("iOS の 1 回目はアプリを叩き、反応が無くて押し直した 2 回目は Web の投稿画面へ回す", () => {
+    const tapped = 1_000;
+    expect(shouldOpenXApp(null, tapped)).toBe(true);
+    expect(shouldOpenXApp(tapped, tapped + 500)).toBe(false);
+    expect(shouldOpenXApp(tapped, tapped + X_APP_RETRY_WINDOW_MS)).toBe(false);
   });
 
-  it("アプリが前に出たら待ち時間を止めて Web の投稿画面は開かない", () => {
-    const fake = fakeAppCompose({ hidden: false });
-    openXAppCompose(fake.deps, {
-      appUrl: "twitter://post?message=a",
-      webUrl: "https://x.com/intent/post",
-    });
-    fake.hide();
-    expect(fake.cleared).toBe(true);
-    fake.runTimer();
-    expect(fake.navigated).toEqual(["twitter://post?message=a"]);
-  });
-
-  it("画面が隠れたままなら時間切れでも Web に落とさない", () => {
-    const { deps, navigated, runTimer } = fakeAppCompose({ hidden: true });
-    openXAppCompose(deps, { appUrl: "twitter://post?message=a", webUrl: "https://x.com/intent/post" });
-    runTimer();
-    expect(navigated).toEqual(["twitter://post?message=a"]);
+  it("時間が空いたタップは、また 1 回目としてアプリを叩く", () => {
+    const tapped = 1_000;
+    expect(X_APP_RETRY_WINDOW_MS).toBe(30_000);
+    expect(shouldOpenXApp(tapped, tapped + X_APP_RETRY_WINDOW_MS + 1)).toBe(true);
+    expect(shouldOpenXApp(tapped, tapped + 200, 100)).toBe(true);
   });
 
   it("共有シート後の投稿画面は、スマホなら同じタブで開く", () => {
