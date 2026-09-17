@@ -29,11 +29,9 @@ export async function boot(root: HTMLElement): Promise<void> {
       <span class="blob blob-lime"></span>
       <span class="blob blob-teal"></span>
       <span class="blob blob-coral"></span>
-      <span class="wind"></span>
     </div>
     <div class="app">
       <header class="hero">
-        <div class="breeze" aria-hidden="true"></div>
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
         <p class="lede">写真を何枚か選択するだけで簡単にあのねジャンプ動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。</p>
