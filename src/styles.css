@@ -576,21 +576,36 @@ body {
   color: var(--ink);
 }
 
-/* 投稿とアプリ共有は操作パネルの枠の外に置く */
+/* ハッシュタグコピーとアプリ共有は操作パネルの枠の外に置く */
 .share-wrap {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
 
-.btn.share,
+.hashtag-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.hashtag-copy-hint {
+  margin: 0;
+  text-align: center;
+  color: var(--mute);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
+.btn.copy-hashtags,
 .btn.share-app {
   width: 100%;
   gap: 0.45rem;
   font-size: 0.92rem;
 }
 
-.btn.share {
+.btn.copy-hashtags {
   background: var(--ink);
   color: var(--paper);
 }
@@ -600,15 +615,11 @@ body {
   color: var(--ink);
 }
 
-.btn.share svg,
+.btn.copy-hashtags svg,
 .btn.share-app svg {
   width: 1.05em;
   height: 1.05em;
   flex: 0 0 auto;
-}
-
-.btn.share svg {
-  fill: currentColor;
 }
 
 .btn:disabled,
