@@ -208,6 +208,10 @@ body {
   box-shadow: 7px 8px 0 var(--ink);
 }
 
+.preview-dialog:not([open]) {
+  display: none;
+}
+
 .preview-dialog {
   width: min(28rem, calc(100vw - 1.25rem));
   max-height: calc(100svh - 1.25rem);
