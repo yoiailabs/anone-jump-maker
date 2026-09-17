@@ -344,6 +344,7 @@ body {
 /* プレビュー確認用。向き／エフェクト切替が残るよう、表示は小さめ。 */
 .stage {
   display: block;
+  position: relative;
   width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
   max-height: calc(100svh - 20rem);
   aspect-ratio: 608 / 1080;
@@ -358,6 +359,29 @@ body {
   background: var(--teal);
   border: 3.5px solid var(--ink);
   box-shadow: 7px 8px 0 var(--ink);
+}
+
+.stage[aria-pressed="false"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.28);
+  pointer-events: none;
+}
+
+.stage[aria-pressed="false"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 1.15rem 0 1.15rem 1.85rem;
+  border-color: transparent transparent transparent #fff;
+  transform: translate(-35%, -50%);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
 }
 
 .stage:focus-visible {

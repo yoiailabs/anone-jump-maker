@@ -155,6 +155,7 @@ export async function boot(root: HTMLElement): Promise<void> {
             class="stage"
             id="stage"
             data-aspect="portrait"
+            aria-pressed="false"
             aria-label="プレビュー。クリックで再生と一時停止"
           ></button>
         </div>
@@ -491,7 +492,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   const togglePreviewPlay = () => {
-    if (isPreviewPlaying()) {
+    if (isPreviewPlaying() || playbackBusy) {
       pausePlayback();
       return;
     }
@@ -514,19 +515,9 @@ export async function boot(root: HTMLElement): Promise<void> {
     togglePreviewPlay();
   });
 
-  let stageToggleFromPointer = false;
-  stage.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    stageToggleFromPointer = true;
-    togglePreviewPlay();
-  });
   stage.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (stageToggleFromPointer) {
-      stageToggleFromPointer = false;
-      return;
-    }
     togglePreviewPlay();
   });
 
