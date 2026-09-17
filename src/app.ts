@@ -1,6 +1,13 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
-import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
+import {
+  DEFAULT_ASPECT,
+  isAspectMode,
+  isSwapStyle,
+  TEMPLATES,
+  type AspectMode,
+  type SwapStyle,
+} from "./layout.ts";
 import { linkBannersHtml } from "./links.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
@@ -23,9 +30,9 @@ type StatusKind = "idle" | "busy" | "error";
 export async function boot(root: HTMLElement): Promise<void> {
   const timelines = await loadTimelines();
   const compositor = createCompositor();
-  const video = createTemplateVideo("portrait");
+  const video = createTemplateVideo(DEFAULT_ASPECT);
 
-  let mode: AspectMode = "portrait";
+  let mode: AspectMode = DEFAULT_ASPECT;
   let swapStyle: SwapStyle = "jump";
   let photos: LoadedPhoto[] = [];
   let playing = false;
@@ -71,12 +78,12 @@ export async function boot(root: HTMLElement): Promise<void> {
           <legend>動画の向き</legend>
           <div class="aspect-toggle" role="radiogroup" aria-label="動画の向き">
             <label>
-              <input type="radio" name="aspect" value="portrait" checked />
-              <span>縦</span>
+              <input type="radio" name="aspect" value="landscape" checked />
+              <span>横</span>
             </label>
             <label>
-              <input type="radio" name="aspect" value="landscape" />
-              <span>横</span>
+              <input type="radio" name="aspect" value="portrait" />
+              <span>縦</span>
             </label>
           </div>
         </fieldset>
@@ -145,12 +152,12 @@ export async function boot(root: HTMLElement): Promise<void> {
             <legend>向き</legend>
             <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューの向き">
               <label>
-                <input type="radio" name="preview-aspect" value="portrait" checked />
-                <span>縦</span>
+                <input type="radio" name="preview-aspect" value="landscape" checked />
+                <span>横</span>
               </label>
               <label>
-                <input type="radio" name="preview-aspect" value="landscape" />
-                <span>横</span>
+                <input type="radio" name="preview-aspect" value="portrait" />
+                <span>縦</span>
               </label>
             </div>
           </fieldset>
@@ -173,14 +180,14 @@ export async function boot(root: HTMLElement): Promise<void> {
             type="button"
             class="stage"
             id="stage"
-            data-aspect="portrait"
+            data-aspect="${DEFAULT_ASPECT}"
             aria-pressed="false"
             aria-label="プレビュー。クリックで再生と一時停止"
           >
             <span class="stage-play-hint" aria-hidden="true"></span>
           </button>
         </div>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
+        <p class="slot-meter" id="slotMeter">スロット — / ${timelines[DEFAULT_ASPECT].slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
         <div class="preview-actions">
           <button type="button" id="modalPlayBtn" class="btn">${playPauseLabel(false)}</button>

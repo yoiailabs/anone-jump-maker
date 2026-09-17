@@ -5,6 +5,8 @@ import {
   CHAR_OUTLINE_PX,
   CHAR_SCALE,
   CHAR_SHIFT_Y,
+  DEFAULT_ASPECT,
+  ASPECT_MODES,
   LANDSCAPE_CHAR_SCALE,
   JUMP_COVER_SCALE,
   JUMP_CYCLE_FRAMES,
@@ -52,6 +54,11 @@ import {
 } from "./layout.ts";
 
 describe("output size", () => {
+  it("lists landscape first and uses it as the default", () => {
+    expect(DEFAULT_ASPECT).toBe("landscape");
+    expect(ASPECT_MODES).toEqual(["landscape", "portrait"]);
+  });
+
   it("matches the 608x1080 template", () => {
     expect(outputSize()).toEqual({ width: 608, height: 1080 });
     expect(outputSize("portrait")).toEqual({ width: 608, height: 1080 });
