@@ -161,13 +161,16 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 
+  const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
+
   const refreshButtons = () => {
     const ready = canUse();
     playBtn.disabled = recording || !ready;
     saveBtn.disabled = recording || !ready;
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
-    modalPlayBtn.textContent = playPauseLabel(playing);
+    modalPlayBtn.textContent = playPauseLabel(isPreviewPlaying());
+    modalPlayBtn.setAttribute("aria-pressed", isPreviewPlaying() ? "true" : "false");
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -259,8 +262,16 @@ export async function boot(root: HTMLElement): Promise<void> {
       refreshButtons();
       setStatus("プレビュー中");
       await startLoop();
-      if (gen !== playGen) return;
+      if (gen !== playGen) {
+        video.pause();
+        haltLoop();
+        return;
+      }
       await video.play();
+      if (gen !== playGen) {
+        video.pause();
+        haltLoop();
+      }
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
@@ -371,15 +382,19 @@ export async function boot(root: HTMLElement): Promise<void> {
     void openPreview();
   });
 
-  modalPlayBtn.addEventListener("click", () => {
-    if (playing) {
+  modalPlayBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isPreviewPlaying()) {
       pausePlayback();
       return;
     }
     void startPlayback(false);
   });
 
-  restartBtn.addEventListener("click", () => {
+  restartBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     void startPlayback(true);
   });
 
