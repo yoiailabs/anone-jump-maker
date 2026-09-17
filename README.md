@@ -49,7 +49,7 @@
 
 公式の「ナナツカゼ」「あのね」等の文字はユーザー差し込み側に足しません。
 
-画面最下部には参考リンクとして、ナナツカゼさんの X・YouTube・Spotify・Apple Music へのバナーを並べます（`src/links.ts`）。どれも別タブで開き、`rel="noopener noreferrer"` を付けます。公式ロゴの画像は置かず、テンプレに寄せた太線のアイコンを自分で描いてラベルを添えています。
+画面最下部には参考リンクとして、ナナツカゼさんの X・YouTube・Spotify・Apple Music へのバナーを並べます（`src/links.ts`）。どれも別タブで開き、`rel="noopener noreferrer"` を付けます。公式ロゴの画像は置かず、テンプレに寄せた太線のアイコンを自分で描いてラベルを添えています。その下の「反応」には、PIKASONIC さんの投稿（`src/reactions.ts`）を X 公式埋め込みで置きます。widgets.js が来るまでは本文と元投稿へのリンクが見えます。
 
 写真の向きは EXIF を `createImageBitmap({ imageOrientation: "from-image" })` で直し、それが落ちる端末では options なしの `createImageBitmap`、HTML Image、FileReader の data URL へ落とします。MIME が空でも拡張子やマジックバイトで JPEG/PNG/WebP なら残します。Android のカメラ写真（HEIC/HEIF）は、ネイティブで読めなければ `heic-to`（libheif）をそのときだけ読み込んで JPEG 相当に変換し、既存の decode へ渡します。変換できない環境では互換性優先（JPEG）かスクショを案内します。JPEG/PNG/WebP の初期読み込みにはデコーダを載せません。WebGL には ImageBitmap を直接上げません（`UNPACK_FLIP_Y_WEBGL` との二重反転を避けるため、Canvas2D に描いてからテクスチャ化します）。読み込み時に長辺 1920 程度へ縮小し、元の巨大画素と File の ObjectURL は持ちません。サムネは別の小さいコピー、decode は最大 2 枚ずつです。写真は端末内のみです。
 

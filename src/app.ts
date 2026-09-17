@@ -9,6 +9,7 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import { linkBannersHtml } from "./links.ts";
+import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
@@ -139,6 +140,10 @@ export async function boot(root: HTMLElement): Promise<void> {
           <p class="links-title" id="linksTitle">ナナツカゼさん公式</p>
           <ul class="link-banners">${linkBannersHtml()}</ul>
         </nav>
+        <section class="reactions" aria-labelledby="reactionsTitle">
+          <h2 class="reactions-title" id="reactionsTitle">反応</h2>
+          <div class="reactions-embed" id="reactionsEmbed">${reactionEmbedHtml()}</div>
+        </section>
       </footer>
     </div>
     <dialog class="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
@@ -621,6 +626,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   void video.load();
+  hydrateReactionEmbed(must(root, "#reactionsEmbed"));
 }
 
 async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {
