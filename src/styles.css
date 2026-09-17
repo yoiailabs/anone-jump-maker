@@ -167,6 +167,31 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* 参考 MV のジャンプ部分を切り出した APNG ループ。装飾なので操作はなし。 */
+.loop-wrap {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.loop-wrap picture {
+  display: block;
+  width: min(100%, 26rem);
+}
+
+.loop {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 1.5rem;
+  background: var(--card);
+  border: 3.5px solid var(--ink);
+  box-shadow: 7px 8px 0 var(--ink);
+}
+
 .stage-wrap {
   display: flex;
   flex-direction: column;

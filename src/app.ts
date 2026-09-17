@@ -39,6 +39,13 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
+      <div class="loop-wrap" aria-hidden="true">
+        <picture>
+          <source media="(prefers-reduced-motion: reduce)" srcset="/jump-loop-still.png" />
+          <img class="loop" src="/jump-loop.png" alt="" width="480" height="270" decoding="async" />
+        </picture>
+      </div>
+
       <section class="panel">
         <fieldset class="aspect-field">
           <legend>動画の向き</legend>
