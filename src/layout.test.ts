@@ -194,7 +194,8 @@ describe("jumpAmount", () => {
   it("restarts at the next photo/cut slot", () => {
     expect(jumpAmount(0.467, slots)).toBe(0);
     expect(jumpAmount(0.467 + 0.1, slots)).toBeGreaterThan(0.5);
-    expect(jumpAmount(0.4, slots)).toBe(0);
+    expect(jumpAmount(JUMP_DURATION + 0.01, slots)).toBe(0);
+    expect(JUMP_DURATION + 0.01).toBeLessThan(slots[1]!);
   });
 
   it("also hops the landscape photo on the same cut curve", () => {
