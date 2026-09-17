@@ -3,8 +3,9 @@ import { recordRealtime, signalCanvasPainted } from "./export.ts";
 import { isAspectMode, TEMPLATES, type AspectMode } from "./layout.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
-import { downloadBlob } from "./recorder.ts";
+import { downloadBlob, resumeRecordingAudio } from "./recorder.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
+import { shouldCountPreview } from "./stats-shared.ts";
 import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
@@ -142,7 +143,20 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const startLoop = async () => {
     haltLoop();
+    await resumeRecordingAudio(video);
     stopLoop = startVideoPaintLoop(video, paint);
+  };
+
+  const reportMade = async (partial: { action: "preview" | "save"; mime?: string }) => {
+    const nextCount = await recordGenerate({
+      action: partial.action,
+      mime: partial.mime,
+      width: compositor.canvas.width,
+      height: compositor.canvas.height,
+    });
+    if (nextCount !== null) {
+      setMadeCount(nextCount);
+    }
   };
 
   const stopPlayback = () => {
@@ -172,10 +186,14 @@ export async function boot(root: HTMLElement): Promise<void> {
     setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
   });
   video.addEventListener("ended", () => {
+    const countPreview = shouldCountPreview({ event: "ended", playing, recording });
     if (!recording) {
       stopPlayback();
       paint();
       setStatus("プレビューが終わりました");
+    }
+    if (countPreview) {
+      void reportMade({ action: "preview" });
     }
   });
 
@@ -247,14 +265,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       const aspectTag = mode === "landscape" ? "16x9" : "9x16";
       downloadBlob(result.blob, `anone-jump-${aspectTag}.${result.extension}`);
       setStatus(`保存しました（${result.extension.toUpperCase()}）`);
-      const nextCount = await recordGenerate({
-        mime: result.mime,
-        width: compositor.canvas.width,
-        height: compositor.canvas.height,
-      });
-      if (nextCount !== null) {
-        setMadeCount(nextCount);
-      }
+      await reportMade({ action: "save", mime: result.mime });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
     } finally {

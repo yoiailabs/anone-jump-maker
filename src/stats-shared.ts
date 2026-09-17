@@ -1,5 +1,7 @@
 export type ExportMode = "offline" | "record";
 
+export type GenerateAction = "preview" | "save";
+
 export type GenerateAttrs = {
   browser?: string;
   os?: string;
@@ -13,6 +15,7 @@ export type GenerateAttrs = {
   mime?: string;
   width?: number;
   height?: number;
+  action?: GenerateAction;
 };
 
 export type GenerateEvent = GenerateAttrs & {
@@ -24,6 +27,7 @@ const OSES = new Set(["ios", "android", "macos", "windows", "linux", "other"]);
 const DEVICES = new Set(["mobile", "tablet", "desktop"]);
 /** 新規保存は record 固定。offline は過去イベント用に受け付ける。 */
 const EXPORT_MODES = new Set(["offline", "record"]);
+const GENERATE_ACTIONS = new Set(["preview", "save"]);
 
 export function formatCountLabel(count: number | null): string {
   if (count === null || !Number.isFinite(count)) {
@@ -82,7 +86,18 @@ export function sanitizeGenerateAttrs(input: unknown): GenerateAttrs {
   const height = intIn(raw.height, 1, 8_000);
   if (width) attrs.width = width;
   if (height) attrs.height = height;
+  const action = clip(raw.action, 16);
+  if (action && GENERATE_ACTIONS.has(action)) attrs.action = action as GenerateAction;
   return attrs;
+}
+
+/** プレビューは再生が最後まで終わったときだけ数える。停止は数えない。 */
+export function shouldCountPreview(input: {
+  event: "ended" | "stop";
+  playing: boolean;
+  recording: boolean;
+}): boolean {
+  return input.event === "ended" && input.playing && !input.recording;
 }
 
 export function parseStatsCount(payload: unknown): number | null {

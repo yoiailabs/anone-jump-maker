@@ -1,14 +1,21 @@
+export const RECORD_AUDIO_BITRATE = 192_000;
+
 export function pickRecorderMime(): string {
   const safari = isAppleWebKit();
   const webm = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
   const mp4 = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4"];
   // Chromium reports video/mp4 then often writes VP9 into an .mp4 name. Prefer WebM there.
   const types = safari ? [...mp4, ...webm] : [...webm, ...mp4];
-  return types.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+  const supported = types.filter((type) => MediaRecorder.isTypeSupported(type));
+  return supported.find((type) => mimeIncludesAudioCodec(type)) ?? supported[0] ?? "";
+}
+
+export function mimeIncludesAudioCodec(mime: string): boolean {
+  return /opus|mp4a|aac/i.test(mime);
 }
 
 function isAppleWebKit(): boolean {
-  const ua = navigator.userAgent;
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
   return /iP(hone|ad|od)|Macintosh/.test(ua) && /WebKit/.test(ua) && !/Chrom(e|ium)|Android/.test(ua);
 }
 
@@ -63,14 +70,92 @@ export function captureElementAudio(video: HTMLMediaElement): MediaStream {
     return new MediaStream();
   }
   const stream = capture.call(media);
-  return new MediaStream(stream.getAudioTracks());
+  return new MediaStream(enableAudioTracks(stream.getAudioTracks()));
+}
+
+type RecordingAudioTap = {
+  kind: "webaudio" | "element-captureStream";
+  stream: MediaStream;
+  resume: () => Promise<void>;
+};
+
+const audioTaps = new WeakMap<HTMLMediaElement, RecordingAudioTap>();
+
+/**
+ * Recording-only tap. Hop / cut timing still reads `video.currentTime`.
+ * MediaElementSource must be created once per element.
+ */
+export function ensureRecordingAudioTap(video: HTMLMediaElement): RecordingAudioTap {
+  const existing = audioTaps.get(video);
+  if (existing) return existing;
+
+  const scope = globalThis as typeof globalThis & {
+    AudioContext?: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
+  };
+  const Ctor = scope.AudioContext || scope.webkitAudioContext;
+  if (!Ctor) {
+    const tap: RecordingAudioTap = {
+      kind: "element-captureStream",
+      stream: new MediaStream(),
+      resume: async () => undefined,
+    };
+    audioTaps.set(video, tap);
+    return tap;
+  }
+
+  const ctx = new Ctor();
+  const source = ctx.createMediaElementSource(video);
+  const dest = ctx.createMediaStreamDestination();
+  source.connect(dest);
+  source.connect(ctx.destination);
+  const tap: RecordingAudioTap = {
+    kind: "webaudio",
+    stream: dest.stream,
+    resume: async () => {
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+    },
+  };
+  audioTaps.set(video, tap);
+  return tap;
+}
+
+export async function resumeRecordingAudio(video: HTMLMediaElement): Promise<void> {
+  const tap = audioTaps.get(video);
+  if (tap) await tap.resume();
+}
+
+/**
+ * Take audio after playback has started. Chromium's captureStream can stay
+ * silent if it inherited `video.muted`; Web Audio does not.
+ */
+export async function captureRecordingAudio(video: HTMLMediaElement): Promise<MediaStream> {
+  const tap = ensureRecordingAudioTap(video);
+  await tap.resume();
+  if (tap.kind === "webaudio") {
+    return new MediaStream(enableAudioTracks(tap.stream.getAudioTracks()));
+  }
+  return captureElementAudio(video);
+}
+
+function enableAudioTracks(tracks: MediaStreamTrack[]): MediaStreamTrack[] {
+  const live = tracks.filter((track) => track.readyState !== "ended");
+  for (const track of live) {
+    track.enabled = true;
+  }
+  return live;
 }
 
 export async function recordStream(stream: MediaStream, until: Promise<void>): Promise<Blob> {
   const mime = pickRecorderMime();
-  const recorder = mime
-    ? new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 })
-    : new MediaRecorder(stream, { videoBitsPerSecond: 6_000_000 });
+  const options: MediaRecorderOptions = {
+    videoBitsPerSecond: 6_000_000,
+    audioBitsPerSecond: RECORD_AUDIO_BITRATE,
+  };
+  if (mime) options.mimeType = mime;
+  const recorder = new MediaRecorder(stream, options);
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = (event) => {
     if (event.data.size > 0) chunks.push(event.data);

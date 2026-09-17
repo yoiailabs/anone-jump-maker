@@ -10,7 +10,7 @@
 2. 「書き出す向き」で縦（9:16）か横（16:9）を選ぶ
 3. テンプレのベタ塗り背景（緑クロマに限らない）をキーイングして、線画キャラを残す
 4. 検出したジャンプ・カットで写真を差し替える。枚数が足りなければ循環
-5. プレビューして WebM または MP4 を保存（MediaRecorder）。キャンバスを `captureStream` し、テンプレ再生と同時に録画します。
+5. プレビューして WebM または MP4 を保存（MediaRecorder）。キャンバスを `captureStream` し、テンプレ再生開始後に Web Audio（MediaElementSource）で音声を乗せて録画します。hop／カットの時刻源は `video.currentTime` のままです。
 
 **縦**はテンプレと同じ 608×1080 です。中央にシャープな 16:9 本編（差し込み写真＋緑クロマを抜いた線画キャラ）を置き、上下帯はその本編フレーム全体を cover した強いブラー＋暗転です（写真だけのブラーではありません）。本編の位置はテンプレ緑帯の実測（y=312–654）に合わせます。本編内の写真はカット拍で縦 hop します。
 
@@ -39,7 +39,7 @@ pnpm deploy    # = pnpm build && wrangler deploy
 
 Worker 名は `anone`。Cloudflare Workers の静的アセットとして `dist` を配信します。`/api/*` だけ Worker が先に処理します。
 
-保存が成功したあと、写真や動画は送らず「1回作った」イベントだけをサーバーに残します。公開 UI は件数（「○回作られたよ」）だけ出します。永続化は Durable Object（バインディング `GENERATE_STATS` / クラス `GenerateStats`、SQLite）です。単なる整数カウンタにせず、サーバー付与の UTC 時刻と、ブラウザ／OS／画面の粗い属性だけを行として残します。属性の `exportMode` は録画固定（`record`）です。IP・Cookie・端末 ID は保存しません。API が落ちても保存自体は成功のままです。
+プレビューが最後まで終わったときと、保存が成功したあとに、写真や動画は送らず「1回作った」イベントだけをサーバーに残します。同じ人が何度作っても毎回数えます（IP・Cookie・端末による重複排除はしません）。プレビューを途中で止めたときは数えません。公開 UI は合計件数（「○回作られたよ」）だけ出します。永続化は Durable Object（バインディング `GENERATE_STATS` / クラス `GenerateStats`、SQLite）です。単なる整数カウンタにせず、サーバー付与の UTC 時刻と、ブラウザ／OS／画面の粗い属性だけを行として残します。属性の `action` は `preview` または `save` です。保存の `exportMode` は録画固定（`record`）です。API が落ちても保存自体は成功のままです。
 
 - `GET /api/stats` → `{ count }`
 - `POST /api/stats/generate` → イベントを足して `{ count }`
