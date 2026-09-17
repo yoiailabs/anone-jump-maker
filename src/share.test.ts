@@ -147,17 +147,17 @@ describe("X への投稿", () => {
 
   it("Android は intent URI でアプリのディープリンクを開き、無ければ Web の投稿画面へ落とす", () => {
     const url = buildXAndroidComposeUrl();
-    // 中身は iOS と同じ twitter://post?message=…（ACTION_SEND は BROWSABLE が無くて解決できない）
-    expect(url.startsWith(`intent://post?message=${encodeURIComponent(SHARE_TEXT)}#Intent;`)).toBe(
-      true,
-    );
+    const body = encodeURIComponent(SHARE_TEXT);
+    // ACTION_SEND（共有）は BROWSABLE が無くて解決できないので、開くのは twitter://post
+    expect(url.startsWith(`intent://post?message=${body}&text=${body}#Intent;`)).toBe(true);
     expect(url).toContain("scheme=twitter");
     expect(url).toContain("package=com.twitter.android");
     expect(url).not.toContain("action=android.intent.action.SEND");
     expect(url).toContain(`S.browser_fallback_url=${encodeURIComponent(buildXIntentUrl())}`);
     expect(url.endsWith(";end")).toBe(true);
-    const [data] = url.split("#Intent;");
-    expect(data.replace("intent://", "twitter://")).toBe(buildXAppComposeUrl());
+    // 本文はどのキーで読まれるか分からないので、query の 2 つと EXTRA_TEXT に同じものを載せる。
+    expect(url.match(new RegExp(body, "g"))).toHaveLength(3);
+    expect(url).toContain(`S.android.intent.extra.TEXT=${body}`);
     // 本文のハッシュタグは %23。生の # が増えると Android は最後の # から先を
     // `#Intent;` として読むので、本文も intent の指定も壊れる。
     expect(url.match(/#/g)).toHaveLength(1);

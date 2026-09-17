@@ -95,21 +95,26 @@ export function buildXAppComposeUrl(text: string = SHARE_TEXT): string {
 }
 
 /**
- * Android の intent URI。中身は iOS と同じディープリンク（ACTION_VIEW + `twitter://post?message=`）で、
+ * Android の intent URI。iOS と同じディープリンク（ACTION_VIEW + `twitter://post`）をアプリに渡し、
  * アプリが無ければブラウザが `S.browser_fallback_url` の投稿画面へ落とす。
  *
  * 共有（ACTION_SEND / text/plain）では開けない。Chrome は web ページからの intent に必ず
  * BROWSABLE を足すが、共有の受け口はふつう BROWSABLE を宣言していないので解決できず、
  * アプリが入っていてもそのままブラウザの投稿画面に落ちてしまう。
+ *
+ * 本文はどのキーで読まれるのか公開されていない。`message` だけだと Android は投稿画面を
+ * 空のまま開くので、`text` と `EXTRA_TEXT` にも同じ本文を載せる（読まれないキーは無視される）。
  */
 export function buildXAndroidComposeUrl(
   text: string = SHARE_TEXT,
   fallbackUrl: string = buildXIntentUrl(text),
 ): string {
+  const body = encodeURIComponent(text);
   return [
-    `intent://${X_APP_COMPOSE_PATH}?message=${encodeURIComponent(text)}#Intent`,
+    `intent://${X_APP_COMPOSE_PATH}?message=${body}&text=${body}#Intent`,
     `scheme=${X_APP_SCHEME}`,
     `package=${X_ANDROID_PACKAGE}`,
+    `S.android.intent.extra.TEXT=${body}`,
     `S.browser_fallback_url=${encodeURIComponent(fallbackUrl)}`,
     "end",
   ].join(";");
