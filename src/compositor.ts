@@ -101,7 +101,11 @@ export function createCompositor(): Compositor {
   const fxBCtx = fxB.getContext("2d", { alpha: false });
   if (!fxBCtx) throw new Error("Canvas2D が使えません");
 
-  const surfaces: FxSurfaces = { keyed, keyedCtx, halo, haloCtx, fxA, fxACtx, fxB, fxBCtx };
+  const blur = document.createElement("canvas");
+  const blurCtx = blur.getContext("2d", { alpha: false, willReadFrequently: true });
+  if (!blurCtx) throw new Error("Canvas2D が使えません");
+
+  const surfaces: FxSurfaces = { keyed, keyedCtx, halo, haloCtx, fxA, fxACtx, fxB, fxBCtx, blur, blurCtx };
 
   const draw = (
     video: HTMLVideoElement,
@@ -156,6 +160,8 @@ export function createCompositor(): Compositor {
       fxA.height = 0;
       fxB.width = 0;
       fxB.height = 0;
+      blur.width = 0;
+      blur.height = 0;
     },
   };
 }
@@ -169,6 +175,8 @@ type FxSurfaces = {
   fxACtx: CanvasRenderingContext2D;
   fxB: HTMLCanvasElement;
   fxBCtx: CanvasRenderingContext2D;
+  blur: HTMLCanvasElement;
+  blurCtx: CanvasRenderingContext2D;
 };
 
 function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
@@ -437,12 +445,12 @@ function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, 
 function applyPhotoFilter(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
-  { fxA, fxACtx }: FxSurfaces,
+  { blur, blurCtx }: FxSurfaces,
   filter: ImageFilter,
 ): void {
   if (!hasImageFilter(filter)) return;
-  const px = filterBlurPx(filter, Math.min(main.width, main.height));
-  applySoftwareBlur(main, mainCtx, fxA, fxACtx, px);
+  const px = filterBlurPx(filter, Math.max(main.width, main.height));
+  applySoftwareBlur(main, mainCtx, blur, blurCtx, px);
 }
 
 function paintOutput(

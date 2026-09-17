@@ -91,8 +91,8 @@ export function isImageFilter(value: string): value is ImageFilter {
  */
 export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
   none: 0,
-  "blur-weak": 0.012,
-  "blur-strong": 0.028,
+  "blur-weak": 0.022,
+  "blur-strong": 0.055,
 };
 
 export function filterBlurPx(filter: ImageFilter, shortSide: number): number {

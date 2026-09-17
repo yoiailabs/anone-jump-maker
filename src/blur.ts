@@ -9,7 +9,7 @@ export const SOFTWARE_BLUR_PASSES = 2;
 /** 半径に対する縮小率。小さいほど強いボケで、画素処理も軽い。 */
 export function softwareBlurDownscale(px: number): number {
   if (px < 1) return 1;
-  return Math.max(0.14, Math.min(0.45, 8 / px));
+  return Math.max(0.08, Math.min(0.32, 5 / px));
 }
 
 /**
@@ -53,9 +53,13 @@ export function applySoftwareBlur(
   scratchCtx.imageSmoothingEnabled = true;
   scratchCtx.drawImage(target, 0, 0, sw, sh);
   const radius = Math.max(1, Math.round(px * down));
-  const image = scratchCtx.getImageData(0, 0, sw, sh);
-  boxBlurRgba(image.data, sw, sh, radius);
-  scratchCtx.putImageData(image, 0, 0);
+  try {
+    const image = scratchCtx.getImageData(0, 0, sw, sh);
+    boxBlurRgba(image.data, sw, sh, radius);
+    scratchCtx.putImageData(image, 0, 0);
+  } catch {
+    // 汚染キャンバスなど readback できないときは縮小のまま戻し、それでもボケる
+  }
   targetCtx.setTransform(1, 0, 0, 1, 0, 0);
   targetCtx.filter = "none";
   targetCtx.globalAlpha = 1;
