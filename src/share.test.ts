@@ -51,6 +51,19 @@ describe("X への投稿", () => {
     expect(openUrl).toHaveBeenCalledWith(buildXIntentUrl());
   });
 
+  it("動画がまだ無くても投稿画面は開く", async () => {
+    const openUrl = vi.fn(() => true);
+    const share = vi.fn(async () => {});
+    const outcome = await shareJumpVideo({
+      file: null,
+      navigator: { share, canShare: () => true },
+      openUrl,
+    });
+    expect(outcome).toBe("intent");
+    expect(share).not.toHaveBeenCalled();
+    expect(openUrl).toHaveBeenCalledWith(buildXIntentUrl());
+  });
+
   it("ユーザーが共有シートを閉じたら投稿画面を重ねて開かない", async () => {
     const openUrl = vi.fn(() => true);
     const share = vi.fn(async () => {

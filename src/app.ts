@@ -102,7 +102,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       </section>
 
       <div class="share-wrap">
-        <button type="button" id="shareBtn" class="btn share" disabled>
+        <button type="button" id="shareBtn" class="btn share">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
           </svg>
@@ -229,8 +229,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     const ready = canUse();
     playBtn.disabled = recording || !ready;
     saveBtn.disabled = recording || !ready;
-    shareBtn.disabled = recording || savedVideo === null;
-    shareBtn.title = savedVideo === null ? "動画を保存すると投稿できます" : "";
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
     const active = isPreviewPlaying();
@@ -581,7 +579,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   shareBtn.addEventListener("click", async () => {
-    if (recording || savedVideo === null) return;
     const outcome = await shareJumpVideo({
       file: savedVideo,
       navigator: typeof navigator === "undefined" ? undefined : navigator,
