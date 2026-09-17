@@ -477,7 +477,7 @@ body {
 }
 
 .file-btn:hover,
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled):not([aria-disabled="true"]) {
   transform: translateY(-2px);
 }
 
@@ -512,13 +512,19 @@ body {
   color: var(--ink);
 }
 
-/* 投稿は保存の下に一段で置く（グリッドの 2 列ぶん） */
+/* 投稿は保存の下に一段で置く（グリッドの 2 列ぶん）。スマホで X アプリに渡すため <a> にしている */
 .btn.share {
   grid-column: 1 / -1;
   gap: 0.45rem;
   background: var(--ink);
   color: var(--paper);
   font-size: 0.92rem;
+  text-decoration: none;
+}
+
+.btn.share:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 .btn.share svg {
@@ -529,6 +535,7 @@ body {
 }
 
 .btn:disabled,
+.btn[aria-disabled="true"],
 .file-btn:has(input:disabled) {
   opacity: 0.38;
   cursor: not-allowed;

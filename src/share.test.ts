@@ -3,11 +3,23 @@ import {
   buildXIntentUrl,
   canShareVideoFile,
   openExternalTab,
+  openXCompose,
+  prefersAppHandoff,
   SHARE_HASHTAG,
   shareJumpVideo,
   toShareFile,
+  xComposeLinkAttrs,
   type ShareNavigatorLike,
 } from "./share.ts";
+
+const IPHONE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+const IPAD_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15";
+const ANDROID_UA =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
+const MAC_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 const videoFile = () => toShareFile(new Blob(["x"], { type: "video/mp4" }), "anone-jump-9x16.mp4");
 
@@ -91,6 +103,47 @@ describe("X への投稿", () => {
     expect(open).toHaveBeenCalledWith("https://x.com/intent/post", "_blank");
     expect(tab.opener).toBeNull();
     expect(openExternalTab("https://x.com/intent/post", { open: () => null })).toBe(false);
+  });
+
+  it("スマホ・タブレットを見分ける（iPadOS は Macintosh を名乗るのでタッチで判定）", () => {
+    expect(prefersAppHandoff({ userAgent: IPHONE_UA, maxTouchPoints: 5 })).toBe(true);
+    expect(prefersAppHandoff({ userAgent: ANDROID_UA, maxTouchPoints: 5 })).toBe(true);
+    expect(prefersAppHandoff({ userAgent: IPAD_UA, maxTouchPoints: 5 })).toBe(true);
+    expect(prefersAppHandoff({ userAgent: MAC_UA, maxTouchPoints: 0 })).toBe(false);
+    expect(prefersAppHandoff({ userAgent: IPAD_UA, maxTouchPoints: 0 })).toBe(false);
+    expect(prefersAppHandoff({ userAgent: MAC_UA, userAgentData: { mobile: true } })).toBe(true);
+    expect(prefersAppHandoff(undefined)).toBe(false);
+  });
+
+  it("スマホは投稿リンクを同じタブに出す（別タブだと X アプリに渡らない）", () => {
+    const mobile = xComposeLinkAttrs({ appHandoff: true });
+    expect(mobile.href).toBe(buildXIntentUrl());
+    expect(mobile.target).toBeNull();
+    expect(mobile.rel).toBeNull();
+  });
+
+  it("PC は投稿リンクを別タブに出して opener を渡さない", () => {
+    const desktop = xComposeLinkAttrs({ appHandoff: false, text: "#テスト" });
+    expect(desktop.href).toBe(buildXIntentUrl("#テスト"));
+    expect(desktop.target).toBe("_blank");
+    expect(desktop.rel).toBe("noopener noreferrer");
+  });
+
+  it("共有シート後の投稿画面は、スマホなら同じタブで開く", () => {
+    const url = buildXIntentUrl();
+    const navigate = vi.fn();
+    const openTab = vi.fn(() => true);
+    expect(openXCompose({ url, appHandoff: true, navigate, openTab })).toBe(true);
+    expect(navigate).toHaveBeenCalledWith(url);
+    expect(openTab).not.toHaveBeenCalled();
+  });
+
+  it("PC の投稿画面は別タブで、塞がれたら失敗を返す", () => {
+    const url = buildXIntentUrl();
+    const navigate = vi.fn();
+    expect(openXCompose({ url, appHandoff: false, navigate, openTab: () => true })).toBe(true);
+    expect(openXCompose({ url, appHandoff: false, navigate, openTab: () => false })).toBe(false);
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("保存した動画の名前と MIME をそのまま持たせる", () => {

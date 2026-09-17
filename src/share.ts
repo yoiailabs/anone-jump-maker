@@ -9,6 +9,21 @@ export type ShareNavigatorLike = {
   canShare?: (data: ShareData) => boolean;
 };
 
+/** 端末を見分けるために使う navigator の断片。 */
+export type PlatformLike = {
+  userAgent?: string;
+  userAgentData?: { mobile?: boolean };
+  maxTouchPoints?: number;
+};
+
+/** 投稿ボタン（`<a>`）に載せる属性。 */
+export type ComposeLinkAttrs = {
+  href: string;
+  /** スマホでは付けない（別タブに出すと OS がアプリへ渡してくれない）。 */
+  target: string | null;
+  rel: string | null;
+};
+
 /** files: 動画ごと共有シートへ渡せた / intent: X の投稿画面だけ開いた / cancelled: ユーザーが閉じた */
 export type ShareOutcome = "files" | "intent" | "cancelled" | "blocked";
 
@@ -32,6 +47,32 @@ export function canShareVideoFile(file: File | null, nav: ShareNavigatorLike | u
 }
 
 /**
+ * スマホ・タブレットか。
+ * `x.com/intent/post` は X アプリの universal link / app link に入っている（AASA の `/*`、除外は
+ * `/intent/sessions` だけ）ので、同じタブへのふつうのリンク遷移なら OS がアプリの投稿画面を開く。
+ * 逆に `window.open` や別タブからの遷移は iOS / Android がアプリに渡さず、ブラウザの X が出る。
+ */
+export function prefersAppHandoff(platform: PlatformLike | undefined): boolean {
+  if (!platform) return false;
+  if (platform.userAgentData?.mobile === true) return true;
+  const ua = platform.userAgent ?? "";
+  if (/Android|iPhone|iPod|iPad/i.test(ua)) return true;
+  // iPadOS の Safari は Macintosh を名乗るので、タッチの有無で見分ける。
+  return /Macintosh/i.test(ua) && (platform.maxTouchPoints ?? 0) > 1;
+}
+
+/** 投稿ボタンのリンク先。スマホは同じタブ（アプリに渡すため）、PC は別タブ。 */
+export function xComposeLinkAttrs(options: {
+  appHandoff: boolean;
+  text?: string;
+}): ComposeLinkAttrs {
+  const href = buildXIntentUrl(options.text);
+  return options.appHandoff
+    ? { href, target: null, rel: null }
+    : { href, target: "_blank", rel: "noopener noreferrer" };
+}
+
+/**
  * 保存した動画をハッシュタグ付きで X に出す。
  * 共有シートがファイルを受け取れる端末では動画ごと渡し、それ以外は投稿画面だけ開いて添付は手元でしてもらう。
  */
@@ -52,6 +93,24 @@ export async function shareJumpVideo(options: {
     }
   }
   return options.openUrl(buildXIntentUrl(text)) ? "intent" : "blocked";
+}
+
+/**
+ * 共有シートを使えなかったときに、JS から投稿画面へ出す。
+ * スマホは同じタブで遷移する。クリックから時間が経った `window.open` は塞がれるうえ、
+ * 別タブに出すと X アプリではなくブラウザの X が開いてしまう。
+ */
+export function openXCompose(options: {
+  url: string;
+  appHandoff: boolean;
+  navigate: (url: string) => void;
+  openTab: (url: string) => boolean;
+}): boolean {
+  if (options.appHandoff) {
+    options.navigate(options.url);
+    return true;
+  }
+  return options.openTab(options.url);
 }
 
 /**

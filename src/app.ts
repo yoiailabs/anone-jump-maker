@@ -7,7 +7,16 @@ import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
-import { openExternalTab, SHARE_HASHTAG, shareJumpVideo, toShareFile } from "./share.ts";
+import {
+  canShareVideoFile,
+  openExternalTab,
+  openXCompose,
+  prefersAppHandoff,
+  SHARE_HASHTAG,
+  shareJumpVideo,
+  toShareFile,
+  xComposeLinkAttrs,
+} from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -97,12 +106,12 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="actions">
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
-          <button type="button" id="shareBtn" class="btn share" disabled>
+          <a id="shareBtn" class="btn share" aria-disabled="true">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
             ${SHARE_HASHTAG} で X に投稿
-          </button>
+          </a>
         </div>
         <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
       </section>
@@ -168,7 +177,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
-  const shareBtn = must(root, "#shareBtn") as HTMLButtonElement;
+  const shareBtn = must(root, "#shareBtn") as HTMLAnchorElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
@@ -183,6 +192,13 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   stage.append(compositor.canvas);
   document.body.append(video);
+
+  const shareNavigator = typeof navigator === "undefined" ? undefined : navigator;
+  // スマホでは投稿ボタンをふつうのリンクのまま踏ませる。JS で開くと X アプリの投稿画面に渡らない。
+  const appHandoff = prefersAppHandoff(shareNavigator);
+  const composeLink = xComposeLinkAttrs({ appHandoff });
+  if (composeLink.target) shareBtn.target = composeLink.target;
+  if (composeLink.rel) shareBtn.rel = composeLink.rel;
 
   const timeline = () => timelines[mode];
 
@@ -223,12 +239,22 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
 
+  // <a> に disabled は無いので、保存前はリンクを外して踏めなくする。
+  const setShareReady = (ready: boolean) => {
+    shareBtn.setAttribute("aria-disabled", ready ? "false" : "true");
+    if (ready) {
+      shareBtn.href = composeLink.href;
+    } else {
+      shareBtn.removeAttribute("href");
+    }
+    shareBtn.title = ready ? "" : "動画を保存すると投稿できます";
+  };
+
   const refreshButtons = () => {
     const ready = canUse();
     playBtn.disabled = recording || !ready;
     saveBtn.disabled = recording || !ready;
-    shareBtn.disabled = recording || savedVideo === null;
-    shareBtn.title = savedVideo === null ? "動画を保存すると投稿できます" : "";
+    setShareReady(!recording && savedVideo !== null);
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
     const active = isPreviewPlaying();
@@ -578,22 +604,41 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
-  shareBtn.addEventListener("click", async () => {
-    if (recording || savedVideo === null) return;
-    const outcome = await shareJumpVideo({
-      file: savedVideo,
-      navigator: typeof navigator === "undefined" ? undefined : navigator,
-      openUrl: (url) => openExternalTab(url, window),
-    });
-    if (outcome === "files") {
-      setStatus(`${SHARE_HASHTAG} を付けた動画を共有先に渡しました`);
-    } else if (outcome === "intent") {
-      setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
-    } else if (outcome === "blocked") {
-      setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
-    } else {
-      setStatus("投稿をやめました");
+  shareBtn.addEventListener("click", (event) => {
+    const file = savedVideo;
+    if (recording || file === null) {
+      event.preventDefault();
+      return;
     }
+    if (!canShareVideoFile(file, shareNavigator)) {
+      // リンクの遷移をそのまま使う。ここで止めて JS から開くと、スマホでも X アプリではなく
+      // ブラウザの X が出てしまう。
+      setStatus("X の投稿画面を開きます。保存した動画を添付して投稿してください。");
+      return;
+    }
+    event.preventDefault();
+    void (async () => {
+      const outcome = await shareJumpVideo({
+        file,
+        navigator: shareNavigator,
+        openUrl: (url) =>
+          openXCompose({
+            url,
+            appHandoff,
+            navigate: (to) => window.location.assign(to),
+            openTab: (to) => openExternalTab(to, window),
+          }),
+      });
+      if (outcome === "files") {
+        setStatus(`${SHARE_HASHTAG} を付けた動画を共有先に渡しました`);
+      } else if (outcome === "intent") {
+        setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
+      } else if (outcome === "blocked") {
+        setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
+      } else {
+        setStatus("投稿をやめました");
+      }
+    })();
   });
 
   void video.load();
