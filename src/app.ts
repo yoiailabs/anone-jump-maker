@@ -42,7 +42,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       <div class="loop-wrap" aria-hidden="true">
         <picture>
           <source media="(prefers-reduced-motion: reduce)" srcset="/jump-loop-still.png" />
-          <img class="loop" src="/jump-loop.png" alt="" width="480" height="270" decoding="async" />
+          <img class="loop" src="/jump-loop.png" alt="" width="448" height="252" decoding="async" />
         </picture>
       </div>
 
