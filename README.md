@@ -20,7 +20,7 @@
 
 公式の「ナナツカゼ」「あのね」等の文字はユーザー差し込み側に足しません。
 
-写真の向きは EXIF を `createImageBitmap({ imageOrientation: "from-image" })` で直し、WebGL には ImageBitmap を直接上げません（`UNPACK_FLIP_Y_WEBGL` との二重反転を避けるため、Canvas2D に描いてからテクスチャ化します）。
+写真の向きは EXIF を `createImageBitmap({ imageOrientation: "from-image" })` で直し、WebGL には ImageBitmap を直接上げません（`UNPACK_FLIP_Y_WEBGL` との二重反転を避けるため、Canvas2D に描いてからテクスチャ化します）。読み込み時に長辺 1920 程度へ縮小し、元の巨大画素と File の ObjectURL は持ちません。サムネは別の小さいコピー、decode は最大 2 枚ずつです。写真は端末内のみです。
 
 ## 開発
 

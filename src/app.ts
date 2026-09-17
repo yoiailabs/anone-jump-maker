@@ -121,7 +121,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     thumbs.replaceChildren(
       ...photos.map((photo, index) => {
         const img = document.createElement("img");
-        img.src = photo.objectUrl;
+        img.src = photo.thumbUrl;
         img.alt = photo.name || `写真 ${index + 1}`;
         return img;
       }),
@@ -248,16 +248,25 @@ export async function boot(root: HTMLElement): Promise<void> {
     setStatus("写真を読み込み中…", "busy");
     try {
       revokePhotos(photos);
-      photos = await loadPhotos(files);
+      photos = [];
+      renderThumbs();
+      photos = await loadPhotos(files, {
+        onProgress: (current, total) => {
+          setStatus(`写真を読み込み中… ${current} / ${total}`, "busy");
+        },
+      });
       renderThumbs();
       paint();
       refreshButtons();
       setStatus(
         photos.length === 0
           ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました。足りないスロットは循環します。`,
+          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。足りないスロットは循環します。`,
       );
     } catch (error) {
+      renderThumbs();
+      paint();
+      refreshButtons();
       setStatus(error instanceof Error ? error.message : "読み込みに失敗しました", "error");
     }
   });
