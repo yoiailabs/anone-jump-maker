@@ -118,8 +118,8 @@ export async function boot(root: HTMLElement): Promise<void> {
   const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 
   const refreshButtons = () => {
-    playBtn.disabled = !canUse() || recording;
-    saveBtn.disabled = !canUse() || recording;
+    playBtn.disabled = recording || (!playing && !canUse());
+    saveBtn.disabled = recording || !canUse();
     playBtn.textContent = playing ? "停止" : "プレビュー";
     for (const input of aspectInputs) {
       input.disabled = recording;
