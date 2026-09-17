@@ -25,6 +25,8 @@ export async function boot(root: HTMLElement): Promise<void> {
   let previewCounted = false;
   let playbackBusy = false;
   let playGen = 0;
+  let lastPlayToggleAt = 0;
+  let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
 
@@ -232,6 +234,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     playGen += 1;
     playbackBusy = false;
     playing = false;
+    suppressPlayUntil = Date.now() + 350;
     haltLoop();
     video.pause();
     paint();
@@ -241,6 +244,7 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const startPlayback = async (fromStart: boolean) => {
     if (recording || playbackBusy || !canUse()) return;
+    if (!fromStart && Date.now() < suppressPlayUntil) return;
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
@@ -385,6 +389,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   modalPlayBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+    const now = Date.now();
+    if (now - lastPlayToggleAt < 350) return;
+    lastPlayToggleAt = now;
     if (isPreviewPlaying()) {
       pausePlayback();
       return;

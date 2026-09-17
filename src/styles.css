@@ -289,9 +289,12 @@ body {
   flex: 0 0 auto;
   position: relative;
   z-index: 2;
+  padding-top: 0.15rem;
 }
 
 .preview-actions .btn {
+  position: relative;
+  z-index: 3;
   text-align: center;
   line-height: 1.25;
 }
@@ -316,6 +319,7 @@ body {
   aspect-ratio: 608 / 1080;
   height: auto;
   flex: 0 0 auto;
+  pointer-events: none;
   border-radius: 1.5rem;
   overflow: hidden;
   background: var(--teal);
