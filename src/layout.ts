@@ -13,6 +13,15 @@ export const OUTPUTS = {
   landscape: { width: 1280, height: 720 },
 } as const;
 
+/**
+ * `.stage` の max-width（styles.css と揃える）。
+ * 縦 21rem / 横 26rem。クレジットの画面上の大きさはこの比で換算する。
+ */
+export const STAGE_MAX_REM = {
+  portrait: 21,
+  landscape: 26,
+} as const;
+
 /** 新テンプレ miWuv4NK9Qk / 参考 Short と同じ 608×1080。 */
 export const OUTPUT = OUTPUTS.portrait;
 
@@ -66,7 +75,8 @@ export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
 
 /**
  * 参考横（hagikaze_sami）のズーム切り。2–5 フレ（≈0.05–0.15s）。
- * 放射ズームブラー＋横ストリーク＋ RGB ずれ。長い白フラッシュは使わない。
+ * ズームアウト（寄った新写真から引く）。放射ブラー＋横ストリーク＋ RGB ずれ。
+ * 長い白フラッシュは使わない。
  */
 export const ZOOM_PRE_ROLL = 1 / 30;
 export const ZOOM_DURATION = 3 / 30;
@@ -77,6 +87,7 @@ export const ZOOM_CHROMA_FRAC = 0.016;
 export const ZOOM_WHIP_PEAK = 0.85;
 export const ZOOM_WAVE_PEAK = 0.5;
 export const ZOOM_SMEAR_PEAK = 0.62;
+/** ズームアウトの伸び／縮み幅。出ていく側は 1/(1+grow)、入ってくる側は 1+grow。 */
 export const ZOOM_GROW = 0.92;
 
 export type SwapFx = {
@@ -84,7 +95,7 @@ export type SwapFx = {
   amount: number;
   /** 白フラッシュ 0–1。カットで最大。ズームではごく弱いハイライト。 */
   flash: number;
-  /** cover 倍率（静止時 1）。 */
+  /** cover 倍率（静止時 1。ジャンプは >1、ズームアウトは <1）。 */
   punch: number;
   /** パネル幅に対する横ズレ（符号つき）。 */
   slide: number;
@@ -313,7 +324,7 @@ function slotStartAt(time: number, slots: readonly number[], lookahead: number):
 
 /**
  * カット前後の写真切替エンベロープ。先頭スロットは「切替」ではないので無効。
- * ジャンプはフラッシュ＋パンチ。ズームは短い放射ワープ（白飛びなし）。
+ * ジャンプはフラッシュ＋パンチ。ズームは短い放射ワープ（白飛びなし、ズームアウト）。
  */
 export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
   if (slots.length < 2) return SWAP_NONE;
@@ -334,7 +345,7 @@ export function swapFx(time: number, slots: readonly number[], style: SwapStyle 
     return {
       amount,
       flash: 0,
-      punch: 1 + ZOOM_PUNCH * amount,
+      punch: 1 - ZOOM_PUNCH * amount,
       slide: 0,
       chroma: amount,
       skew: 0,
@@ -369,6 +380,18 @@ export function swapSlidePx(fx: SwapFx, panelW: number): number {
 export function swapChromaPx(fx: SwapFx, panelW: number): number {
   const frac = fx.zoomBlur > 0 ? ZOOM_CHROMA_FRAC : SWAP_CHROMA_FRAC;
   return fx.chroma * frac * panelW;
+}
+
+/**
+ * 参考横（hagikaze_sami）のズームアウト。
+ * 出ていく写真は中心へ縮み、入ってくる写真は寄った状態から 1 へ引く。
+ */
+export function zoomPlateScales(fx: SwapFx): { outgoing: number; incoming: number } {
+  const blur = fx.zoomBlur;
+  return {
+    outgoing: 1 / (1 + ZOOM_GROW * blur),
+    incoming: 1 + ZOOM_GROW * blur * (1 - fx.mix),
+  };
 }
 
 function clamp01(v: number): number {

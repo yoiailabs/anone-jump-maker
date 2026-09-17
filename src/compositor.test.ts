@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { BLUR_SOURCE, PHOTO_UPLOAD_PATH, SONG_CREDIT, songCreditLayout } from "./compositor.ts";
+import { BLUR_SOURCE, PHOTO_UPLOAD_PATH, SONG_CREDIT, songCreditFontSize, songCreditLayout } from "./compositor.ts";
 import {
   CHAR_SCALE,
   JUMP_AMPLITUDE,
   LANDSCAPE_CHAR_SCALE,
   OUTPUTS,
+  STAGE_MAX_REM,
   characterDest,
   jumpOffsetPx,
   mainPanelRect,
   sharpCoverScale,
   swapFx,
   usesBlurBackdrop,
+  zoomPlateScales,
 } from "./layout.ts";
 
 describe("photo orientation", () => {
@@ -56,6 +58,10 @@ describe("backdrop hop", () => {
     expect(zoomCut.zoomBlur).toBeGreaterThan(0.5);
     expect(zoomCut.whip).toBeGreaterThan(0);
     expect(zoomCut.smear).toBeGreaterThan(0);
+    expect(zoomCut.punch).toBeLessThan(1);
+    const plates = zoomPlateScales(zoomCut);
+    expect(plates.outgoing).toBeLessThan(1);
+    expect(plates.incoming).toBeGreaterThan(1);
   });
 
   it("flashes and punches the photo on a cut instead of swapping it raw", () => {
@@ -83,8 +89,14 @@ describe("song credit", () => {
     const { width: w, height: h } = OUTPUTS.portrait;
     const panel = mainPanelRect(w, h, "portrait");
     const credit = songCreditLayout(w, h, "portrait");
-    expect(credit.fontSize).toBeGreaterThanOrEqual(26);
-    expect(credit.fontSize).toBeLessThanOrEqual(40);
+    const landscape = songCreditLayout(OUTPUTS.landscape.width, OUTPUTS.landscape.height, "landscape");
+    expect(credit.fontSize).toBe(songCreditFontSize("portrait"));
+    expect(credit.fontSize).toBeLessThan(landscape.fontSize);
+    expect(credit.fontSize).toBeGreaterThanOrEqual(12);
+    expect(credit.fontSize).toBeLessThanOrEqual(28);
+    const portraitVisual = credit.fontSize * (STAGE_MAX_REM.portrait / w);
+    const landscapeVisual = landscape.fontSize * (STAGE_MAX_REM.landscape / OUTPUTS.landscape.width);
+    expect(portraitVisual).toBeCloseTo(landscapeVisual, 1);
     expect(credit.x).toBe(w - credit.pad);
     expect(credit.y).toBe(panel.y + panel.h + credit.pad);
     expect(credit.pad).toBeGreaterThanOrEqual(8);
