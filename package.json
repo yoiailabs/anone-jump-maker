@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "check": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json",
     "test": "vitest run",
-    "deploy": "pnpm build && wrangler deploy"
+    "deploy": "pnpm build && wrangler deploy",
+    "deploy:stats": "wrangler deploy -c worker/stats/wrangler.toml",
+    "dev:worker": "pnpm build && wrangler dev -c wrangler.toml -c worker/stats/wrangler.toml --env dev"
   },
   "devDependencies": {
     "typescript": "^5.9.2",

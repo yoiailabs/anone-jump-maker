@@ -27,6 +27,7 @@ interface DurableObjectNamespace {
 }
 
 interface WorkerEnv {
-  GENERATE_STATS: DurableObjectNamespace;
+  /** `anone-stats` Worker の GenerateStats（script_name バインディング）。未配備の環境では無い。 */
+  GENERATE_STATS?: DurableObjectNamespace;
   ASSETS?: { fetch(input: Request, init?: RequestInit): Promise<Response> };
 }

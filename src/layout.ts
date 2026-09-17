@@ -37,33 +37,17 @@ export const TEMPLATE_BAND_H = 342;
 export const MAIN_PANEL_Y_FRAC = TEMPLATE_BAND_Y / OUTPUT.height;
 
 /**
- * 参考 Short（30fps・608×1080）の本編 16:9 写真 hop。
- * キャラを塗って潰した写真に ECC 並進＋特徴点をかけ、同一写真ショット末（静止）基準で測った。
- * きれいな区間のピークはおおよそ 30–44px、中央値 ≈ 34px。予備の 7–15px はカット混入。
+ * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
+ * スロット時刻 S（cuts.json）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
+ * ジャンプは S に新写真、ズームは S+1 に新写真（S はブラー頂点）。
  */
-export const JUMP_AMPLITUDE = 34 / OUTPUT.height;
-
-/** 1 ジャンプの長さ（秒）。実測 13 フレ @30fps。スロット間隔より長くはしない。 */
-export const JUMP_DURATION = 13 / 30;
-
-/** 頂点の位置（duration 比）。実測は 6–7 フレ目 ≈ 半分。短い滞空は正弦ローブで出す。 */
-export const JUMP_PEAK_U = 0.5;
+export const TEMPLATE_FPS = 30;
 
 /**
- * 参考横動画（cola_rumiren0 / anim-ref.mp4、30fps）の切替実測。
- * カットの 1 フレ前から白フラッシュが立ち上がり、切替フレームはほぼ白飛び
- * （例: t=1.967 で L≈202・std≈2.6）。新写真はフラッシュの中で現れ、
- * 続く 2–3 フレでパンチズーム＋横ズレ＋弱い色分れが落ち、hop に続く。
+ * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
+ * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
  */
-export const SWAP_PRE_ROLL = 1 / 30;
-export const SWAP_DURATION = 0.1;
-export const SWAP_FLASH_PEAK = 0.92;
-export const SWAP_PUNCH = 0.18;
-export const SWAP_SLIDE_FRAC = 0.016;
-export const SWAP_CHROMA_FRAC = 0.007;
-export const SWAP_SKEW = 0.04;
-
-/** 横専用。参考 Short（hagikaze_sami）は hop なし・短い放射ズームワープ。 */
 export type SwapStyle = "jump" | "zoom";
 
 export const SWAP_STYLES = ["jump", "zoom"] as const;
@@ -73,78 +57,146 @@ export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   zoom: "ズーム",
 };
 
-/**
- * 参考横（hagikaze_sami / 30fps）のズーム切り。2–5 フレ（≈0.05–0.15s）。
- * ズームアウト（寄った新写真から引く）。放射ブラー＋横ストリーク＋ RGB ずれ。
- * 切替の瞬間は白いハイライト（ジャンプのほぼ全白 L≈202 ではない）。
- * 実測: ピークは 1 フレ、平均 L は +40–80、白画素は一部（例 t=1.000 で L≈145、
- * t=3.933 で L≈191・白≥240 が 42%）。1 フレ前から立ち、切替で最大、翌フレで消える。
- */
-export const ZOOM_PRE_ROLL = 1 / 30;
-export const ZOOM_DURATION = 3 / 30;
-export const ZOOM_PUNCH = 0.14;
-/** 白オーバーレイ α。参考の L 上昇から 0.31–0.45。ジャンプの 0.92 より弱い。 */
-export const ZOOM_FLASH_PEAK = 0.44;
-/** 切替後にハイライトを残す尺。参考は翌フレで消える。 */
-export const ZOOM_FLASH_HOLD = 1 / 30;
-export const ZOOM_BLUR_PEAK = 1;
-export const ZOOM_CHROMA_FRAC = 0.016;
-export const ZOOM_WHIP_PEAK = 0.85;
-export const ZOOM_WAVE_PEAK = 0.5;
-export const ZOOM_SMEAR_PEAK = 0.62;
-/** ズームアウトの伸び／縮み幅。出ていく側は 1/(1+grow)、入ってくる側は 1+grow。 */
-export const ZOOM_GROW = 0.92;
-
-export type SwapFx = {
-  /** 0–1。窓の外は 0。 */
-  amount: number;
-  /** 白フラッシュ 0–1。カットで最大。ズームは短いハイライト（ジャンプより弱い）。 */
-  flash: number;
-  /** cover 倍率（静止時 1。ジャンプは >1、ズームアウトは <1）。 */
-  punch: number;
-  /** パネル幅に対する横ズレ（符号つき）。 */
-  slide: number;
-  /** 色分れの強さ 0–1。 */
-  chroma: number;
-  /** せん断。 */
-  skew: number;
-  /** 放射ズームブラー 0–1。ジャンプでは 0。 */
-  zoomBlur: number;
-  /** 0=出ていく写真、1=入ってくる写真。 */
-  mix: number;
-  /** 横方向のモーションストリーク 0–1。 */
-  whip: number;
-  /** 波打ち／リキッド歪み 0–1。 */
-  wave: number;
-  /** 切替瞬間のキャラスミア 0–1。 */
-  smear: number;
-  /** この窓が向かうスロット。無効時は 0。 */
-  cutIndex: number;
-};
-
-const SWAP_NONE: SwapFx = {
-  amount: 0,
-  flash: 0,
-  punch: 1,
-  slide: 0,
-  chroma: 0,
-  skew: 0,
-  zoomBlur: 0,
-  mix: 1,
-  whip: 0,
-  wave: 0,
-  smear: 0,
-  cutIndex: 0,
+export const ASPECT_LABELS: Record<AspectMode, string> = {
+  portrait: "縦",
+  landscape: "横",
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
   return value === "jump" || value === "zoom";
 }
 
-/** 縦は常にジャンプ。横だけ UI の選択を使う。 */
-export function effectiveSwapStyle(mode: AspectMode, style: SwapStyle = "jump"): SwapStyle {
-  return mode === "landscape" ? style : "jump";
-}
+/*
+ * ───────────── ジャンプ系（参考 Short o1ROhNU0UNw、30fps）─────────────
+ * 本編 16:9 の写真を SIFT + RANSAC で同一ショットの静止フレーム（カット +7）に合わせて実測。
+ * 8 カットでほぼ同じ値が出た（px は参考 360×640 の帯 203px 高に対する値）。
+ *
+ *   k(カットからのフレーム)  0     1     2     3     4     5     6     7 |  8    9    10   11   12   13   14
+ *   dy(px, +が下)           35.4  24.4  15.9  9.7   5.1   2.1   0.5   0  | 0.3  1.5  4.9  8.6  13.7 19.7 27.0
+ *   scale                   .947  .961  .972  .981  .989  .995  .998  1  | .999 .997 .995 .988 .981 .972 .960
+ *
+ * つまり新写真は「下にずれて少し小さい」状態で現れ、7 フレで元の位置へ跳ね戻り、
+ * そこから次のカット（15 フレ＝1 拍）へ向かって二次曲線で再び沈む。1 クリップ＝1 サイクルで、
+ * スロットが 14 フレなら沈み切る前に次のカットが来る。
+ */
+
+/** 1 サイクル（1 拍）のフレーム数。 */
+export const JUMP_CYCLE_FRAMES = 15;
+
+/** カットから元の位置へ戻るまでのフレーム数。 */
+export const JUMP_RISE_FRAMES = 7;
+
+/** カット瞬間の下ずれ（本編パネル高さに対する比）。35.4 / 202.7。 */
+export const JUMP_DROP_FRAC = 0.175;
+
+/** カット瞬間の縮み。1 − 0.947。 */
+export const JUMP_SHRINK = 0.053;
+
+/** 戻りのイージング指数。位置は (1−k/7)^2.3、倍率は (1−k/7)^2 が実測に乗る。 */
+export const JUMP_RISE_POW = 2.3;
+export const JUMP_RISE_SCALE_POW = 2;
+
+/**
+ * カット直後の白フラッシュ。カットの前には無い（−3..−1 フレは輝度マッピングが恒等）。
+ * 写真層のみ（キャラの黒線はほぼ黒のまま）。位置合わせした画素マッピングは
+ * k=0: 45→150 / 75→175 / 105→200 / 135→220、k=1: 約 +45、k=2: 約 +15、k=3: 0。
+ * 加算 0.30 ＋スクリーン 0.20 を (1−k/3)^2 で減衰させると乗る。
+ */
+export const JUMP_FLASH_FRAMES = 3;
+export const JUMP_FLASH_ADD = 0.3;
+export const JUMP_FLASH_SCREEN = 0.2;
+/** キャラを含む全面にごく薄く乗る白（黒線が 0→約 14 に上がる分）。 */
+export const JUMP_FLASH_GLOBAL = 0.06;
+
+/**
+ * 参考ではカット瞬間（下ずれ 17.5%・縮み 5.3%）でも本編上端まで写真が詰まっている。
+ * 写真を大きめに cover し、静止位置を少し上に寄せて、沈んでも隙間が出ないようにする。
+ *   上余白（カット時）= (0.947×1.32 − 1)/2 + 0.07 − 0.175 ≈ 0.02 ≥ 0
+ *   下余白（静止時）  = (1.32 − 1)/2 − 0.07 = 0.09 ≥ 0
+ */
+export const JUMP_COVER_SCALE = 1.32;
+export const JUMP_REST_SHIFT_FRAC = -0.07;
+
+/*
+ * ───────────── ズーム系（参考投稿 hagikaze_sami、1280×720・30fps）─────────────
+ * τ = テンプレのポーズ切替フレーム S からのフレーム数。写真の倍率（キャラは拡縮されない）:
+ *
+ *   τ      −2     −1     0    | +1     +2     +3    +4
+ *   scale  .988   .947   .866 | 1.115  1.025  1.004  1
+ *
+ * 出ていく写真は S まで表示され（S でポーズは新、写真は旧）、新写真は S+1 から。
+ * 全面（写真＋キャラ）に横方向のモーションブラー・RGB 横ずれ・明度リフトが乗る:
+ *   横ブラー長   −1: ≈10px  0: ≈35px  +1: ≈18px      （幅 1280 比 0.008 / 0.027 / 0.014）
+ *   RGB ずれ     −1: ≈2px   0: ≈8px   +1: ≈5px       （R が右・B が左）
+ *   明度         −1: +12    0: 中間調 +90（std 保持＝加算）  +1: 0.7L+30（灰 100 へ 25%）
+ *   波打ち       0 で数 px（幅の 0.4% 程度）。
+ */
+
+/** 縮みは S−3 から S へ。1 − 0.134·((τ+3)/3)^2.25 が −2/−1/0 の実測 .988/.947/.866 に乗る。 */
+export const ZOOM_OUT_FRAMES = 3;
+export const ZOOM_OUT_SHRINK = 0.134;
+export const ZOOM_OUT_POW = 2.25;
+
+/** 新写真は S+1 で 1.115、以後 1 フレごとに (s−1) が 0.2 倍。 */
+export const ZOOM_IN_START = 0.115;
+export const ZOOM_IN_DECAY = 0.2;
+export const ZOOM_SWAP_DELAY_FRAMES = 1;
+
+/** τ をキーにした全面 FX。間は線形補間、外は 0。値はパネル幅に対する比か 0–1。 */
+export type ZoomKey = { blur: number; rgb: number; lift: number; haze: number; wave: number };
+
+export const ZOOM_KEYS: ReadonlyArray<readonly [tau: number, key: ZoomKey]> = [
+  [-2, { blur: 0, rgb: 0, lift: 0, haze: 0, wave: 0 }],
+  [-1, { blur: 0.008, rgb: 0.002, lift: 0.05, haze: 0, wave: 0.0015 }],
+  [0, { blur: 0.027, rgb: 0.0065, lift: 0.35, haze: 0, wave: 0.004 }],
+  [1, { blur: 0.014, rgb: 0.004, lift: 0, haze: 0.25, wave: 0.0015 }],
+  [2, { blur: 0.002, rgb: 0.0005, lift: 0, haze: 0.08, wave: 0 }],
+  [3, { blur: 0, rgb: 0, lift: 0, haze: 0, wave: 0 }],
+];
+
+/** 縮んだ出ていく写真の後ろに敷く、同じ写真の cover ぼかし（黒帯を見せない）。幅比。 */
+export const ZOOM_BACKDROP_BLUR_FRAC = 0.02;
+
+export type SwapFx = {
+  /** 表示する写真のスロット。ズームは S+1 まで前の写真が残る。 */
+  plateSlot: number;
+  /** 写真の倍率（基準 cover に対して。静止時 1）。 */
+  scale: number;
+  /** 写真の縦ずれ（パネル高さ比、+ が下）。 */
+  dy: number;
+  /** 写真層に乗せる白の加算量 0–1（ジャンプ）。 */
+  flashAdd: number;
+  /** 写真層に乗せる白のスクリーン量 0–1（ジャンプ）。 */
+  flashScreen: number;
+  /** 全面に乗せる薄い白 0–1（ジャンプ）。 */
+  flashGlobal: number;
+  /** 全面の横モーションブラー長（パネル幅比）。 */
+  blur: number;
+  /** 全面の RGB 横ずれ（パネル幅比、R が +・B が −）。 */
+  rgb: number;
+  /** 全面の白加算 0–1（ズーム頂点）。 */
+  lift: number;
+  /** 全面の灰かぶり 0–1（ズーム直後）。 */
+  haze: number;
+  /** 行ごとの横波打ち振幅（パネル幅比）。 */
+  wave: number;
+  /** 縮んだ写真の後ろに cover ぼかしを敷くか。 */
+  backdrop: boolean;
+  /** この窓が属するカット（スロット境界）。先頭スロット内で切替が無ければ 0。 */
+  cutIndex: number;
+};
+
+const NO_FX = {
+  flashAdd: 0,
+  flashScreen: 0,
+  flashGlobal: 0,
+  blur: 0,
+  rgb: 0,
+  lift: 0,
+  haze: 0,
+  wave: 0,
+  backdrop: false,
+} as const;
 
 /**
  * 本編 16:9 をキャンバスへ cover する倍率。
@@ -245,10 +297,14 @@ export function templateBandRect(videoW: number, videoH: number, mode: AspectMod
   };
 }
 
-/** 本編パネル内の写真が hop しても端が見えないだけの cover 倍率。 */
-export function sharpCoverScale(canvasH: number, panelH: number): number {
-  const hop = canvasH * JUMP_AMPLITUDE;
-  return 1 + (2 * hop) / Math.max(panelH, 1);
+/** 写真を本編パネルへ cover する基準倍率。ジャンプは沈んでも端が見えないよう大きめ、ズームは等倍。 */
+export function plateCoverScale(style: SwapStyle): number {
+  return style === "jump" ? JUMP_COVER_SCALE : 1;
+}
+
+/** 静止位置の縦ずれ（パネル高さ比）。ジャンプは上寄せ、ズームは中央。 */
+export function plateRestShiftFrac(style: SwapStyle): number {
+  return style === "jump" ? JUMP_REST_SHIFT_FRAC : 0;
 }
 
 export function coverDest(
@@ -274,50 +330,16 @@ export function rectToUvBottomLeft(rect: Rect, canvasW: number, canvasH: number)
   return [rect.x / canvasW, 1 - (rect.y + rect.h) / canvasH, rect.w / canvasW, rect.h / canvasH];
 }
 
-/**
- * カット開始から hop 曲線。0 = 静止、1 = 頂点。
- * `cuts.json` のスロット＝テンプレのポーズ切替に同期する。
- */
-export function jumpAmount(time: number, slots: readonly number[]): number {
-  if (slots.length === 0) return 0;
-  let start = slots[0]!;
-  let next = slots[1] ?? start + JUMP_DURATION;
-  for (let i = 1; i < slots.length; i += 1) {
-    const t = slots[i]!;
-    if (time + 1e-4 >= t) {
-      start = t;
-      next = slots[i + 1] ?? start + JUMP_DURATION;
-    } else {
-      break;
-    }
-  }
-  const duration = Math.min(JUMP_DURATION, Math.max(0.2, next - start));
-  const u = (time - start) / duration;
-  if (u <= 0 || u >= 1) return 0;
-  // 実測エンベロープは対称に近い（6–7 フレで頂点、2 フレほど丸い滞空、6–7 フレで着地）。
-  // 旧 0.34/0.66 の sin→cos は立ち上がりが約 4 フレと速すぎた。
-  return Math.sin(Math.PI * u);
-}
+/** フレーム境界の比較に使う許容（フレーム単位）。時刻の丸めで 0.99999 になった 1 フレを 1 とみなす。 */
+const FRAME_EPS = 1e-6;
 
-/** 上方向が負（Canvas2D）。本編 16:9 内の写真 hop に使う。ズーム切りでは 0。 */
-export function jumpOffsetPx(
-  time: number,
-  slots: readonly number[],
-  canvasHeight: number,
-  style: SwapStyle = "jump",
-): number {
-  if (style === "zoom") return 0;
-  const amount = jumpAmount(time, slots);
-  if (amount === 0) return 0;
-  return -amount * canvasHeight * JUMP_AMPLITUDE;
-}
-
-function slotStartAt(time: number, slots: readonly number[], lookahead: number): { start: number; index: number } {
-  let start = slots[0]!;
+/** `time` が属するスロット（先頭は 0）とその開始時刻。`slotForTime` と同じ 1e-4 の許容。 */
+function slotAt(time: number, slots: readonly number[]): { start: number; index: number } {
+  let start = slots[0] ?? 0;
   let index = 0;
   for (let i = 1; i < slots.length; i += 1) {
     const t = slots[i]!;
-    if (time + lookahead + 1e-4 >= t) {
+    if (time + 1e-4 >= t) {
       start = t;
       index = i;
     } else {
@@ -328,92 +350,158 @@ function slotStartAt(time: number, slots: readonly number[], lookahead: number):
 }
 
 /**
- * カット前後の写真切替エンベロープ。先頭スロットは「切替」ではないので無効。
- * ジャンプはフラッシュ＋パンチ。ズームは短い放射ワープ＋ハイライト（ズームアウト）。
+ * ジャンプ系の写真の位置と倍率。k = カットからのフレーム（小数可）。
+ * 0..7 で跳ね戻り、7..15 で二次曲線で沈む。15 以降（長いスロット）は沈み切った位置で待つ。
+ * 先頭スロットもテンプレ開始をカットとして同じサイクルを踏む（参考 Short は 0 秒からこの動き）。
  */
-export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
-  if (slots.length < 2) return SWAP_NONE;
-  const preRoll = style === "zoom" ? ZOOM_PRE_ROLL : SWAP_PRE_ROLL;
-  const duration = style === "zoom" ? ZOOM_DURATION : SWAP_DURATION;
-  const { start, index } = slotStartAt(time, slots, preRoll);
-  if (index === 0) return SWAP_NONE;
-  const span = preRoll + duration;
-  const tau = time - (start - preRoll);
-  if (tau < 0 || tau >= span) return SWAP_NONE;
-  const u = tau / span;
-  const uPeak = preRoll / span;
-  const flashEnv = u <= uPeak ? u / Math.max(uPeak, 1e-6) : 1 - (u - uPeak) / Math.max(1 - uPeak, 1e-6);
-  const env = clamp01(flashEnv);
-  const amount = env ** 0.65;
-  const dir = index % 2 === 0 ? 1 : -1;
-  if (style === "zoom") {
-    const highlight = triangleEnv(tau, preRoll, ZOOM_FLASH_HOLD);
+export function jumpCycle(k: number): { scale: number; dy: number } {
+  if (k < 0) return { scale: 1, dy: 0 };
+  if (k < JUMP_RISE_FRAMES - FRAME_EPS) {
+    const r = 1 - k / JUMP_RISE_FRAMES;
     return {
-      amount,
-      flash: highlight ** 0.85 * ZOOM_FLASH_PEAK,
-      punch: 1 - ZOOM_PUNCH * amount,
-      slide: 0,
-      chroma: amount,
-      skew: 0,
-      zoomBlur: env ** 0.4 * ZOOM_BLUR_PEAK,
-      mix: smoothstep(uPeak * 0.2, 0.78, u),
-      whip: env ** 0.45 * ZOOM_WHIP_PEAK,
-      wave: env ** 0.75 * ZOOM_WAVE_PEAK,
-      smear: env ** 0.55 * ZOOM_SMEAR_PEAK,
-      cutIndex: index,
+      scale: 1 - JUMP_SHRINK * r ** JUMP_RISE_SCALE_POW,
+      dy: JUMP_DROP_FRAC * r ** JUMP_RISE_POW,
     };
   }
+  const v = clamp01((k - JUMP_RISE_FRAMES) / (JUMP_CYCLE_FRAMES - JUMP_RISE_FRAMES));
+  if (v < FRAME_EPS) return { scale: 1, dy: 0 };
   return {
-    amount,
-    flash: env ** 0.85 * SWAP_FLASH_PEAK,
-    punch: 1 + SWAP_PUNCH * amount,
-    slide: dir * SWAP_SLIDE_FRAC * amount,
-    chroma: amount * amount,
-    skew: dir * SWAP_SKEW * amount,
-    zoomBlur: 0,
-    mix: 1,
-    whip: 0,
-    wave: 0,
-    smear: 0,
-    cutIndex: index,
+    scale: 1 - JUMP_SHRINK * v * v,
+    dy: JUMP_DROP_FRAC * v * v,
   };
 }
 
-export function swapSlidePx(fx: SwapFx, panelW: number): number {
-  return fx.slide * panelW;
+/** ジャンプ系のフラッシュ包絡。k=0 で 1、(1−k/3)^2 で 3 フレ後に 0。 */
+export function jumpFlashEnvelope(k: number): number {
+  if (k < 0 || k >= JUMP_FLASH_FRAMES - FRAME_EPS) return 0;
+  const r = 1 - k / JUMP_FLASH_FRAMES;
+  return r * r;
 }
 
-export function swapChromaPx(fx: SwapFx, panelW: number): number {
-  const frac = fx.zoomBlur > 0 ? ZOOM_CHROMA_FRAC : SWAP_CHROMA_FRAC;
-  return fx.chroma * frac * panelW;
+/** ズーム系の出ていく写真の倍率。τ = S からのフレーム（−3..0 で縮む、0..1 は縮み切った値で待つ）。 */
+export function zoomOutScale(tau: number): number {
+  if (tau <= -ZOOM_OUT_FRAMES) return 1;
+  const u = clamp01((tau + ZOOM_OUT_FRAMES) / ZOOM_OUT_FRAMES);
+  return 1 - ZOOM_OUT_SHRINK * u ** ZOOM_OUT_POW;
+}
+
+/** ズーム系の入ってくる写真の倍率。τ=1 で 1.115、以後 1 フレごとに 0.2 倍で 1 へ。 */
+export function zoomInScale(tau: number): number {
+  if (tau < ZOOM_SWAP_DELAY_FRAMES) return 1 + ZOOM_IN_START;
+  const grow = ZOOM_IN_START * ZOOM_IN_DECAY ** (tau - ZOOM_SWAP_DELAY_FRAMES);
+  return grow < 1e-4 ? 1 : 1 + grow;
+}
+
+/** ZOOM_KEYS を τ で線形補間。範囲外は 0。 */
+export function zoomKeyAt(tau: number): ZoomKey {
+  const zero: ZoomKey = { blur: 0, rgb: 0, lift: 0, haze: 0, wave: 0 };
+  const first = ZOOM_KEYS[0]!;
+  const last = ZOOM_KEYS[ZOOM_KEYS.length - 1]!;
+  if (tau <= first[0] || tau >= last[0]) return zero;
+  for (let i = 1; i < ZOOM_KEYS.length; i += 1) {
+    const [t0, a] = ZOOM_KEYS[i - 1]!;
+    const [t1, b] = ZOOM_KEYS[i]!;
+    if (tau <= t1) {
+      const u = (tau - t0) / Math.max(t1 - t0, 1e-6);
+      return {
+        blur: a.blur + (b.blur - a.blur) * u,
+        rgb: a.rgb + (b.rgb - a.rgb) * u,
+        lift: a.lift + (b.lift - a.lift) * u,
+        haze: a.haze + (b.haze - a.haze) * u,
+        wave: a.wave + (b.wave - a.wave) * u,
+      };
+    }
+  }
+  return zero;
 }
 
 /**
- * 参考横（hagikaze_sami）のズームアウト。
- * 出ていく写真は中心へ縮み、入ってくる写真は寄った状態から 1 へ引く。
+ * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
+ * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
+ * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
+ *   前後 2〜3 フレは全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
  */
-export function zoomPlateScales(fx: SwapFx): { outgoing: number; incoming: number } {
-  const blur = fx.zoomBlur;
-  return {
-    outgoing: 1 / (1 + ZOOM_GROW * blur),
-    incoming: 1 + ZOOM_GROW * blur * (1 - fx.mix),
-  };
+export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
+  if (slots.length === 0) {
+    return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
+  }
+  const { start, index } = slotAt(time, slots);
+  const k = (time - start) * TEMPLATE_FPS;
+
+  if (style === "jump") {
+    // 参考 Short は 0 秒の先頭スロットも同じサイクル＋フラッシュで始まる。
+    const motion = jumpCycle(k);
+    const env = jumpFlashEnvelope(k);
+    return {
+      ...NO_FX,
+      plateSlot: index,
+      scale: motion.scale,
+      dy: motion.dy,
+      flashAdd: JUMP_FLASH_ADD * env,
+      flashScreen: JUMP_FLASH_SCREEN * env,
+      flashGlobal: JUMP_FLASH_GLOBAL * env,
+      cutIndex: index,
+    };
+  }
+
+  // zoom: 直前のカット S=start に対して τ=k、次のカットに対して τ=k−len。
+  const next = slots[index + 1];
+  const untilNext = next === undefined ? Number.POSITIVE_INFINITY : (next - time) * TEMPLATE_FPS;
+  if (index > 0 && k < ZOOM_SWAP_DELAY_FRAMES - FRAME_EPS) {
+    // S..S+1: 前の写真が縮み切ったまま残る（ポーズだけ新）。
+    const key = zoomKeyAt(k);
+    return {
+      ...key,
+      plateSlot: index - 1,
+      scale: zoomOutScale(0),
+      dy: 0,
+      flashAdd: 0,
+      flashScreen: 0,
+      flashGlobal: 0,
+      backdrop: true,
+      cutIndex: index,
+    };
+  }
+  if (next !== undefined && untilNext <= ZOOM_OUT_FRAMES + FRAME_EPS) {
+    // 次のカットへ向かって縮む。
+    const tau = -untilNext;
+    const key = zoomKeyAt(tau);
+    const scale = zoomOutScale(tau);
+    return {
+      ...key,
+      plateSlot: index,
+      scale,
+      dy: 0,
+      flashAdd: 0,
+      flashScreen: 0,
+      flashGlobal: 0,
+      backdrop: scale < 0.999,
+      cutIndex: index + 1,
+    };
+  }
+  if (index > 0) {
+    // S+1 以降: 新写真が寄りから引く。
+    const key = zoomKeyAt(k);
+    return {
+      ...key,
+      plateSlot: index,
+      scale: zoomInScale(k),
+      dy: 0,
+      flashAdd: 0,
+      flashScreen: 0,
+      flashGlobal: 0,
+      backdrop: false,
+      cutIndex: index,
+    };
+  }
+  return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
 }
 
-function triangleEnv(tau: number, preRoll: number, hold: number): number {
-  const span = preRoll + hold;
-  if (tau < 0 || tau >= span) return 0;
-  const u = tau / span;
-  const uPeak = preRoll / Math.max(span, 1e-6);
-  const rising = u <= uPeak ? u / Math.max(uPeak, 1e-6) : 1 - (u - uPeak) / Math.max(1 - uPeak, 1e-6);
-  return clamp01(rising);
+/** 切替 FX が何か描画に影響するか（全面 FX の作業キャンバスを省くため）。 */
+export function hasFrameFx(fx: SwapFx): boolean {
+  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
 }
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
-}
-
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = clamp01((x - edge0) / Math.max(edge1 - edge0, 1e-6));
-  return t * t * (3 - 2 * t);
 }

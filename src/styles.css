@@ -274,6 +274,14 @@ body {
   color: var(--mute);
 }
 
+/* 縦 × ジャンプ のように、いま選んでいる 2×2 の組み合わせ */
+.mode-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--mute);
+  letter-spacing: 0.04em;
+}
+
 .file-btn,
 .btn {
   display: inline-flex;

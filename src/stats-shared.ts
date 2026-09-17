@@ -100,6 +100,33 @@ export function shouldCountPreview(input: {
   return input.event === "start" && !input.recording && !input.countedThisPlayback;
 }
 
+/**
+ * 本番の件数を持つ Durable Object の名前。
+ * Preview URL（`<alias>-anone.<sub>.workers.dev`）からのアクセスはホスト別の別オブジェクトに分けて、
+ * 本番の「○回作られたよ」を汚さない。
+ */
+export const STATS_NAME = "anone";
+
+/** 本番として数えるホスト（カスタムドメイン）。ローカル開発（wrangler dev）も本番名を使う。 */
+export const PRODUCTION_HOSTS: ReadonlySet<string> = new Set(["anone.yoiailabs.com"]);
+
+export function isLoopbackHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]" || hostname.endsWith(".localhost")
+  );
+}
+
+/**
+ * リクエストのホストから、使う Durable Object の名前を決める。
+ * - 本番ドメインとローカル開発 → `anone`（本番の件数）
+ * - それ以外（Preview URL、素の workers.dev）→ `preview:<host>`（ホストごとに独立した件数）
+ */
+export function statsObjectName(hostname: string): string {
+  const host = hostname.trim().toLowerCase();
+  if (PRODUCTION_HOSTS.has(host) || isLoopbackHost(host)) return STATS_NAME;
+  return `preview:${host}`;
+}
+
 export function parseStatsCount(payload: unknown): number | null {
   if (!isRecord(payload)) return null;
   const count = payload.count;

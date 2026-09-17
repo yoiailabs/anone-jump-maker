@@ -1,6 +1,7 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
+import { describeMode, describePhotoCount, exportFileName, formatModeLabel } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
@@ -59,18 +60,19 @@ export async function boot(root: HTMLElement): Promise<void> {
             </label>
           </div>
         </fieldset>
-        <fieldset class="aspect-field" id="swapField" hidden>
-          <legend>切替エフェクト</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="切替エフェクト">
+        <fieldset class="aspect-field" id="swapField">
+          <legend>写真の切替</legend>
+          <div class="aspect-toggle" role="radiogroup" aria-label="写真の切替">
             <label>
               <input type="radio" name="swap" value="jump" checked />
-              <span>ジャンプ</span>
+              <span>ジャンプ<small>沈んで跳ねる＋白フラッシュ</small></span>
             </label>
             <label>
               <input type="radio" name="swap" value="zoom" />
-              <span>ズーム</span>
+              <span>ズーム<small>横ブレ＋RGB ずれ</small></span>
             </label>
           </div>
+          <p class="mode-summary" id="modeSummary" aria-live="polite"></p>
         </fieldset>
         <label class="file-btn">
           <input id="picker" type="file" accept="image/*" multiple />
@@ -81,7 +83,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
         </div>
-        <p class="status" id="status" data-kind="idle">何枚でも。足りないカットはくり返します。</p>
+        <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
       </section>
 
       <footer class="notes">
@@ -99,7 +101,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
-  const swapField = must(root, "#swapField");
+  const modeSummary = must(root, "#modeSummary");
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
 
   stage.append(compositor.canvas);
@@ -114,6 +116,12 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const setMadeCount = (count: number | null) => {
     madeCount.textContent = formatCountLabel(count);
+  };
+
+  const modeLabel = () => formatModeLabel(mode, swapStyle);
+
+  const renderModeSummary = () => {
+    modeSummary.textContent = `いま: ${modeLabel()}`;
   };
 
   const renderThumbs = () => {
@@ -143,11 +151,11 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   const paint = (time?: number) => {
-    const slots = timeline().slots;
-    const slot = compositor.draw(video, photos, slots, time, swapStyle);
+    const cuts = timeline();
+    const slot = compositor.draw(video, photos, cuts, time, swapStyle);
     if (slot !== lastSlot) {
       lastSlot = slot;
-      slotMeter.textContent = `スロット ${slot + 1} / ${slots.length}`;
+      slotMeter.textContent = `スロット ${slot + 1} / ${cuts.slots.length}`;
     }
   };
 
@@ -199,14 +207,8 @@ export async function boot(root: HTMLElement): Promise<void> {
     slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
     video.src = TEMPLATES[mode].video;
     video.load();
-    swapField.hidden = mode !== "landscape";
-    setStatus(
-      mode === "portrait"
-        ? "たて（9:16）。中央が本編、上下はブラー。"
-        : swapStyle === "zoom"
-          ? "よこ（16:9）。切替はズーム。"
-          : "よこ（16:9）。切替はジャンプ。",
-    );
+    renderModeSummary();
+    setStatus(describeMode(mode, swapStyle));
     refreshButtons();
   };
 
@@ -234,9 +236,10 @@ export async function boot(root: HTMLElement): Promise<void> {
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isSwapStyle(input.value)) return;
       swapStyle = input.value;
-      if (mode === "landscape" && !playing) {
+      renderModeSummary();
+      if (!playing) {
         paint();
-        setStatus(swapStyle === "zoom" ? "よこ（16:9）。切替はズーム。" : "よこ（16:9）。切替はジャンプ。");
+        setStatus(describeMode(mode, swapStyle));
       }
     });
   }
@@ -261,7 +264,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus(
         photos.length === 0
           ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。足りないスロットは循環します。`,
+          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。${describePhotoCount(photos.length)}`,
       );
     } catch (error) {
       renderThumbs();
@@ -321,8 +324,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
         },
       });
-      const aspectTag = mode === "landscape" ? "16x9" : "9x16";
-      downloadBlob(result.blob, `anone-jump-${aspectTag}.${result.extension}`);
+      downloadBlob(result.blob, exportFileName(mode, swapStyle, result.extension));
       setStatus(`保存しました（${result.extension.toUpperCase()}・生成）`);
       await reportMade({ action: "save", mime: result.mime });
     } catch (error) {
@@ -339,6 +341,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
+  renderModeSummary();
   void video.load();
   void fetchGenerateCount().then(setMadeCount);
 }
