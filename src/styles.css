@@ -276,24 +276,7 @@ body {
 }
 
 .aspect-toggle span {
-  display: flex;
-  flex-direction: column;
   line-height: 1.25;
-}
-
-.aspect-toggle small {
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  color: var(--mute);
-}
-
-/* 縦 × ジャンプ のように、いま選んでいる 2×2 の組み合わせ */
-.mode-summary {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--mute);
-  letter-spacing: 0.04em;
 }
 
 .file-btn,

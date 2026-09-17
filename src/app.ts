@@ -1,7 +1,7 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
-import { describeMode, describePhotoCount, exportFileName, formatModeLabel } from "./modes.ts";
+import { describePhotoCount, exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
@@ -50,11 +50,11 @@ export async function boot(root: HTMLElement): Promise<void> {
           <div class="aspect-toggle" role="radiogroup" aria-label="書き出す向き">
             <label>
               <input type="radio" name="aspect" value="portrait" checked />
-              <span>縦<small>9:16</small></span>
+              <span>縦</span>
             </label>
             <label>
               <input type="radio" name="aspect" value="landscape" />
-              <span>横<small>16:9</small></span>
+              <span>横</span>
             </label>
           </div>
         </fieldset>
@@ -63,14 +63,13 @@ export async function boot(root: HTMLElement): Promise<void> {
           <div class="aspect-toggle" role="radiogroup" aria-label="写真の切替">
             <label>
               <input type="radio" name="swap" value="jump" checked />
-              <span>ジャンプ<small>沈んで跳ねる＋白フラッシュ</small></span>
+              <span>ジャンプ</span>
             </label>
             <label>
               <input type="radio" name="swap" value="zoom" />
-              <span>ズーム<small>横ブレ＋RGB ずれ</small></span>
+              <span>ズーム</span>
             </label>
           </div>
-          <p class="mode-summary" id="modeSummary" aria-live="polite"></p>
         </fieldset>
         <label class="file-btn">
           <input id="picker" type="file" accept="image/*" multiple />
@@ -99,7 +98,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
-  const modeSummary = must(root, "#modeSummary");
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
 
   stage.append(compositor.canvas);
@@ -114,12 +112,6 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const setMadeCount = (count: number | null) => {
     madeCount.textContent = formatCountLabel(count);
-  };
-
-  const modeLabel = () => formatModeLabel(mode, swapStyle);
-
-  const renderModeSummary = () => {
-    modeSummary.textContent = `いま: ${modeLabel()}`;
   };
 
   const renderThumbs = () => {
@@ -205,8 +197,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
     video.src = TEMPLATES[mode].video;
     video.load();
-    renderModeSummary();
-    setStatus(describeMode(mode, swapStyle));
     refreshButtons();
   };
 
@@ -234,10 +224,8 @@ export async function boot(root: HTMLElement): Promise<void> {
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isSwapStyle(input.value)) return;
       swapStyle = input.value;
-      renderModeSummary();
       if (!playing) {
         paint();
-        setStatus(describeMode(mode, swapStyle));
       }
     });
   }
@@ -339,7 +327,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
-  renderModeSummary();
   void video.load();
   void fetchGenerateCount().then(setMadeCount);
 }
