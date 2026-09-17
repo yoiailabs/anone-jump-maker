@@ -513,23 +513,38 @@ body {
   color: var(--ink);
 }
 
-/* 投稿は操作パネルの枠の外に置く */
+/* 投稿とアプリ共有は操作パネルの枠の外に置く */
 .share-wrap {
   display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
-.btn.share {
+.btn.share,
+.btn.share-app {
   width: 100%;
   gap: 0.45rem;
-  background: var(--ink);
-  color: var(--paper);
   font-size: 0.92rem;
 }
 
-.btn.share svg {
+.btn.share {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.btn.share-app {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.btn.share svg,
+.btn.share-app svg {
   width: 1.05em;
   height: 1.05em;
   flex: 0 0 auto;
+}
+
+.btn.share svg {
   fill: currentColor;
 }
 

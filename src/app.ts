@@ -7,7 +7,14 @@ import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
-import { openExternalTab, SHARE_HASHTAG, shareJumpVideo, toShareFile } from "./share.ts";
+import {
+  copyTextToClipboard,
+  openExternalTab,
+  SHARE_HASHTAG,
+  shareAppUrl,
+  shareJumpVideo,
+  toShareFile,
+} from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -108,6 +115,19 @@ export async function boot(root: HTMLElement): Promise<void> {
           </svg>
           ${SHARE_HASHTAG} で X に投稿
         </button>
+        <button type="button" id="shareAppBtn" class="btn share-app">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M12 3v10M8.2 6.8 12 3l3.8 3.8M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          このアプリを共有する
+        </button>
       </div>
 
       <footer class="notes">
@@ -171,6 +191,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const shareBtn = must(root, "#shareBtn") as HTMLButtonElement;
+  const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
@@ -592,6 +613,26 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
     } else {
       setStatus("投稿をやめました");
+    }
+  });
+
+  shareAppBtn.addEventListener("click", async () => {
+    const outcome = await shareAppUrl({
+      navigator: typeof navigator === "undefined" ? undefined : navigator,
+      copyText: (text) =>
+        copyTextToClipboard(
+          text,
+          typeof navigator === "undefined" ? undefined : navigator.clipboard,
+        ),
+    });
+    if (outcome === "shared") {
+      setStatus("このアプリのリンクを共有先に渡しました");
+    } else if (outcome === "copied") {
+      setStatus("このアプリの URL をコピーしました");
+    } else if (outcome === "cancelled") {
+      setStatus("共有をやめました");
+    } else {
+      setStatus("このブラウザでは共有できません。https://anone.yoiailabs.com をコピーしてください。", "error");
     }
   });
 
