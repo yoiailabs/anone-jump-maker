@@ -4,6 +4,7 @@ import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle }
 import { describePhotoCount, exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
+import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
@@ -22,6 +23,8 @@ export async function boot(root: HTMLElement): Promise<void> {
   let playing = false;
   let recording = false;
   let previewCounted = false;
+  let playbackBusy = false;
+  let playGen = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
 
@@ -93,15 +96,26 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
       </section>
 
-      <section class="stage-wrap">
-        <div class="stage" id="stage" data-aspect="portrait"></div>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
-      </section>
-
       <footer class="notes">
         <p>ファン制作です。</p>
       </footer>
     </div>
+    <dialog class="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
+      <div class="preview-sheet">
+        <header class="preview-head">
+          <h2 id="previewTitle">プレビュー</h2>
+          <button type="button" id="closePreviewBtn" class="preview-close" aria-label="閉じる">×</button>
+        </header>
+        <div class="stage-wrap">
+          <div class="stage" id="stage" data-aspect="portrait"></div>
+          <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
+        </div>
+        <div class="preview-actions">
+          <button type="button" id="modalPlayBtn" class="btn">${playPauseLabel(false)}</button>
+          <button type="button" id="restartBtn" class="btn ghost">${PREVIEW_RESTART_LABEL}</button>
+        </div>
+      </div>
+    </dialog>
   `;
 
   const stage = must(root, "#stage");
@@ -112,6 +126,10 @@ export async function boot(root: HTMLElement): Promise<void> {
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
+  const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
+  const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
+  const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
+  const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
 
@@ -144,9 +162,12 @@ export async function boot(root: HTMLElement): Promise<void> {
   const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 
   const refreshButtons = () => {
-    playBtn.disabled = recording || (!playing && !canUse());
-    saveBtn.disabled = recording || !canUse();
-    playBtn.textContent = playing ? "停止" : "プレビュー";
+    const ready = canUse();
+    playBtn.disabled = recording || !ready;
+    saveBtn.disabled = recording || !ready;
+    modalPlayBtn.disabled = recording || !ready;
+    restartBtn.disabled = recording || !ready;
+    modalPlayBtn.textContent = playPauseLabel(playing);
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -195,11 +216,82 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   const stopPlayback = () => {
+    playGen += 1;
+    playbackBusy = false;
     playing = false;
     previewCounted = false;
     haltLoop();
     video.pause();
     refreshButtons();
+  };
+
+  const pausePlayback = () => {
+    playGen += 1;
+    playbackBusy = false;
+    playing = false;
+    haltLoop();
+    video.pause();
+    paint();
+    refreshButtons();
+    setStatus("一時停止しました");
+  };
+
+  const startPlayback = async (fromStart: boolean) => {
+    if (recording || playbackBusy || !canUse()) return;
+    playbackBusy = true;
+    const gen = (playGen += 1);
+    try {
+      countPreviewStart();
+      video.muted = false;
+      video.volume = 1;
+      if (
+        shouldSeekPreviewToStart({
+          fromStart,
+          ended: video.ended,
+          currentTime: video.currentTime,
+          duration: Number.isFinite(video.duration) ? video.duration : 0,
+        })
+      ) {
+        await seekVideo(video, 0);
+      }
+      if (gen !== playGen) return;
+      playing = true;
+      refreshButtons();
+      setStatus("プレビュー中");
+      await startLoop();
+      if (gen !== playGen) return;
+      await video.play();
+    } catch (error) {
+      if (gen !== playGen) return;
+      playing = false;
+      previewCounted = false;
+      haltLoop();
+      refreshButtons();
+      setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
+    } finally {
+      if (gen === playGen) playbackBusy = false;
+    }
+  };
+
+  const openPreview = async () => {
+    if (recording || !canUse() || previewDialog.open) return;
+    previewDialog.showModal();
+    try {
+      video.muted = true;
+      await seekVideo(video, 0);
+      lastSlot = -1;
+      paint();
+    } catch {
+      paint();
+    }
+    refreshButtons();
+    modalPlayBtn.focus();
+  };
+
+  const closePreview = () => {
+    if (previewDialog.open) {
+      previewDialog.close();
+    }
   };
 
   const applyAspect = (next: AspectMode) => {
@@ -275,35 +367,42 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
-  playBtn.addEventListener("click", async () => {
-    if (recording) return;
+  playBtn.addEventListener("click", () => {
+    void openPreview();
+  });
+
+  modalPlayBtn.addEventListener("click", () => {
     if (playing) {
-      stopPlayback();
-      setStatus("停止しました");
+      pausePlayback();
       return;
     }
-    if (previewCounted) return;
-    try {
-      countPreviewStart();
-      video.muted = false;
-      video.volume = 1;
-      await seekVideo(video, 0);
-      playing = true;
-      refreshButtons();
-      setStatus("プレビュー中");
-      await startLoop();
-      await video.play();
-    } catch (error) {
-      playing = false;
-      previewCounted = false;
-      haltLoop();
-      refreshButtons();
-      setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
-    }
+    void startPlayback(false);
+  });
+
+  restartBtn.addEventListener("click", () => {
+    void startPlayback(true);
+  });
+
+  closePreviewBtn.addEventListener("click", () => {
+    closePreview();
+  });
+
+  previewDialog.addEventListener("click", (event) => {
+    if (event.target !== previewDialog) return;
+    const rect = previewDialog.getBoundingClientRect();
+    const { clientX: x, clientY: y } = event;
+    const inside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    if (!inside) closePreview();
+  });
+
+  previewDialog.addEventListener("close", () => {
+    stopPlayback();
+    video.muted = true;
   });
 
   saveBtn.addEventListener("click", async () => {
     if (recording || photos.length === 0) return;
+    closePreview();
     recording = true;
     playing = false;
     previewCounted = false;

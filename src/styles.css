@@ -208,18 +208,97 @@ body {
   box-shadow: 7px 8px 0 var(--ink);
 }
 
+.preview-dialog {
+  width: min(28rem, calc(100vw - 1.25rem));
+  max-height: calc(100svh - 1.25rem);
+  margin: auto;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 1.4rem;
+  background: var(--card);
+  box-shadow: 6px 7px 0 var(--ink);
+  overflow: auto;
+}
+
+.preview-dialog:has(.stage[data-aspect="landscape"]) {
+  width: min(32rem, calc(100vw - 1.25rem));
+}
+
+.preview-dialog[open] {
+  display: flex;
+}
+
+.preview-dialog::backdrop {
+  background: rgba(26, 26, 26, 0.48);
+}
+
+.preview-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.85rem 0.9rem 1rem;
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.preview-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.preview-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--lime);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: transform 0.16s ease;
+}
+
+.preview-close:hover {
+  transform: translateY(-2px);
+}
+
+.preview-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.preview-actions .btn {
+  text-align: center;
+  line-height: 1.25;
+}
+
 .stage-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  padding-top: 0.35rem;
 }
 
 /* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える。
-   再生エリアは操作パネルの下にあるので、縦は 1 画面に収まる高さだけを上限にする。 */
+   モーダル内のヘッダーと再生ボタンが残る高さだけを縦の上限にする。 */
 .stage {
-  width: min(100%, 21rem, calc((100svh - 6rem) * 608 / 1080));
+  width: min(100%, 21rem, calc((100svh - 14rem) * 608 / 1080));
   aspect-ratio: 608 / 1080;
   border-radius: 1.5rem;
   overflow: hidden;
