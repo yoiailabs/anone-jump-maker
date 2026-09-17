@@ -1,122 +1,53 @@
-import { parseStatsCount, sanitizeGenerateAttrs, type GenerateAttrs } from "../src/stats-shared.ts";
-
-const STATS_NAME = "anone";
-
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS generates (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  created_at TEXT NOT NULL,
-  browser TEXT,
-  os TEXT,
-  device TEXT,
-  language TEXT,
-  timezone TEXT,
-  screen_w INTEGER,
-  screen_h INTEGER,
-  dpr REAL,
-  export_mode TEXT,
-  mime TEXT,
-  width INTEGER,
-  height INTEGER,
-  action TEXT
-)
-`;
-
-const MIGRATE_ACTION = `ALTER TABLE generates ADD COLUMN action TEXT`;
-
-export class GenerateStats {
-  constructor(private readonly ctx: DurableObjectState) {
-    this.ctx.storage.sql.exec(SCHEMA);
-    try {
-      this.ctx.storage.sql.exec(MIGRATE_ACTION);
-    } catch {
-      // already migrated
-    }
-  }
-
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/count") {
-      return json({ count: this.count() });
-    }
-    if (request.method === "POST" && url.pathname === "/record") {
-      const attrs = sanitizeGenerateAttrs(await readJson(request));
-      this.insert(attrs, new Date().toISOString());
-      return json({ count: this.count() });
-    }
-    return new Response("Not found", { status: 404 });
-  }
-
-  private count(): number {
-    const row = this.ctx.storage.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM generates").one();
-    return Number(row.n) || 0;
-  }
-
-  private insert(attrs: GenerateAttrs, createdAt: string): void {
-    this.ctx.storage.sql.exec(
-      `INSERT INTO generates (
-        created_at, browser, os, device, language, timezone,
-        screen_w, screen_h, dpr, export_mode, mime, width, height, action
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      createdAt,
-      attrs.browser ?? null,
-      attrs.os ?? null,
-      attrs.device ?? null,
-      attrs.language ?? null,
-      attrs.timezone ?? null,
-      attrs.screenW ?? null,
-      attrs.screenH ?? null,
-      attrs.dpr ?? null,
-      attrs.exportMode ?? null,
-      attrs.mime ?? null,
-      attrs.width ?? null,
-      attrs.height ?? null,
-      attrs.action ?? null,
-    );
-  }
-}
+import { parseStatsCount, statsObjectName } from "../src/stats-shared.ts";
 
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
+    // 本番ではこのホストがカスタムドメインか Preview URL（<alias>-anone.<sub>.workers.dev）になる。
+    // wrangler dev は routes のドメインに書き換えるので、ローカルは常に本番名の件数を使う。
+    const host = url.hostname;
     if (url.pathname === "/api/stats" && request.method === "GET") {
-      return proxyStats(env, "GET", "/count");
+      return proxyStats(env, host, "GET", "/count");
     }
     if (url.pathname === "/api/stats/generate" && request.method === "POST") {
-      return proxyStats(env, "POST", "/record", request);
+      return proxyStats(env, host, "POST", "/record", request);
     }
     return new Response("Not found", { status: 404 });
   },
 };
 
+/**
+ * `anone-stats` Worker の Durable Object へ中継する。
+ * バインディングが無い（`anone-stats` がまだ無い環境）ときは 502 を返し、
+ * クライアントは「—回作られたよ」のまま動く。
+ */
 async function proxyStats(
   env: WorkerEnv,
+  hostname: string,
   method: string,
   path: string,
   incoming?: Request,
 ): Promise<Response> {
-  const stub = env.GENERATE_STATS.get(env.GENERATE_STATS.idFromName(STATS_NAME));
+  const namespace = env.GENERATE_STATS;
+  if (!namespace) {
+    return json({ error: "stats unavailable" }, 502);
+  }
   const init: RequestInit = { method };
   if (incoming && method === "POST") {
     init.headers = { "content-type": "application/json" };
     init.body = await incoming.text();
   }
-  const response = await stub.fetch(new Request(`https://stats${path}`, init));
-  const payload = await response.json().catch(() => null);
-  const count = parseStatsCount(payload);
-  if (!response.ok || count === null) {
-    return json({ error: "stats unavailable" }, 502);
-  }
-  return json({ count });
-}
-
-async function readJson(request: Request): Promise<unknown> {
-  const text = await request.text();
-  if (!text) return {};
   try {
-    return JSON.parse(text) as unknown;
+    const stub = namespace.get(namespace.idFromName(statsObjectName(hostname)));
+    const response = await stub.fetch(new Request(`https://stats${path}`, init));
+    const payload = await response.json().catch(() => null);
+    const count = parseStatsCount(payload);
+    if (!response.ok || count === null) {
+      return json({ error: "stats unavailable" }, 502);
+    }
+    return json({ count });
   } catch {
-    return {};
+    return json({ error: "stats unavailable" }, 502);
   }
 }
 

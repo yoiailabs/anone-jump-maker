@@ -49,12 +49,18 @@ pnpm build
 デプロイ（DNS は設定しない）:
 
 ```bash
-pnpm deploy    # = pnpm build && wrangler deploy
+pnpm deploy:stats   # = wrangler deploy -c worker/stats/wrangler.toml（DO を持つ anone-stats。最初に一度）
+pnpm deploy         # = pnpm build && wrangler deploy（本体 anone）
+pnpm dev:worker     # ローカルで 2 つの Worker をまとめて起動（--env dev で DO をローカル SQLite に）
 ```
 
-Worker 名は `anone`。Cloudflare Workers の静的アセットとして `dist` を配信します。`/api/*` だけ Worker が先に処理します。
+Worker は 2 つです。本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信し、`/api/*` だけ Worker が先に処理します。`anone-stats`（`worker/stats/`）は Durable Object `GenerateStats` だけを持ち、本体は `[[durable_objects.bindings]] script_name = "anone-stats"` で参照します。
 
-プレビューを開始したときと、保存が成功したあとに、写真や動画は送らず「1回作った」イベントだけをサーバーに残します。同じ人が何度作っても毎回数えます（IP・Cookie・端末による重複排除はしません）。プレビューを途中で止めても、開始時にすでに数えているので減らしません。同じプレビュー再生で開始を二度数えることはありません（停止してから再開すればまた +1）。公開 UI は合計件数（「○回作られたよ」）だけ出します。永続化は Durable Object（バインディング `GENERATE_STATS` / クラス `GenerateStats`、SQLite）です。単なる整数カウンタにせず、サーバー付与の UTC 時刻と、ブラウザ／OS／画面の粗い属性だけを行として残します。属性の `action` は `preview` または `save` です。保存の `exportMode` は生成固定（`offline`）です。API が落ちても保存自体は成功のままです。
+分けている理由は **PR の Preview URL** です。Durable Object クラスを実装している Worker には Cloudflare が Preview URL（`<branch>-anone.<sub>.workers.dev`）を作らないので、クラスを別 Worker に出し、本体は参照だけにします。非本番ブランチの `wrangler versions upload` は DO の移行を含められないため、本体の `wrangler.toml` に `[[migrations]]` は置きません。既存の件数は `worker/stats/wrangler.toml` の `transferred_classes`（`from_script = "anone"`）で `anone-stats` に引き継ぎます。初回だけ順番が要ります: `pnpm deploy:stats` を先に実行し（この瞬間に名前空間が移るので、本体を再デプロイするまで `/api/stats` は 502＝「—回作られたよ」）、続けて本体をデプロイ（main へのマージ）します。
+
+Preview URL からのアクセスは `statsObjectName(host)` でホスト別の別オブジェクト（`preview:<host>`）に数えるので、QA で何回プレビュー・保存しても本番の「○回作られたよ」は増えません。本番として数えるのは `anone.yoiailabs.com` だけです。
+
+プレビューを開始したときと、保存が成功したあとに、写真や動画は送らず「1回作った」イベントだけをサーバーに残します。同じ人が何度作っても毎回数えます（IP・Cookie・端末による重複排除はしません）。プレビューを途中で止めても、開始時にすでに数えているので減らしません。同じプレビュー再生で開始を二度数えることはありません（停止してから再開すればまた +1）。公開 UI は合計件数（「○回作られたよ」）だけ出します。永続化は Durable Object（バインディング `GENERATE_STATS` / クラス `GenerateStats`、SQLite。クラス本体は `anone-stats` Worker）です。単なる整数カウンタにせず、サーバー付与の UTC 時刻と、ブラウザ／OS／画面の粗い属性だけを行として残します。属性の `action` は `preview` または `save` です。保存の `exportMode` は生成固定（`offline`）です。API が落ちても保存自体は成功のままです。
 
 - `GET /api/stats` → `{ count }`
 - `POST /api/stats/generate` → イベントを足して `{ count }`

@@ -2,6 +2,9 @@ name = "anone"
 main = "worker/index.ts"
 compatibility_date = "2026-09-16"
 workers_dev = true
+# 非本番ブランチの `wrangler versions upload` でブランチ別 Preview URL
+# （<branch>-anone.<sub>.workers.dev）を作る。DO クラスは anone-stats 側にあるので対象になる。
+preview_urls = true
 
 routes = [
   { pattern = "anone.yoiailabs.com", custom_domain = true }
@@ -19,12 +22,12 @@ not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
 run_worker_first = ["/api/*"]
 
-# 生成イベント（時刻 + 非識別属性）と件数。デプロイ時にクラスが作られる。
+# 生成イベント（時刻 + 非識別属性）と件数。
+# Durable Object クラス本体は worker/stats/（Worker 名 anone-stats）にあり、ここは参照だけ。
+# クラスを実装している Worker には Preview URL が出ないため分離した。
+# 本番ホスト以外（Preview URL）はホスト別の別オブジェクトに数え、本番の件数を汚さない。
 # バインディング名: GENERATE_STATS / クラス: GenerateStats / idFromName("anone")
 [[durable_objects.bindings]]
 name = "GENERATE_STATS"
 class_name = "GenerateStats"
-
-[[migrations]]
-tag = "v1-generate-stats"
-new_sqlite_classes = ["GenerateStats"]
+script_name = "anone-stats"
