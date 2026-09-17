@@ -111,6 +111,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           <div class="stage" id="stage" data-aspect="portrait"></div>
         </div>
         <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
+        <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
         <div class="preview-actions">
           <button type="button" id="modalPlayBtn" class="btn">${playPauseLabel(false)}</button>
           <button type="button" id="restartBtn" class="btn ghost">${PREVIEW_RESTART_LABEL}</button>
@@ -131,6 +132,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
+  const previewState = must(root, "#previewState");
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
 
@@ -170,8 +172,10 @@ export async function boot(root: HTMLElement): Promise<void> {
     saveBtn.disabled = recording || !ready;
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
-    modalPlayBtn.textContent = playPauseLabel(isPreviewPlaying());
-    modalPlayBtn.setAttribute("aria-pressed", isPreviewPlaying() ? "true" : "false");
+    const active = isPreviewPlaying();
+    modalPlayBtn.textContent = playPauseLabel(active);
+    modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    previewState.textContent = active ? "再生中" : "停止中";
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -385,14 +389,28 @@ export async function boot(root: HTMLElement): Promise<void> {
     void openPreview();
   });
 
-  modalPlayBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const togglePreviewPlay = () => {
     if (isPreviewPlaying()) {
       pausePlayback();
       return;
     }
     void startPlayback(false);
+  };
+
+  let playToggleFromPointer = false;
+  modalPlayBtn.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    playToggleFromPointer = true;
+    togglePreviewPlay();
+  });
+  modalPlayBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (playToggleFromPointer) {
+      playToggleFromPointer = false;
+      return;
+    }
+    togglePreviewPlay();
   });
 
   restartBtn.addEventListener("click", (event) => {

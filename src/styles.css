@@ -340,9 +340,18 @@ body {
   pointer-events: none;
 }
 
-.slot-meter {
+.slot-meter,
+.preview-state {
   font-variant-numeric: tabular-nums;
   flex: 0 0 auto;
+}
+
+.preview-state {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  color: var(--mute);
 }
 
 .panel {
