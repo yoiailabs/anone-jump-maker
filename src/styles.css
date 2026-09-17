@@ -119,6 +119,7 @@ body {
 .hero,
 .stage-wrap,
 .panel,
+.share-wrap,
 .notes {
   position: relative;
   z-index: 1;
@@ -512,9 +513,13 @@ body {
   color: var(--ink);
 }
 
-/* 投稿は保存の下に一段で置く（グリッドの 2 列ぶん） */
+/* 投稿は操作パネルの枠の外に置く */
+.share-wrap {
+  display: flex;
+}
+
 .btn.share {
-  grid-column: 1 / -1;
+  width: 100%;
   gap: 0.45rem;
   background: var(--ink);
   color: var(--paper);

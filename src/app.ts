@@ -97,15 +97,18 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="actions">
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
-          <button type="button" id="shareBtn" class="btn share" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-            ${SHARE_HASHTAG} で X に投稿
-          </button>
         </div>
         <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
       </section>
+
+      <div class="share-wrap">
+        <button type="button" id="shareBtn" class="btn share" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+          ${SHARE_HASHTAG} で X に投稿
+        </button>
+      </div>
 
       <footer class="notes">
         <nav class="links" aria-labelledby="linksTitle">
