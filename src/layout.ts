@@ -86,13 +86,13 @@ export function isImageFilter(value: string): value is ImageFilter {
 }
 
 /**
- * 本編パネル短辺に対するブラー半径。弱は軽いボケ、強ははっきりしたボケ。
+ * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強は今までの弱より少し弱い。
  * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
  */
 export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
   none: 0,
-  "blur-weak": 0.022,
-  "blur-strong": 0.055,
+  "blur-weak": 0.008,
+  "blur-strong": 0.016,
 };
 
 export function filterBlurPx(filter: ImageFilter, shortSide: number): number {

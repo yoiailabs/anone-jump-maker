@@ -9,7 +9,7 @@ export const SOFTWARE_BLUR_PASSES = 2;
 /** 半径に対する縮小率。小さいほど強いボケで、画素処理も軽い。 */
 export function softwareBlurDownscale(px: number): number {
   if (px < 1) return 1;
-  return Math.max(0.08, Math.min(0.32, 5 / px));
+  return Math.max(0.14, Math.min(0.5, 6 / px));
 }
 
 /**

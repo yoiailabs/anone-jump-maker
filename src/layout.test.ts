@@ -409,7 +409,9 @@ describe("image filter", () => {
     const short = 720;
     expect(filterBlurPx("none", short)).toBe(0);
     expect(filterBlurPx("blur-weak", short)).toBeGreaterThan(0);
+    expect(filterBlurPx("blur-weak", short)).toBeLessThan(10);
     expect(filterBlurPx("blur-strong", short)).toBeGreaterThan(filterBlurPx("blur-weak", short));
+    expect(filterBlurPx("blur-strong", short)).toBeLessThanOrEqual(filterBlurPx("blur-weak", short) * 2 + 1);
     expect(filterBlurPx("blur-strong", 1440)).toBeGreaterThan(filterBlurPx("blur-strong", short));
   });
 });
