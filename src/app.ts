@@ -150,14 +150,13 @@ export async function boot(root: HTMLElement): Promise<void> {
           </fieldset>
         </div>
         <div class="stage-wrap">
-          <div
+          <button
+            type="button"
             class="stage"
             id="stage"
             data-aspect="portrait"
-            role="button"
-            tabindex="0"
             aria-label="プレビュー。クリックで再生と一時停止"
-          ></div>
+          ></button>
         </div>
         <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
@@ -515,14 +514,19 @@ export async function boot(root: HTMLElement): Promise<void> {
     togglePreviewPlay();
   });
 
+  let stageToggleFromPointer = false;
+  stage.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    stageToggleFromPointer = true;
+    togglePreviewPlay();
+  });
   stage.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    togglePreviewPlay();
-  });
-  stage.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
+    if (stageToggleFromPointer) {
+      stageToggleFromPointer = false;
+      return;
+    }
     togglePreviewPlay();
   });
 

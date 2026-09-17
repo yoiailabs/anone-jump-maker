@@ -343,11 +343,15 @@ body {
 
 /* プレビュー確認用。向き／エフェクト切替が残るよう、表示は小さめ。 */
 .stage {
+  display: block;
   width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
   max-height: calc(100svh - 20rem);
   aspect-ratio: 608 / 1080;
   height: auto;
   flex: 0 0 auto;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
   border-radius: 1.5rem;
   overflow: hidden;
@@ -371,7 +375,7 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .slot-meter,
