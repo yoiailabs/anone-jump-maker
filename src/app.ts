@@ -157,7 +157,9 @@ export async function boot(root: HTMLElement): Promise<void> {
             data-aspect="portrait"
             aria-pressed="false"
             aria-label="プレビュー。クリックで再生と一時停止"
-          ></button>
+          >
+            <span class="stage-play-hint" aria-hidden="true"></span>
+          </button>
         </div>
         <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
@@ -188,7 +190,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   ];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
 
-  stage.append(compositor.canvas);
+  stage.prepend(compositor.canvas);
   compositor.canvas.setAttribute("aria-hidden", "true");
   compositor.canvas.removeAttribute("aria-label");
   document.body.append(video);

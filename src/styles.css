@@ -361,15 +361,20 @@ body {
   box-shadow: 7px 8px 0 var(--ink);
 }
 
-.stage[aria-pressed="false"]::before {
-  content: "";
+.stage-play-hint {
+  display: none;
   position: absolute;
   inset: 0;
-  background: rgba(26, 26, 26, 0.28);
+  z-index: 1;
   pointer-events: none;
+  background: rgba(26, 26, 26, 0.28);
 }
 
-.stage[aria-pressed="false"]::after {
+.stage[aria-pressed="false"] .stage-play-hint {
+  display: block;
+}
+
+.stage-play-hint::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -381,7 +386,6 @@ body {
   border-color: transparent transparent transparent #fff;
   transform: translate(-35%, -50%);
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
-  pointer-events: none;
 }
 
 .stage:focus-visible {
