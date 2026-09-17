@@ -10,11 +10,11 @@
 2. 「動画の向き」で縦（9:16）か横（16:9）、「エフェクト」でジャンプかズームを選ぶ（2×2 のどれでも）
 3. テンプレのベタ塗り背景（緑クロマに限らない）をキーイングして、線画キャラを残す
 4. 拍（テンプレのポーズ切替）で写真を差し替える。枚数が足りなければ循環
-5. プレビューして MP4 または WebM を保存（オフライン生成）
+5. プレビューして MP4 または WebM を保存（オフライン生成）。プレビューは最初音声オンで、モーダルの「音声オン／音声オフ」で切り替える。保存動画の音声はプレビューのミュートと無関係
 6. 操作パネルの枠の外の「#あのねジャンプ で X に投稿」でハッシュタグ付きの投稿画面へ
 7. その下の「このアプリを共有する」で本番 URL（`https://anone.yoiailabs.com`）を渡す
 
-5 の保存はテンプレをリアルタイム録画せず、30fps の論理時刻でシークして同じ compositor を描き、WebCodecs + mediabunny で映像とテンプレ音声を mux します。WebCodecs が使えないブラウザでは録画に落とさず、Chrome / Edge を案内します。
+5 の保存はテンプレをリアルタイム録画せず、30fps の論理時刻でシークして同じ compositor を描き、WebCodecs + mediabunny で映像とテンプレ音声を mux します。プレビューのミュートは HTML の `video.muted` だけを変え、mux する音声はテンプレファイルからです。WebCodecs が使えないブラウザでは録画に落とさず、Chrome / Edge を案内します。
 
 **縦**はテンプレと同じ 608×1080 です。中央にシャープな 16:9 本編（差し込み写真＋緑クロマを抜いた線画キャラ）を置き、上下帯はその本編フレーム全体を cover した強いブラー＋暗転です（写真だけのブラーではありません）。本編の位置はテンプレ緑帯の実測（y=312–654）に合わせます。
 
@@ -69,7 +69,12 @@ pnpm deploy         # = pnpm build && wrangler deploy（本体 anone）
 pnpm dev:worker     # ローカルで Worker + 静的アセットを起動
 ```
 
-本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。生成回数（「○回作られたよ」）と `/api/stats`、Durable Object（`GENERATE_STATS` / Worker `anone-stats`）は無料枠を消費していたため削除しました。ページ表示・プレビュー開始・保存の経路から DO は呼びません。
+本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。生成回数（「○回作られたよ」）と `/api/stats`、Durable Object（`GENERATE_STATS` / Worker `anone-stats`）は無料枠を消費していたため削除しました。ページ表示・プレビュー開始・保存の経路から DO は呼びません。件数は画面に出さず、Google Analytics 4（測定 ID `G-L8WKQQFBZC`、`index.html` の gtag）へクライアントからカスタムイベントだけ送ります。
+
+- `video_preview` … プレビュー再生の開始時（旧カウンタと同じ。同じ再生中の再スタートや一時停止からの再開は送らない。閉じてから開き直せば再送）
+- `video_save` … 動画の保存が成功したあと
+
+パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
 
 Cloudflare 上に残っている `anone-stats` Worker（クラス `GenerateStats`）は、このリポジトリからは参照しません。クォータを完全に戻すには、ダッシュボードまたは `wrangler delete anone-stats` で一度だけ削除してください。
 
