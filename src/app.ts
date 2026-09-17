@@ -7,7 +7,7 @@ import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
-import { openExternalTab, SHARE_HASHTAG, shareJumpVideo, toShareFile } from "./share.ts";
+import { openExternalTab, SHARE_HASHTAG, SHARE_TEXT, shareJumpVideo, toShareFile } from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -561,7 +561,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       const filename = exportFileName(mode, swapStyle, result.extension);
       downloadBlob(result.blob, filename);
       savedVideo = toShareFile(result.blob, filename);
-      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_HASHTAG} を付けて X に投稿できます。`);
+      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
       await reportMade({ action: "save", mime: result.mime });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
@@ -585,7 +585,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       openUrl: (url) => openExternalTab(url, window),
     });
     if (outcome === "files") {
-      setStatus(`${SHARE_HASHTAG} を付けた動画を共有先に渡しました`);
+      setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
     } else if (outcome === "intent") {
       setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
     } else if (outcome === "blocked") {

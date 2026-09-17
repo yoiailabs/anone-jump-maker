@@ -1,5 +1,11 @@
-/** 投稿に付けてもらうハッシュタグ。 */
+/** 画面の投稿ボタンに出すハッシュタグ。 */
 export const SHARE_HASHTAG = "#あのねジャンプ";
+
+/** メーカー名のハッシュタグ。投稿本文に足す。 */
+export const SHARE_MAKER_HASHTAG = "#あのねジャンプメーカー";
+
+/** X の投稿／共有シートに渡す本文。 */
+export const SHARE_TEXT = `${SHARE_HASHTAG} ${SHARE_MAKER_HASHTAG}`;
 
 /** X の投稿画面（intent）。twitter.com/intent/tweet も同じ画面へ転送される。 */
 const X_INTENT_ENDPOINT = "https://x.com/intent/post";
@@ -12,7 +18,7 @@ export type ShareNavigatorLike = {
 /** files: 動画ごと共有シートへ渡せた / intent: X の投稿画面だけ開いた / cancelled: ユーザーが閉じた */
 export type ShareOutcome = "files" | "intent" | "cancelled" | "blocked";
 
-export function buildXIntentUrl(text: string = SHARE_HASHTAG): string {
+export function buildXIntentUrl(text: string = SHARE_TEXT): string {
   return `${X_INTENT_ENDPOINT}?text=${encodeURIComponent(text)}`;
 }
 
@@ -41,7 +47,7 @@ export async function shareJumpVideo(options: {
   navigator?: ShareNavigatorLike;
   openUrl: (url: string) => boolean;
 }): Promise<ShareOutcome> {
-  const text = options.text ?? SHARE_HASHTAG;
+  const text = options.text ?? SHARE_TEXT;
   const { file, navigator: nav } = options;
   if (file && nav?.share && canShareVideoFile(file, nav)) {
     try {
