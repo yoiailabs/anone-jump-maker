@@ -54,6 +54,21 @@ export const SWAP_SLIDE_FRAC = 0.016;
 export const SWAP_CHROMA_FRAC = 0.007;
 export const SWAP_SKEW = 0.04;
 
+/** 横専用。参考 Short（hagikaze_sami）は hop なし・放射ズーム＋フラッシュ。 */
+export type SwapStyle = "jump" | "zoom";
+
+export const SWAP_STYLES = ["jump", "zoom"] as const;
+
+export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
+  jump: "ジャンプ",
+  zoom: "ズーム",
+};
+
+/** 参考のズーム切り。パンチとフラッシュは hop 用より強く、スライドはほぼ無し。 */
+export const ZOOM_PUNCH = 0.32;
+export const ZOOM_FLASH_PEAK = 0.9;
+export const ZOOM_BLUR_PEAK = 1;
+
 export type SwapFx = {
   /** 0–1。窓の外は 0。 */
   amount: number;
@@ -67,9 +82,20 @@ export type SwapFx = {
   chroma: number;
   /** せん断。 */
   skew: number;
+  /** 放射ズームブラー 0–1。ジャンプでは 0。 */
+  zoomBlur: number;
 };
 
-const SWAP_NONE: SwapFx = { amount: 0, flash: 0, punch: 1, slide: 0, chroma: 0, skew: 0 };
+const SWAP_NONE: SwapFx = { amount: 0, flash: 0, punch: 1, slide: 0, chroma: 0, skew: 0, zoomBlur: 0 };
+
+export function isSwapStyle(value: string): value is SwapStyle {
+  return value === "jump" || value === "zoom";
+}
+
+/** 縦は常にジャンプ。横だけ UI の選択を使う。 */
+export function effectiveSwapStyle(mode: AspectMode, style: SwapStyle = "jump"): SwapStyle {
+  return mode === "landscape" ? style : "jump";
+}
 
 /**
  * 本編 16:9 をキャンバスへ cover する倍率。
@@ -224,8 +250,14 @@ export function jumpAmount(time: number, slots: readonly number[]): number {
   return Math.sin(Math.PI * u);
 }
 
-/** 上方向が負（Canvas2D）。本編 16:9 内の写真 hop に使う。 */
-export function jumpOffsetPx(time: number, slots: readonly number[], canvasHeight: number): number {
+/** 上方向が負（Canvas2D）。本編 16:9 内の写真 hop に使う。ズーム切りでは 0。 */
+export function jumpOffsetPx(
+  time: number,
+  slots: readonly number[],
+  canvasHeight: number,
+  style: SwapStyle = "jump",
+): number {
+  if (style === "zoom") return 0;
   const amount = jumpAmount(time, slots);
   if (amount === 0) return 0;
   return -amount * canvasHeight * JUMP_AMPLITUDE;
@@ -250,7 +282,7 @@ function slotStartAt(time: number, slots: readonly number[], lookahead: number):
  * カット前後の写真切替エンベロープ。先頭スロットは「切替」ではないので無効。
  * フラッシュはカットでピーク、パンチ／ズレはそのまま hop に接続する。
  */
-export function swapFx(time: number, slots: readonly number[]): SwapFx {
+export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
   if (slots.length < 2) return SWAP_NONE;
   const { start, index } = slotStartAt(time, slots, SWAP_PRE_ROLL);
   if (index === 0) return SWAP_NONE;
@@ -263,6 +295,17 @@ export function swapFx(time: number, slots: readonly number[]): SwapFx {
   const env = clamp01(flashEnv);
   const amount = env ** 0.65;
   const dir = index % 2 === 0 ? 1 : -1;
+  if (style === "zoom") {
+    return {
+      amount,
+      flash: env ** 0.75 * ZOOM_FLASH_PEAK,
+      punch: 1 + ZOOM_PUNCH * amount,
+      slide: 0,
+      chroma: amount * 0.35,
+      skew: 0,
+      zoomBlur: env ** 0.55 * ZOOM_BLUR_PEAK,
+    };
+  }
   return {
     amount,
     flash: env ** 0.85 * SWAP_FLASH_PEAK,
@@ -270,6 +313,7 @@ export function swapFx(time: number, slots: readonly number[]): SwapFx {
     slide: dir * SWAP_SLIDE_FRAC * amount,
     chroma: amount * amount,
     skew: dir * SWAP_SKEW * amount,
+    zoomBlur: 0,
   };
 }
 

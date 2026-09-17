@@ -1,6 +1,6 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
-import { isAspectMode, TEMPLATES, type AspectMode } from "./layout.ts";
+import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
@@ -16,6 +16,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const video = createTemplateVideo("portrait");
 
   let mode: AspectMode = "portrait";
+  let swapStyle: SwapStyle = "jump";
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
@@ -58,6 +59,19 @@ export async function boot(root: HTMLElement): Promise<void> {
             </label>
           </div>
         </fieldset>
+        <fieldset class="aspect-field" id="swapField" hidden>
+          <legend>切替エフェクト</legend>
+          <div class="aspect-toggle" role="radiogroup" aria-label="切替エフェクト">
+            <label>
+              <input type="radio" name="swap" value="jump" checked />
+              <span>ジャンプ</span>
+            </label>
+            <label>
+              <input type="radio" name="swap" value="zoom" />
+              <span>ズーム</span>
+            </label>
+          </div>
+        </fieldset>
         <label class="file-btn">
           <input id="picker" type="file" accept="image/*" multiple />
           写真を選ぶ
@@ -85,6 +99,8 @@ export async function boot(root: HTMLElement): Promise<void> {
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
+  const swapField = must(root, "#swapField");
+  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
 
   stage.append(compositor.canvas);
   document.body.append(video);
@@ -121,11 +137,14 @@ export async function boot(root: HTMLElement): Promise<void> {
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
+    for (const input of swapInputs) {
+      input.disabled = recording;
+    }
   };
 
   const paint = (time?: number) => {
     const slots = timeline().slots;
-    const slot = compositor.draw(video, photos, slots, time);
+    const slot = compositor.draw(video, photos, slots, time, swapStyle);
     if (slot !== lastSlot) {
       lastSlot = slot;
       slotMeter.textContent = `スロット ${slot + 1} / ${slots.length}`;
@@ -180,7 +199,14 @@ export async function boot(root: HTMLElement): Promise<void> {
     slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
     video.src = TEMPLATES[mode].video;
     video.load();
-    setStatus(mode === "portrait" ? "たて（9:16）。中央が本編、上下はブラー。" : "よこ（16:9）。キャンバス全面が本編。");
+    swapField.hidden = mode !== "landscape";
+    setStatus(
+      mode === "portrait"
+        ? "たて（9:16）。中央が本編、上下はブラー。"
+        : swapStyle === "zoom"
+          ? "よこ（16:9）。切替はズーム。"
+          : "よこ（16:9）。切替はジャンプ。",
+    );
     refreshButtons();
   };
 
@@ -201,6 +227,17 @@ export async function boot(root: HTMLElement): Promise<void> {
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isAspectMode(input.value)) return;
       applyAspect(input.value);
+    });
+  }
+
+  for (const input of swapInputs) {
+    input.addEventListener("change", () => {
+      if (recording || !input.checked || !isSwapStyle(input.value)) return;
+      swapStyle = input.value;
+      if (mode === "landscape" && !playing) {
+        paint();
+        setStatus(swapStyle === "zoom" ? "よこ（16:9）。切替はズーム。" : "よこ（16:9）。切替はジャンプ。");
+      }
     });
   }
 

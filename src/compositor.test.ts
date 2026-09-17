@@ -50,6 +50,7 @@ describe("backdrop hop", () => {
     const hop = jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height);
     expect(hop).toBeLessThan(0);
     expect(sharpCoverScale(OUTPUTS.landscape.height, OUTPUTS.landscape.height)).toBeGreaterThan(1);
+    expect(jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height, "zoom")).toBe(0);
   });
 
   it("flashes and punches the photo on a cut instead of swapping it raw", () => {

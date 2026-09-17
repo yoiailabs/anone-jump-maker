@@ -29,6 +29,8 @@ import {
   outputSize,
   rectToUvBottomLeft,
   sharpCoverScale,
+  effectiveSwapStyle,
+  isSwapStyle,
   swapChromaPx,
   swapFx,
   swapSlidePx,
@@ -271,5 +273,37 @@ describe("swapFx", () => {
   it("is idle with one slot or none", () => {
     expect(swapFx(0.5, [0]).flash).toBe(0);
     expect(swapFx(0.5, []).flash).toBe(0);
+  });
+});
+
+describe("landscape swap styles", () => {
+  it("keeps zoom as a landscape-only choice", () => {
+    expect(isSwapStyle("jump")).toBe(true);
+    expect(isSwapStyle("zoom")).toBe(true);
+    expect(isSwapStyle("slide")).toBe(false);
+    expect(effectiveSwapStyle("portrait", "zoom")).toBe("jump");
+    expect(effectiveSwapStyle("landscape", "zoom")).toBe("zoom");
+    expect(effectiveSwapStyle("landscape", "jump")).toBe("jump");
+  });
+
+  it("drops hop on zoom and keeps the jump envelope otherwise", () => {
+    const hopped = jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height, "jump");
+    expect(hopped).toBeLessThan(0);
+    expect(jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height, "zoom")).toBe(0);
+    expect(jumpOffsetPx(0.12, slots, OUTPUT.height, "zoom")).toBe(0);
+  });
+
+  it("uses a radial zoom flash without slide or skew", () => {
+    const jump = swapFx(slots[1]!, slots, "jump");
+    const zoom = swapFx(slots[1]!, slots, "zoom");
+    const rest = swapFx(0.8, slots, "zoom");
+    expect(zoom.flash).toBeGreaterThan(0.6);
+    expect(zoom.punch).toBeGreaterThan(jump.punch);
+    expect(zoom.zoomBlur).toBeGreaterThan(0.5);
+    expect(jump.zoomBlur).toBe(0);
+    expect(zoom.slide).toBe(0);
+    expect(zoom.skew).toBe(0);
+    expect(rest.zoomBlur).toBe(0);
+    expect(rest.flash).toBe(0);
   });
 });

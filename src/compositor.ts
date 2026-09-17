@@ -9,6 +9,7 @@ import {
   characterScale,
   characterShiftY,
   coverDest,
+  effectiveSwapStyle,
   jumpOffsetPx,
   mainPanelRect,
   outputSize,
@@ -19,6 +20,7 @@ import {
   templateBandRect,
   usesBlurBackdrop,
   type AspectMode,
+  type SwapStyle,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import { photoForSlot, slotForTime } from "./timeline.ts";
@@ -39,6 +41,7 @@ export type Compositor = {
     photos: readonly LoadedPhoto[],
     slots: readonly number[],
     time?: number,
+    swapStyle?: SwapStyle,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   aspect: () => AspectMode;
@@ -76,15 +79,17 @@ export function createCompositor(): Compositor {
     photos: readonly LoadedPhoto[],
     slots: readonly number[],
     time = video.currentTime,
+    swapStyle: SwapStyle = "jump",
   ) => {
+    const style = effectiveSwapStyle(mode, swapStyle);
     const slot = slotForTime(time, slots);
     const photo = photoForSlot(photos, slot);
     applyCanvasSize(canvas, mode);
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
-    const hopY = jumpOffsetPx(time, slots, h);
-    const fx = swapFx(time, slots);
+    const hopY = jumpOffsetPx(time, slots, h, style);
+    const fx = swapFx(time, slots, style);
 
     composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, fx, panel, h, mode);
     if (usesBlurBackdrop(mode)) {
@@ -157,7 +162,11 @@ function composeMain(
       offsetY: hopY,
       dx: swapSlidePx(fx, mw),
     });
-    drawPhotoPlate(mainCtx, photo, dest, fx.skew, swapChromaPx(fx, mw));
+    if (fx.zoomBlur > 0.02) {
+      drawZoomBlurPlate(mainCtx, photo, dest, fx.zoomBlur);
+    } else {
+      drawPhotoPlate(mainCtx, photo, dest, fx.skew, swapChromaPx(fx, mw));
+    }
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -227,6 +236,33 @@ function drawPhotoPlate(
     ctx.drawImage(photo.bitmap, dest.x + chromaPx, dest.y, dest.w, dest.h);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
+  }
+  ctx.restore();
+}
+
+/** 参考横動画の放射ズーム。中心から何枚か拡大して重ね、切替を伸ばす。 */
+function drawZoomBlurPlate(
+  ctx: CanvasRenderingContext2D,
+  photo: LoadedPhoto,
+  dest: { x: number; y: number; w: number; h: number },
+  amount: number,
+): void {
+  const steps = Math.max(5, Math.round(10 * amount));
+  const grow = 0.38 * amount;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 1; i <= steps; i += 1) {
+    const t = i / steps;
+    const scale = 1 + grow * t;
+    ctx.globalAlpha = (0.28 * amount) / steps;
+    const w = dest.w * scale;
+    const h = dest.h * scale;
+    ctx.drawImage(photo.bitmap, dest.x - (w - dest.w) / 2, dest.y - (h - dest.h) / 2, w, h);
   }
   ctx.restore();
 }
