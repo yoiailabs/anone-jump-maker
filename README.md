@@ -51,7 +51,7 @@
 
 画面最下部には参考リンクとして、ナナツカゼさんの X・YouTube・Spotify・Apple Music へのバナーを並べます（`src/links.ts`）。どれも別タブで開き、`rel="noopener noreferrer"` を付けます。公式ロゴの画像は置かず、テンプレに寄せた太線のアイコンを自分で描いてラベルを添えています。
 
-写真の向きは EXIF を `createImageBitmap({ imageOrientation: "from-image" })` で直し、WebGL には ImageBitmap を直接上げません（`UNPACK_FLIP_Y_WEBGL` との二重反転を避けるため、Canvas2D に描いてからテクスチャ化します）。読み込み時に長辺 1920 程度へ縮小し、元の巨大画素と File の ObjectURL は持ちません。サムネは別の小さいコピー、decode は最大 2 枚ずつです。写真は端末内のみです。
+写真の向きは EXIF を `createImageBitmap({ imageOrientation: "from-image" })` で直し、それが落ちる端末（Android Chrome のギャラリーなど）では options なしの `createImageBitmap`、HTML Image、FileReader の data URL へ落とします。MIME が空でも拡張子やマジックバイトで JPEG/PNG/WebP なら残します。HEIC/HEIF は巨大なデコーダを入れず、JPEG への変換を案内します。WebGL には ImageBitmap を直接上げません（`UNPACK_FLIP_Y_WEBGL` との二重反転を避けるため、Canvas2D に描いてからテクスチャ化します）。読み込み時に長辺 1920 程度へ縮小し、元の巨大画素と File の ObjectURL は持ちません。サムネは別の小さいコピー、decode は最大 2 枚ずつです。写真は端末内のみです。
 
 ## 開発
 
