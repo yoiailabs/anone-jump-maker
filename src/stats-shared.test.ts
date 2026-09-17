@@ -75,11 +75,17 @@ describe("sanitizeGenerateAttrs", () => {
 });
 
 describe("shouldCountPreview", () => {
-  it("counts only a finished preview, not a mid-play stop or a save recording", () => {
-    expect(shouldCountPreview({ event: "ended", playing: true, recording: false })).toBe(true);
-    expect(shouldCountPreview({ event: "ended", playing: true, recording: true })).toBe(false);
-    expect(shouldCountPreview({ event: "ended", playing: false, recording: false })).toBe(false);
-    expect(shouldCountPreview({ event: "stop", playing: true, recording: false })).toBe(false);
+  it("counts when a preview starts, not when it ends or is stopped", () => {
+    expect(shouldCountPreview({ event: "start", recording: false, countedThisPlayback: false })).toBe(true);
+    expect(shouldCountPreview({ event: "start", recording: true, countedThisPlayback: false })).toBe(false);
+    expect(shouldCountPreview({ event: "ended", recording: false, countedThisPlayback: true })).toBe(false);
+    expect(shouldCountPreview({ event: "stop", recording: false, countedThisPlayback: true })).toBe(false);
+  });
+
+  it("does not increment twice for the same playback, but counts again after stop then restart", () => {
+    expect(shouldCountPreview({ event: "start", recording: false, countedThisPlayback: true })).toBe(false);
+    expect(shouldCountPreview({ event: "stop", recording: false, countedThisPlayback: true })).toBe(false);
+    expect(shouldCountPreview({ event: "start", recording: false, countedThisPlayback: false })).toBe(true);
   });
 });
 
