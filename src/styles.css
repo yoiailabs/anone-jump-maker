@@ -172,11 +172,13 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  padding-top: 0.35rem;
 }
 
-/* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える */
+/* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える。
+   再生エリアは操作パネルの下にあるので、縦は 1 画面に収まる高さだけを上限にする。 */
 .stage {
-  width: min(100%, 21rem, calc((100svh - 27rem) * 608 / 1080));
+  width: min(100%, 21rem, calc((100svh - 6rem) * 608 / 1080));
   aspect-ratio: 608 / 1080;
   border-radius: 1.5rem;
   overflow: hidden;

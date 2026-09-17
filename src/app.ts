@@ -39,11 +39,6 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
-      <section class="stage-wrap">
-        <div class="stage" id="stage" data-aspect="portrait"></div>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
-      </section>
-
       <section class="panel">
         <fieldset class="aspect-field">
           <legend>動画の向き</legend>
@@ -81,6 +76,11 @@ export async function boot(root: HTMLElement): Promise<void> {
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
         </div>
         <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
+      </section>
+
+      <section class="stage-wrap">
+        <div class="stage" id="stage" data-aspect="portrait"></div>
+        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
       </section>
 
       <footer class="notes">
