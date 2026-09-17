@@ -1,0 +1,22 @@
+---
+description: PR 作成後に Cloudflare のプレビュー URL を伝える
+alwaysApply: true
+---
+
+# Cloudflare プレビュー URL
+
+このリポジトリでは、PR を作成したら **ユーザーへの返答で Cloudflare のプレビュー URL を必ず伝える**。PR 本文にも同じ URL を書く。
+
+## 取り方
+
+1. Workers Builds の Worker は `anone`（`preview_urls = true`）。非本番ブランチは `npx wrangler versions upload`。
+2. Cloudflare-builds MCP で当該ブランチのビルドを特定し、ログから次の行を読む。
+   - `Version Preview Alias URL:` … ブランチ固定の安定 URL（これを優先して伝える）
+   - `Version Preview URL:` … そのコミット専用
+3. ログがまだ無いときは、チェック `Workers Builds: anone` の完了を待ってから取る。失敗したらその旨を伝え、ダッシュボードリンクだけでも出す。
+
+## URL の形
+
+- エイリアス: `https://<sanitized-branch>-anone.yoiailabs.workers.dev`
+- ブランチ名の `/` は `-` になる（例: `cursor/foo-490c` → `cursor-foo-490c-anone.yoiailabs.workers.dev`）
+- 本番は `https://anone.yoiailabs.com`（プレビューではない）
