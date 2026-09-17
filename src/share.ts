@@ -21,10 +21,12 @@ export const APP_SHARE_DATA: ShareData = {
 const X_INTENT_ENDPOINT = "https://x.com/intent/post";
 
 /**
- * X アプリのネイティブ投稿画面。非公式のスキームだが、`x.com/intent/post` を渡すと
+ * X アプリのネイティブ投稿画面へのディープリンク。非公式のスキームだが、`x.com/intent/post` を渡すと
  * アプリは投稿画面ではなく内蔵ブラウザで開いてしまうので、スマホではこちらを叩く。
+ * 改名後も `x://` にはならず `twitter://` のままで、iOS / Android どちらも同じ形。
  */
-const X_APP_COMPOSE_ENDPOINT = "twitter://post";
+const X_APP_SCHEME = "twitter";
+const X_APP_COMPOSE_PATH = "post";
 
 /** Android の X アプリ。assetlinks.json でも `com.twitter.android`。 */
 const X_ANDROID_PACKAGE = "com.twitter.android";
@@ -89,23 +91,25 @@ export function mobilePlatform(platform: PlatformLike | undefined): MobilePlatfo
 
 /** X アプリのネイティブ投稿画面（iOS はこの URL に遷移させる）。 */
 export function buildXAppComposeUrl(text: string = SHARE_TEXT): string {
-  return `${X_APP_COMPOSE_ENDPOINT}?message=${encodeURIComponent(text)}`;
+  return `${X_APP_SCHEME}://${X_APP_COMPOSE_PATH}?message=${encodeURIComponent(text)}`;
 }
 
 /**
- * Android の intent URI。X アプリの共有（ACTION_SEND / text/plain）に直接渡すとネイティブの
- * 投稿画面が開く。アプリが無ければブラウザが `S.browser_fallback_url` の投稿画面へ落とす。
+ * Android の intent URI。中身は iOS と同じディープリンク（ACTION_VIEW + `twitter://post?message=`）で、
+ * アプリが無ければブラウザが `S.browser_fallback_url` の投稿画面へ落とす。
+ *
+ * 共有（ACTION_SEND / text/plain）では開けない。Chrome は web ページからの intent に必ず
+ * BROWSABLE を足すが、共有の受け口はふつう BROWSABLE を宣言していないので解決できず、
+ * アプリが入っていてもそのままブラウザの投稿画面に落ちてしまう。
  */
 export function buildXAndroidComposeUrl(
   text: string = SHARE_TEXT,
   fallbackUrl: string = buildXIntentUrl(text),
 ): string {
   return [
-    "intent:#Intent",
-    "action=android.intent.action.SEND",
-    "type=text/plain",
+    `intent://${X_APP_COMPOSE_PATH}?message=${encodeURIComponent(text)}#Intent`,
+    `scheme=${X_APP_SCHEME}`,
     `package=${X_ANDROID_PACKAGE}`,
-    `S.android.intent.extra.TEXT=${encodeURIComponent(text)}`,
     `S.browser_fallback_url=${encodeURIComponent(fallbackUrl)}`,
     "end",
   ].join(";");

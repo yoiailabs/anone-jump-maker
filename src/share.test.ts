@@ -145,15 +145,23 @@ describe("X への投稿", () => {
     expect(buildXAppComposeUrl("#テスト")).toBe("twitter://post?message=%23%E3%83%86%E3%82%B9%E3%83%88");
   });
 
-  it("Android は intent URI で X アプリの共有に渡し、無ければ Web の投稿画面へ落とす", () => {
+  it("Android は intent URI でアプリのディープリンクを開き、無ければ Web の投稿画面へ落とす", () => {
     const url = buildXAndroidComposeUrl();
-    expect(url.startsWith("intent:#Intent;")).toBe(true);
-    expect(url).toContain("action=android.intent.action.SEND");
-    expect(url).toContain("type=text/plain");
+    // 中身は iOS と同じ twitter://post?message=…（ACTION_SEND は BROWSABLE が無くて解決できない）
+    expect(url.startsWith(`intent://post?message=${encodeURIComponent(SHARE_TEXT)}#Intent;`)).toBe(
+      true,
+    );
+    expect(url).toContain("scheme=twitter");
     expect(url).toContain("package=com.twitter.android");
-    expect(url).toContain(`S.android.intent.extra.TEXT=${encodeURIComponent(SHARE_TEXT)}`);
+    expect(url).not.toContain("action=android.intent.action.SEND");
     expect(url).toContain(`S.browser_fallback_url=${encodeURIComponent(buildXIntentUrl())}`);
     expect(url.endsWith(";end")).toBe(true);
+    const [data] = url.split("#Intent;");
+    expect(data.replace("intent://", "twitter://")).toBe(buildXAppComposeUrl());
+    // 本文のハッシュタグは %23。生の # が増えると Android は最後の # から先を
+    // `#Intent;` として読むので、本文も intent の指定も壊れる。
+    expect(url.match(/#/g)).toHaveLength(1);
+    expect(url.startsWith("#Intent;", url.lastIndexOf("#"))).toBe(true);
   });
 
   it("iOS の投稿リンクはアプリのスキーム（preventDefault に頼らずリンクの遷移で渡す）", () => {
