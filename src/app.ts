@@ -1,3 +1,4 @@
+import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
@@ -5,7 +6,7 @@ import { linkBannersHtml } from "./links.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
-import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
+import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart, shouldTrackPreviewStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import {
   copyTextToClipboard,
@@ -30,13 +31,14 @@ export async function boot(root: HTMLElement): Promise<void> {
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
+  let previewTracked = false;
   let playbackBusy = false;
   let playGen = 0;
   let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
   let savedVideo: File | null = null;
-  let aspectResume: { play: boolean; time: number } | null = null;
+  let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   root.innerHTML = `
     <div class="sky" aria-hidden="true">
@@ -287,10 +289,21 @@ export async function boot(root: HTMLElement): Promise<void> {
     stopLoop = startVideoPaintLoop(video, paint);
   };
 
+  const analyticsParams = () => videoEventParams(mode, swapStyle);
+
+  const trackPreviewStart = () => {
+    if (!shouldTrackPreviewStart({ event: "start", recording, trackedThisPlayback: previewTracked })) {
+      return;
+    }
+    previewTracked = true;
+    trackEvent(VIDEO_PREVIEW_EVENT, analyticsParams());
+  };
+
   const stopPlayback = () => {
     playGen += 1;
     playbackBusy = false;
     playing = false;
+    previewTracked = false;
     haltLoop();
     video.pause();
     refreshButtons();
@@ -314,6 +327,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
+      trackPreviewStart();
       video.muted = false;
       video.volume = 1;
       if (
@@ -347,6 +361,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
+      previewTracked = false;
       haltLoop();
       refreshButtons();
       setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
@@ -372,12 +387,17 @@ export async function boot(root: HTMLElement): Promise<void> {
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
     const inPreview = previewDialog.open;
-    aspectResume = inPreview ? { play: isPreviewPlaying(), time: video.currentTime } : null;
+    aspectResume = inPreview
+      ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
+      : null;
     playGen += 1;
     playbackBusy = false;
     playing = false;
     haltLoop();
     video.pause();
+    if (!inPreview) {
+      previewTracked = false;
+    }
     mode = next;
     compositor.setAspect(mode);
     stage.dataset.aspect = mode;
@@ -405,6 +425,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     const resume = aspectResume;
     aspectResume = null;
     if (!resume || !previewDialog.open || recording) return;
+    previewTracked = resume.tracked;
     void (async () => {
       try {
         await seekVideo(video, resume.time);
@@ -541,6 +562,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     closePreview();
     recording = true;
     playing = false;
+    previewTracked = false;
     video.pause();
     refreshButtons();
     setStatus("書き出しを準備しています…", "busy");
@@ -563,11 +585,13 @@ export async function boot(root: HTMLElement): Promise<void> {
       downloadBlob(result.blob, filename);
       savedVideo = toShareFile(result.blob, filename);
       setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
+      trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
     } finally {
       recording = false;
       playing = false;
+      previewTracked = false;
       haltLoop();
       video.pause();
       video.muted = true;

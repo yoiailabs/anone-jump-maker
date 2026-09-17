@@ -5,6 +5,7 @@ import {
   PREVIEW_RESTART_LABEL,
   playPauseLabel,
   shouldSeekPreviewToStart,
+  shouldTrackPreviewStart,
 } from "./preview.ts";
 
 describe("playPauseLabel", () => {
@@ -35,5 +36,20 @@ describe("shouldSeekPreviewToStart", () => {
     expect(
       shouldSeekPreviewToStart({ fromStart: false, ended: false, currentTime: 7.98, duration: 8 }),
     ).toBe(true);
+  });
+});
+
+describe("shouldTrackPreviewStart", () => {
+  it("tracks when a preview starts, not when it ends or is stopped", () => {
+    expect(shouldTrackPreviewStart({ event: "start", recording: false, trackedThisPlayback: false })).toBe(true);
+    expect(shouldTrackPreviewStart({ event: "start", recording: true, trackedThisPlayback: false })).toBe(false);
+    expect(shouldTrackPreviewStart({ event: "ended", recording: false, trackedThisPlayback: true })).toBe(false);
+    expect(shouldTrackPreviewStart({ event: "stop", recording: false, trackedThisPlayback: true })).toBe(false);
+  });
+
+  it("does not fire twice for the same playback, but fires again after stop then restart", () => {
+    expect(shouldTrackPreviewStart({ event: "start", recording: false, trackedThisPlayback: true })).toBe(false);
+    expect(shouldTrackPreviewStart({ event: "stop", recording: false, trackedThisPlayback: true })).toBe(false);
+    expect(shouldTrackPreviewStart({ event: "start", recording: false, trackedThisPlayback: false })).toBe(true);
   });
 });

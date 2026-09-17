@@ -69,7 +69,12 @@ pnpm deploy         # = pnpm build && wrangler deploy（本体 anone）
 pnpm dev:worker     # ローカルで Worker + 静的アセットを起動
 ```
 
-本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。生成回数（「○回作られたよ」）と `/api/stats`、Durable Object（`GENERATE_STATS` / Worker `anone-stats`）は無料枠を消費していたため削除しました。ページ表示・プレビュー開始・保存の経路から DO は呼びません。
+本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。生成回数（「○回作られたよ」）と `/api/stats`、Durable Object（`GENERATE_STATS` / Worker `anone-stats`）は無料枠を消費していたため削除しました。ページ表示・プレビュー開始・保存の経路から DO は呼びません。件数は画面に出さず、Google Analytics 4（測定 ID `G-L8WKQQFBZC`、`index.html` の gtag）へクライアントからカスタムイベントだけ送ります。
+
+- `video_preview` … プレビュー再生の開始時（旧カウンタと同じ。同じ再生中の再スタートや一時停止からの再開は送らない。閉じてから開き直せば再送）
+- `video_save` … 動画の保存が成功したあと
+
+パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
 
 Cloudflare 上に残っている `anone-stats` Worker（クラス `GenerateStats`）は、このリポジトリからは参照しません。クォータを完全に戻すには、ダッシュボードまたは `wrangler delete anone-stats` で一度だけ削除してください。
 

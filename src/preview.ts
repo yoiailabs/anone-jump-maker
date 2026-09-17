@@ -17,3 +17,15 @@ export function shouldSeekPreviewToStart(input: {
   if (!(input.duration > 0)) return false;
   return input.currentTime >= input.duration - 0.05;
 }
+
+/**
+ * 旧カウンタと同じタイミングで GA の video_preview を送る。
+ * 開始時だけ。同じ再生中の再スタートは送らない。停止・完走では送らない。
+ */
+export function shouldTrackPreviewStart(input: {
+  event: "start" | "stop" | "ended";
+  recording: boolean;
+  trackedThisPlayback: boolean;
+}): boolean {
+  return input.event === "start" && !input.recording && !input.trackedThisPlayback;
+}
