@@ -39,6 +39,7 @@ import {
   swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
+  zoomPlateScales,
 } from "./layout.ts";
 
 const slots = [0, 0.467, 0.933, 1.467];
@@ -304,9 +305,13 @@ describe("landscape swap styles", () => {
     expect(zoom.flash).toBe(0);
     expect(zoom.flash).toBeLessThanOrEqual(ZOOM_FLASH_PEAK);
     expect(jump.flash).toBeGreaterThan(0.7);
-    expect(zoom.punch).toBeGreaterThan(1.05);
-    expect(zoom.punch).toBeLessThan(1.25);
+    expect(zoom.punch).toBeLessThan(1);
+    expect(zoom.punch).toBeGreaterThan(0.8);
     expect(zoom.zoomBlur).toBeGreaterThan(0.5);
+    const plates = zoomPlateScales(zoom);
+    expect(plates.outgoing).toBeLessThan(1);
+    expect(plates.incoming).toBeGreaterThan(1);
+    expect(plates.incoming).toBeGreaterThan(plates.outgoing);
     expect(jump.zoomBlur).toBe(0);
     expect(zoom.slide).toBe(0);
     expect(zoom.skew).toBe(0);

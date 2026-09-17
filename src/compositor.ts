@@ -12,6 +12,7 @@ import {
   effectiveSwapStyle,
   jumpOffsetPx,
   mainPanelRect,
+  OUTPUTS,
   outputSize,
   sharpCoverScale,
   swapChromaPx,
@@ -19,7 +20,7 @@ import {
   swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
-  ZOOM_GROW,
+  zoomPlateScales,
   type AspectMode,
   type SwapFx,
   type SwapStyle,
@@ -310,7 +311,7 @@ function smearCharacter(
 }
 
 /**
- * 参考横のズーム切り。出ていく写真を中心から伸ばし、入ってくる写真をその内側に出す。
+ * 参考横のズームアウト。出ていく写真は中心へ縮み、入ってくる写真は寄った状態から引く。
  * 放射ブラー＋横ストリーク＋ RGB ずれ＋軽い波打ち。
  */
 function drawZoomWarpPlate(
@@ -334,20 +335,20 @@ function drawZoomWarpPlate(
   warpCtx.fillStyle = "#0a0806";
   warpCtx.fillRect(0, 0, mw, mh);
 
+  const { outgoing: outScale, incoming: inScale } = zoomPlateScales(fx);
   const outAlpha = (1 - fx.mix) * 0.88;
   if (outAlpha > 0.02) {
     paintRadialStreaks(
       warpCtx,
       outgoing,
       dest,
-      1 + ZOOM_GROW * fx.zoomBlur,
+      outScale,
       outAlpha,
       fx.zoomBlur,
       fx.whip,
       chromaPx,
     );
   }
-  const inScale = 0.5 + 0.5 * fx.mix;
   const inAlpha = Math.min(1, 0.4 + fx.mix * 0.6);
   paintRadialStreaks(
     warpCtx,
@@ -407,7 +408,8 @@ function paintRadialStreaks(
 
   for (let i = steps; i >= 1; i -= 1) {
     const t = i / steps;
-    const s = scale * (1 + grow * t);
+    // ズームアウトの放射ブラーは内側（より小さいコピー）へ伸ばす。
+    const s = Math.max(0.12, scale * (1 - grow * t));
     const w = dest.w * s;
     const h = dest.h * s;
     paintCopy(ctx, bitmap, cx - w / 2, cy - h / 2, w, h, alpha * 0.18 * (1 - t * 0.45), chromaPx);
@@ -499,7 +501,7 @@ function paintOutput(
 
 export const SONG_CREDIT = "♪ あのね - ナナツカゼ";
 
-/** 旧 short×0.022（縦 13 / 横 16）の約 2.5 倍。ピルなし白文字。 */
+/** 横短辺×この比。縦も同じ fontSize を使う（短辺基準だと縦だけ大きく見える）。 */
 export const SONG_CREDIT_FONT_FRAC = 0.055;
 
 export type SongCreditLayout = {
@@ -523,7 +525,8 @@ export function songCreditLayout(
   mode: AspectMode = canvasW < canvasH ? "portrait" : "landscape",
 ): SongCreditLayout {
   const short = Math.min(canvasW, canvasH);
-  const fontSize = Math.max(28, Math.round(short * SONG_CREDIT_FONT_FRAC));
+  const landscapeShort = Math.min(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
+  const fontSize = Math.max(28, Math.round(landscapeShort * SONG_CREDIT_FONT_FRAC));
   const pad = Math.max(8, Math.round(short * 0.016));
   const x = canvasW - pad;
   if (mode === "portrait") {
