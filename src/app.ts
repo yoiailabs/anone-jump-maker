@@ -8,17 +8,21 @@ import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import {
+  buildXAppComposeUrl,
+  buildXIntentUrl,
   canShareVideoFile,
   copyTextToClipboard,
+  mobilePlatform,
   openExternalTab,
+  openXAppCompose,
   openXCompose,
-  prefersAppHandoff,
   SHARE_HASHTAG,
   SHARE_TEXT,
   shareAppUrl,
   shareJumpVideo,
   toShareFile,
   xComposeLinkAttrs,
+  type AppComposeDeps,
 } from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
@@ -224,12 +228,29 @@ export async function boot(root: HTMLElement): Promise<void> {
   document.body.append(video);
 
   const shareNavigator = typeof navigator === "undefined" ? undefined : navigator;
-  // スマホでは投稿ボタンをふつうのリンクのまま踏ませる。JS で開くと X アプリの投稿画面に渡らない。
-  const appHandoff = prefersAppHandoff(shareNavigator);
-  const composeLink = xComposeLinkAttrs({ appHandoff });
+  const platform = mobilePlatform(shareNavigator);
+  const composeLink = xComposeLinkAttrs({ platform });
   shareBtn.href = composeLink.href;
   if (composeLink.target) shareBtn.target = composeLink.target;
   if (composeLink.rel) shareBtn.rel = composeLink.rel;
+
+  const appComposeDeps: AppComposeDeps = {
+    navigate: (url) => window.location.assign(url),
+    isHidden: () => document.hidden,
+    onHidden: (listener) => {
+      const onVisibility = () => {
+        if (document.hidden) listener();
+      };
+      document.addEventListener("visibilitychange", onVisibility);
+      window.addEventListener("pagehide", listener);
+      return () => {
+        document.removeEventListener("visibilitychange", onVisibility);
+        window.removeEventListener("pagehide", listener);
+      };
+    },
+    setTimer: (listener, ms) => window.setTimeout(listener, ms),
+    clearTimer: (id) => window.clearTimeout(id),
+  };
 
   const timeline = () => timelines[mode];
 
@@ -631,35 +652,43 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   shareBtn.addEventListener("click", (event) => {
     const file = savedVideo;
-    if (!canShareVideoFile(file, shareNavigator)) {
-      // リンクの遷移をそのまま使う。ここで止めて JS から開くと、スマホでも X アプリではなく
-      // ブラウザの X が出てしまう。
-      setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
+    if (canShareVideoFile(file, shareNavigator)) {
+      event.preventDefault();
+      void (async () => {
+        const outcome = await shareJumpVideo({
+          file,
+          navigator: shareNavigator,
+          openUrl: (url) =>
+            openXCompose({
+              url,
+              appHandoff: platform !== null,
+              navigate: (to) => window.location.assign(to),
+              openTab: (to) => openExternalTab(to, window),
+            }),
+        });
+        if (outcome === "files") {
+          setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
+        } else if (outcome === "intent") {
+          setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
+        } else if (outcome === "blocked") {
+          setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
+        } else {
+          setStatus("投稿をやめました");
+        }
+      })();
       return;
     }
-    event.preventDefault();
-    void (async () => {
-      const outcome = await shareJumpVideo({
-        file,
-        navigator: shareNavigator,
-        openUrl: (url) =>
-          openXCompose({
-            url,
-            appHandoff,
-            navigate: (to) => window.location.assign(to),
-            openTab: (to) => openExternalTab(to, window),
-          }),
+    if (platform === "ios") {
+      // iOS は https の投稿画面を渡すとアプリが内蔵ブラウザで開いてしまうので、
+      // アプリのネイティブ投稿画面を直接叩く。アプリが出てこなければ Web に落ちる。
+      event.preventDefault();
+      openXAppCompose(appComposeDeps, {
+        appUrl: buildXAppComposeUrl(),
+        webUrl: buildXIntentUrl(),
       });
-      if (outcome === "files") {
-        setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
-      } else if (outcome === "intent") {
-        setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
-      } else if (outcome === "blocked") {
-        setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
-      } else {
-        setStatus("投稿をやめました");
-      }
-    })();
+    }
+    // Android と PC はリンクの遷移そのままでよい（intent URI / 別タブ）。
+    setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
   });
 
   shareAppBtn.addEventListener("click", async () => {

@@ -2,13 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import {
   APP_SHARE_DATA,
   APP_SHARE_URL,
+  buildXAndroidComposeUrl,
+  buildXAppComposeUrl,
   buildXIntentUrl,
   canShareAppUrl,
   canShareVideoFile,
   copyTextToClipboard,
+  mobilePlatform,
   openExternalTab,
+  openXAppCompose,
   openXCompose,
-  prefersAppHandoff,
   SHARE_HASHTAG,
   SHARE_MAKER_HASHTAG,
   SHARE_TEXT,
@@ -16,6 +19,7 @@ import {
   shareJumpVideo,
   toShareFile,
   xComposeLinkAttrs,
+  type AppComposeDeps,
   type ShareNavigatorLike,
 } from "./share.ts";
 
@@ -29,6 +33,45 @@ const MAC_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 const videoFile = () => toShareFile(new Blob(["x"], { type: "video/mp4" }), "anone-jump-9x16.mp4");
+
+/** アプリに移ったかどうかを手で動かせる `openXAppCompose` の足回り。 */
+function fakeAppCompose(options: { hidden: boolean }) {
+  const navigated: string[] = [];
+  let hidden = options.hidden;
+  let onHidden: (() => void) | null = null;
+  let timerFn: (() => void) | null = null;
+  let cleared = false;
+  const deps: AppComposeDeps = {
+    navigate: (url) => navigated.push(url),
+    isHidden: () => hidden,
+    onHidden: (listener) => {
+      onHidden = listener;
+      return () => {
+        onHidden = null;
+      };
+    },
+    setTimer: (listener) => {
+      timerFn = listener;
+      return 7;
+    },
+    clearTimer: (id) => {
+      expect(id).toBe(7);
+      cleared = true;
+    },
+  };
+  return {
+    deps,
+    navigated,
+    get cleared() {
+      return cleared;
+    },
+    hide: () => {
+      hidden = true;
+      onHidden?.();
+    },
+    runTimer: () => timerFn?.(),
+  };
+}
 
 describe("X への投稿", () => {
   it("投稿画面に両方のハッシュタグを載せる", () => {
@@ -127,28 +170,77 @@ describe("X への投稿", () => {
     expect(openExternalTab("https://x.com/intent/post", { open: () => null })).toBe(false);
   });
 
-  it("スマホ・タブレットを見分ける（iPadOS は Macintosh を名乗るのでタッチで判定）", () => {
-    expect(prefersAppHandoff({ userAgent: IPHONE_UA, maxTouchPoints: 5 })).toBe(true);
-    expect(prefersAppHandoff({ userAgent: ANDROID_UA, maxTouchPoints: 5 })).toBe(true);
-    expect(prefersAppHandoff({ userAgent: IPAD_UA, maxTouchPoints: 5 })).toBe(true);
-    expect(prefersAppHandoff({ userAgent: MAC_UA, maxTouchPoints: 0 })).toBe(false);
-    expect(prefersAppHandoff({ userAgent: IPAD_UA, maxTouchPoints: 0 })).toBe(false);
-    expect(prefersAppHandoff({ userAgent: MAC_UA, userAgentData: { mobile: true } })).toBe(true);
-    expect(prefersAppHandoff(undefined)).toBe(false);
+  it("スマホの OS を見分ける（iPadOS は Macintosh を名乗るのでタッチで判定）", () => {
+    expect(mobilePlatform({ userAgent: IPHONE_UA, maxTouchPoints: 5 })).toBe("ios");
+    expect(mobilePlatform({ userAgent: IPAD_UA, maxTouchPoints: 5 })).toBe("ios");
+    expect(mobilePlatform({ userAgent: ANDROID_UA, maxTouchPoints: 5 })).toBe("android");
+    expect(mobilePlatform({ userAgent: MAC_UA, maxTouchPoints: 0 })).toBeNull();
+    expect(mobilePlatform({ userAgent: IPAD_UA, maxTouchPoints: 0 })).toBeNull();
+    expect(mobilePlatform({ userAgent: MAC_UA, userAgentData: { mobile: true } })).toBe("other");
+    expect(mobilePlatform(undefined)).toBeNull();
   });
 
-  it("スマホは投稿リンクを同じタブに出す（別タブだと X アプリに渡らない）", () => {
-    const mobile = xComposeLinkAttrs({ appHandoff: true });
-    expect(mobile.href).toBe(buildXIntentUrl());
-    expect(mobile.target).toBeNull();
-    expect(mobile.rel).toBeNull();
+  it("アプリの投稿画面は本文を message で渡す（https の intent は内蔵ブラウザで開くため）", () => {
+    expect(buildXAppComposeUrl()).toBe(`twitter://post?message=${encodeURIComponent(SHARE_TEXT)}`);
+    expect(buildXAppComposeUrl("#テスト")).toBe("twitter://post?message=%23%E3%83%86%E3%82%B9%E3%83%88");
+  });
+
+  it("Android は intent URI で X アプリの共有に渡し、無ければ Web の投稿画面へ落とす", () => {
+    const url = buildXAndroidComposeUrl();
+    expect(url.startsWith("intent:#Intent;")).toBe(true);
+    expect(url).toContain("action=android.intent.action.SEND");
+    expect(url).toContain("type=text/plain");
+    expect(url).toContain("package=com.twitter.android");
+    expect(url).toContain(`S.android.intent.extra.TEXT=${encodeURIComponent(SHARE_TEXT)}`);
+    expect(url).toContain(`S.browser_fallback_url=${encodeURIComponent(buildXIntentUrl())}`);
+    expect(url.endsWith(";end")).toBe(true);
+  });
+
+  it("iOS の投稿リンクは Web の投稿画面のまま（クリック時にアプリへ差し替える）", () => {
+    const ios = xComposeLinkAttrs({ platform: "ios" });
+    expect(ios.href).toBe(buildXIntentUrl());
+    expect(ios.target).toBeNull();
+    expect(ios.rel).toBeNull();
+  });
+
+  it("Android の投稿リンクは intent URI、UA 不明のスマホは Web の投稿画面", () => {
+    expect(xComposeLinkAttrs({ platform: "android" }).href).toBe(buildXAndroidComposeUrl());
+    expect(xComposeLinkAttrs({ platform: "other" }).href).toBe(buildXIntentUrl());
+    expect(xComposeLinkAttrs({ platform: "android" }).target).toBeNull();
   });
 
   it("PC は投稿リンクを別タブに出して opener を渡さない", () => {
-    const desktop = xComposeLinkAttrs({ appHandoff: false, text: "#テスト" });
+    const desktop = xComposeLinkAttrs({ platform: null, text: "#テスト" });
     expect(desktop.href).toBe(buildXIntentUrl("#テスト"));
     expect(desktop.target).toBe("_blank");
     expect(desktop.rel).toBe("noopener noreferrer");
+  });
+
+  it("iOS はアプリを叩き、出てこなければ Web の投稿画面に落とす", () => {
+    const { deps, navigated, runTimer } = fakeAppCompose({ hidden: false });
+    openXAppCompose(deps, { appUrl: "twitter://post?message=a", webUrl: "https://x.com/intent/post" });
+    expect(navigated).toEqual(["twitter://post?message=a"]);
+    runTimer();
+    expect(navigated).toEqual(["twitter://post?message=a", "https://x.com/intent/post"]);
+  });
+
+  it("アプリが前に出たら待ち時間を止めて Web の投稿画面は開かない", () => {
+    const fake = fakeAppCompose({ hidden: false });
+    openXAppCompose(fake.deps, {
+      appUrl: "twitter://post?message=a",
+      webUrl: "https://x.com/intent/post",
+    });
+    fake.hide();
+    expect(fake.cleared).toBe(true);
+    fake.runTimer();
+    expect(fake.navigated).toEqual(["twitter://post?message=a"]);
+  });
+
+  it("画面が隠れたままなら時間切れでも Web に落とさない", () => {
+    const { deps, navigated, runTimer } = fakeAppCompose({ hidden: true });
+    openXAppCompose(deps, { appUrl: "twitter://post?message=a", webUrl: "https://x.com/intent/post" });
+    runTimer();
+    expect(navigated).toEqual(["twitter://post?message=a"]);
   });
 
   it("共有シート後の投稿画面は、スマホなら同じタブで開く", () => {
