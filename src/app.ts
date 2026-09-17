@@ -515,11 +515,17 @@ export async function boot(root: HTMLElement): Promise<void> {
     togglePreviewPlay();
   });
 
-  stage.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    togglePreviewPlay();
-  });
+  previewDialog.addEventListener(
+    "click",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Node) || !stage.contains(target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      togglePreviewPlay();
+    },
+    true,
+  );
 
   restartBtn.addEventListener("click", (event) => {
     event.preventDefault();
