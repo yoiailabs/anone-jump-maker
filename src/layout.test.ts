@@ -13,6 +13,7 @@ import {
   SWAP_FLASH_PEAK,
   SWAP_PRE_ROLL,
   ZOOM_DURATION,
+  ZOOM_FLASH_HOLD,
   ZOOM_FLASH_PEAK,
   ZOOM_PRE_ROLL,
   OUTPUT,
@@ -300,13 +301,21 @@ describe("landscape swap styles", () => {
     expect(jumpOffsetPx(0.12, slots, OUTPUT.height, "zoom")).toBe(0);
   });
 
-  it("uses a short radial warp with rgb split, not a white flash", () => {
+  it("uses a short radial warp with rgb split and a highlight flash", () => {
     const jump = swapFx(slots[1]!, slots, "jump");
     const zoom = swapFx(slots[1]!, slots, "zoom");
+    const pre = swapFx(slots[1]! - ZOOM_PRE_ROLL * 0.6, slots, "zoom");
+    const next = swapFx(slots[1]! + ZOOM_FLASH_HOLD + 1e-4, slots, "zoom");
     const rest = swapFx(0.8, slots, "zoom");
     const after = swapFx(slots[1]! + ZOOM_DURATION + 0.01, slots, "zoom");
-    expect(zoom.flash).toBe(0);
-    expect(zoom.flash).toBeLessThanOrEqual(ZOOM_FLASH_PEAK);
+    expect(zoom.flash).toBeGreaterThan(0.3);
+    expect(zoom.flash).toBeCloseTo(ZOOM_FLASH_PEAK, 5);
+    expect(zoom.flash).toBeLessThan(jump.flash);
+    expect(zoom.flash).toBeLessThan(SWAP_FLASH_PEAK);
+    expect(pre.flash).toBeGreaterThan(0.15);
+    expect(pre.flash).toBeLessThan(zoom.flash);
+    expect(next.flash).toBe(0);
+    expect(next.zoomBlur).toBeGreaterThan(0);
     expect(jump.flash).toBeGreaterThan(0.7);
     expect(zoom.punch).toBeLessThan(1);
     expect(zoom.punch).toBeGreaterThan(0.8);
@@ -330,5 +339,6 @@ describe("landscape swap styles", () => {
     expect(after.zoomBlur).toBe(0);
     expect(ZOOM_PRE_ROLL + ZOOM_DURATION).toBeGreaterThanOrEqual(0.05);
     expect(ZOOM_PRE_ROLL + ZOOM_DURATION).toBeLessThanOrEqual(0.15);
+    expect(ZOOM_FLASH_HOLD).toBeCloseTo(1 / 30, 8);
   });
 });

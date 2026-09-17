@@ -43,6 +43,9 @@ describe("offline export plan", () => {
     expect(slotForTime(t, slots)).toBe(0);
     expect(jumpOffsetPx(t, slots, 1080)).toBe(jumpOffsetPx(t, slots, 1080));
     expect(swapFx(t, slots).flash).toBe(swapFx(t, slots).flash);
+    expect(swapFx(slots[1]!, slots, "zoom").flash).toBe(swapFx(slots[1]!, slots, "zoom").flash);
+    expect(swapFx(slots[1]!, slots, "zoom").flash).toBeGreaterThan(0.3);
+    expect(swapFx(slots[1]!, slots, "jump").flash).toBeGreaterThan(0.7);
   });
 });
 

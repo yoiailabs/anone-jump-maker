@@ -74,14 +74,19 @@ export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
 };
 
 /**
- * 参考横（hagikaze_sami）のズーム切り。2–5 フレ（≈0.05–0.15s）。
+ * 参考横（hagikaze_sami / 30fps）のズーム切り。2–5 フレ（≈0.05–0.15s）。
  * ズームアウト（寄った新写真から引く）。放射ブラー＋横ストリーク＋ RGB ずれ。
- * 長い白フラッシュは使わない。
+ * 切替の瞬間は白いハイライト（ジャンプのほぼ全白 L≈202 ではない）。
+ * 実測: ピークは 1 フレ、平均 L は +40–80、白画素は一部（例 t=1.000 で L≈145、
+ * t=3.933 で L≈191・白≥240 が 42%）。1 フレ前から立ち、切替で最大、翌フレで消える。
  */
 export const ZOOM_PRE_ROLL = 1 / 30;
 export const ZOOM_DURATION = 3 / 30;
 export const ZOOM_PUNCH = 0.14;
-export const ZOOM_FLASH_PEAK = 0;
+/** 白オーバーレイ α。参考の L 上昇から 0.31–0.45。ジャンプの 0.92 より弱い。 */
+export const ZOOM_FLASH_PEAK = 0.44;
+/** 切替後にハイライトを残す尺。参考は翌フレで消える。 */
+export const ZOOM_FLASH_HOLD = 1 / 30;
 export const ZOOM_BLUR_PEAK = 1;
 export const ZOOM_CHROMA_FRAC = 0.016;
 export const ZOOM_WHIP_PEAK = 0.85;
@@ -93,7 +98,7 @@ export const ZOOM_GROW = 0.92;
 export type SwapFx = {
   /** 0–1。窓の外は 0。 */
   amount: number;
-  /** 白フラッシュ 0–1。カットで最大。ズームではごく弱いハイライト。 */
+  /** 白フラッシュ 0–1。カットで最大。ズームは短いハイライト（ジャンプより弱い）。 */
   flash: number;
   /** cover 倍率（静止時 1。ジャンプは >1、ズームアウトは <1）。 */
   punch: number;
@@ -324,7 +329,7 @@ function slotStartAt(time: number, slots: readonly number[], lookahead: number):
 
 /**
  * カット前後の写真切替エンベロープ。先頭スロットは「切替」ではないので無効。
- * ジャンプはフラッシュ＋パンチ。ズームは短い放射ワープ（白飛びなし、ズームアウト）。
+ * ジャンプはフラッシュ＋パンチ。ズームは短い放射ワープ＋ハイライト（ズームアウト）。
  */
 export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
   if (slots.length < 2) return SWAP_NONE;
@@ -342,9 +347,10 @@ export function swapFx(time: number, slots: readonly number[], style: SwapStyle 
   const amount = env ** 0.65;
   const dir = index % 2 === 0 ? 1 : -1;
   if (style === "zoom") {
+    const highlight = triangleEnv(tau, preRoll, ZOOM_FLASH_HOLD);
     return {
       amount,
-      flash: 0,
+      flash: highlight ** 0.85 * ZOOM_FLASH_PEAK,
       punch: 1 - ZOOM_PUNCH * amount,
       slide: 0,
       chroma: amount,
@@ -392,6 +398,15 @@ export function zoomPlateScales(fx: SwapFx): { outgoing: number; incoming: numbe
     outgoing: 1 / (1 + ZOOM_GROW * blur),
     incoming: 1 + ZOOM_GROW * blur * (1 - fx.mix),
   };
+}
+
+function triangleEnv(tau: number, preRoll: number, hold: number): number {
+  const span = preRoll + hold;
+  if (tau < 0 || tau >= span) return 0;
+  const u = tau / span;
+  const uPeak = preRoll / Math.max(span, 1e-6);
+  const rising = u <= uPeak ? u / Math.max(uPeak, 1e-6) : 1 - (u - uPeak) / Math.max(1 - uPeak, 1e-6);
+  return clamp01(rising);
 }
 
 function clamp01(v: number): number {

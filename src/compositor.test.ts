@@ -54,7 +54,10 @@ describe("backdrop hop", () => {
     expect(sharpCoverScale(OUTPUTS.landscape.height, OUTPUTS.landscape.height)).toBeGreaterThan(1);
     expect(jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height, "zoom")).toBe(0);
     const zoomCut = swapFx(0.467, [0, 0.467, 0.933], "zoom");
-    expect(zoomCut.flash).toBeLessThan(0.2);
+    const jumpCut = swapFx(0.467, [0, 0.467, 0.933], "jump");
+    expect(zoomCut.flash).toBeGreaterThan(0.3);
+    expect(zoomCut.flash).toBeLessThan(0.55);
+    expect(zoomCut.flash).toBeLessThan(jumpCut.flash);
     expect(zoomCut.zoomBlur).toBeGreaterThan(0.5);
     expect(zoomCut.whip).toBeGreaterThan(0);
     expect(zoomCut.smear).toBeGreaterThan(0);
