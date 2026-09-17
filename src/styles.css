@@ -567,6 +567,84 @@ body {
   text-wrap: pretty;
 }
 
+/* 画面最下部の参考リンク。公式の配信先とアカウントへ別タブで飛ばすだけ。 */
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.links-title {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+}
+
+.link-banners {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-banner {
+  --accent: var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.85rem;
+  padding: 0.4rem 0.6rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--accent) 22%, var(--card));
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 3px 4px 0 var(--ink);
+  transition: transform 0.16s ease;
+}
+
+.link-banner:hover {
+  transform: translateY(-2px);
+}
+
+.link-banner:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.link-banner[data-service="x"] {
+  --accent: var(--teal);
+}
+
+.link-banner[data-service="youtube"] {
+  --accent: var(--coral);
+}
+
+.link-banner[data-service="spotify"] {
+  --accent: var(--lime);
+}
+
+.link-banner[data-service="apple-music"] {
+  --accent: var(--peach);
+}
+
+.link-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .offscreen-video {
   position: absolute;
   width: 1px;

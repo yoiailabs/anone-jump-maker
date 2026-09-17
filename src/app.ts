@@ -1,6 +1,7 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
+import { linkBannersHtml } from "./links.ts";
 import { describePhotoCount, exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
@@ -108,6 +109,10 @@ export async function boot(root: HTMLElement): Promise<void> {
 
       <footer class="notes">
         <p>ファン制作です。</p>
+        <nav class="links" aria-labelledby="linksTitle">
+          <p class="links-title" id="linksTitle">ナナツカゼさん公式</p>
+          <ul class="link-banners">${linkBannersHtml()}</ul>
+        </nav>
       </footer>
     </div>
     <dialog class="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
