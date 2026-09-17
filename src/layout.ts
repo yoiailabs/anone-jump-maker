@@ -1,5 +1,9 @@
 export type AspectMode = "portrait" | "landscape";
 
+/** X 投稿でよく使う横を先に出し、初期選択にする。 */
+export const DEFAULT_ASPECT: AspectMode = "landscape";
+export const ASPECT_MODES: readonly AspectMode[] = ["landscape", "portrait"];
+
 export type Rect = {
   x: number;
   y: number;
@@ -235,7 +239,7 @@ export const CHAR_OUTLINE_PX = 2;
 export const BLUR_SOURCE = "main-frame" as const;
 
 export function isAspectMode(value: string): value is AspectMode {
-  return value === "portrait" || value === "landscape";
+  return (ASPECT_MODES as readonly string[]).includes(value);
 }
 
 export function usesBlurBackdrop(mode: AspectMode): boolean {

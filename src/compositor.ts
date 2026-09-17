@@ -10,6 +10,7 @@ import {
   characterScale,
   characterShiftY,
   coverDest,
+  DEFAULT_ASPECT,
   hasFrameFx,
   mainPanelRect,
   OUTPUTS,
@@ -58,7 +59,7 @@ export type Compositor = {
 };
 
 export function createCompositor(): Compositor {
-  let mode: AspectMode = "portrait";
+  let mode: AspectMode = DEFAULT_ASPECT;
   const canvas = document.createElement("canvas");
   applyCanvasSize(canvas, mode);
   canvas.className = "stage-canvas";
