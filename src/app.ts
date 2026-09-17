@@ -4,7 +4,15 @@ import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle }
 import { describePhotoCount, exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
-import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
+import {
+  PREVIEW_CLOSE_LABEL,
+  PREVIEW_PAUSE_LABEL,
+  PREVIEW_PLAY_LABEL,
+  PREVIEW_RESTART_LABEL,
+  previewStateLabel,
+  previewTransportState,
+  shouldSeekPreviewToStart,
+} from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
@@ -25,7 +33,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   let previewCounted = false;
   let playbackBusy = false;
   let playGen = 0;
-  let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
   let aspectResume: { play: boolean; time: number; counted: boolean } | null = null;
@@ -142,8 +149,10 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
         <div class="preview-actions">
-          <button type="button" id="modalPlayBtn" class="btn">${playPauseLabel(false)}</button>
-          <button type="button" id="restartBtn" class="btn ghost">${PREVIEW_RESTART_LABEL}</button>
+          <button type="button" id="modalPlayBtn" class="btn">${PREVIEW_PLAY_LABEL}</button>
+          <button type="button" id="modalPauseBtn" class="btn ghost" disabled>${PREVIEW_PAUSE_LABEL}</button>
+          <button type="button" id="restartBtn" class="btn ghost preview-restart">${PREVIEW_RESTART_LABEL}</button>
+          <button type="button" id="dismissPreviewBtn" class="btn ghost preview-dismiss">${PREVIEW_CLOSE_LABEL}</button>
         </div>
       </div>
     </dialog>
@@ -160,7 +169,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
+  const modalPauseBtn = must(root, "#modalPauseBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
+  const dismissPreviewBtn = must(root, "#dismissPreviewBtn") as HTMLButtonElement;
   const previewState = must(root, "#previewState");
   const aspectInputs = [
     ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
@@ -213,12 +224,15 @@ export async function boot(root: HTMLElement): Promise<void> {
     const ready = canUse();
     playBtn.disabled = recording || !ready;
     saveBtn.disabled = recording || !ready;
-    modalPlayBtn.disabled = recording || !ready;
-    restartBtn.disabled = recording || !ready;
     const active = isPreviewPlaying();
-    modalPlayBtn.textContent = playPauseLabel(active);
-    modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
-    previewState.textContent = active ? "再生中" : "停止中";
+    const transport = previewTransportState({ ready, recording, playing: active });
+    modalPlayBtn.disabled = transport.playDisabled;
+    modalPauseBtn.disabled = transport.pauseDisabled;
+    restartBtn.disabled = transport.restartDisabled;
+    previewState.textContent = previewStateLabel({
+      playing: active,
+      pausedInSession: previewCounted && !active,
+    });
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -277,20 +291,21 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   const pausePlayback = () => {
+    if (!isPreviewPlaying()) return;
     playGen += 1;
     playbackBusy = false;
     playing = false;
-    suppressPlayUntil = Date.now() + 350;
     haltLoop();
     video.pause();
     paint();
     refreshButtons();
     setStatus("一時停止しました");
+    modalPlayBtn.focus();
   };
 
   const startPlayback = async (fromStart: boolean) => {
     if (recording || playbackBusy || !canUse()) return;
-    if (!fromStart && Date.now() < suppressPlayUntil) return;
+    if (!fromStart && isPreviewPlaying()) return;
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
@@ -324,7 +339,7 @@ export async function boot(root: HTMLElement): Promise<void> {
         return;
       }
       video.blur();
-      modalPlayBtn.focus();
+      modalPauseBtn.focus();
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
@@ -472,37 +487,23 @@ export async function boot(root: HTMLElement): Promise<void> {
     void openPreview();
   });
 
-  const togglePreviewPlay = () => {
-    if (isPreviewPlaying()) {
-      pausePlayback();
-      return;
-    }
+  modalPlayBtn.addEventListener("click", () => {
     void startPlayback(false);
-  };
-
-  let playToggleFromPointer = false;
-  modalPlayBtn.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    playToggleFromPointer = true;
-    togglePreviewPlay();
-  });
-  modalPlayBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (playToggleFromPointer) {
-      playToggleFromPointer = false;
-      return;
-    }
-    togglePreviewPlay();
   });
 
-  restartBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+  modalPauseBtn.addEventListener("click", () => {
+    pausePlayback();
+  });
+
+  restartBtn.addEventListener("click", () => {
     void startPlayback(true);
   });
 
   closePreviewBtn.addEventListener("click", () => {
+    closePreview();
+  });
+
+  dismissPreviewBtn.addEventListener("click", () => {
     closePreview();
   });
 
@@ -517,6 +518,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   previewDialog.addEventListener("close", () => {
     stopPlayback();
     video.muted = true;
+    playBtn.focus();
   });
 
   saveBtn.addEventListener("click", async () => {

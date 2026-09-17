@@ -1,17 +1,56 @@
 import { describe, expect, it } from "vitest";
 import {
+  PREVIEW_CLOSE_LABEL,
   PREVIEW_PAUSE_LABEL,
   PREVIEW_PLAY_LABEL,
   PREVIEW_RESTART_LABEL,
-  playPauseLabel,
+  previewStateLabel,
+  previewTransportState,
   shouldSeekPreviewToStart,
 } from "./preview.ts";
 
-describe("playPauseLabel", () => {
-  it("shows play while paused and pause while playing", () => {
-    expect(playPauseLabel(false)).toBe(PREVIEW_PLAY_LABEL);
-    expect(playPauseLabel(true)).toBe(PREVIEW_PAUSE_LABEL);
+describe("preview labels", () => {
+  it("keeps the Japanese transport copy", () => {
+    expect(PREVIEW_PLAY_LABEL).toBe("再生");
+    expect(PREVIEW_PAUSE_LABEL).toBe("一時停止");
     expect(PREVIEW_RESTART_LABEL).toBe("最初から再生");
+    expect(PREVIEW_CLOSE_LABEL).toBe("閉じる");
+  });
+});
+
+describe("previewTransportState", () => {
+  it("enables play and restart while paused, and pause only while playing", () => {
+    expect(previewTransportState({ ready: true, recording: false, playing: false })).toEqual({
+      playDisabled: false,
+      pauseDisabled: true,
+      restartDisabled: false,
+    });
+    expect(previewTransportState({ ready: true, recording: false, playing: true })).toEqual({
+      playDisabled: true,
+      pauseDisabled: false,
+      restartDisabled: false,
+    });
+  });
+
+  it("disables every control while recording or before photos are ready", () => {
+    expect(previewTransportState({ ready: false, recording: false, playing: false })).toEqual({
+      playDisabled: true,
+      pauseDisabled: true,
+      restartDisabled: true,
+    });
+    expect(previewTransportState({ ready: true, recording: true, playing: true })).toEqual({
+      playDisabled: true,
+      pauseDisabled: true,
+      restartDisabled: true,
+    });
+  });
+});
+
+describe("previewStateLabel", () => {
+  it("distinguishes playing, paused in-session, and fully stopped", () => {
+    expect(previewStateLabel({ playing: true, pausedInSession: false })).toBe("再生中");
+    expect(previewStateLabel({ playing: false, pausedInSession: true })).toBe("一時停止中");
+    expect(previewStateLabel({ playing: false, pausedInSession: false })).toBe("停止中");
   });
 });
 

@@ -246,6 +246,7 @@ body {
   min-height: 0;
   flex: 1 1 auto;
   padding: 0.85rem 0.9rem 1rem;
+  overflow: auto;
 }
 
 .preview-head {
@@ -329,6 +330,11 @@ body {
   line-height: 1.25;
 }
 
+.preview-restart,
+.preview-dismiss {
+  grid-column: 1 / -1;
+}
+
 .stage-wrap {
   display: flex;
   flex-direction: column;
@@ -343,8 +349,8 @@ body {
 
 /* プレビュー確認用。向き／エフェクト切替が残るよう、表示は小さめ。 */
 .stage {
-  width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
-  max-height: calc(100svh - 20rem);
+  width: min(100%, 16rem, calc((100svh - 23rem) * 608 / 1080));
+  max-height: calc(100svh - 23rem);
   aspect-ratio: 608 / 1080;
   height: auto;
   flex: 0 0 auto;
@@ -358,7 +364,7 @@ body {
 
 .stage[data-aspect="landscape"] {
   width: min(100%, 22rem);
-  max-height: calc(100svh - 20rem);
+  max-height: calc(100svh - 23rem);
   aspect-ratio: 16 / 9;
 }
 
