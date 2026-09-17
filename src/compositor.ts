@@ -1,21 +1,28 @@
+import { ensureCanvasSize } from "./canvas-size.ts";
 import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
   BLUR_DIM,
-  CHAR_OUTLINE_PX,
-  OUTPUT,
   PANEL_DIVIDER_PX,
   characterDest,
+  characterOutlinePx,
+  characterScale,
   coverDest,
   jumpOffsetPx,
   mainPanelRect,
+  outputSize,
   sharpCoverScale,
+  swapChromaPx,
+  swapFx,
+  swapSlidePx,
   templateBandRect,
+  usesBlurBackdrop,
+  type AspectMode,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import { photoForSlot, slotForTime } from "./timeline.ts";
 
-export { BLUR_SOURCE, OUTPUT } from "./layout.ts";
+export { BLUR_SOURCE, OUTPUT, OUTPUTS, type AspectMode } from "./layout.ts";
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -27,14 +34,16 @@ export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => number;
+  setAspect: (mode: AspectMode) => void;
+  aspect: () => AspectMode;
   destroy: () => void;
   kind: "2d";
 };
 
 export function createCompositor(): Compositor {
+  let mode: AspectMode = "portrait";
   const canvas = document.createElement("canvas");
-  canvas.width = OUTPUT.width;
-  canvas.height = OUTPUT.height;
+  applyCanvasSize(canvas, mode);
   canvas.className = "stage-canvas";
   canvas.setAttribute("aria-label", "合成プレビュー");
   const ctx = canvas.getContext("2d", { alpha: false });
@@ -57,17 +66,22 @@ export function createCompositor(): Compositor {
   if (!haloCtx) throw new Error("Canvas2D が使えません");
 
   const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
-    const slot = slotForTime(video.currentTime, slots);
+    const time = video.currentTime;
+    const slot = slotForTime(time, slots);
     const photo = photoForSlot(photos, slot);
-    canvas.width = OUTPUT.width;
-    canvas.height = OUTPUT.height;
+    applyCanvasSize(canvas, mode);
     const w = canvas.width;
     const h = canvas.height;
-    const panel = mainPanelRect(w, h);
-    const hopY = jumpOffsetPx(video.currentTime, slots, h);
+    const panel = mainPanelRect(w, h, mode);
+    const hopY = jumpOffsetPx(time, slots, h);
+    const fx = swapFx(time, slots);
 
-    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, panel, h);
-    paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
+    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, fx, panel, h, mode);
+    if (usesBlurBackdrop(mode)) {
+      paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
+    } else {
+      paintLandscape(ctx, main, w, h);
+    }
     return slot;
   };
 
@@ -75,6 +89,13 @@ export function createCompositor(): Compositor {
     canvas,
     draw,
     kind: "2d",
+    setAspect(next) {
+      mode = next;
+      applyCanvasSize(canvas, mode);
+    },
+    aspect() {
+      return mode;
+    },
     destroy() {
       canvas.width = 0;
       canvas.height = 0;
@@ -90,6 +111,11 @@ export function createCompositor(): Compositor {
   };
 }
 
+function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
+  const size = outputSize(mode);
+  ensureCanvasSize(canvas, size.width, size.height);
+}
+
 function composeMain(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
@@ -100,8 +126,10 @@ function composeMain(
   photo: LoadedPhoto | undefined,
   video: HTMLVideoElement,
   hopY: number,
+  fx: ReturnType<typeof swapFx>,
   panel: { w: number; h: number },
   canvasH: number,
+  mode: AspectMode,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -114,16 +142,18 @@ function composeMain(
 
   if (photo) {
     const dest = coverDest(photo.bitmap.width, photo.bitmap.height, mw, mh, {
-      scale: sharpCoverScale(canvasH, mh),
+      scale: sharpCoverScale(canvasH, mh) * fx.punch,
       offsetY: hopY,
+      dx: swapSlidePx(fx, mw),
     });
-    mainCtx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+    drawPhotoPlate(mainCtx, photo, dest, fx.skew, swapChromaPx(fx, mw));
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    const vw = video.videoWidth || OUTPUT.width;
-    const vh = video.videoHeight || OUTPUT.height;
-    const band = templateBandRect(vw, vh);
+    const fallback = outputSize(mode);
+    const vw = video.videoWidth || fallback.width;
+    const vh = video.videoHeight || fallback.height;
+    const band = templateBandRect(vw, vh, mode);
     keyed.width = mw;
     keyed.height = mh;
     keyedCtx.clearRect(0, 0, mw, mh);
@@ -142,8 +172,8 @@ function composeMain(
     haloCtx.fillRect(0, 0, mw, mh);
     haloCtx.globalCompositeOperation = "source-over";
 
-    const dest = characterDest(mw, mh);
-    const o = CHAR_OUTLINE_PX;
+    const dest = characterDest(mw, mh, characterScale(mode));
+    const o = characterOutlinePx(mw);
     const ring: ReadonlyArray<readonly [number, number]> = [
       [-o, 0],
       [o, 0],
@@ -159,6 +189,41 @@ function composeMain(
     }
     mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
   }
+
+  if (fx.flash > 0.004) {
+    mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+    mainCtx.filter = "none";
+    mainCtx.globalAlpha = 1;
+    mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flash})`;
+    mainCtx.fillRect(0, 0, mw, mh);
+  }
+}
+
+function drawPhotoPlate(
+  ctx: CanvasRenderingContext2D,
+  photo: LoadedPhoto,
+  dest: { x: number; y: number; w: number; h: number },
+  skew: number,
+  chromaPx: number,
+): void {
+  ctx.save();
+  ctx.setTransform(1, 0, skew, 1, 0, 0);
+  ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+  if (chromaPx >= 0.6) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.4;
+    ctx.drawImage(photo.bitmap, dest.x - chromaPx, dest.y, dest.w, dest.h);
+    ctx.drawImage(photo.bitmap, dest.x + chromaPx, dest.y, dest.w, dest.h);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+  ctx.restore();
+}
+
+function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, w: number, h: number): void {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.drawImage(main, 0, 0, w, h);
 }
 
 function paintOutput(

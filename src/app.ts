@@ -1,6 +1,8 @@
 import { createCompositor } from "./compositor.ts";
-import { recordRealtime } from "./export.ts";
+import { recordRealtime, signalCanvasPainted } from "./export.ts";
+import { isAspectMode, TEMPLATES, type AspectMode } from "./layout.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -8,15 +10,15 @@ import type { CutTimeline } from "./timeline.ts";
 type StatusKind = "idle" | "busy" | "error";
 
 export async function boot(root: HTMLElement): Promise<void> {
-  const timeline = await loadTimeline();
+  const timelines = await loadTimelines();
   const compositor = createCompositor();
-  const video = createTemplateVideo();
-  const audio = createAudioTap(video);
+  const video = createTemplateVideo("portrait");
 
+  let mode: AspectMode = "portrait";
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
-  let raf = 0;
+  let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
 
   root.innerHTML = `
@@ -31,17 +33,30 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="breeze" aria-hidden="true"></div>
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。この端末の中だけの、小さな夏。</p>
+        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。たてにも、よこにも。この端末の中だけの、小さな夏。</p>
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
       <section class="stage-wrap">
-        <div class="stage" id="stage"></div>
-        <p class="empty-hint" id="emptyHint">まだ写真はありません。下から選ぶと、ここに色が入ります。</p>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timeline.slots.length}</p>
+        <div class="stage" id="stage" data-aspect="portrait"></div>
+        <p class="empty-hint" id="emptyHint">まだ写真はありません。向きを選んで、下から置くと色が入ります。</p>
+        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
       </section>
 
       <section class="panel">
+        <fieldset class="aspect-field">
+          <legend>書き出す向き</legend>
+          <div class="aspect-toggle" role="radiogroup" aria-label="書き出す向き">
+            <label>
+              <input type="radio" name="aspect" value="portrait" checked />
+              <span>縦<small>9:16</small></span>
+            </label>
+            <label>
+              <input type="radio" name="aspect" value="landscape" />
+              <span>横<small>16:9</small></span>
+            </label>
+          </div>
+        </fieldset>
         <label class="file-btn">
           <input id="picker" type="file" accept="image/*" multiple />
           写真を選ぶ
@@ -70,9 +85,12 @@ export async function boot(root: HTMLElement): Promise<void> {
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
+  const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
 
   stage.append(compositor.canvas);
   document.body.append(video);
+
+  const timeline = () => timelines[mode];
 
   const setStatus = (text: string, kind: StatusKind = "idle") => {
     statusEl.textContent = text;
@@ -102,39 +120,56 @@ export async function boot(root: HTMLElement): Promise<void> {
     playBtn.disabled = !canUse() || recording;
     saveBtn.disabled = !canUse() || recording;
     playBtn.textContent = playing ? "停止" : "プレビュー";
+    for (const input of aspectInputs) {
+      input.disabled = recording;
+    }
   };
 
   const paint = () => {
-    const slot = compositor.draw(video, photos, timeline.slots);
+    const slots = timeline().slots;
+    const slot = compositor.draw(video, photos, slots);
     if (slot !== lastSlot) {
       lastSlot = slot;
-      slotMeter.textContent = `スロット ${slot + 1} / ${timeline.slots.length}`;
+      slotMeter.textContent = `スロット ${slot + 1} / ${slots.length}`;
     }
+    signalCanvasPainted();
   };
 
-  const loop = () => {
-    paint();
-    if (playing || recording) {
-      raf = requestAnimationFrame(loop);
-    }
+  const haltLoop = () => {
+    stopLoop?.();
+    stopLoop = null;
   };
 
   const startLoop = async () => {
-    await audio.resume();
-    if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(loop);
+    haltLoop();
+    stopLoop = startVideoPaintLoop(video, paint);
   };
 
   const stopPlayback = () => {
     playing = false;
+    haltLoop();
     video.pause();
+    refreshButtons();
+  };
+
+  const applyAspect = (next: AspectMode) => {
+    if (next === mode) return;
+    stopPlayback();
+    mode = next;
+    compositor.setAspect(mode);
+    stage.dataset.aspect = mode;
+    lastSlot = -1;
+    slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
+    video.src = TEMPLATES[mode].video;
+    video.load();
+    setStatus(mode === "portrait" ? "たて（9:16）。中央が本編、上下はブラー。" : "よこ（16:9）。キャンバス全面が本編。");
     refreshButtons();
   };
 
   video.addEventListener("loadeddata", () => {
     paint();
     refreshButtons();
-    setStatus(`テンプレ準備完了（${timeline.slots.length} カット）`);
+    setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
   });
   video.addEventListener("ended", () => {
     if (!recording) {
@@ -143,6 +178,13 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus("プレビューが終わりました");
     }
   });
+
+  for (const input of aspectInputs) {
+    input.addEventListener("change", () => {
+      if (recording || !input.checked || !isAspectMode(input.value)) return;
+      applyAspect(input.value);
+    });
+  }
 
   picker.addEventListener("change", async () => {
     const files = [...(picker.files ?? [])];
@@ -175,12 +217,16 @@ export async function boot(root: HTMLElement): Promise<void> {
     try {
       video.currentTime = 0;
       video.muted = false;
-      await video.play();
+      video.volume = 1;
       playing = true;
       refreshButtons();
       setStatus("プレビュー中");
       await startLoop();
+      await video.play();
     } catch (error) {
+      playing = false;
+      haltLoop();
+      refreshButtons();
       setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
     }
   });
@@ -196,14 +242,15 @@ export async function boot(root: HTMLElement): Promise<void> {
       const result = await recordRealtime({
         video,
         canvas: compositor.canvas,
-        audioStream: audio.stream,
-        resumeAudio: audio.resume,
         startLoop,
       });
-      downloadBlob(result.blob, `anone-jump.${result.extension}`);
+      const aspectTag = mode === "landscape" ? "16x9" : "9x16";
+      downloadBlob(result.blob, `anone-jump-${aspectTag}.${result.extension}`);
       setStatus(`保存しました（${result.extension.toUpperCase()}）`);
       const nextCount = await recordGenerate({
         mime: result.mime,
+        width: compositor.canvas.width,
+        height: compositor.canvas.height,
       });
       if (nextCount !== null) {
         setMadeCount(nextCount);
@@ -213,6 +260,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     } finally {
       recording = false;
       playing = false;
+      haltLoop();
       video.pause();
       video.muted = true;
       refreshButtons();
@@ -224,17 +272,25 @@ export async function boot(root: HTMLElement): Promise<void> {
   void fetchGenerateCount().then(setMadeCount);
 }
 
-async function loadTimeline(): Promise<CutTimeline> {
-  const response = await fetch("/template/cuts.json");
+async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {
+  const [portrait, landscape] = await Promise.all([
+    loadTimeline(TEMPLATES.portrait.cuts),
+    loadTimeline(TEMPLATES.landscape.cuts),
+  ]);
+  return { portrait, landscape };
+}
+
+async function loadTimeline(url: string): Promise<CutTimeline> {
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("カット表を読み込めませんでした");
   }
   return (await response.json()) as CutTimeline;
 }
 
-function createTemplateVideo(): HTMLVideoElement {
+function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   const video = document.createElement("video");
-  video.src = "/template/vertical.mp4";
+  video.src = TEMPLATES[mode].video;
   video.playsInline = true;
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");
@@ -244,29 +300,6 @@ function createTemplateVideo(): HTMLVideoElement {
   video.muted = true;
   video.className = "offscreen-video";
   return video;
-}
-
-function createAudioTap(video: HTMLVideoElement): {
-  resume: () => Promise<void>;
-  stream: MediaStream;
-} {
-  const Ctor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) {
-    return { resume: async () => undefined, stream: new MediaStream() };
-  }
-  const ctx = new Ctor();
-  const source = ctx.createMediaElementSource(video);
-  const dest = ctx.createMediaStreamDestination();
-  source.connect(dest);
-  source.connect(ctx.destination);
-  return {
-    stream: dest.stream,
-    resume: async () => {
-      if (ctx.state === "suspended") {
-        await ctx.resume();
-      }
-    },
-  };
 }
 
 function must(root: ParentNode, selector: string): HTMLElement {

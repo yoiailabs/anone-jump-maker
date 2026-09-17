@@ -1,12 +1,34 @@
+import { waitForPresentedFrame } from "./playback.ts";
 import {
   captureCanvasStream,
+  captureElementAudio,
   combineStreams,
   extensionForMime,
   pickRecorderMime,
   recordStream,
+  requestCanvasFrame,
 } from "./recorder.ts";
 
+let onPainted: (() => void) | null = null;
+
+/** Called after each composited frame so the capture track can emit it. */
+export function signalCanvasPainted(): void {
+  onPainted?.();
+}
+
+/** Capture sample rate. Each paint also calls requestFrame so frames follow the video clock. */
 export const EXPORT_FPS = 30;
+
+export const RECORD_AUDIO_SOURCE = "element-captureStream" as const;
+
+export const RECORD_START_ORDER = [
+  "seek",
+  "unmute",
+  "paint-loop",
+  "play",
+  "first-frame",
+  "media-recorder",
+] as const;
 
 export type ExportResult = {
   blob: Blob;
@@ -51,35 +73,65 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
   });
 }
 
+/**
+ * Arm playback so MediaRecorder starts on a presented video frame.
+ * Paint/hop/swap must already follow `video.currentTime`.
+ */
+export async function prepareRealtimeClock(steps: {
+  startLoop: () => Promise<void>;
+  play: () => Promise<void>;
+  waitForFrame: () => Promise<void>;
+}): Promise<void> {
+  await steps.startLoop();
+  await steps.play();
+  await steps.waitForFrame();
+}
+
 export async function recordRealtime(options: {
   canvas: HTMLCanvasElement;
   video: HTMLVideoElement;
-  audioStream: MediaStream | null;
-  resumeAudio: () => Promise<void>;
   startLoop: () => Promise<void>;
 }): Promise<ExportResult> {
-  const { canvas, video, audioStream, resumeAudio, startLoop } = options;
-  await resumeAudio();
+  const { canvas, video, startLoop } = options;
   video.pause();
-  video.currentTime = 0;
-  await seekVideo(video, 0);
-  const canvasStream = captureCanvasStream(canvas, EXPORT_FPS);
-  const mixed = combineStreams(canvasStream, audioStream);
   video.muted = false;
+  video.volume = 1;
+  await seekVideo(video, 0);
+
+  const canvasStream = captureCanvasStream(canvas, EXPORT_FPS);
+  const audioStream = captureElementAudio(video);
+  const mixed = combineStreams(canvasStream, audioStream.getAudioTracks().length > 0 ? audioStream : null);
+  const unbind = bindPaintCapture(canvasStream);
+
   const finished = whenEnded(video);
-  const blobPromise = recordStream(mixed, finished);
-  await video.play();
-  await startLoop();
-  const blob = await blobPromise;
-  for (const track of canvasStream.getTracks()) {
-    track.stop();
+  try {
+    await prepareRealtimeClock({
+      startLoop,
+      play: () => video.play(),
+      waitForFrame: () => waitForPresentedFrame(video),
+    });
+    requestCanvasFrame(canvasStream);
+    const blob = await recordStream(mixed, finished);
+    for (const track of canvasStream.getTracks()) {
+      track.stop();
+    }
+    const mime = blob.type || pickRecorderMime();
+    return {
+      blob,
+      mime,
+      extension: extensionForMime(mime),
+      mode: "record",
+    };
+  } finally {
+    unbind();
   }
-  const mime = blob.type || pickRecorderMime();
-  return {
-    blob,
-    mime,
-    extension: extensionForMime(mime),
-    mode: "record",
+}
+
+function bindPaintCapture(stream: MediaStream): () => void {
+  onPainted = () => requestCanvasFrame(stream);
+  requestCanvasFrame(stream);
+  return () => {
+    onPainted = null;
   };
 }
 

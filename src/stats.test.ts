@@ -9,4 +9,10 @@ describe("collectClientAttrs", () => {
     expect(attrs.width).toBe(608);
     expect(attrs.height).toBe(1080);
   });
+
+  it("records the canvas size of the selected orientation", () => {
+    const attrs = collectClientAttrs({ mime: "video/webm", width: 1280, height: 720 });
+    expect(attrs.width).toBe(1280);
+    expect(attrs.height).toBe(720);
+  });
 });

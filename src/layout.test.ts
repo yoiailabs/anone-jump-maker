@@ -4,21 +4,33 @@ import {
   BLUR_SOURCE,
   CHAR_OUTLINE_PX,
   CHAR_SCALE,
+  LANDSCAPE_CHAR_SCALE,
   JUMP_AMPLITUDE,
   JUMP_DURATION,
+  SWAP_DURATION,
+  SWAP_FLASH_PEAK,
+  SWAP_PRE_ROLL,
   OUTPUT,
+  OUTPUTS,
   PANEL_DIVIDER_PX,
   TEMPLATE_BAND_H,
   TEMPLATE_BAND_Y,
   characterDest,
+  characterOutlinePx,
+  characterScale,
   coverDest,
+  isAspectMode,
   jumpAmount,
   jumpOffsetPx,
   mainPanelRect,
   outputSize,
   rectToUvBottomLeft,
   sharpCoverScale,
+  swapChromaPx,
+  swapFx,
+  swapSlidePx,
   templateBandRect,
+  usesBlurBackdrop,
 } from "./layout.ts";
 
 const slots = [0, 0.467, 0.933, 1.467];
@@ -26,8 +38,22 @@ const slots = [0, 0.467, 0.933, 1.467];
 describe("output size", () => {
   it("matches the 608x1080 template", () => {
     expect(outputSize()).toEqual({ width: 608, height: 1080 });
+    expect(outputSize("portrait")).toEqual({ width: 608, height: 1080 });
     expect(OUTPUT).toEqual({ width: 608, height: 1080 });
     expect(OUTPUT.width / OUTPUT.height).toBeCloseTo(608 / 1080, 5);
+  });
+
+  it("uses 1280x720 for landscape preview and save", () => {
+    expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
+    expect(OUTPUTS.landscape).toEqual({ width: 1280, height: 720 });
+    expect(OUTPUTS.landscape.width / OUTPUTS.landscape.height).toBeCloseTo(16 / 9, 5);
+  });
+
+  it("treats only portrait as a blur-band canvas", () => {
+    expect(usesBlurBackdrop("portrait")).toBe(true);
+    expect(usesBlurBackdrop("landscape")).toBe(false);
+    expect(isAspectMode("landscape")).toBe(true);
+    expect(isAspectMode("square")).toBe(false);
   });
 
   it("uses a main-frame blur with a 1px divider", () => {
@@ -48,6 +74,21 @@ describe("characterDest", () => {
     expect(dest.y + dest.h).toBeCloseTo(342, 5);
     expect(dest.y).toBeLessThan(0);
   });
+
+  it("uses a slightly smaller scale on landscape so the photo stays visible", () => {
+    expect(characterScale("portrait")).toBe(CHAR_SCALE);
+    expect(characterScale("landscape")).toBe(LANDSCAPE_CHAR_SCALE);
+    expect(LANDSCAPE_CHAR_SCALE).toBeGreaterThan(1);
+    expect(LANDSCAPE_CHAR_SCALE).toBeLessThan(CHAR_SCALE);
+    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
+    expect(dest.w).toBeCloseTo(1280 * LANDSCAPE_CHAR_SCALE, 5);
+    expect(dest.h).toBeCloseTo(720 * LANDSCAPE_CHAR_SCALE, 5);
+    expect(dest.x).toBeCloseTo((1280 - dest.w) / 2, 5);
+    expect(dest.y + dest.h).toBeCloseTo(720, 5);
+    expect(dest.y).toBeLessThan(0);
+    expect(characterOutlinePx(608)).toBe(2);
+    expect(characterOutlinePx(1280)).toBe(4);
+  });
 });
 
 describe("mainPanelRect", () => {
@@ -61,12 +102,21 @@ describe("mainPanelRect", () => {
     expect(panel.y / OUTPUT.height).toBeCloseTo(0.2889, 3);
     expect((panel.y + panel.h) / OUTPUT.height).toBeCloseTo(0.6056, 3);
   });
+
+  it("fills the landscape canvas with the 16:9 main frame", () => {
+    const panel = mainPanelRect(OUTPUTS.landscape.width, OUTPUTS.landscape.height, "landscape");
+    expect(panel).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
+  });
 });
 
 describe("templateBandRect", () => {
   it("crops the same 16:9 band from the template", () => {
     const band = templateBandRect(608, 1080);
     expect(band).toEqual({ x: 0, y: 312, w: 608, h: 342 });
+  });
+
+  it("uses the full landscape template frame", () => {
+    expect(templateBandRect(1920, 1080, "landscape")).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
   });
 });
 
@@ -128,6 +178,15 @@ describe("jumpAmount", () => {
     expect(jumpAmount(0.4, slots)).toBe(0);
   });
 
+  it("also hops the landscape photo on the same cut curve", () => {
+    const up = jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height);
+    expect(up).toBeLessThan(0);
+    expect(Math.abs(up)).toBeCloseTo(OUTPUTS.landscape.height * JUMP_AMPLITUDE * jumpAmount(0.12, slots), 5);
+    const rest = coverDest(1920, 1080, 1280, 720);
+    const hopped = coverDest(1920, 1080, 1280, 720, { offsetY: up });
+    expect(hopped.y).toBeLessThan(rest.y);
+  });
+
   it("offsets upward in canvas space for the sharp 16:9 photo", () => {
     const up = jumpOffsetPx(0.12, slots, OUTPUT.height);
     expect(up).toBeLessThan(0);
@@ -146,5 +205,37 @@ describe("jumpAmount", () => {
   it("handles an empty slot list", () => {
     expect(jumpAmount(1, [])).toBe(0);
     expect(jumpOffsetPx(0.12, [], OUTPUT.height)).toBe(0);
+  });
+});
+
+describe("swapFx", () => {
+  it("does nothing on the opening slot (no previous photo)", () => {
+    const fx = swapFx(0.02, slots);
+    expect(fx.amount).toBe(0);
+    expect(fx.flash).toBe(0);
+    expect(fx.punch).toBe(1);
+  });
+
+  it("starts a white flash one frame before the cut", () => {
+    const pre = swapFx(slots[1]! - SWAP_PRE_ROLL * 0.6, slots);
+    expect(pre.flash).toBeGreaterThan(0.2);
+    expect(pre.flash).toBeLessThan(SWAP_FLASH_PEAK);
+    expect(pre.punch).toBeGreaterThan(1);
+  });
+
+  it("peaks at the cut then dies within a few frames", () => {
+    const at = swapFx(slots[1]!, slots);
+    const later = swapFx(slots[1]! + SWAP_DURATION + 0.02, slots);
+    expect(at.flash).toBeGreaterThan(0.7);
+    expect(at.punch).toBeGreaterThan(1.1);
+    expect(Math.abs(swapSlidePx(at, 1280))).toBeGreaterThan(4);
+    expect(swapChromaPx(at, 1280)).toBeGreaterThan(1);
+    expect(later.flash).toBe(0);
+    expect(later.punch).toBe(1);
+  });
+
+  it("is idle with one slot or none", () => {
+    expect(swapFx(0.5, [0]).flash).toBe(0);
+    expect(swapFx(0.5, []).flash).toBe(0);
   });
 });

@@ -24,18 +24,46 @@ export function combineStreams(video: MediaStream, audio: MediaStream | null): M
   return new MediaStream(tracks);
 }
 
-export function captureCanvasStream(canvas: HTMLCanvasElement, fps: number): MediaStream {
+/**
+ * Canvas capture. A positive fps keeps MediaRecorder fed; we still push a
+ * frame after each paint via `requestCanvasFrame` so it follows the video clock.
+ */
+export function captureCanvasStream(canvas: HTMLCanvasElement, fps?: number): MediaStream {
   const withWebkit = canvas as HTMLCanvasElement & {
     captureStream?: (frameRate?: number) => MediaStream;
     webkitCaptureStream?: (frameRate?: number) => MediaStream;
   };
   if (typeof withWebkit.captureStream === "function") {
-    return withWebkit.captureStream(fps);
+    return fps === undefined ? withWebkit.captureStream() : withWebkit.captureStream(fps);
   }
   if (typeof withWebkit.webkitCaptureStream === "function") {
-    return withWebkit.webkitCaptureStream(fps);
+    return fps === undefined ? withWebkit.webkitCaptureStream() : withWebkit.webkitCaptureStream(fps);
   }
   throw new Error("このブラウザは canvas.captureStream に未対応です");
+}
+
+/** Force the capture track to emit the current canvas (needed when fps is 0, also helps 30fps). */
+export function requestCanvasFrame(stream: MediaStream): void {
+  for (const track of stream.getVideoTracks()) {
+    const capturable = track as MediaStreamTrack & { requestFrame?: () => void };
+    capturable.requestFrame?.();
+  }
+}
+
+type CapturableMedia = HTMLMediaElement & {
+  captureStream?: (frameRate?: number) => MediaStream;
+  mozCaptureStream?: (frameRate?: number) => MediaStream;
+};
+
+/** Audio tracks from the same media element that drives `video.currentTime`. */
+export function captureElementAudio(video: HTMLMediaElement): MediaStream {
+  const media = video as CapturableMedia;
+  const capture = media.captureStream ?? media.mozCaptureStream;
+  if (typeof capture !== "function") {
+    return new MediaStream();
+  }
+  const stream = capture.call(media);
+  return new MediaStream(stream.getAudioTracks());
 }
 
 export async function recordStream(stream: MediaStream, until: Promise<void>): Promise<Blob> {

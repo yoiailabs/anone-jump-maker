@@ -1,3 +1,5 @@
+export type AspectMode = "portrait" | "landscape";
+
 export type Rect = {
   x: number;
   y: number;
@@ -5,8 +7,19 @@ export type Rect = {
   h: number;
 };
 
+/** 縦はテンプレ miWuv4NK9Qk と同じ 608×1080。横は 1280×720（プレビュー＝保存）。 */
+export const OUTPUTS = {
+  portrait: { width: 608, height: 1080 },
+  landscape: { width: 1280, height: 720 },
+} as const;
+
 /** 新テンプレ miWuv4NK9Qk / 参考 Short と同じ 608×1080。 */
-export const OUTPUT = { width: 608, height: 1080 } as const;
+export const OUTPUT = OUTPUTS.portrait;
+
+export const TEMPLATES = {
+  portrait: { video: "/template/vertical.mp4", cuts: "/template/cuts.json" },
+  landscape: { video: "/template/landscape.mp4", cuts: "/template/landscape-cuts.json" },
+} as const;
 
 /** テンプレ緑 16:9 帯（実測 312–654、高さ 342 = 608×9/16）。 */
 export const TEMPLATE_BAND_Y = 312;
@@ -19,6 +32,37 @@ export const JUMP_AMPLITUDE = 30 / OUTPUT.height;
 
 /** 1 ジャンプの長さ（秒）。スロット間隔より長くはしない。 */
 export const JUMP_DURATION = 0.36;
+
+/**
+ * 参考横動画（cola_rumiren0 / anim-ref.mp4、30fps）の切替実測。
+ * カットの 1 フレ前から白フラッシュが立ち上がり、切替フレームはほぼ白飛び
+ * （例: t=1.967 で L≈202・std≈2.6）。新写真はフラッシュの中で現れ、
+ * 続く 2–3 フレでパンチズーム＋横ズレ＋弱い色分れが落ち、hop に続く。
+ */
+export const SWAP_PRE_ROLL = 1 / 30;
+export const SWAP_DURATION = 0.1;
+export const SWAP_FLASH_PEAK = 0.92;
+export const SWAP_PUNCH = 0.18;
+export const SWAP_SLIDE_FRAC = 0.016;
+export const SWAP_CHROMA_FRAC = 0.007;
+export const SWAP_SKEW = 0.04;
+
+export type SwapFx = {
+  /** 0–1。窓の外は 0。 */
+  amount: number;
+  /** 白フラッシュ 0–1。カットで最大。 */
+  flash: number;
+  /** cover 倍率（静止時 1）。 */
+  punch: number;
+  /** パネル幅に対する横ズレ（符号つき）。 */
+  slide: number;
+  /** 色分れの強さ 0–1。 */
+  chroma: number;
+  /** せん断。 */
+  skew: number;
+};
+
+const SWAP_NONE: SwapFx = { amount: 0, flash: 0, punch: 1, slide: 0, chroma: 0, skew: 0 };
 
 /**
  * 本編 16:9 をキャンバスへ cover する倍率。
@@ -38,10 +82,28 @@ export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
  */
 export const CHAR_SCALE = 1.7;
 
-/** 公式のステッカー縁（白、本編ピクセル）。 */
+/**
+ * 横の公式例（全面 16:9）に合わせた拡大。
+ * 縦の 1.7 を横全面にそのまま使うとキャラがフレームを埋めすぎる。
+ */
+export const LANDSCAPE_CHAR_SCALE = 1.35;
+
+/** 公式のステッカー縁（白、縦本編 608px 幅でのピクセル）。 */
 export const CHAR_OUTLINE_PX = 2;
 
 export const BLUR_SOURCE = "main-frame" as const;
+
+export function isAspectMode(value: string): value is AspectMode {
+  return value === "portrait" || value === "landscape";
+}
+
+export function usesBlurBackdrop(mode: AspectMode): boolean {
+  return mode === "portrait";
+}
+
+export function characterScale(mode: AspectMode = "portrait"): number {
+  return mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
+}
 
 /** キー済み緑帯を本編 16:9 へ置く矩形。下揃え・左右中央。 */
 export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE): Rect {
@@ -55,20 +117,31 @@ export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE
   };
 }
 
-export function outputSize(): { width: number; height: number } {
-  return OUTPUT;
+/** 本編幅に合わせてステッカー縁を太らせる。縦 608 では 2px のまま。 */
+export function characterOutlinePx(panelW: number): number {
+  return Math.max(CHAR_OUTLINE_PX, Math.round((CHAR_OUTLINE_PX * panelW) / OUTPUT.width));
 }
 
-/** 縦キャンバス上のシャープな 16:9。左右端まで。テンプレ緑帯に一致。 */
-export function mainPanelRect(canvasW: number, canvasH: number): Rect {
+export function outputSize(mode: AspectMode = "portrait"): { width: number; height: number } {
+  return OUTPUTS[mode];
+}
+
+/** 縦: 中央のシャープな 16:9。横: キャンバス全体が本編。 */
+export function mainPanelRect(canvasW: number, canvasH: number, mode: AspectMode = "portrait"): Rect {
+  if (mode === "landscape") {
+    return { x: 0, y: 0, w: canvasW, h: canvasH };
+  }
   const w = canvasW;
   const h = canvasW * (TEMPLATE_BAND_H / OUTPUT.width);
   const y = canvasH * (TEMPLATE_BAND_Y / OUTPUT.height);
   return { x: 0, y: Math.round(y), w, h: Math.round(h) };
 }
 
-/** テンプレ映像から緑 16:9 帯を切り出す矩形。 */
-export function templateBandRect(videoW: number, videoH: number): Rect {
+/** テンプレ映像から切り出す矩形。縦は緑 16:9 帯、横は全面。 */
+export function templateBandRect(videoW: number, videoH: number, mode: AspectMode = "portrait"): Rect {
+  if (mode === "landscape") {
+    return { x: 0, y: 0, w: videoW, h: videoH };
+  }
   return {
     x: 0,
     y: Math.round(videoH * (TEMPLATE_BAND_Y / OUTPUT.height)),
@@ -137,4 +210,58 @@ export function jumpOffsetPx(time: number, slots: readonly number[], canvasHeigh
   const amount = jumpAmount(time, slots);
   if (amount === 0) return 0;
   return -amount * canvasHeight * JUMP_AMPLITUDE;
+}
+
+function slotStartAt(time: number, slots: readonly number[], lookahead: number): { start: number; index: number } {
+  let start = slots[0]!;
+  let index = 0;
+  for (let i = 1; i < slots.length; i += 1) {
+    const t = slots[i]!;
+    if (time + lookahead + 1e-4 >= t) {
+      start = t;
+      index = i;
+    } else {
+      break;
+    }
+  }
+  return { start, index };
+}
+
+/**
+ * カット前後の写真切替エンベロープ。先頭スロットは「切替」ではないので無効。
+ * フラッシュはカットでピーク、パンチ／ズレはそのまま hop に接続する。
+ */
+export function swapFx(time: number, slots: readonly number[]): SwapFx {
+  if (slots.length < 2) return SWAP_NONE;
+  const { start, index } = slotStartAt(time, slots, SWAP_PRE_ROLL);
+  if (index === 0) return SWAP_NONE;
+  const span = SWAP_PRE_ROLL + SWAP_DURATION;
+  const tau = time - (start - SWAP_PRE_ROLL);
+  if (tau < 0 || tau >= span) return SWAP_NONE;
+  const u = tau / span;
+  const uPeak = SWAP_PRE_ROLL / span;
+  const flashEnv = u <= uPeak ? u / Math.max(uPeak, 1e-6) : 1 - (u - uPeak) / Math.max(1 - uPeak, 1e-6);
+  const env = clamp01(flashEnv);
+  const amount = env ** 0.65;
+  const dir = index % 2 === 0 ? 1 : -1;
+  return {
+    amount,
+    flash: env ** 0.85 * SWAP_FLASH_PEAK,
+    punch: 1 + SWAP_PUNCH * amount,
+    slide: dir * SWAP_SLIDE_FRAC * amount,
+    chroma: amount * amount,
+    skew: dir * SWAP_SKEW * amount,
+  };
+}
+
+export function swapSlidePx(fx: SwapFx, panelW: number): number {
+  return fx.slide * panelW;
+}
+
+export function swapChromaPx(fx: SwapFx, panelW: number): number {
+  return fx.chroma * SWAP_CHROMA_FRAC * panelW;
+}
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }
