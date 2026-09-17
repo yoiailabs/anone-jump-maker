@@ -1,3 +1,4 @@
+import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize } from "./canvas-size.ts";
 import { keyImageData } from "./keying.ts";
 import {
@@ -38,11 +39,11 @@ export const FRAME_FX_TARGET = "composited-main" as const;
 /** ジャンプのフラッシュは写真層に乗せ、キャラは薄い全面分だけ。 */
 export const JUMP_FLASH_TARGET = "photo-plate" as const;
 
-/** 画像フィルターは合成後の出力フレーム全体に掛ける。写真だけではない。 */
-export const IMAGE_FILTER_TARGET = "composited-frame" as const;
+/** 画像フィルターは写真層だけ。線画キャラとクレジットには掛けない。 */
+export const IMAGE_FILTER_TARGET = "photo-plate" as const;
 
-/** 曲クレジットはフィルターの後に描き、ボケで潰れないようにする。 */
-export const IMAGE_FILTER_CREDIT = "after-filter" as const;
+/** iOS / Safari は ctx.filter が無効なので、画素の箱型ぼかしを使う。 */
+export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -119,13 +120,12 @@ export function createCompositor(): Compositor {
     const fx = swapFx(time, slots, swapStyle);
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
 
-    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode);
+    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode, imageFilter);
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
       paintLandscape(ctx, main, w, h);
     }
-    applyImageFilter(ctx, scratch, scratchCtx, imageFilter, w, h);
     paintSongCredit(ctx, w, h, mode);
     return slot;
   };
@@ -186,6 +186,7 @@ function composeMain(
   style: SwapStyle,
   panel: { w: number; h: number },
   mode: AspectMode,
+  imageFilter: ImageFilter,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -197,6 +198,7 @@ function composeMain(
 
   if (plate) {
     drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
+    applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -429,28 +431,18 @@ function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, 
 }
 
 /**
- * 合成済みフレーム全体にガウスぼかしを掛ける。端の透明化を隠すため少し拡大して描く。
- * 曲クレジットはこの後に載せる。
+ * 写真層だけをぼかす。キャラ描画の前に呼ぶ。
+ * iOS / Safari では Canvas2D filter が無効なので画素ぼかしを使う。
  */
-export function applyImageFilter(
-  ctx: CanvasRenderingContext2D,
-  scratch: HTMLCanvasElement,
-  scratchCtx: CanvasRenderingContext2D,
+function applyPhotoFilter(
+  main: HTMLCanvasElement,
+  mainCtx: CanvasRenderingContext2D,
+  { fxA, fxACtx }: FxSurfaces,
   filter: ImageFilter,
-  w: number,
-  h: number,
 ): void {
   if (!hasImageFilter(filter)) return;
-  const px = filterBlurPx(filter, Math.min(w, h));
-  scratch.width = Math.max(1, w);
-  scratch.height = Math.max(1, h);
-  resetCtx(scratchCtx);
-  scratchCtx.drawImage(ctx.canvas, 0, 0);
-  resetCtx(ctx);
-  ctx.filter = `blur(${px}px)`;
-  const pad = Math.max(8, px * 2);
-  ctx.drawImage(scratch, -pad, -pad, w + pad * 2, h + pad * 2);
-  ctx.filter = "none";
+  const px = filterBlurPx(filter, Math.min(main.width, main.height));
+  applySoftwareBlur(main, mainCtx, fxA, fxACtx, px);
 }
 
 function paintOutput(

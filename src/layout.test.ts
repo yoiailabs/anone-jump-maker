@@ -395,7 +395,7 @@ describe("zoom cycle (hagikaze_sami)", () => {
 });
 
 describe("image filter", () => {
-  it("offers none plus two whole-frame blurs", () => {
+  it("offers none plus two photo-plate blurs", () => {
     expect(isImageFilter("none")).toBe(true);
     expect(isImageFilter("blur-strong")).toBe(true);
     expect(isImageFilter("blur-weak")).toBe(true);

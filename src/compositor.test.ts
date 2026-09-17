@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_SOURCE,
   FRAME_FX_TARGET,
-  IMAGE_FILTER_CREDIT,
+  IMAGE_FILTER_BLUR_IMPL,
   IMAGE_FILTER_TARGET,
   JUMP_FLASH_TARGET,
   PHOTO_UPLOAD_PATH,
@@ -44,9 +44,9 @@ describe("swap fx draw path", () => {
     expect(JUMP_FLASH_TARGET).toBe("photo-plate");
   });
 
-  it("applies the image filter to the whole composed frame, then paints the song credit", () => {
-    expect(IMAGE_FILTER_TARGET).toBe("composited-frame");
-    expect(IMAGE_FILTER_CREDIT).toBe("after-filter");
+  it("applies the image filter to the photo plate only, with a software blur that works on iOS", () => {
+    expect(IMAGE_FILTER_TARGET).toBe("photo-plate");
+    expect(IMAGE_FILTER_BLUR_IMPL).toBe("image-data-box");
   });
 
   it("places a larger bottom-aligned character so the cover-blur matches the official close-up", () => {

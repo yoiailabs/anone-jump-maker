@@ -67,9 +67,9 @@ export function isSwapStyle(value: string): value is SwapStyle {
 }
 
 /**
- * 画像全体フィルター。向き・切替と独立に選べる。
+ * 写真層フィルター。向き・切替と独立に選べる。線画キャラには掛けない。
  * - none: 加工なし
- * - blur-strong / blur-weak: 合成後のフレーム全体にガウスぼかし（ボケ感）
+ * - blur-strong / blur-weak: 差し込み写真だけにボケ感
  */
 export type ImageFilter = "none" | "blur-strong" | "blur-weak";
 
@@ -86,8 +86,8 @@ export function isImageFilter(value: string): value is ImageFilter {
 }
 
 /**
- * 短辺に対するブラー半径。弱は軽いボケ、強ははっきりしたボケ。
- * プレビューと保存で同じ関数を使う。
+ * 本編パネル短辺に対するブラー半径。弱は軽いボケ、強ははっきりしたボケ。
+ * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
  */
 export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
   none: 0,
