@@ -119,6 +119,7 @@ body {
 .hero,
 .stage-wrap,
 .panel,
+.share-wrap,
 .notes {
   position: relative;
   z-index: 1;
@@ -343,17 +344,54 @@ body {
 
 /* プレビュー確認用。向き／エフェクト切替が残るよう、表示は小さめ。 */
 .stage {
+  display: block;
+  position: relative;
   width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
   max-height: calc(100svh - 20rem);
   aspect-ratio: 608 / 1080;
   height: auto;
   flex: 0 0 auto;
-  pointer-events: none;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
   border-radius: 1.5rem;
   overflow: hidden;
   background: var(--teal);
   border: 3.5px solid var(--ink);
   box-shadow: 7px 8px 0 var(--ink);
+}
+
+.stage-play-hint {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(26, 26, 26, 0.28);
+}
+
+.stage[aria-pressed="false"] .stage-play-hint {
+  display: block;
+}
+
+.stage-play-hint::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 1.15rem 0 1.15rem 1.85rem;
+  border-color: transparent transparent transparent #fff;
+  transform: translate(-35%, -50%);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+}
+
+.stage:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 4px;
 }
 
 .stage[data-aspect="landscape"] {
@@ -366,7 +404,7 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .slot-meter,
@@ -477,7 +515,7 @@ body {
 }
 
 .file-btn:hover,
-.btn:hover:not(:disabled):not([aria-disabled="true"]) {
+.btn:hover:not(:disabled) {
   transform: translateY(-2px);
 }
 
@@ -512,13 +550,24 @@ body {
   color: var(--ink);
 }
 
-/* 投稿は保存の下に一段で置く（グリッドの 2 列ぶん）。スマホで X アプリに渡すため <a> にしている */
-.btn.share {
-  grid-column: 1 / -1;
+/* 投稿とアプリ共有は操作パネルの枠の外に置く */
+.share-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.btn.share,
+.btn.share-app {
+  width: 100%;
   gap: 0.45rem;
+  font-size: 0.92rem;
+}
+
+/* 投稿はスマホで X アプリに渡すため <a>。リンクの下線を消し、フォーカスは自前で出す */
+.btn.share {
   background: var(--ink);
   color: var(--paper);
-  font-size: 0.92rem;
   text-decoration: none;
 }
 
@@ -527,15 +576,23 @@ body {
   outline-offset: 3px;
 }
 
-.btn.share svg {
+.btn.share-app {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.btn.share svg,
+.btn.share-app svg {
   width: 1.05em;
   height: 1.05em;
   flex: 0 0 auto;
+}
+
+.btn.share svg {
   fill: currentColor;
 }
 
 .btn:disabled,
-.btn[aria-disabled="true"],
 .file-btn:has(input:disabled) {
   opacity: 0.38;
   cursor: not-allowed;

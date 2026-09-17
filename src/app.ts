@@ -2,17 +2,20 @@ import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
 import { linkBannersHtml } from "./links.ts";
-import { describePhotoCount, exportFileName } from "./modes.ts";
+import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import {
   canShareVideoFile,
+  copyTextToClipboard,
   openExternalTab,
   openXCompose,
   prefersAppHandoff,
   SHARE_HASHTAG,
+  SHARE_TEXT,
+  shareAppUrl,
   shareJumpVideo,
   toShareFile,
   xComposeLinkAttrs,
@@ -52,7 +55,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       <header class="hero">
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を何枚か選択するだけで簡単にあのねジャンプ動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。</p>
+        <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
@@ -106,18 +109,33 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="actions">
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
-          <a id="shareBtn" class="btn share" aria-disabled="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-            ${SHARE_HASHTAG} で X に投稿
-          </a>
         </div>
         <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
       </section>
 
+      <div class="share-wrap">
+        <a id="shareBtn" class="btn share">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+          ${SHARE_HASHTAG} で X に投稿
+        </a>
+        <button type="button" id="shareAppBtn" class="btn share-app">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M12 3v10M8.2 6.8 12 3l3.8 3.8M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          このアプリを共有する
+        </button>
+      </div>
+
       <footer class="notes">
-        <p>ファン制作です。</p>
         <nav class="links" aria-labelledby="linksTitle">
           <p class="links-title" id="linksTitle">ナナツカゼさん公式</p>
           <ul class="link-banners">${linkBannersHtml()}</ul>
@@ -159,7 +177,16 @@ export async function boot(root: HTMLElement): Promise<void> {
           </fieldset>
         </div>
         <div class="stage-wrap">
-          <div class="stage" id="stage" data-aspect="portrait"></div>
+          <button
+            type="button"
+            class="stage"
+            id="stage"
+            data-aspect="portrait"
+            aria-pressed="false"
+            aria-label="プレビュー。クリックで再生と一時停止"
+          >
+            <span class="stage-play-hint" aria-hidden="true"></span>
+          </button>
         </div>
         <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
@@ -178,6 +205,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const shareBtn = must(root, "#shareBtn") as HTMLAnchorElement;
+  const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
@@ -190,13 +218,16 @@ export async function boot(root: HTMLElement): Promise<void> {
   ];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
 
-  stage.append(compositor.canvas);
+  stage.prepend(compositor.canvas);
+  compositor.canvas.setAttribute("aria-hidden", "true");
+  compositor.canvas.removeAttribute("aria-label");
   document.body.append(video);
 
   const shareNavigator = typeof navigator === "undefined" ? undefined : navigator;
   // スマホでは投稿ボタンをふつうのリンクのまま踏ませる。JS で開くと X アプリの投稿画面に渡らない。
   const appHandoff = prefersAppHandoff(shareNavigator);
   const composeLink = xComposeLinkAttrs({ appHandoff });
+  shareBtn.href = composeLink.href;
   if (composeLink.target) shareBtn.target = composeLink.target;
   if (composeLink.rel) shareBtn.rel = composeLink.rel;
 
@@ -239,27 +270,16 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
 
-  // <a> に disabled は無いので、保存前はリンクを外して踏めなくする。
-  const setShareReady = (ready: boolean) => {
-    shareBtn.setAttribute("aria-disabled", ready ? "false" : "true");
-    if (ready) {
-      shareBtn.href = composeLink.href;
-    } else {
-      shareBtn.removeAttribute("href");
-    }
-    shareBtn.title = ready ? "" : "動画を保存すると投稿できます";
-  };
-
   const refreshButtons = () => {
     const ready = canUse();
     playBtn.disabled = recording || !ready;
     saveBtn.disabled = recording || !ready;
-    setShareReady(!recording && savedVideo !== null);
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
     const active = isPreviewPlaying();
     modalPlayBtn.textContent = playPauseLabel(active);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    stage.setAttribute("aria-pressed", active ? "true" : "false");
     previewState.textContent = active ? "再生中" : "停止中";
     for (const input of aspectInputs) {
       input.disabled = recording;
@@ -382,16 +402,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   const openPreview = async () => {
     if (recording || !canUse() || previewDialog.open) return;
     previewDialog.showModal();
-    try {
-      video.muted = true;
-      await seekVideo(video, 0);
-      lastSlot = -1;
-      paint();
-    } catch {
-      paint();
-    }
-    refreshButtons();
-    modalPlayBtn.focus();
+    lastSlot = -1;
+    paint();
+    await startPlayback(true);
   };
 
   const closePreview = () => {
@@ -500,7 +513,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus(
         photos.length === 0
           ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。${describePhotoCount(photos.length)}`,
+          : `${photos.length} 枚を読み込みました`,
       );
     } catch (error) {
       renderThumbs();
@@ -515,7 +528,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   const togglePreviewPlay = () => {
-    if (isPreviewPlaying()) {
+    if (isPreviewPlaying() || playbackBusy) {
       pausePlayback();
       return;
     }
@@ -537,6 +550,18 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
     togglePreviewPlay();
   });
+
+  previewDialog.addEventListener(
+    "click",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Node) || !stage.contains(target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      togglePreviewPlay();
+    },
+    true,
+  );
 
   restartBtn.addEventListener("click", (event) => {
     event.preventDefault();
@@ -588,7 +613,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       const filename = exportFileName(mode, swapStyle, result.extension);
       downloadBlob(result.blob, filename);
       savedVideo = toShareFile(result.blob, filename);
-      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_HASHTAG} を付けて X に投稿できます。`);
+      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
       await reportMade({ action: "save", mime: result.mime });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
@@ -606,10 +631,6 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   shareBtn.addEventListener("click", (event) => {
     const file = savedVideo;
-    if (recording || file === null) {
-      event.preventDefault();
-      return;
-    }
     if (!canShareVideoFile(file, shareNavigator)) {
       // リンクの遷移をそのまま使う。ここで止めて JS から開くと、スマホでも X アプリではなく
       // ブラウザの X が出てしまう。
@@ -630,7 +651,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           }),
       });
       if (outcome === "files") {
-        setStatus(`${SHARE_HASHTAG} を付けた動画を共有先に渡しました`);
+        setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
       } else if (outcome === "intent") {
         setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
       } else if (outcome === "blocked") {
@@ -639,6 +660,26 @@ export async function boot(root: HTMLElement): Promise<void> {
         setStatus("投稿をやめました");
       }
     })();
+  });
+
+  shareAppBtn.addEventListener("click", async () => {
+    const outcome = await shareAppUrl({
+      navigator: typeof navigator === "undefined" ? undefined : navigator,
+      copyText: (text) =>
+        copyTextToClipboard(
+          text,
+          typeof navigator === "undefined" ? undefined : navigator.clipboard,
+        ),
+    });
+    if (outcome === "shared") {
+      setStatus("このアプリのリンクを共有先に渡しました");
+    } else if (outcome === "copied") {
+      setStatus("このアプリの URL をコピーしました");
+    } else if (outcome === "cancelled") {
+      setStatus("共有をやめました");
+    } else {
+      setStatus("このブラウザでは共有できません。https://anone.yoiailabs.com をコピーしてください。", "error");
+    }
   });
 
   void video.load();

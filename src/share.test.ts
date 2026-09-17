@@ -1,11 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  APP_SHARE_DATA,
+  APP_SHARE_URL,
   buildXIntentUrl,
+  canShareAppUrl,
   canShareVideoFile,
+  copyTextToClipboard,
   openExternalTab,
   openXCompose,
   prefersAppHandoff,
   SHARE_HASHTAG,
+  SHARE_MAKER_HASHTAG,
+  SHARE_TEXT,
+  shareAppUrl,
   shareJumpVideo,
   toShareFile,
   xComposeLinkAttrs,
@@ -24,11 +31,13 @@ const MAC_UA =
 const videoFile = () => toShareFile(new Blob(["x"], { type: "video/mp4" }), "anone-jump-9x16.mp4");
 
 describe("X への投稿", () => {
-  it("投稿画面にハッシュタグを載せる", () => {
+  it("投稿画面に両方のハッシュタグを載せる", () => {
     const url = new URL(buildXIntentUrl());
     expect(url.origin + url.pathname).toBe("https://x.com/intent/post");
-    expect(url.searchParams.get("text")).toBe(SHARE_HASHTAG);
-    expect(buildXIntentUrl()).toContain(encodeURIComponent(SHARE_HASHTAG));
+    expect(url.searchParams.get("text")).toBe(SHARE_TEXT);
+    expect(SHARE_TEXT).toContain(SHARE_HASHTAG);
+    expect(SHARE_TEXT).toContain(SHARE_MAKER_HASHTAG);
+    expect(buildXIntentUrl()).toContain(encodeURIComponent(SHARE_TEXT));
   });
 
   it("共有シートがファイルを扱えるときだけ動画ごと渡す", () => {
@@ -52,7 +61,7 @@ describe("X への投稿", () => {
       openUrl,
     });
     expect(outcome).toBe("files");
-    expect(share).toHaveBeenCalledWith({ files: [file], text: SHARE_HASHTAG });
+    expect(share).toHaveBeenCalledWith({ files: [file], text: SHARE_TEXT });
     expect(openUrl).not.toHaveBeenCalled();
   });
 
@@ -60,6 +69,19 @@ describe("X への投稿", () => {
     const openUrl = vi.fn(() => true);
     const outcome = await shareJumpVideo({ file: videoFile(), openUrl });
     expect(outcome).toBe("intent");
+    expect(openUrl).toHaveBeenCalledWith(buildXIntentUrl());
+  });
+
+  it("動画がまだ無くても投稿画面は開く", async () => {
+    const openUrl = vi.fn(() => true);
+    const share = vi.fn(async () => {});
+    const outcome = await shareJumpVideo({
+      file: null,
+      navigator: { share, canShare: () => true },
+      openUrl,
+    });
+    expect(outcome).toBe("intent");
+    expect(share).not.toHaveBeenCalled();
     expect(openUrl).toHaveBeenCalledWith(buildXIntentUrl());
   });
 
@@ -150,5 +172,71 @@ describe("X への投稿", () => {
     const file = toShareFile(new Blob(["x"], { type: "video/webm" }), "anone-zoom-16x9.webm");
     expect(file?.name).toBe("anone-zoom-16x9.webm");
     expect(file?.type).toBe("video/webm");
+  });
+});
+
+describe("このアプリを共有する", () => {
+  it("本番 URL とタイトルを Web Share に渡す", () => {
+    expect(APP_SHARE_DATA).toEqual({
+      title: "あのねジャンプメーカー",
+      url: APP_SHARE_URL,
+    });
+    expect(APP_SHARE_URL).toBe("https://anone.yoiailabs.com");
+  });
+
+  it("share があるときだけアプリ URL をシートに出せる", () => {
+    expect(canShareAppUrl({ share: async () => {} })).toBe(true);
+    expect(canShareAppUrl({ share: async () => {}, canShare: () => true })).toBe(true);
+    expect(canShareAppUrl({ share: async () => {}, canShare: () => false })).toBe(false);
+    expect(canShareAppUrl(undefined)).toBe(false);
+  });
+
+  it("Web Share API で本番 URL を渡す", async () => {
+    const share = vi.fn(async () => {});
+    const copyText = vi.fn(async () => true);
+    const outcome = await shareAppUrl({
+      navigator: { share, canShare: () => true },
+      copyText,
+    });
+    expect(outcome).toBe("shared");
+    expect(share).toHaveBeenCalledWith(APP_SHARE_DATA);
+    expect(copyText).not.toHaveBeenCalled();
+  });
+
+  it("ユーザーが共有シートを閉じたらコピーしない", async () => {
+    const copyText = vi.fn(async () => true);
+    const outcome = await shareAppUrl({
+      navigator: {
+        share: async () => {
+          throw Object.assign(new Error("share canceled"), { name: "AbortError" });
+        },
+        canShare: () => true,
+      },
+      copyText,
+    });
+    expect(outcome).toBe("cancelled");
+    expect(copyText).not.toHaveBeenCalled();
+  });
+
+  it("Web Share が無い環境では URL をコピーする", async () => {
+    const copyText = vi.fn(async () => true);
+    const outcome = await shareAppUrl({ copyText });
+    expect(outcome).toBe("copied");
+    expect(copyText).toHaveBeenCalledWith(APP_SHARE_URL);
+  });
+
+  it("共有もコピーもできなければ unsupported", async () => {
+    const outcome = await shareAppUrl({
+      navigator: { share: async () => {}, canShare: () => false },
+      copyText: async () => false,
+    });
+    expect(outcome).toBe("unsupported");
+  });
+
+  it("クリップボードへ書いたら true", async () => {
+    const writeText = vi.fn(async () => {});
+    expect(await copyTextToClipboard(APP_SHARE_URL, { writeText })).toBe(true);
+    expect(writeText).toHaveBeenCalledWith(APP_SHARE_URL);
+    expect(await copyTextToClipboard(APP_SHARE_URL)).toBe(false);
   });
 });
