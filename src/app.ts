@@ -1,7 +1,7 @@
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
-import { describeMode, describePhotoCount, exportFileName, formatModeLabel } from "./modes.ts";
+import { describePhotoCount, exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
@@ -30,49 +30,56 @@ export async function boot(root: HTMLElement): Promise<void> {
       <span class="blob blob-lime"></span>
       <span class="blob blob-teal"></span>
       <span class="blob blob-coral"></span>
-      <span class="wind"></span>
     </div>
     <div class="app">
       <header class="hero">
-        <div class="breeze" aria-hidden="true"></div>
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
         <p class="lede">写真を何枚か選択するだけで簡単にあのねジャンプ動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。</p>
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
-      <section class="stage-wrap">
-        <div class="stage" id="stage" data-aspect="portrait"></div>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
-      </section>
+      <div class="loop-wrap">
+        <a
+          class="loop-link"
+          href="https://www.youtube.com/watch?v=M-IayQIR0XA"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="あのねのPVをYouTubeで開く（新しいタブ）"
+        >
+          <picture>
+            <source media="(prefers-reduced-motion: reduce)" srcset="/jump-loop-still.png" />
+            <img class="loop" src="/jump-loop.png" alt="" width="448" height="252" decoding="async" />
+          </picture>
+        </a>
+      </div>
 
       <section class="panel">
         <fieldset class="aspect-field">
-          <legend>書き出す向き</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="書き出す向き">
+          <legend>動画の向き</legend>
+          <div class="aspect-toggle" role="radiogroup" aria-label="動画の向き">
             <label>
               <input type="radio" name="aspect" value="portrait" checked />
-              <span>縦<small>9:16</small></span>
+              <span>縦</span>
             </label>
             <label>
               <input type="radio" name="aspect" value="landscape" />
-              <span>横<small>16:9</small></span>
+              <span>横</span>
             </label>
           </div>
         </fieldset>
         <fieldset class="aspect-field" id="swapField">
-          <legend>写真の切替</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="写真の切替">
+          <legend>エフェクト</legend>
+          <div class="aspect-toggle" role="radiogroup" aria-label="エフェクト">
             <label>
               <input type="radio" name="swap" value="jump" checked />
-              <span>ジャンプ<small>沈んで跳ねる＋白フラッシュ</small></span>
+              <span>ジャンプ</span>
             </label>
             <label>
               <input type="radio" name="swap" value="zoom" />
-              <span>ズーム<small>横ブレ＋RGB ずれ</small></span>
+              <span>ズーム</span>
             </label>
           </div>
-          <p class="mode-summary" id="modeSummary" aria-live="polite"></p>
         </fieldset>
         <label class="file-btn">
           <input id="picker" type="file" accept="image/*" multiple />
@@ -84,6 +91,11 @@ export async function boot(root: HTMLElement): Promise<void> {
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
         </div>
         <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
+      </section>
+
+      <section class="stage-wrap">
+        <div class="stage" id="stage" data-aspect="portrait"></div>
+        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
       </section>
 
       <footer class="notes">
@@ -101,7 +113,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
-  const modeSummary = must(root, "#modeSummary");
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
 
   stage.append(compositor.canvas);
@@ -116,12 +127,6 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const setMadeCount = (count: number | null) => {
     madeCount.textContent = formatCountLabel(count);
-  };
-
-  const modeLabel = () => formatModeLabel(mode, swapStyle);
-
-  const renderModeSummary = () => {
-    modeSummary.textContent = `いま: ${modeLabel()}`;
   };
 
   const renderThumbs = () => {
@@ -207,8 +212,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
     video.src = TEMPLATES[mode].video;
     video.load();
-    renderModeSummary();
-    setStatus(describeMode(mode, swapStyle));
     refreshButtons();
   };
 
@@ -236,10 +239,8 @@ export async function boot(root: HTMLElement): Promise<void> {
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isSwapStyle(input.value)) return;
       swapStyle = input.value;
-      renderModeSummary();
       if (!playing) {
         paint();
-        setStatus(describeMode(mode, swapStyle));
       }
     });
   }
@@ -341,7 +342,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
-  renderModeSummary();
   void video.load();
   void fetchGenerateCount().then(setMadeCount);
 }
