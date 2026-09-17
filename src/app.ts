@@ -39,11 +39,19 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
-      <div class="loop-wrap" aria-hidden="true">
-        <picture>
-          <source media="(prefers-reduced-motion: reduce)" srcset="/jump-loop-still.png" />
-          <img class="loop" src="/jump-loop.png" alt="" width="448" height="252" decoding="async" />
-        </picture>
+      <div class="loop-wrap">
+        <a
+          class="loop-link"
+          href="https://www.youtube.com/watch?v=M-IayQIR0XA"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="あのねのPVをYouTubeで開く（新しいタブ）"
+        >
+          <picture>
+            <source media="(prefers-reduced-motion: reduce)" srcset="/jump-loop-still.png" />
+            <img class="loop" src="/jump-loop.png" alt="" width="448" height="252" decoding="async" />
+          </picture>
+        </a>
       </div>
 
       <section class="panel">

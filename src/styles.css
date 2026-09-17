@@ -167,7 +167,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* 参考 MV のジャンプ部分を切り出した APNG ループ。装飾なので操作はなし。 */
+/* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
 .loop-wrap {
   display: flex;
   justify-content: center;
@@ -175,9 +175,25 @@ body {
   z-index: 1;
 }
 
-.loop-wrap picture {
+.loop-link {
   display: block;
   width: min(100%, 26rem);
+  border-radius: 1.5rem;
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.loop-link:hover {
+  transform: translateY(-2px);
+}
+
+.loop-link:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 4px;
+}
+
+.loop-link picture {
+  display: block;
 }
 
 .loop {
