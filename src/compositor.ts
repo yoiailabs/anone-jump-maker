@@ -4,32 +4,36 @@ import {
   BLUR_COVER_SCALE,
   BLUR_DIM,
   PANEL_DIVIDER_PX,
+  ZOOM_BACKDROP_BLUR_FRAC,
   characterDest,
   characterOutlinePx,
   characterScale,
   characterShiftY,
   coverDest,
-  effectiveSwapStyle,
-  jumpOffsetPx,
+  hasFrameFx,
   mainPanelRect,
   OUTPUTS,
   outputSize,
+  plateCoverScale,
+  plateRestShiftFrac,
   STAGE_MAX_REM,
-  sharpCoverScale,
-  swapChromaPx,
   swapFx,
-  swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
-  zoomPlateScales,
   type AspectMode,
   type SwapFx,
   type SwapStyle,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
-import { photoForSlot, slotForTime } from "./timeline.ts";
+import { photoForSlot, slotForTime, type SlotTimeline } from "./timeline.ts";
 
 export { BLUR_SOURCE, OUTPUT, OUTPUTS, STAGE_MAX_REM, type AspectMode } from "./layout.ts";
+
+/** 全面 FX（横ブラー・RGB ずれ）はキャラも含めた合成後の本編に掛ける。写真だけではない。 */
+export const FRAME_FX_TARGET = "composited-main" as const;
+
+/** ジャンプのフラッシュは写真層に乗せ、キャラは薄い全面分だけ。 */
+export const JUMP_FLASH_TARGET = "photo-plate" as const;
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -43,7 +47,7 @@ export type Compositor = {
   draw: (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
-    slots: readonly number[],
+    timeline: SlotTimeline,
     time?: number,
     swapStyle?: SwapStyle,
   ) => number;
@@ -78,49 +82,33 @@ export function createCompositor(): Compositor {
   const haloCtx = halo.getContext("2d");
   if (!haloCtx) throw new Error("Canvas2D が使えません");
 
-  const warp = document.createElement("canvas");
-  const warpCtx = warp.getContext("2d", { alpha: false });
-  if (!warpCtx) throw new Error("Canvas2D が使えません");
+  const fxA = document.createElement("canvas");
+  const fxACtx = fxA.getContext("2d", { alpha: false });
+  if (!fxACtx) throw new Error("Canvas2D が使えません");
+
+  const fxB = document.createElement("canvas");
+  const fxBCtx = fxB.getContext("2d", { alpha: false });
+  if (!fxBCtx) throw new Error("Canvas2D が使えません");
+
+  const surfaces: FxSurfaces = { keyed, keyedCtx, halo, haloCtx, fxA, fxACtx, fxB, fxBCtx };
 
   const draw = (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
-    slots: readonly number[],
+    timeline: SlotTimeline,
     time = video.currentTime,
     swapStyle: SwapStyle = "jump",
   ) => {
-    const style = effectiveSwapStyle(mode, swapStyle);
+    const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
-    const photo = photoForSlot(photos, slot);
     applyCanvasSize(canvas, mode);
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
-    const hopY = jumpOffsetPx(time, slots, h, style);
-    const fx = swapFx(time, slots, style);
-    const incoming = fx.cutIndex > 0 ? photoForSlot(photos, fx.cutIndex) : photo;
-    const outgoing = fx.cutIndex > 0 ? photoForSlot(photos, fx.cutIndex - 1) : undefined;
+    const fx = swapFx(time, slots, swapStyle);
+    const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
 
-    composeMain(
-      main,
-      mainCtx,
-      keyed,
-      keyedCtx,
-      halo,
-      haloCtx,
-      warp,
-      warpCtx,
-      photo,
-      outgoing,
-      incoming,
-      video,
-      hopY,
-      fx,
-      panel,
-      h,
-      mode,
-      style,
-    );
+    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode);
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -152,11 +140,24 @@ export function createCompositor(): Compositor {
       scratch.height = 0;
       halo.width = 0;
       halo.height = 0;
-      warp.width = 0;
-      warp.height = 0;
+      fxA.width = 0;
+      fxA.height = 0;
+      fxB.width = 0;
+      fxB.height = 0;
     },
   };
 }
+
+type FxSurfaces = {
+  keyed: HTMLCanvasElement;
+  keyedCtx: CanvasRenderingContext2D;
+  halo: HTMLCanvasElement;
+  haloCtx: CanvasRenderingContext2D;
+  fxA: HTMLCanvasElement;
+  fxACtx: CanvasRenderingContext2D;
+  fxB: HTMLCanvasElement;
+  fxBCtx: CanvasRenderingContext2D;
+};
 
 function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
   const size = outputSize(mode);
@@ -166,303 +167,247 @@ function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
 function composeMain(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
-  keyed: HTMLCanvasElement,
-  keyedCtx: CanvasRenderingContext2D,
-  halo: HTMLCanvasElement,
-  haloCtx: CanvasRenderingContext2D,
-  warp: HTMLCanvasElement,
-  warpCtx: CanvasRenderingContext2D,
-  photo: LoadedPhoto | undefined,
-  outgoing: LoadedPhoto | undefined,
-  incoming: LoadedPhoto | undefined,
+  surfaces: FxSurfaces,
+  plate: LoadedPhoto | undefined,
   video: HTMLVideoElement,
-  hopY: number,
   fx: SwapFx,
-  panel: { w: number; h: number },
-  canvasH: number,
-  mode: AspectMode,
   style: SwapStyle,
+  panel: { w: number; h: number },
+  mode: AspectMode,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
   const mw = main.width;
   const mh = main.height;
-  mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-  mainCtx.filter = "none";
+  resetCtx(mainCtx);
   mainCtx.fillStyle = "#0a0806";
   mainCtx.fillRect(0, 0, mw, mh);
 
-  const plate = incoming ?? photo;
   if (plate) {
-    const dest = coverDest(plate.bitmap.width, plate.bitmap.height, mw, mh, {
-      scale: sharpCoverScale(canvasH, mh) * fx.punch,
-      offsetY: hopY,
-      dx: swapSlidePx(fx, mw),
-    });
-    if (fx.zoomBlur > 0.02) {
-      drawZoomWarpPlate(mainCtx, warp, warpCtx, outgoing ?? plate, plate, dest, fx, swapChromaPx(fx, mw));
-    } else {
-      drawPhotoPlate(mainCtx, plate, dest, fx.skew, swapChromaPx(fx, mw));
-      if (style === "zoom") paintWhiteFlash(mainCtx, mw, mh, fx.flash);
-    }
+    drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    const fallback = outputSize(mode);
-    const vw = video.videoWidth || fallback.width;
-    const vh = video.videoHeight || fallback.height;
-    const band = templateBandRect(vw, vh, mode);
-    keyed.width = mw;
-    keyed.height = mh;
-    keyedCtx.clearRect(0, 0, mw, mh);
-    keyedCtx.drawImage(video, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
-    const image = keyedCtx.getImageData(0, 0, mw, mh);
-    keyImageData(image);
-    keyedCtx.putImageData(image, 0, 0);
-
-    halo.width = mw;
-    halo.height = mh;
-    haloCtx.clearRect(0, 0, mw, mh);
-    haloCtx.globalCompositeOperation = "source-over";
-    haloCtx.drawImage(keyed, 0, 0);
-    haloCtx.globalCompositeOperation = "source-in";
-    haloCtx.fillStyle = "#ffffff";
-    haloCtx.fillRect(0, 0, mw, mh);
-    haloCtx.globalCompositeOperation = "source-over";
-
-    const dest = characterDest(mw, mh, characterScale(mode), characterShiftY(mh, mode));
-    const o = characterOutlinePx(mw);
-    const ring: ReadonlyArray<readonly [number, number]> = [
-      [-o, 0],
-      [o, 0],
-      [0, -o],
-      [0, o],
-      [-o, -o],
-      [o, -o],
-      [-o, o],
-      [o, o],
-    ];
-    if (fx.smear > 0.03) {
-      smearCharacter(mainCtx, keyed, halo, dest, ring, fx.smear);
-    }
-    for (const [ox, oy] of ring) {
-      mainCtx.drawImage(halo, dest.x + ox, dest.y + oy, dest.w, dest.h);
-    }
-    mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
+    drawCharacter(mainCtx, surfaces, video, mw, mh, mode);
   }
 
-  // ジャンプは本編全体（キャラ含む）を白くする。ズームの光は写真側だけ。
-  if (style === "jump") paintWhiteFlash(mainCtx, mw, mh, fx.flash);
+  if (hasFrameFx(fx)) {
+    applyFrameFx(main, mainCtx, surfaces, fx);
+  }
+
+  if (fx.flashGlobal > 0.002) {
+    resetCtx(mainCtx);
+    mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flashGlobal})`;
+    mainCtx.fillRect(0, 0, mw, mh);
+  }
 }
 
-function paintWhiteFlash(ctx: CanvasRenderingContext2D, w: number, h: number, flash: number): void {
-  if (flash <= 0.004) return;
+function resetCtx(ctx: CanvasRenderingContext2D): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = `rgba(255, 255, 255, ${flash})`;
-  ctx.fillRect(0, 0, w, h);
 }
 
-function drawPhotoPlate(
-  ctx: CanvasRenderingContext2D,
-  photo: LoadedPhoto,
-  dest: { x: number; y: number; w: number; h: number },
-  skew: number,
-  chromaPx: number,
-): void {
-  ctx.save();
-  ctx.setTransform(1, 0, skew, 1, 0, 0);
-  ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
-  if (chromaPx >= 0.6) {
-    ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.4;
-    ctx.drawImage(photo.bitmap, dest.x - chromaPx, dest.y, dest.w, dest.h);
-    ctx.drawImage(photo.bitmap, dest.x + chromaPx, dest.y, dest.w, dest.h);
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-  }
-  ctx.restore();
-}
-
-function smearCharacter(
-  ctx: CanvasRenderingContext2D,
-  keyed: HTMLCanvasElement,
-  halo: HTMLCanvasElement,
-  dest: { x: number; y: number; w: number; h: number },
-  ring: ReadonlyArray<readonly [number, number]>,
-  amount: number,
-): void {
-  const smearPx = Math.max(3, dest.w * 0.011 * amount);
-  const copies: ReadonlyArray<readonly [number, number, number]> = [
-    [-smearPx, 0, 0.34],
-    [smearPx, 0, 0.34],
-    [0, smearPx * 0.22, 0.16],
-  ];
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.filter = "none";
-  ctx.globalCompositeOperation = "source-over";
-  for (const [sx, sy, alpha] of copies) {
-    ctx.globalAlpha = alpha * amount;
-    for (const [ox, oy] of ring) {
-      ctx.drawImage(halo, dest.x + ox + sx, dest.y + oy + sy, dest.w, dest.h);
-    }
-    ctx.drawImage(keyed, dest.x + sx, dest.y + sy, dest.w, dest.h);
-  }
-  const grow = 1 + 0.04 * amount;
-  const w = dest.w * grow;
-  const h = dest.h * grow;
-  ctx.globalAlpha = 0.14 * amount;
-  ctx.drawImage(keyed, dest.x - (w - dest.w) / 2, dest.y - (h - dest.h) / 2, w, h);
-  ctx.restore();
+/** 写真の cover 矩形。`fx.scale` は基準 cover に対する倍率、`fx.dy` はパネル高さ比の縦ずれ。 */
+export function plateDest(
+  photoW: number,
+  photoH: number,
+  panelW: number,
+  panelH: number,
+  fx: Pick<SwapFx, "scale" | "dy">,
+  style: SwapStyle,
+): { x: number; y: number; w: number; h: number } {
+  return coverDest(photoW, photoH, panelW, panelH, {
+    scale: plateCoverScale(style) * fx.scale,
+    offsetY: (plateRestShiftFrac(style) + fx.dy) * panelH,
+  });
 }
 
 /**
- * 参考横のズームアウト。出ていく写真は中心へ縮み、入ってくる写真は寄った状態から引く。
- * 放射ブラー＋横ストリーク＋ RGB ずれ＋軽い波打ち。
- * 白いハイライトは写真プレートに載せ、線画キャラの下に置く（参考はキャラが黒のまま）。
+ * 写真層。ズームで縮んだときは同じ写真の cover ぼかしを後ろに敷いて黒帯を見せない。
+ * ジャンプのフラッシュ（加算＋スクリーン）は写真層にだけ乗せる。
  */
-function drawZoomWarpPlate(
-  ctx: CanvasRenderingContext2D,
-  warp: HTMLCanvasElement,
-  warpCtx: CanvasRenderingContext2D,
-  outgoing: LoadedPhoto,
-  incoming: LoadedPhoto,
-  dest: { x: number; y: number; w: number; h: number },
-  fx: SwapFx,
-  chromaPx: number,
-): void {
-  const mw = ctx.canvas.width;
-  const mh = ctx.canvas.height;
-  warp.width = mw;
-  warp.height = mh;
-  warpCtx.setTransform(1, 0, 0, 1, 0, 0);
-  warpCtx.filter = "none";
-  warpCtx.globalAlpha = 1;
-  warpCtx.globalCompositeOperation = "source-over";
-  warpCtx.fillStyle = "#0a0806";
-  warpCtx.fillRect(0, 0, mw, mh);
-
-  const { outgoing: outScale, incoming: inScale } = zoomPlateScales(fx);
-  const outAlpha = (1 - fx.mix) * 0.88;
-  if (outAlpha > 0.02) {
-    paintRadialStreaks(
-      warpCtx,
-      outgoing,
-      dest,
-      outScale,
-      outAlpha,
-      fx.zoomBlur,
-      fx.whip,
-      chromaPx,
-    );
-  }
-  const inAlpha = Math.min(1, 0.4 + fx.mix * 0.6);
-  paintRadialStreaks(
-    warpCtx,
-    incoming,
-    dest,
-    inScale,
-    inAlpha,
-    fx.zoomBlur * Math.max(0.4, fx.mix),
-    fx.whip * 0.7,
-    chromaPx * 0.8,
-  );
-
-  blitWavedPlate(ctx, warp, fx.wave, fx.zoomBlur);
-  paintWhiteFlash(ctx, mw, mh, fx.flash);
-}
-
-function paintCopy(
-  ctx: CanvasRenderingContext2D,
-  bitmap: ImageBitmap,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  alpha: number,
-  chromaPx: number,
-): void {
-  if (chromaPx >= 0.5 && alpha > 0.04) {
-    ctx.globalAlpha = alpha * 0.55;
-    ctx.filter = "sepia(1) saturate(14) hue-rotate(-22deg)";
-    ctx.drawImage(bitmap, x - chromaPx, y, w, h);
-    ctx.filter = "sepia(1) saturate(14) hue-rotate(158deg)";
-    ctx.drawImage(bitmap, x + chromaPx, y, w, h);
-    ctx.filter = "none";
-  }
-  ctx.globalAlpha = alpha;
-  ctx.drawImage(bitmap, x, y, w, h);
-}
-
-function paintRadialStreaks(
+function drawPhotoPlate(
   ctx: CanvasRenderingContext2D,
   photo: LoadedPhoto,
-  dest: { x: number; y: number; w: number; h: number },
-  scale: number,
-  alpha: number,
-  blur: number,
-  whip: number,
-  chromaPx: number,
+  fx: SwapFx,
+  style: SwapStyle,
+  mw: number,
+  mh: number,
 ): void {
-  const cx = dest.x + dest.w / 2;
-  const cy = dest.y + dest.h / 2;
-  const steps = Math.max(6, Math.round(5 + 8 * blur));
-  const grow = 0.48 * blur + Math.max(0, scale - 1) * 0.28;
   const bitmap = photo.bitmap;
-
-  ctx.save();
-  ctx.filter = "none";
-  ctx.globalCompositeOperation = "source-over";
-
-  for (let i = steps; i >= 1; i -= 1) {
-    const t = i / steps;
-    // ズームアウトの放射ブラーは内側（より小さいコピー）へ伸ばす。
-    const s = Math.max(0.12, scale * (1 - grow * t));
-    const w = dest.w * s;
-    const h = dest.h * s;
-    paintCopy(ctx, bitmap, cx - w / 2, cy - h / 2, w, h, alpha * 0.18 * (1 - t * 0.45), chromaPx);
+  resetCtx(ctx);
+  if (fx.backdrop) {
+    const full = coverDest(bitmap.width, bitmap.height, mw, mh, { scale: 1.06 });
+    ctx.save();
+    ctx.filter = `blur(${Math.max(2, Math.round(mw * ZOOM_BACKDROP_BLUR_FRAC))}px)`;
+    ctx.drawImage(bitmap, full.x, full.y, full.w, full.h);
+    ctx.restore();
+    ctx.fillStyle = "rgba(10, 8, 6, 0.25)";
+    ctx.fillRect(0, 0, mw, mh);
   }
-
-  const streak = dest.w * 0.046 * whip;
-  const n = Math.max(0, Math.round(5 * whip));
-  const w0 = dest.w * scale;
-  const h0 = dest.h * scale;
-  for (let i = n; i >= 1; i -= 1) {
-    const t = i / n;
-    const ghost = alpha * 0.16 * (1 - t * 0.35);
-    paintCopy(ctx, bitmap, cx - w0 / 2 - streak * t, cy - h0 / 2, w0, h0, ghost, chromaPx);
-    paintCopy(ctx, bitmap, cx - w0 / 2 + streak * t, cy - h0 / 2, w0, h0, ghost, chromaPx);
+  const dest = plateDest(bitmap.width, bitmap.height, mw, mh, fx, style);
+  ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
+  if (fx.flashAdd > 0.002) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = `rgba(255, 255, 255, ${fx.flashAdd})`;
+    ctx.fillRect(dest.x, dest.y, dest.w, dest.h);
+    ctx.globalCompositeOperation = "source-over";
   }
-
-  paintCopy(ctx, bitmap, cx - w0 / 2, cy - h0 / 2, w0, h0, alpha, chromaPx);
-  ctx.restore();
+  if (fx.flashScreen > 0.002) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${fx.flashScreen})`;
+    ctx.fillRect(dest.x, dest.y, dest.w, dest.h);
+  }
 }
 
-function blitWavedPlate(ctx: CanvasRenderingContext2D, plate: HTMLCanvasElement, wave: number, amount: number): void {
-  const w = plate.width;
-  const h = plate.height;
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.filter = "none";
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "source-over";
-  const waveAmp = h * 0.018 * wave;
-  const bands = wave > 0.04 ? 16 : 1;
-  if (bands <= 1) {
-    ctx.drawImage(plate, 0, 0);
-    ctx.restore();
-    return;
+function drawCharacter(
+  mainCtx: CanvasRenderingContext2D,
+  { keyed, keyedCtx, halo, haloCtx }: FxSurfaces,
+  video: HTMLVideoElement,
+  mw: number,
+  mh: number,
+  mode: AspectMode,
+): void {
+  const fallback = outputSize(mode);
+  const vw = video.videoWidth || fallback.width;
+  const vh = video.videoHeight || fallback.height;
+  const band = templateBandRect(vw, vh, mode);
+  keyed.width = mw;
+  keyed.height = mh;
+  keyedCtx.clearRect(0, 0, mw, mh);
+  keyedCtx.drawImage(video, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
+  const image = keyedCtx.getImageData(0, 0, mw, mh);
+  keyImageData(image);
+  keyedCtx.putImageData(image, 0, 0);
+
+  halo.width = mw;
+  halo.height = mh;
+  haloCtx.clearRect(0, 0, mw, mh);
+  haloCtx.globalCompositeOperation = "source-over";
+  haloCtx.drawImage(keyed, 0, 0);
+  haloCtx.globalCompositeOperation = "source-in";
+  haloCtx.fillStyle = "#ffffff";
+  haloCtx.fillRect(0, 0, mw, mh);
+  haloCtx.globalCompositeOperation = "source-over";
+
+  const dest = characterDest(mw, mh, characterScale(mode), characterShiftY(mh, mode));
+  const o = characterOutlinePx(mw);
+  const ring: ReadonlyArray<readonly [number, number]> = [
+    [-o, 0],
+    [o, 0],
+    [0, -o],
+    [0, o],
+    [-o, -o],
+    [o, -o],
+    [-o, o],
+    [o, o],
+  ];
+  resetCtx(mainCtx);
+  for (const [ox, oy] of ring) {
+    mainCtx.drawImage(halo, dest.x + ox, dest.y + oy, dest.w, dest.h);
   }
-  const bh = h / bands;
-  for (let i = 0; i < bands; i += 1) {
-    const y = i * bh;
-    const dx = Math.sin((i / bands) * Math.PI * 3.4 + amount * 6) * waveAmp;
-    ctx.drawImage(plate, 0, y, w, bh, dx, y, w, bh);
+  mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
+}
+
+/** 横モーションブラーのコピー数。長さに応じて増やし、平均合成で滑らかにする。 */
+export function blurTapCount(blurPx: number): number {
+  if (blurPx < 1) return 1;
+  return Math.min(15, Math.max(3, Math.round(blurPx / 2.5) | 1));
+}
+
+/**
+ * 参考ズーム（hagikaze_sami）の全面 FX。合成済み本編（写真＋キャラ）に対して
+ * 行波打ち → 横モーションブラー → RGB 横ずれ（R 右・B 左）→ 白加算／灰かぶり の順。
+ */
+function applyFrameFx(
+  main: HTMLCanvasElement,
+  mainCtx: CanvasRenderingContext2D,
+  { fxA, fxACtx, fxB, fxBCtx }: FxSurfaces,
+  fx: SwapFx,
+): void {
+  const w = main.width;
+  const h = main.height;
+  fxA.width = w;
+  fxA.height = h;
+  fxB.width = w;
+  fxB.height = h;
+  resetCtx(fxACtx);
+  resetCtx(fxBCtx);
+
+  // 1) 波打ち: 行帯ごとに横へずらしながら main → fxA
+  const waveAmp = fx.wave * w;
+  if (waveAmp >= 0.5) {
+    const bands = 24;
+    const bh = h / bands;
+    for (let i = 0; i < bands; i += 1) {
+      const y = i * bh;
+      const dx = Math.sin((i / bands) * Math.PI * 3.4 + fx.blur * 40) * waveAmp;
+      fxACtx.drawImage(main, 0, y, w, bh, dx, y, w, bh);
+    }
+  } else {
+    fxACtx.drawImage(main, 0, 0);
   }
-  ctx.restore();
+
+  // 2) 横モーションブラー: fxA を N 回ずらして平均 → fxB
+  const blurPx = fx.blur * w;
+  const taps = blurTapCount(blurPx);
+  if (taps > 1) {
+    for (let i = 0; i < taps; i += 1) {
+      const t = i / (taps - 1) - 0.5;
+      fxBCtx.globalAlpha = 1 / (i + 1);
+      fxBCtx.drawImage(fxA, t * blurPx, 0);
+    }
+    fxBCtx.globalAlpha = 1;
+  } else {
+    fxBCtx.drawImage(fxA, 0, 0);
+  }
+
+  // 3) RGB 横ずれ: fxB をチャンネル分解して加算合成で main に戻す
+  resetCtx(mainCtx);
+  const rgbPx = fx.rgb * w;
+  if (rgbPx >= 0.5) {
+    mainCtx.fillStyle = "#000";
+    mainCtx.fillRect(0, 0, w, h);
+    const channels: ReadonlyArray<readonly [string, number]> = [
+      ["#ff0000", rgbPx],
+      ["#00ff00", 0],
+      ["#0000ff", -rgbPx],
+    ];
+    for (const [color, dx] of channels) {
+      resetCtx(fxACtx);
+      fxACtx.drawImage(fxB, 0, 0);
+      fxACtx.globalCompositeOperation = "multiply";
+      fxACtx.fillStyle = color;
+      fxACtx.fillRect(0, 0, w, h);
+      fxACtx.globalCompositeOperation = "source-over";
+      mainCtx.globalCompositeOperation = "lighter";
+      mainCtx.drawImage(fxA, dx, 0);
+      if (dx !== 0) {
+        // ずらして空いた端は同じチャンネルを端で埋める
+        const edgeW = Math.ceil(Math.abs(dx));
+        const sx = dx > 0 ? 0 : w - edgeW;
+        const dxEdge = dx > 0 ? 0 : w - edgeW;
+        mainCtx.drawImage(fxA, sx, 0, edgeW, h, dxEdge, 0, edgeW, h);
+      }
+    }
+    mainCtx.globalCompositeOperation = "source-over";
+  } else {
+    mainCtx.drawImage(fxB, 0, 0);
+  }
+
+  // 4) 明度: 白加算（std を保つ）と灰かぶり（コントラスト低下）
+  resetCtx(mainCtx);
+  if (fx.lift > 0.002) {
+    mainCtx.globalCompositeOperation = "lighter";
+    mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.lift})`;
+    mainCtx.fillRect(0, 0, w, h);
+    mainCtx.globalCompositeOperation = "source-over";
+  }
+  if (fx.haze > 0.002) {
+    mainCtx.fillStyle = `rgba(100, 100, 100, ${fx.haze})`;
+    mainCtx.fillRect(0, 0, w, h);
+  }
 }
 
 function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, w: number, h: number): void {

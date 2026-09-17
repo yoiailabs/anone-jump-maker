@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCTION_HOSTS,
+  STATS_NAME,
   formatCountLabel,
   parseStatsCount,
   sanitizeGenerateAttrs,
   shouldCountPreview,
+  statsObjectName,
   summarizeUserAgent,
 } from "./stats-shared.ts";
 
@@ -95,5 +98,26 @@ describe("parseStatsCount", () => {
     expect(parseStatsCount({ count: 3.9 })).toBe(3);
     expect(parseStatsCount({ count: -2 })).toBe(0);
     expect(parseStatsCount({})).toBeNull();
+  });
+});
+
+describe("statsObjectName", () => {
+  it("keeps the production domain and local dev on the production counter", () => {
+    expect(statsObjectName("anone.yoiailabs.com")).toBe(STATS_NAME);
+    expect(statsObjectName("ANONE.yoiailabs.com")).toBe(STATS_NAME);
+    expect(statsObjectName("localhost")).toBe(STATS_NAME);
+    expect(statsObjectName("127.0.0.1")).toBe(STATS_NAME);
+    expect(PRODUCTION_HOSTS.has("anone.yoiailabs.com")).toBe(true);
+  });
+
+  it("gives every preview / workers.dev host its own counter so QA never touches production", () => {
+    const branch = statsObjectName("cursor-swap-fx-matrix-preview-46fd-anone.yoiailabs.workers.dev");
+    const version = statsObjectName("1a2b3c4d-anone.yoiailabs.workers.dev");
+    const bare = statsObjectName("anone.yoiailabs.workers.dev");
+    expect(branch).not.toBe(STATS_NAME);
+    expect(version).not.toBe(STATS_NAME);
+    expect(bare).not.toBe(STATS_NAME);
+    expect(new Set([branch, version, bare]).size).toBe(3);
+    expect(branch.startsWith("preview:")).toBe(true);
   });
 });

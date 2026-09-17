@@ -1,19 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { BLUR_SOURCE, PHOTO_UPLOAD_PATH, SONG_CREDIT, songCreditFontSize, songCreditLayout } from "./compositor.ts";
+import {
+  BLUR_SOURCE,
+  FRAME_FX_TARGET,
+  JUMP_FLASH_TARGET,
+  PHOTO_UPLOAD_PATH,
+  SONG_CREDIT,
+  blurTapCount,
+  plateDest,
+  songCreditFontSize,
+  songCreditLayout,
+} from "./compositor.ts";
 import {
   CHAR_SCALE,
-  JUMP_AMPLITUDE,
+  JUMP_COVER_SCALE,
+  JUMP_DROP_FRAC,
   LANDSCAPE_CHAR_SCALE,
   OUTPUTS,
   STAGE_MAX_REM,
+  TEMPLATE_FPS,
   characterDest,
-  jumpOffsetPx,
   mainPanelRect,
-  sharpCoverScale,
   swapFx,
   usesBlurBackdrop,
-  zoomPlateScales,
 } from "./layout.ts";
+
+const F = 1 / TEMPLATE_FPS;
 
 describe("photo orientation", () => {
   it("uploads photos via Canvas2D so UNPACK_FLIP_Y_WEBGL does not invert ImageBitmap", () => {
@@ -21,9 +32,14 @@ describe("photo orientation", () => {
   });
 });
 
-describe("backdrop hop", () => {
+describe("swap fx draw path", () => {
   it("blurs the composed 16:9 main frame, not the photo alone", () => {
     expect(BLUR_SOURCE).toBe("main-frame");
+  });
+
+  it("applies the zoom blur / rgb split to the composited frame and the jump flash to the photo layer", () => {
+    expect(FRAME_FX_TARGET).toBe("composited-main");
+    expect(JUMP_FLASH_TARGET).toBe("photo-plate");
   });
 
   it("places a larger bottom-aligned character so the cover-blur matches the official close-up", () => {
@@ -33,53 +49,58 @@ describe("backdrop hop", () => {
     expect(dest.w).toBeGreaterThan(608);
   });
 
-  it("uses the same cut-synced offset for the sharp 16:9 photo", () => {
-    const slots = [0, 0.467];
-    const hop = jumpOffsetPx(0.12, slots, 1080);
-    const panel = mainPanelRect(608, 1080);
-    expect(hop).toBeLessThan(0);
-    expect(Math.abs(hop)).toBeLessThanOrEqual(1080 * JUMP_AMPLITUDE + 1e-6);
-    expect(sharpCoverScale(1080, panel.h) * panel.h).toBeGreaterThan(panel.h + 2 * Math.abs(hop));
+  it("moves the jump plate down and shrinks it at the cut, in both aspects", () => {
+    const slots = [0, 15 * F, 30 * F];
+    const at = swapFx(15 * F, slots, "jump");
+    const rest = swapFx(15 * F + 7 * F, slots, "jump");
+    for (const [w, h, style] of [
+      [608, mainPanelRect(608, 1080).h, "jump"],
+      [OUTPUTS.landscape.width, OUTPUTS.landscape.height, "jump"],
+    ] as const) {
+      const cut = plateDest(1920, 1080, w, h, at, style);
+      const still = plateDest(1920, 1080, w, h, rest, style);
+      expect(cut.y).toBeGreaterThan(still.y);
+      expect(cut.w).toBeLessThan(still.w);
+      // the measured drop is 17.5% of the panel height; the shrink about the centre lowers the top edge further
+      expect(cut.y - still.y).toBeCloseTo(JUMP_DROP_FRAC * h + (still.h - cut.h) / 2, 3);
+      expect(still.w).toBeCloseTo(w * JUMP_COVER_SCALE, 3);
+      // never uncover the panel
+      expect(cut.y).toBeLessThanOrEqual(1e-6);
+      expect(cut.y + cut.h).toBeGreaterThanOrEqual(h - 1e-6);
+      expect(still.y).toBeLessThanOrEqual(1e-6);
+      expect(still.y + still.h).toBeGreaterThanOrEqual(h - 1e-6);
+    }
   });
 
-  it("keeps landscape as a full 16:9 plate with a larger bottom-aligned character", () => {
+  it("keeps landscape as a full 16:9 plate and lets zoom shrink it with a backdrop", () => {
     expect(usesBlurBackdrop("landscape")).toBe(false);
     const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
-    expect(CHAR_SCALE).toBeGreaterThan(1.5);
     expect(LANDSCAPE_CHAR_SCALE).toBeGreaterThan(1);
     expect(dest.y).toBeLessThan(0);
     expect(dest.w).toBeGreaterThan(OUTPUTS.landscape.width);
-    const hop = jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height);
-    expect(hop).toBeLessThan(0);
-    expect(sharpCoverScale(OUTPUTS.landscape.height, OUTPUTS.landscape.height)).toBeGreaterThan(1);
-    expect(jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height, "zoom")).toBe(0);
-    const zoomCut = swapFx(0.467, [0, 0.467, 0.933], "zoom");
-    const jumpCut = swapFx(0.467, [0, 0.467, 0.933], "jump");
-    expect(zoomCut.flash).toBeGreaterThan(0.3);
-    expect(zoomCut.flash).toBeLessThan(0.55);
-    expect(zoomCut.flash).toBeLessThan(jumpCut.flash);
-    expect(zoomCut.zoomBlur).toBeGreaterThan(0.5);
-    expect(zoomCut.whip).toBeGreaterThan(0);
-    expect(zoomCut.smear).toBeGreaterThan(0);
-    expect(zoomCut.punch).toBeLessThan(1);
-    const plates = zoomPlateScales(zoomCut);
-    expect(plates.outgoing).toBeLessThan(1);
-    expect(plates.incoming).toBeGreaterThan(1);
+    const slots = [0, 15 * F, 30 * F];
+    const peak = swapFx(15 * F, slots, "zoom");
+    const plate = plateDest(1920, 1080, 1280, 720, peak, "zoom");
+    expect(plate.w).toBeCloseTo(1280 * 0.866, 0);
+    expect(plate.x).toBeGreaterThan(0);
+    expect(peak.backdrop).toBe(true);
+    const rest = plateDest(1920, 1080, 1280, 720, swapFx(0.2, slots, "zoom"), "zoom");
+    expect(rest).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
   });
 
-  it("flashes and punches the photo on a cut instead of swapping it raw", () => {
-    const cut = swapFx(0.467, [0, 0.467, 0.933]);
-    const rest = swapFx(0.8, [0, 0.467, 0.933]);
-    expect(cut.flash).toBeGreaterThan(0.7);
-    expect(cut.punch).toBeGreaterThan(rest.punch);
-    expect(rest.flash).toBe(0);
+  it("uses more blur taps for longer streaks, and none when there is no streak", () => {
+    expect(blurTapCount(0)).toBe(1);
+    expect(blurTapCount(0.027 * 1280)).toBeGreaterThanOrEqual(9);
+    expect(blurTapCount(0.027 * 608)).toBeGreaterThanOrEqual(5);
+    expect(blurTapCount(500)).toBeLessThanOrEqual(15);
+    expect(blurTapCount(20) % 2).toBe(1);
   });
 
-  it("advances hop and swap from the given time only", () => {
-    const slots = [0, 0.467, 0.933];
-    expect(jumpOffsetPx(0.12, slots, 1080)).toBe(jumpOffsetPx(0.12, slots, 1080));
-    expect(swapFx(0.467, slots).flash).toBe(swapFx(0.467, slots).flash);
-    expect(swapFx(0.12, slots).flash).toBe(0);
+  it("advances the plate and fx from the given time only", () => {
+    const slots = [0, 0.5, 1.0];
+    expect(swapFx(0.12, slots, "jump")).toEqual(swapFx(0.12, slots, "jump"));
+    expect(swapFx(0.5, slots, "zoom")).toEqual(swapFx(0.5, slots, "zoom"));
+    expect(swapFx(0.12, slots, "jump").flashAdd).toBe(0);
   });
 });
 

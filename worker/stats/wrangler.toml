@@ -1,0 +1,44 @@
+# 生成イベントの Durable Object だけを持つ Worker。
+#
+# Durable Object クラスを実装する Worker には Cloudflare が Preview URL（ブランチ別 *.workers.dev）を
+# 作らないため、クラスを本体 `anone` からここへ分離する。本体は
+#   [[durable_objects.bindings]] script_name = "anone-stats"
+# で参照する。この Worker 自体は HTTP を受けない（workers.dev も Preview URL も無し）。
+#
+# デプロイ順（本体の `wrangler deploy` より先に、一度だけ）:
+#   pnpm exec wrangler deploy -c worker/stats/wrangler.toml
+# 初回デプロイで transferred_classes が走り、`anone` に溜まっている GenerateStats のデータ
+# （「○回作られたよ」の件数）をそのまま引き継ぐ。以後このファイルを変えたときだけ再デプロイする。
+name = "anone-stats"
+main = "index.ts"
+compatibility_date = "2026-09-16"
+workers_dev = false
+preview_urls = false
+
+[observability]
+enabled = true
+
+[[durable_objects.bindings]]
+name = "GENERATE_STATS"
+class_name = "GenerateStats"
+
+# 本体 `anone` の migration v1-generate-stats（new_sqlite_classes）で作られた名前空間を、
+# データごとこの Worker へ移す。`from_script` は移す元の Worker 名。
+[[migrations]]
+tag = "v1-generate-stats"
+transferred_classes = [{ from = "GenerateStats", from_script = "anone", to = "GenerateStats" }]
+
+# ローカル開発（`pnpm dev:worker` = wrangler dev --env dev）だけの上書き。
+# ローカルの miniflare は transferred_classes では SQLite を有効にできないので、
+# 名前は本番と同じまま、移行だけ new_sqlite_classes に差し替える。本番には使わない。
+[env.dev]
+name = "anone-stats"
+workers_dev = false
+
+[[env.dev.durable_objects.bindings]]
+name = "GENERATE_STATS"
+class_name = "GenerateStats"
+
+[[env.dev.migrations]]
+tag = "v1-generate-stats"
+new_sqlite_classes = ["GenerateStats"]
