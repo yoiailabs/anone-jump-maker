@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   HEIC_UNSUPPORTED_MESSAGE,
-  IMAGE_LOAD_ERROR,
   PHOTO_DECODE_ATTEMPTS,
   PHOTO_DECODE_CONCURRENCY,
   PHOTO_MAX_EDGE,
@@ -278,41 +277,66 @@ describe("tryInOrder / decode fallback order", () => {
     }
   });
 
-  it("explains HEIC instead of the generic load error when decode fails", async () => {
-    const header = new Uint8Array(12);
-    header.set([0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63], 4);
-    const file = new File([header], "IMG_0001.HEIC", { type: "" });
+  it("explains HEIC instead of the generic load error when convert is unavailable", async () => {
+    const file = heicFile();
+    const convertHeic = vi.fn(async () => {
+      throw new Error("no wasm");
+    });
     vi.stubGlobal("createImageBitmap", vi.fn(async () => {
       throw new Error("no heic");
     }));
-    vi.stubGlobal("URL", {
-      createObjectURL: () => "blob:heic",
-      revokeObjectURL: () => {},
-    });
-    vi.stubGlobal(
-      "Image",
-      class {
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        set src(_value: string) {
-          queueMicrotask(() => this.onerror?.());
-        }
-      },
-    );
-    vi.stubGlobal(
-      "FileReader",
-      class {
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        result = "data:image/heic;base64,xxxx";
-        readAsDataURL() {
-          queueMicrotask(() => this.onerror?.());
-        }
-      },
-    );
     try {
-      await expect(decodeFullBitmap(file)).rejects.toThrow(HEIC_UNSUPPORTED_MESSAGE);
-      expect(HEIC_UNSUPPORTED_MESSAGE).not.toBe(IMAGE_LOAD_ERROR);
+      await expect(decodeFullBitmap(file, { convertHeic })).rejects.toThrow(HEIC_UNSUPPORTED_MESSAGE);
+      expect(convertHeic).toHaveBeenCalledOnce();
+      expect(HEIC_UNSUPPORTED_MESSAGE).toContain("互換性優先");
+      expect(HEIC_UNSUPPORTED_MESSAGE).toContain("スクショ");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not run the HEIC converter for a JPEG", async () => {
+    const bitmap = fakeBitmap(8, 8);
+    const convertHeic = vi.fn(async () => {
+      throw new Error("jpeg must not convert");
+    });
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => bitmap));
+    try {
+      await expect(decodeFullBitmap(jpegFile("photo.jpg", "image/jpeg"), { convertHeic })).resolves.toBe(bitmap);
+      expect(convertHeic).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("decodes HEIC via a converted JPEG on the existing raster path", async () => {
+    const file = heicFile();
+    const jpeg = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "out.jpg", { type: "image/jpeg" });
+    const bitmap = fakeBitmap(20, 16);
+    const convertHeic = vi.fn(async () => jpeg);
+    const createImageBitmap = vi.fn(async (source: unknown) => {
+      if (source === file) throw new Error("no native heic");
+      return bitmap;
+    });
+    vi.stubGlobal("createImageBitmap", createImageBitmap);
+    try {
+      await expect(decodeFullBitmap(file, { convertHeic })).resolves.toBe(bitmap);
+      expect(convertHeic).toHaveBeenCalledOnce();
+      expect(createImageBitmap.mock.calls.some((call) => call[0] !== file)).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("accepts an ImageBitmap from the HEIC converter", async () => {
+    const file = heicFile();
+    const bitmap = fakeBitmap(32, 24);
+    const convertHeic = vi.fn(async () => bitmap);
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => {
+      throw new Error("no native heic");
+    }));
+    try {
+      await expect(decodeFullBitmap(file, { convertHeic })).resolves.toBe(bitmap);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -362,8 +386,28 @@ describe("loadPhotos", () => {
       },
     );
     try {
-      const photos = await loadPhotos([heic, jpeg]);
+      const photos = await loadPhotos([heic, jpeg], {
+        convertHeic: async () => {
+          throw new Error("no wasm");
+        },
+      });
       expect(photos.map((photo) => photo.name)).toEqual(["ok.jpg"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("loads a camera HEIC after converting it to JPEG", async () => {
+    const heic = heicFile();
+    const jpeg = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "x.jpg", { type: "image/jpeg" });
+    const bitmap = fakeBitmap(24, 24);
+    stubPhotoGlobals(bitmap, (source) => {
+      if (source === heic) throw new Error("no native heic");
+    });
+    try {
+      const photos = await loadPhotos([heic], { convertHeic: async () => jpeg });
+      expect(photos).toHaveLength(1);
+      expect(photos[0]?.name).toBe("IMG_0001.HEIC");
     } finally {
       vi.unstubAllGlobals();
     }
@@ -393,6 +437,12 @@ function stubPhotoGlobals(bitmap: ImageBitmap, beforeCreate?: (source: unknown) 
       };
     },
   });
+}
+
+function heicFile(): File {
+  const header = new Uint8Array(12);
+  header.set([0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63], 4);
+  return new File([header], "IMG_0001.HEIC", { type: "" });
 }
 
 function jpegFile(name: string, type: string): File {

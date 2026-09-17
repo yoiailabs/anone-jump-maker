@@ -23,7 +23,10 @@ export const PHOTO_DECODE_CONCURRENCY = 2;
 
 export const IMAGE_LOAD_ERROR = "画像を読み込めませんでした";
 export const HEIC_UNSUPPORTED_MESSAGE =
-  "この形式（HEIC/HEIF）は読み込めません。カメラの保存を JPEG にするか、JPEG / PNG / WebP で選び直してください";
+  "HEIC はこのブラウザで読めません。設定で写真を互換性優先（JPEG）にするか、スクショを使ってね";
+
+/** HEIC を ImageBitmap か、既存パスへ渡す JPEG/PNG Blob にする。テストで差し替え可能。 */
+export type HeicConverter = (blob: Blob) => Promise<ImageBitmap | Blob>;
 
 /** Android Chrome 向け。orientation 付きが落ちても、options なし → HTMLImage → FileReader と続ける。 */
 export const PHOTO_DECODE_ATTEMPTS = [
@@ -261,7 +264,7 @@ export function selectImageFiles(files: readonly File[]): File[] {
 
 export async function loadPhotos(
   files: File[],
-  options: { onProgress?: (current: number, total: number) => void } = {},
+  options: { onProgress?: (current: number, total: number) => void; convertHeic?: HeicConverter } = {},
 ): Promise<LoadedPhoto[]> {
   const imageFiles = selectImageFiles(files);
   const total = imageFiles.length;
@@ -271,7 +274,7 @@ export async function loadPhotos(
   try {
     const results = await mapLimit(imageFiles, PHOTO_DECODE_CONCURRENCY, async (file) => {
       try {
-        const photo = await loadPhoto(file);
+        const photo = await loadPhoto(file, options.convertHeic);
         started.push(photo);
         loadedCount += 1;
         options.onProgress?.(loadedCount, total);
@@ -291,8 +294,8 @@ export async function loadPhotos(
   }
 }
 
-async function loadPhoto(file: File): Promise<LoadedPhoto> {
-  const full = await decodeFullBitmap(file);
+async function loadPhoto(file: File, convertHeic?: HeicConverter): Promise<LoadedPhoto> {
+  const full = await decodeFullBitmap(file, { convertHeic });
   let working = full;
   const fitted = photoFitSize(full.width, full.height, PHOTO_MAX_EDGE);
   if (fitted.downsampled) {
@@ -322,12 +325,9 @@ export function decodeAttemptNames(file: { name: string; type: string }, signatu
   return PHOTO_DECODE_ATTEMPTS.filter((name) => needsTyped || !name.startsWith("bitmap-typed"));
 }
 
-export async function decodeFullBitmap(file: File): Promise<ImageBitmap> {
-  const header = await peekFileHeader(file);
-  const signature = sniffImageSignature(header);
+export async function decodeRasterBitmap(file: File, signature: ImageSignature = "unknown"): Promise<ImageBitmap> {
   const mime = guessImageMime(file, signature);
   const typed = typedBlob(file, mime);
-  const heic = isHeicLike(file, signature);
   const jobs: Record<(typeof PHOTO_DECODE_ATTEMPTS)[number], () => Promise<ImageBitmap>> = {
     "bitmap-orient": () => bitmapFromBlob(file, { imageOrientation: "from-image" }),
     "bitmap-plain": () => bitmapFromBlob(file),
@@ -340,8 +340,79 @@ export async function decodeFullBitmap(file: File): Promise<ImageBitmap> {
   try {
     return await tryInOrder(decodeAttemptNames(file, signature).map((name) => jobs[name as (typeof PHOTO_DECODE_ATTEMPTS)[number]]));
   } catch {
-    throw new Error(heic ? HEIC_UNSUPPORTED_MESSAGE : IMAGE_LOAD_ERROR);
+    throw new Error(IMAGE_LOAD_ERROR);
   }
+}
+
+export async function decodeFullBitmap(
+  file: File,
+  options: { convertHeic?: HeicConverter } = {},
+): Promise<ImageBitmap> {
+  const header = await peekFileHeader(file);
+  const signature = sniffImageSignature(header);
+  if (isHeicLike(file, signature)) {
+    return decodeHeicBitmap(file, options.convertHeic ?? convertHeicWithLib);
+  }
+  return decodeRasterBitmap(file, signature);
+}
+
+async function decodeHeicBitmap(file: File, convertHeic: HeicConverter): Promise<ImageBitmap> {
+  try {
+    return await tryInOrder([
+      () => bitmapFromBlob(file, { imageOrientation: "from-image" }),
+      () => bitmapFromBlob(file),
+    ]);
+  } catch {
+    // Safari などネイティブ対応以外は lib で JPEG/PNG 相当にして既存パスへ。
+  }
+  let converted: ImageBitmap | Blob;
+  try {
+    converted = await convertHeic(file);
+  } catch {
+    throw new Error(HEIC_UNSUPPORTED_MESSAGE);
+  }
+  if (isImageBitmapLike(converted)) {
+    return assertBitmap(converted);
+  }
+  const jpeg = new File([converted], withJpegName(file.name), {
+    type: converted.type && converted.type.startsWith("image/") ? converted.type : "image/jpeg",
+  });
+  try {
+    return await decodeRasterBitmap(jpeg, "jpeg");
+  } catch {
+    throw new Error(HEIC_UNSUPPORTED_MESSAGE);
+  }
+}
+
+/** HEIC のときだけ動的 import。JPEG/PNG/WebP の初期バンドルには載せない。 */
+export async function convertHeicWithLib(blob: Blob): Promise<ImageBitmap | Blob> {
+  try {
+    const { heicTo } = await import("heic-to");
+    try {
+      return await heicTo({
+        blob,
+        type: "bitmap",
+        options: { imageOrientation: "from-image" },
+      });
+    } catch {
+      const jpeg = await heicTo({ blob, type: "image/jpeg", quality: 0.9 });
+      if (!(jpeg instanceof Blob) || jpeg.size < 8) {
+        throw new Error(HEIC_UNSUPPORTED_MESSAGE);
+      }
+      return jpeg;
+    }
+  } catch {
+    throw new Error(HEIC_UNSUPPORTED_MESSAGE);
+  }
+}
+
+function isImageBitmapLike(value: ImageBitmap | Blob): value is ImageBitmap {
+  return typeof value === "object" && value !== null && "width" in value && "height" in value && "close" in value;
+}
+
+function withJpegName(name: string): string {
+  const base = name.replace(/\.[^.]+$/, "").trim();
+  return `${base || "photo"}.jpg`;
 }
 
 async function peekFileHeader(file: Blob, length = 16): Promise<Uint8Array> {
