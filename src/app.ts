@@ -43,7 +43,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       <header class="hero">
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を何枚か選択するだけで簡単にあのねジャンプ動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。</p>
+        <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
@@ -108,7 +108,6 @@ export async function boot(root: HTMLElement): Promise<void> {
       </section>
 
       <footer class="notes">
-        <p>ファン制作です。</p>
         <nav class="links" aria-labelledby="linksTitle">
           <p class="links-title" id="linksTitle">ナナツカゼさん公式</p>
           <ul class="link-banners">${linkBannersHtml()}</ul>
