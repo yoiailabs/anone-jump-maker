@@ -35,13 +35,12 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="breeze" aria-hidden="true"></div>
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を置くと、ジャンプの拍で入れ替わります。ベタ塗りの後ろだけ抜けて、線のキャラはそのまま。たてにも、よこにも。この端末の中だけの、小さな夏。</p>
+        <p class="lede">写真を何枚か選択するだけで簡単にあのねジャンプ動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。</p>
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
       <section class="stage-wrap">
         <div class="stage" id="stage" data-aspect="portrait"></div>
-        <p class="empty-hint" id="emptyHint">まだ写真はありません。向きを選んで、下から置くと色が入ります。</p>
         <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
       </section>
 
@@ -72,7 +71,6 @@ export async function boot(root: HTMLElement): Promise<void> {
       </section>
 
       <footer class="notes">
-        <p>選んだ写真はどこにも送りません。ブラウザの中だけで重ねます。</p>
         <p>ファン制作です。</p>
       </footer>
     </div>
@@ -80,7 +78,6 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const stage = must(root, "#stage");
   const thumbs = must(root, "#thumbs");
-  const emptyHint = must(root, "#emptyHint");
   const slotMeter = must(root, "#slotMeter");
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
@@ -105,7 +102,6 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const renderThumbs = () => {
     thumbs.hidden = photos.length === 0;
-    emptyHint.hidden = photos.length > 0;
     thumbs.replaceChildren(
       ...photos.map((photo, index) => {
         const img = document.createElement("img");
