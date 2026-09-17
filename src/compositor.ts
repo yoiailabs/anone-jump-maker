@@ -7,6 +7,7 @@ import {
   characterDest,
   characterOutlinePx,
   characterScale,
+  characterShiftY,
   coverDest,
   jumpOffsetPx,
   mainPanelRect,
@@ -172,7 +173,7 @@ function composeMain(
     haloCtx.fillRect(0, 0, mw, mh);
     haloCtx.globalCompositeOperation = "source-over";
 
-    const dest = characterDest(mw, mh, characterScale(mode));
+    const dest = characterDest(mw, mh, characterScale(mode), characterShiftY(mh, mode));
     const o = characterOutlinePx(mw);
     const ring: ReadonlyArray<readonly [number, number]> = [
       [-o, 0],
