@@ -32,6 +32,7 @@
     ]
   },
   "dependencies": {
+    "heic-to": "1.5.2",
     "mediabunny": "^1.57.0"
   }
 }

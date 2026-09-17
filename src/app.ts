@@ -98,7 +98,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           </div>
         </fieldset>
         <label class="file-btn">
-          <input id="picker" type="file" accept="image/*" multiple />
+          <input id="picker" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/*" multiple />
           写真を選ぶ
         </label>
         <div class="thumbs" id="thumbs" hidden></div>
