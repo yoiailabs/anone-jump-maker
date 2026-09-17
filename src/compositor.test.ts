@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BLUR_SOURCE, PHOTO_UPLOAD_PATH } from "./compositor.ts";
+import { BLUR_SOURCE, PHOTO_UPLOAD_PATH, SONG_CREDIT, songCreditLayout } from "./compositor.ts";
 import {
   CHAR_SCALE,
   JUMP_AMPLITUDE,
@@ -65,5 +65,22 @@ describe("backdrop hop", () => {
     expect(jumpOffsetPx(0.12, slots, 1080)).toBe(jumpOffsetPx(0.12, slots, 1080));
     expect(swapFx(0.467, slots).flash).toBe(swapFx(0.467, slots).flash);
     expect(swapFx(0.12, slots).flash).toBe(0);
+  });
+});
+
+describe("song credit", () => {
+  it("uses the requested credit line", () => {
+    expect(SONG_CREDIT).toBe("♪ あのね - ナナツカゼ");
+  });
+
+  it("keeps a small bottom-right inset on both output sizes", () => {
+    const portrait = songCreditLayout(OUTPUTS.portrait.width, OUTPUTS.portrait.height);
+    const landscape = songCreditLayout(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
+    expect(portrait.fontSize).toBeGreaterThanOrEqual(12);
+    expect(landscape.fontSize).toBeGreaterThanOrEqual(12);
+    expect(portrait.fontSize / OUTPUTS.portrait.height).toBeLessThan(0.03);
+    expect(landscape.fontSize / OUTPUTS.landscape.height).toBeLessThan(0.04);
+    expect(portrait.pad).toBeGreaterThanOrEqual(10);
+    expect(landscape.pad).toBeGreaterThanOrEqual(10);
   });
 });

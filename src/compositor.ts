@@ -83,6 +83,7 @@ export function createCompositor(): Compositor {
     } else {
       paintLandscape(ctx, main, w, h);
     }
+    paintSongCredit(ctx, w, h);
     return slot;
   };
 
@@ -264,4 +265,58 @@ function paintOutput(
   const half = PANEL_DIVIDER_PX / 2;
   ctx.fillRect(0, panel.y - half, w, PANEL_DIVIDER_PX);
   ctx.fillRect(0, panel.y + panel.h - half, w, PANEL_DIVIDER_PX);
+}
+
+export const SONG_CREDIT = "♪ あのね - ナナツカゼ";
+
+export type SongCreditLayout = {
+  fontSize: number;
+  pad: number;
+  boxPadX: number;
+  boxPadY: number;
+};
+
+/** 出力キャンバス右下。縦 608×1080 / 横 1280×720 の両方で小さめに読む。 */
+export function songCreditLayout(canvasW: number, canvasH: number): SongCreditLayout {
+  const short = Math.min(canvasW, canvasH);
+  const fontSize = Math.max(12, Math.round(short * 0.022));
+  const pad = Math.max(10, Math.round(short * 0.02));
+  return {
+    fontSize,
+    pad,
+    boxPadX: Math.max(6, Math.round(fontSize * 0.5)),
+    boxPadY: Math.max(3, Math.round(fontSize * 0.28)),
+  };
+}
+
+function paintSongCredit(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const { fontSize, pad, boxPadX, boxPadY } = songCreditLayout(w, h);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.shadowColor = "transparent";
+  ctx.font = `500 ${fontSize}px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  const textW = ctx.measureText(SONG_CREDIT).width;
+  const boxW = textW + boxPadX * 2;
+  const boxH = fontSize + boxPadY * 2;
+  const boxX = w - pad - boxW;
+  const boxY = h - pad - boxH;
+  ctx.fillStyle = "rgba(8, 6, 4, 0.45)";
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(boxX, boxY, boxW, boxH, boxH / 2);
+  } else {
+    ctx.rect(boxX, boxY, boxW, boxH);
+  }
+  ctx.fill();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+  ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.2));
+  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
+  ctx.fillText(SONG_CREDIT, boxX + boxW - boxPadX, boxY + boxH / 2);
+  ctx.restore();
 }
