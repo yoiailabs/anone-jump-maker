@@ -122,7 +122,6 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const renderModeSummary = () => {
     modeSummary.textContent = `いま: ${modeLabel()}`;
-    stage.dataset.swap = swapStyle;
   };
 
   const renderThumbs = () => {
