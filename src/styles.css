@@ -564,9 +564,11 @@ body {
   font-size: 0.92rem;
 }
 
+/* 投稿はスマホで X アプリに渡すため <a>。リンクの下線だけ消す */
 .btn.share {
   background: var(--ink);
   color: var(--paper);
+  text-decoration: none;
 }
 
 .btn.share-app {
