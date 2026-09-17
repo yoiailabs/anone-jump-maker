@@ -13,12 +13,9 @@
       :root {
         --paper: #f6efe2;
         --ink: #1a1a1a;
-        --mute: #5c564f;
         --teal: #44c0c4;
         --lime: #d4f06a;
         --coral: #ff7d74;
-        --peach: #f4c49a;
-        --card: #fff8ee;
       }
 
       * {
@@ -79,164 +76,31 @@
         right: -130px;
       }
 
-      .frame {
+      .hero {
         position: relative;
         z-index: 1;
         width: 1200px;
         height: 630px;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 32px 38px 48px 32px;
-      }
-
-      .card {
-        width: 100%;
-        height: 100%;
-        background: var(--card);
-        border: 5px solid var(--ink);
-        border-radius: 36px;
-        box-shadow: 10px 12px 0 var(--lime);
-        padding: 36px 44px 32px;
-        display: flex;
         flex-direction: column;
-        justify-content: center;
-      }
-
-      .top {
-        display: flex;
         align-items: center;
-        gap: 16px;
-        margin-bottom: 8px;
-      }
-
-      .mark {
-        width: 56px;
-        height: 56px;
-        flex: 0 0 auto;
+        justify-content: center;
+        text-align: center;
+        padding: 48px;
       }
 
       .eyebrow {
-        font-size: 22px;
+        font-size: 24px;
         letter-spacing: 0.16em;
+        margin-bottom: 16px;
       }
 
       h1 {
-        font-size: 58px;
+        font-size: 64px;
         font-weight: 400;
         letter-spacing: 0.045em;
-        line-height: 1.2;
+        line-height: 1.3;
         white-space: nowrap;
-        margin: 2px 0 22px;
-      }
-
-      .row {
-        display: grid;
-        grid-template-columns: 1fr 448px;
-        gap: 32px;
-        align-items: center;
-      }
-
-      .lede {
-        color: var(--mute);
-        font-size: 24px;
-        line-height: 1.7;
-        letter-spacing: 0.03em;
-      }
-
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 28px;
-      }
-
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 54px;
-        padding: 0 22px;
-        border: 4px solid var(--ink);
-        border-radius: 999px;
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        background: var(--card);
-        color: var(--ink);
-      }
-
-      .pill-teal {
-        background: var(--teal);
-      }
-
-      .pill-lime {
-        background: var(--lime);
-        box-shadow: 4px 5px 0 var(--ink);
-      }
-
-      .loop-wrap {
-        padding: 0 10px 12px 0;
-      }
-
-      .loop {
-        width: 438px;
-        height: 246px;
-        border: 5px solid var(--ink);
-        border-radius: 28px;
-        box-shadow: 8px 9px 0 var(--ink);
-        background: linear-gradient(180deg, #f7d3a8 0%, #f0b07a 42%, #44c0c4 100%);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .sun {
-        position: absolute;
-        width: 34px;
-        height: 34px;
-        border-radius: 999px;
-        background: #fff4cf;
-        top: 54px;
-        left: 50%;
-        transform: translateX(-50%);
-        box-shadow: 0 0 28px 12px rgba(255, 244, 200, 0.5);
-      }
-
-      .jump {
-        position: absolute;
-        left: 48px;
-        right: 48px;
-        top: 58px;
-        height: 150px;
-      }
-
-      .thumbs {
-        display: flex;
-        gap: 10px;
-        margin-top: 22px;
-      }
-
-      .thumb {
-        width: 42px;
-        height: 42px;
-        border-radius: 999px;
-        border: 4px solid var(--ink);
-      }
-
-      .thumb-a {
-        background: var(--peach);
-      }
-
-      .thumb-b {
-        background: var(--teal);
-      }
-
-      .thumb-c {
-        background: var(--lime);
-      }
-
-      .thumb-d {
-        background: var(--coral);
       }
     </style>
   </head>
@@ -246,58 +110,9 @@
       <span class="blob blob-teal"></span>
       <span class="blob blob-coral"></span>
     </div>
-    <div class="frame">
-      <section class="card">
-        <div class="top">
-          <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
-            <rect width="64" height="64" rx="16" fill="#f3ede0" stroke="#1a1a1a" stroke-width="3.5" />
-            <path
-              d="M16 46c7-18 11-28 16-28s9 10 16 28"
-              fill="none"
-              stroke="#1a1a1a"
-              stroke-width="3.5"
-              stroke-linecap="round"
-            />
-            <circle cx="32" cy="16" r="4.5" fill="#44c0c4" />
-          </svg>
-          <p class="eyebrow">#あのねジャンプ</p>
-        </div>
-        <h1>あのねジャンプメーカー</h1>
-        <div class="row">
-          <div>
-            <p class="lede">
-              写真を選ぶだけで、かんたんにジャンプ動画が作れます。<br />
-              生成はすべて、この端末のなかで。
-            </p>
-            <div class="actions">
-              <span class="pill pill-teal">写真を選ぶ</span>
-              <span class="pill">プレビュー</span>
-              <span class="pill pill-lime">動画を保存</span>
-            </div>
-            <div class="thumbs" aria-hidden="true">
-              <span class="thumb thumb-a"></span>
-              <span class="thumb thumb-b"></span>
-              <span class="thumb thumb-c"></span>
-              <span class="thumb thumb-d"></span>
-            </div>
-          </div>
-          <div class="loop-wrap">
-            <div class="loop" aria-hidden="true">
-              <div class="sun"></div>
-              <svg class="jump" viewBox="0 0 64 48">
-                <path
-                  d="M6 44c9-24 14-36 26-36s17 12 26 36"
-                  fill="none"
-                  stroke="#1a1a1a"
-                  stroke-width="3.8"
-                  stroke-linecap="round"
-                />
-                <circle cx="32" cy="8" r="5.2" fill="#fff8ee" stroke="#1a1a1a" stroke-width="3" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </section>
+    <div class="hero">
+      <p class="eyebrow">#あのねジャンプ</p>
+      <h1>あのねジャンプメーカー</h1>
     </div>
   </body>
 </html>
