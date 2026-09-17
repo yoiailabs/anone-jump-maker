@@ -3,7 +3,7 @@ main = "worker/index.ts"
 compatibility_date = "2026-09-16"
 workers_dev = true
 # 非本番ブランチの `wrangler versions upload` でブランチ別 Preview URL
-# （<branch>-anone.<sub>.workers.dev）を作る。DO クラスは anone-stats 側にあるので対象になる。
+# （<branch>-anone.<sub>.workers.dev）を作る。
 preview_urls = true
 
 routes = [
@@ -14,20 +14,8 @@ routes = [
 enabled = true
 
 # Vite の dist を Workers 静的アセットとして配信する。
-# /api/* だけ Worker を先に走らせ、写真・動画は受け取らない。
 [assets]
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
-run_worker_first = ["/api/*"]
-
-# 生成イベント（時刻 + 非識別属性）と件数。
-# Durable Object クラス本体は worker/stats/（Worker 名 anone-stats）にあり、ここは参照だけ。
-# クラスを実装している Worker には Preview URL が出ないため分離した。
-# 本番ホスト以外（Preview URL）はホスト別の別オブジェクトに数え、本番の件数を汚さない。
-# バインディング名: GENERATE_STATS / クラス: GenerateStats / idFromName("anone")
-[[durable_objects.bindings]]
-name = "GENERATE_STATS"
-class_name = "GenerateStats"
-script_name = "anone-stats"

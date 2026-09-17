@@ -12,8 +12,7 @@
     "test": "vitest run",
     "og": "node scripts/render-og.mjs",
     "deploy": "pnpm build && wrangler deploy",
-    "deploy:stats": "wrangler deploy -c worker/stats/wrangler.toml",
-    "dev:worker": "pnpm build && wrangler dev -c wrangler.toml -c worker/stats/wrangler.toml --env dev"
+    "dev:worker": "pnpm build && wrangler dev -c wrangler.toml"
   },
   "devDependencies": {
     "typescript": "^5.9.2",
@@ -32,6 +31,7 @@
     ]
   },
   "dependencies": {
+    "heic-to": "1.5.2",
     "mediabunny": "^1.57.0"
   }
 }

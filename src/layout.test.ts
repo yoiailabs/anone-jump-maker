@@ -89,40 +89,28 @@ describe("output size", () => {
 });
 
 describe("characterDest", () => {
-  it("scales the keyed band up and bottom-aligns it in the 16:9", () => {
-    expect(CHAR_SCALE).toBeCloseTo(1.7, 5);
+  it("places the keyed 16:9 plate 1:1 on the official template", () => {
+    expect(CHAR_SCALE).toBe(1);
     expect(CHAR_OUTLINE_PX).toBe(2);
     const dest = characterDest(608, 342);
-    expect(dest.w).toBeCloseTo(608 * CHAR_SCALE, 5);
-    expect(dest.h).toBeCloseTo(342 * CHAR_SCALE, 5);
-    expect(dest.x).toBeCloseTo((608 - dest.w) / 2, 5);
-    expect(dest.y + dest.h).toBeCloseTo(342, 5);
-    expect(dest.y).toBeLessThan(0);
+    expect(dest).toEqual({ x: 0, y: 0, w: 608, h: 342 });
   });
 
-  it("shifts the portrait character down so the 16:9 and blur match the reference", () => {
-    expect(CHAR_SHIFT_Y).toBe(80);
-    expect(characterShiftY(TEMPLATE_BAND_H, "portrait")).toBe(80);
+  it("does not extra-shift the official portrait plate", () => {
+    expect(CHAR_SHIFT_Y).toBe(0);
+    expect(characterShiftY(TEMPLATE_BAND_H, "portrait")).toBe(0);
     expect(characterShiftY(TEMPLATE_BAND_H, "landscape")).toBe(0);
     const dest = characterDest(608, 342, CHAR_SCALE, characterShiftY(342, "portrait"));
-    expect(dest.y + dest.h).toBeCloseTo(342 + CHAR_SHIFT_Y, 5);
-    expect(dest.y).toBeLessThan(0);
-    // still overflows the panel top (scale 1.7), just less than a pure bottom-align
-    const flush = characterDest(608, 342, CHAR_SCALE, 0);
-    expect(dest.y).toBeGreaterThan(flush.y);
+    expect(dest).toEqual({ x: 0, y: 0, w: 608, h: 342 });
   });
 
-  it("uses a slightly smaller scale on landscape so the photo stays visible", () => {
+  it("uses the same 1:1 scale on landscape as the official 16:9 template", () => {
     expect(characterScale("portrait")).toBe(CHAR_SCALE);
     expect(characterScale("landscape")).toBe(LANDSCAPE_CHAR_SCALE);
-    expect(LANDSCAPE_CHAR_SCALE).toBeGreaterThan(1);
-    expect(LANDSCAPE_CHAR_SCALE).toBeLessThan(CHAR_SCALE);
+    expect(LANDSCAPE_CHAR_SCALE).toBe(1);
+    expect(CHAR_SCALE).toBe(1);
     const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
-    expect(dest.w).toBeCloseTo(1280 * LANDSCAPE_CHAR_SCALE, 5);
-    expect(dest.h).toBeCloseTo(720 * LANDSCAPE_CHAR_SCALE, 5);
-    expect(dest.x).toBeCloseTo((1280 - dest.w) / 2, 5);
-    expect(dest.y + dest.h).toBeCloseTo(720, 5);
-    expect(dest.y).toBeLessThan(0);
+    expect(dest).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
     expect(characterOutlinePx(608)).toBe(2);
     expect(characterOutlinePx(1280)).toBe(4);
   });

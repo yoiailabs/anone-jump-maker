@@ -42,11 +42,10 @@ describe("swap fx draw path", () => {
     expect(JUMP_FLASH_TARGET).toBe("photo-plate");
   });
 
-  it("places a larger bottom-aligned character so the cover-blur matches the official close-up", () => {
+  it("places the official 16:9 character 1:1 so it is not larger than the CapCut / X template", () => {
     const dest = characterDest(608, 342);
-    expect(CHAR_SCALE).toBeGreaterThan(1.5);
-    expect(dest.y).toBeLessThan(0);
-    expect(dest.w).toBeGreaterThan(608);
+    expect(CHAR_SCALE).toBe(1);
+    expect(dest).toEqual({ x: 0, y: 0, w: 608, h: 342 });
   });
 
   it("moves the jump plate down and shrinks it at the cut, in both aspects", () => {
@@ -75,9 +74,8 @@ describe("swap fx draw path", () => {
   it("keeps landscape as a full 16:9 plate and lets zoom shrink it with a backdrop", () => {
     expect(usesBlurBackdrop("landscape")).toBe(false);
     const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
-    expect(LANDSCAPE_CHAR_SCALE).toBeGreaterThan(1);
-    expect(dest.y).toBeLessThan(0);
-    expect(dest.w).toBeGreaterThan(OUTPUTS.landscape.width);
+    expect(LANDSCAPE_CHAR_SCALE).toBe(1);
+    expect(dest).toEqual({ x: 0, y: 0, w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height });
     const slots = [0, 15 * F, 30 * F];
     const peak = swapFx(15 * F, slots, "zoom");
     const plate = plateDest(1920, 1080, 1280, 720, peak, "zoom");

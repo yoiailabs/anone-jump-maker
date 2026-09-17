@@ -23,8 +23,6 @@ import {
   shareJumpVideo,
   toShareFile,
 } from "./share.ts";
-import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
-import { shouldCountPreview } from "./stats-shared.ts";
 import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
@@ -39,14 +37,13 @@ export async function boot(root: HTMLElement): Promise<void> {
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
-  let previewCounted = false;
   let playbackBusy = false;
   let playGen = 0;
   let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
   let savedVideo: File | null = null;
-  let aspectResume: { play: boolean; time: number; counted: boolean } | null = null;
+  let aspectResume: { play: boolean; time: number } | null = null;
 
   root.innerHTML = `
     <div class="sky" aria-hidden="true">
@@ -59,7 +56,6 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
         <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
-        <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
       <div class="loop-wrap">
@@ -105,7 +101,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           </div>
         </fieldset>
         <label class="file-btn">
-          <input id="picker" type="file" accept="image/*" multiple />
+          <input id="picker" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/*" multiple />
           写真を選ぶ
         </label>
         <div class="thumbs" id="thumbs" hidden></div>
@@ -210,7 +206,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   const shareBtn = must(root, "#shareBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
-  const madeCount = must(root, "#madeCount");
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
@@ -231,10 +226,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   const setStatus = (text: string, kind: StatusKind = "idle") => {
     statusEl.textContent = text;
     statusEl.dataset.kind = kind;
-  };
-
-  const setMadeCount = (count: number | null) => {
-    madeCount.textContent = formatCountLabel(count);
   };
 
   const syncAspectRadios = (value: AspectMode) => {
@@ -303,31 +294,10 @@ export async function boot(root: HTMLElement): Promise<void> {
     stopLoop = startVideoPaintLoop(video, paint);
   };
 
-  const reportMade = async (partial: { action: "preview" | "save"; mime?: string }) => {
-    const nextCount = await recordGenerate({
-      action: partial.action,
-      mime: partial.mime,
-      width: compositor.canvas.width,
-      height: compositor.canvas.height,
-    });
-    if (nextCount !== null) {
-      setMadeCount(nextCount);
-    }
-  };
-
-  const countPreviewStart = () => {
-    if (!shouldCountPreview({ event: "start", recording, countedThisPlayback: previewCounted })) {
-      return;
-    }
-    previewCounted = true;
-    void reportMade({ action: "preview" });
-  };
-
   const stopPlayback = () => {
     playGen += 1;
     playbackBusy = false;
     playing = false;
-    previewCounted = false;
     haltLoop();
     video.pause();
     refreshButtons();
@@ -351,7 +321,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
-      countPreviewStart();
       video.muted = false;
       video.volume = 1;
       if (
@@ -385,7 +354,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
-      previewCounted = false;
       haltLoop();
       refreshButtons();
       setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
@@ -411,17 +379,12 @@ export async function boot(root: HTMLElement): Promise<void> {
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
     const inPreview = previewDialog.open;
-    aspectResume = inPreview
-      ? { play: isPreviewPlaying(), time: video.currentTime, counted: previewCounted }
-      : null;
+    aspectResume = inPreview ? { play: isPreviewPlaying(), time: video.currentTime } : null;
     playGen += 1;
     playbackBusy = false;
     playing = false;
     haltLoop();
     video.pause();
-    if (!inPreview) {
-      previewCounted = false;
-    }
     mode = next;
     compositor.setAspect(mode);
     stage.dataset.aspect = mode;
@@ -449,7 +412,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     const resume = aspectResume;
     aspectResume = null;
     if (!resume || !previewDialog.open || recording) return;
-    previewCounted = resume.counted;
     void (async () => {
       try {
         await seekVideo(video, resume.time);
@@ -586,7 +548,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     closePreview();
     recording = true;
     playing = false;
-    previewCounted = false;
     video.pause();
     refreshButtons();
     setStatus("書き出しを準備しています…", "busy");
@@ -609,13 +570,11 @@ export async function boot(root: HTMLElement): Promise<void> {
       downloadBlob(result.blob, filename);
       savedVideo = toShareFile(result.blob, filename);
       setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
-      await reportMade({ action: "save", mime: result.mime });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
     } finally {
       recording = false;
       playing = false;
-      previewCounted = false;
       haltLoop();
       video.pause();
       video.muted = true;
@@ -662,7 +621,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   void video.load();
-  void fetchGenerateCount().then(setMadeCount);
 }
 
 async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {

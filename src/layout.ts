@@ -215,23 +215,17 @@ export const PANEL_DIVIDER_PX = 1;
 export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
 
 /**
- * 参考 Short の本編キャラ。緑帯 1:1 より大きく、下辺揃えで拡大する。
- * 参考 16:9 とテンプレ緑帯の実測（0.13 / 0.50 / 1.00 / 5.00s）から。
+ * 公式テンプレの本編キャラ。16:9 プレート（縦は緑帯、横は全面）に対して等倍。
+ * 公式横（X 2100137115950653708 = landscape.mp4、CapCut 7593197705481030965）と
+ * 縦テンプレ緑帯は同じ構図で、キャラを拡大していない。
  */
-export const CHAR_SCALE = 1.7;
+export const CHAR_SCALE = 1;
 
-/**
- * 縦だけ、下揃えのあとさらに下へずらす（本編 342px での px）。
- * 1.7 倍のまま足元を揃えると頭が本編上端に寄り、cover ブラー帯の背景キャラも高い。
- * 参考 Short の 16:9 にテンプレ線画を重ねると、約 +80px で頭・足元が重なる。
- */
-export const CHAR_SHIFT_Y = 80;
+/** 公式は追加の縦ずれなし。残しているのは characterDest の shiftY 用。 */
+export const CHAR_SHIFT_Y = 0;
 
-/**
- * 横の公式例（全面 16:9）に合わせた拡大。
- * 縦の 1.7 を横全面にそのまま使うとキャラがフレームを埋めすぎる。
- */
-export const LANDSCAPE_CHAR_SCALE = 1.35;
+/** 横も公式 16:9 と同じ等倍。 */
+export const LANDSCAPE_CHAR_SCALE = 1;
 
 /** 公式のステッカー縁（白、縦本編 608px 幅でのピクセル）。 */
 export const CHAR_OUTLINE_PX = 2;
@@ -250,13 +244,13 @@ export function characterScale(mode: AspectMode = "portrait"): number {
   return mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
 }
 
-/** 縦本編の追加下げ。横は 0。パネル高さに比例させる。 */
+/** 公式は縦横とも 0。`CHAR_SHIFT_Y` を変えたときだけパネル高さに比例させる。 */
 export function characterShiftY(panelH: number, mode: AspectMode = "portrait"): number {
-  if (mode === "landscape") return 0;
+  if (mode === "landscape" || CHAR_SHIFT_Y === 0) return 0;
   return CHAR_SHIFT_Y * (panelH / TEMPLATE_BAND_H);
 }
 
-/** キー済み緑帯を本編 16:9 へ置く矩形。下揃え・左右中央。`shiftY` でさらに下へ。 */
+/** キー済み 16:9 プレートを本編へ置く矩形。等倍ならパネル全体。`shiftY` で下へ。 */
 export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE, shiftY = 0): Rect {
   const w = panelW * scale;
   const h = panelH * scale;

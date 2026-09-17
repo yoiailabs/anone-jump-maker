@@ -160,14 +160,6 @@ body {
   text-wrap: pretty;
 }
 
-.made-count {
-  margin: 0.55rem 0 0;
-  color: var(--mute);
-  font-size: 0.86rem;
-  letter-spacing: 0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
 /* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
 .loop-wrap {
   display: flex;
