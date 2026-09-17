@@ -108,8 +108,8 @@ export async function boot(root: HTMLElement): Promise<void> {
         </header>
         <div class="stage-wrap">
           <div class="stage" id="stage" data-aspect="portrait"></div>
-          <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
         </div>
+        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
         <div class="preview-actions">
           <button type="button" id="modalPlayBtn" class="btn">${playPauseLabel(false)}</button>
           <button type="button" id="restartBtn" class="btn ghost">${PREVIEW_RESTART_LABEL}</button>
