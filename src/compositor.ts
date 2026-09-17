@@ -119,6 +119,7 @@ export function createCompositor(): Compositor {
       panel,
       h,
       mode,
+      style,
     );
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
@@ -180,6 +181,7 @@ function composeMain(
   panel: { w: number; h: number },
   canvasH: number,
   mode: AspectMode,
+  style: SwapStyle,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -201,6 +203,7 @@ function composeMain(
       drawZoomWarpPlate(mainCtx, warp, warpCtx, outgoing ?? plate, plate, dest, fx, swapChromaPx(fx, mw));
     } else {
       drawPhotoPlate(mainCtx, plate, dest, fx.skew, swapChromaPx(fx, mw));
+      if (style === "zoom") paintWhiteFlash(mainCtx, mw, mh, fx.flash);
     }
   }
 
@@ -248,13 +251,18 @@ function composeMain(
     mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
   }
 
-  if (fx.flash > 0.004) {
-    mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-    mainCtx.filter = "none";
-    mainCtx.globalAlpha = 1;
-    mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flash})`;
-    mainCtx.fillRect(0, 0, mw, mh);
-  }
+  // ジャンプは本編全体（キャラ含む）を白くする。ズームの光は写真側だけ。
+  if (style === "jump") paintWhiteFlash(mainCtx, mw, mh, fx.flash);
+}
+
+function paintWhiteFlash(ctx: CanvasRenderingContext2D, w: number, h: number, flash: number): void {
+  if (flash <= 0.004) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = `rgba(255, 255, 255, ${flash})`;
+  ctx.fillRect(0, 0, w, h);
 }
 
 function drawPhotoPlate(
@@ -314,6 +322,7 @@ function smearCharacter(
 /**
  * 参考横のズームアウト。出ていく写真は中心へ縮み、入ってくる写真は寄った状態から引く。
  * 放射ブラー＋横ストリーク＋ RGB ずれ＋軽い波打ち。
+ * 白いハイライトは写真プレートに載せ、線画キャラの下に置く（参考はキャラが黒のまま）。
  */
 function drawZoomWarpPlate(
   ctx: CanvasRenderingContext2D,
@@ -363,6 +372,7 @@ function drawZoomWarpPlate(
   );
 
   blitWavedPlate(ctx, warp, fx.wave, fx.zoomBlur);
+  paintWhiteFlash(ctx, mw, mh, fx.flash);
 }
 
 function paintCopy(
