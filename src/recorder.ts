@@ -24,18 +24,39 @@ export function combineStreams(video: MediaStream, audio: MediaStream | null): M
   return new MediaStream(tracks);
 }
 
-export function captureCanvasStream(canvas: HTMLCanvasElement, fps: number): MediaStream {
+/**
+ * Canvas capture. `fps` omitted or 0 = a frame when the canvas is drawn
+ * (same clock as the paint loop). A positive fps samples on a wall clock
+ * and drifts from `video.currentTime`.
+ */
+export function captureCanvasStream(canvas: HTMLCanvasElement, fps?: number): MediaStream {
   const withWebkit = canvas as HTMLCanvasElement & {
     captureStream?: (frameRate?: number) => MediaStream;
     webkitCaptureStream?: (frameRate?: number) => MediaStream;
   };
   if (typeof withWebkit.captureStream === "function") {
-    return withWebkit.captureStream(fps);
+    return fps === undefined ? withWebkit.captureStream() : withWebkit.captureStream(fps);
   }
   if (typeof withWebkit.webkitCaptureStream === "function") {
-    return withWebkit.webkitCaptureStream(fps);
+    return fps === undefined ? withWebkit.webkitCaptureStream() : withWebkit.webkitCaptureStream(fps);
   }
   throw new Error("このブラウザは canvas.captureStream に未対応です");
+}
+
+type CapturableMedia = HTMLMediaElement & {
+  captureStream?: (frameRate?: number) => MediaStream;
+  mozCaptureStream?: (frameRate?: number) => MediaStream;
+};
+
+/** Audio tracks from the same media element that drives `video.currentTime`. */
+export function captureElementAudio(video: HTMLMediaElement): MediaStream {
+  const media = video as CapturableMedia;
+  const capture = media.captureStream ?? media.mozCaptureStream;
+  if (typeof capture !== "function") {
+    return new MediaStream();
+  }
+  const stream = capture.call(media);
+  return new MediaStream(stream.getAudioTracks());
 }
 
 export async function recordStream(stream: MediaStream, until: Promise<void>): Promise<Blob> {

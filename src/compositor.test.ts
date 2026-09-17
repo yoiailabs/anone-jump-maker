@@ -59,4 +59,11 @@ describe("backdrop hop", () => {
     expect(cut.punch).toBeGreaterThan(rest.punch);
     expect(rest.flash).toBe(0);
   });
+
+  it("advances hop and swap from the given time only", () => {
+    const slots = [0, 0.467, 0.933];
+    expect(jumpOffsetPx(0.12, slots, 1080)).toBe(jumpOffsetPx(0.12, slots, 1080));
+    expect(swapFx(0.467, slots).flash).toBe(swapFx(0.467, slots).flash);
+    expect(swapFx(0.12, slots).flash).toBe(0);
+  });
 });

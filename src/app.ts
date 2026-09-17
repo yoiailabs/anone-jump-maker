@@ -2,6 +2,7 @@ import { createCompositor } from "./compositor.ts";
 import { recordRealtime } from "./export.ts";
 import { isAspectMode, TEMPLATES, type AspectMode } from "./layout.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -12,13 +13,12 @@ export async function boot(root: HTMLElement): Promise<void> {
   const timelines = await loadTimelines();
   const compositor = createCompositor();
   const video = createTemplateVideo("portrait");
-  const audio = createAudioTap(video);
 
   let mode: AspectMode = "portrait";
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
-  let raf = 0;
+  let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
 
   root.innerHTML = `
@@ -134,21 +134,19 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   };
 
-  const loop = () => {
-    paint();
-    if (playing || recording) {
-      raf = requestAnimationFrame(loop);
-    }
+  const haltLoop = () => {
+    stopLoop?.();
+    stopLoop = null;
   };
 
   const startLoop = async () => {
-    await audio.resume();
-    if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(loop);
+    haltLoop();
+    stopLoop = startVideoPaintLoop(video, paint);
   };
 
   const stopPlayback = () => {
     playing = false;
+    haltLoop();
     video.pause();
     refreshButtons();
   };
@@ -218,12 +216,16 @@ export async function boot(root: HTMLElement): Promise<void> {
     try {
       video.currentTime = 0;
       video.muted = false;
-      await video.play();
+      video.volume = 1;
       playing = true;
       refreshButtons();
       setStatus("プレビュー中");
       await startLoop();
+      await video.play();
     } catch (error) {
+      playing = false;
+      haltLoop();
+      refreshButtons();
       setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
     }
   });
@@ -239,8 +241,6 @@ export async function boot(root: HTMLElement): Promise<void> {
       const result = await recordRealtime({
         video,
         canvas: compositor.canvas,
-        audioStream: audio.stream,
-        resumeAudio: audio.resume,
         startLoop,
       });
       const aspectTag = mode === "landscape" ? "16x9" : "9x16";
@@ -259,6 +259,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     } finally {
       recording = false;
       playing = false;
+      haltLoop();
       video.pause();
       video.muted = true;
       refreshButtons();
@@ -298,29 +299,6 @@ function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   video.muted = true;
   video.className = "offscreen-video";
   return video;
-}
-
-function createAudioTap(video: HTMLVideoElement): {
-  resume: () => Promise<void>;
-  stream: MediaStream;
-} {
-  const Ctor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) {
-    return { resume: async () => undefined, stream: new MediaStream() };
-  }
-  const ctx = new Ctor();
-  const source = ctx.createMediaElementSource(video);
-  const dest = ctx.createMediaStreamDestination();
-  source.connect(dest);
-  source.connect(ctx.destination);
-  return {
-    stream: dest.stream,
-    resume: async () => {
-      if (ctx.state === "suspended") {
-        await ctx.resume();
-      }
-    },
-  };
 }
 
 function must(root: ParentNode, selector: string): HTMLElement {

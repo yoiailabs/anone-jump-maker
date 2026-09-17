@@ -1,3 +1,4 @@
+import { ensureCanvasSize } from "./canvas-size.ts";
 import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
@@ -65,14 +66,15 @@ export function createCompositor(): Compositor {
   if (!haloCtx) throw new Error("Canvas2D が使えません");
 
   const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
-    const slot = slotForTime(video.currentTime, slots);
+    const time = video.currentTime;
+    const slot = slotForTime(time, slots);
     const photo = photoForSlot(photos, slot);
     applyCanvasSize(canvas, mode);
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
-    const hopY = jumpOffsetPx(video.currentTime, slots, h);
-    const fx = swapFx(video.currentTime, slots);
+    const hopY = jumpOffsetPx(time, slots, h);
+    const fx = swapFx(time, slots);
 
     composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, fx, panel, h, mode);
     if (usesBlurBackdrop(mode)) {
@@ -111,8 +113,7 @@ export function createCompositor(): Compositor {
 
 function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
   const size = outputSize(mode);
-  canvas.width = size.width;
-  canvas.height = size.height;
+  ensureCanvasSize(canvas, size.width, size.height);
 }
 
 function composeMain(
