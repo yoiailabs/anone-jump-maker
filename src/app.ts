@@ -8,7 +8,6 @@ import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import {
-  buildXAppComposeUrl,
   canShareVideoFile,
   copyTextToClipboard,
   mobilePlatform,
@@ -18,8 +17,8 @@ import {
   SHARE_TEXT,
   shareAppUrl,
   shareJumpVideo,
-  shouldOpenXApp,
   toShareFile,
+  X_APP_RETRY_WINDOW_MS,
   xComposeLinkAttrs,
 } from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
@@ -227,21 +226,46 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const shareNavigator = typeof navigator === "undefined" ? undefined : navigator;
   const platform = mobilePlatform(shareNavigator);
-  const composeLink = xComposeLinkAttrs({ platform });
-  shareBtn.href = composeLink.href;
-  if (composeLink.target) shareBtn.target = composeLink.target;
-  if (composeLink.rel) shareBtn.rel = composeLink.rel;
 
-  // iOS で X アプリのスキームを叩いた時刻。画面が隠れた（＝アプリが前に出た）ら忘れる。
-  let xAppTriedAt: number | null = null;
+  // iOS は 1 回目のタップで X アプリのスキームへ、反応が無くて押し直した 2 回目は Web の投稿画面へ。
+  // どちらも href の遷移そのもので、JS は次のタップに備えて href を差し替えるだけ。
+  let xAppTried = false;
+  let xAppRetryTimer = 0;
+
+  const syncComposeHref = () => {
+    const link = xComposeLinkAttrs({ platform, appTried: xAppTried });
+    shareBtn.href = link.href;
+    for (const [name, value] of [
+      ["target", link.target],
+      ["rel", link.rel],
+    ] as const) {
+      if (value) shareBtn.setAttribute(name, value);
+      else shareBtn.removeAttribute(name);
+    }
+  };
+
+  // href を書き換えるのはタップの後。クリックの既定動作は listener が終わってから href を読むので、
+  // その場で差し替えると今まさに押されたタップの行き先まで変わってしまう。
+  const syncComposeHrefSoon = () => window.setTimeout(syncComposeHref, 0);
+
+  const forgetAppTry = () => {
+    window.clearTimeout(xAppRetryTimer);
+    xAppTried = false;
+  };
+
+  syncComposeHref();
+
   if (platform === "ios") {
-    const forgetAppTry = () => {
-      xAppTriedAt = null;
+    // 画面が隠れた＝アプリが前に出たので、戻ってきてからのタップはまたアプリへ。
+    const onLeave = () => {
+      if (!xAppTried) return;
+      forgetAppTry();
+      syncComposeHref();
     };
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) forgetAppTry();
+      if (document.hidden) onLeave();
     });
-    window.addEventListener("pagehide", forgetAppTry);
+    window.addEventListener("pagehide", onLeave);
   }
 
   const timeline = () => timelines[mode];
@@ -670,17 +694,21 @@ export async function boot(root: HTMLElement): Promise<void> {
       })();
       return;
     }
-    if (platform === "ios" && shouldOpenXApp(xAppTriedAt, Date.now())) {
-      // iOS は https の投稿画面を渡すとアプリが内蔵ブラウザで開いてしまうので、
-      // まずアプリのネイティブ投稿画面を叩く。出てこなければ押し直してもらう。
-      event.preventDefault();
-      xAppTriedAt = Date.now();
-      window.location.assign(buildXAppComposeUrl());
+    if (platform === "ios" && !xAppTried) {
+      // href のアプリのスキームで遷移中。押し直しに備えて Web の投稿画面へ差し替え、
+      // しばらく反応が無いまま放置されたら、また 1 回目として扱えるよう戻す。
+      xAppTried = true;
+      xAppRetryTimer = window.setTimeout(() => {
+        forgetAppTry();
+        syncComposeHref();
+      }, X_APP_RETRY_WINDOW_MS);
+      syncComposeHrefSoon();
       setStatus("X アプリの投稿画面を開きました。開かないときは、もう一度押してください。");
       return;
     }
-    // iOS の 2 回目、Android と PC はリンクの遷移そのまま（Web の投稿画面 / intent URI / 別タブ）。
-    xAppTriedAt = null;
+    // iOS の 2 回目、Android と PC はそのまま（Web の投稿画面 / intent URI / 別タブ）。
+    forgetAppTry();
+    syncComposeHrefSoon();
     setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
   });
 

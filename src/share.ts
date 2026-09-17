@@ -111,43 +111,34 @@ export function buildXAndroidComposeUrl(
   ].join(";");
 }
 
+/** アプリのスキームを入れた href を戻すまでの時間。これを過ぎたタップは、また 1 回目として扱う。 */
+export const X_APP_RETRY_WINDOW_MS = 30_000;
+
 /**
- * 投稿ボタンのリンク先。
- * Android はブラウザが intent URI を解決してアプリの投稿画面を開く（無ければ Web に落ちる）ので
- * リンクだけで完結する。iOS には同じ仕掛けが無いので、リンク自体は Web の投稿画面にしておき、
- * 1 回目のタップだけ `buildXAppComposeUrl` で上書きする（`shouldOpenXApp`）。
+ * 投稿ボタンのリンク先。どの OS でも JS を挟まず、リンクの遷移そのものを渡す
+ * （`preventDefault()` は当てにできないうえ、`window.open` や別タブからの遷移は OS がアプリに渡さない）。
+ *
+ * Android はブラウザが intent URI を解決してアプリの投稿画面を開き、無ければ Web に落ちる。
+ * iOS には同じ仕掛けが無いので、アプリのスキームをそのまま href に入れる。スキームには
+ * 「開けなかった」の通知が無いため、時間で見切らずユーザーの押し直しを合図にする
+ * （1 回目のタップのあと `appTried` を立て、href を Web の投稿画面に差し替える）。
  */
 export function xComposeLinkAttrs(options: {
   platform: MobilePlatform | null;
+  /** iOS で直前にアプリを叩いたか。立っている間は、次のタップを Web の投稿画面へ回す。 */
+  appTried?: boolean;
   text?: string;
 }): ComposeLinkAttrs {
   const webUrl = buildXIntentUrl(options.text);
   if (options.platform === null) {
     return { href: webUrl, target: "_blank", rel: "noopener noreferrer" };
   }
+  if (options.platform === "android") {
+    return { href: buildXAndroidComposeUrl(options.text, webUrl), target: null, rel: null };
+  }
   const href =
-    options.platform === "android" ? buildXAndroidComposeUrl(options.text, webUrl) : webUrl;
+    options.platform === "ios" && !options.appTried ? buildXAppComposeUrl(options.text) : webUrl;
   return { href, target: null, rel: null };
-}
-
-/** アプリを叩いたことを忘れるまでの時間。これを過ぎたタップは、また 1 回目として扱う。 */
-export const X_APP_RETRY_WINDOW_MS = 30_000;
-
-/**
- * iOS のタップで、アプリのスキームを叩くか Web の投稿画面（リンクの遷移）に回すか。
- *
- * スキームには「開けなかった」の通知が無い。時間で見切って Web に落とすと、アプリが前に出るのが
- * 間に合わなかったときに投稿画面の上へ内蔵ブラウザが重なってしまうので、待たずにユーザーの
- * 2 回目のタップを合図にする。叩いた直後（30 秒以内）にまだこの画面に居るなら、アプリは
- * 出てこなかったとみなして Web に回す。時間が空いたタップは、また 1 回目として扱う。
- */
-export function shouldOpenXApp(
-  lastTryAt: number | null,
-  now: number,
-  windowMs: number = X_APP_RETRY_WINDOW_MS,
-): boolean {
-  if (lastTryAt === null) return true;
-  return now - lastTryAt > windowMs;
 }
 
 /**

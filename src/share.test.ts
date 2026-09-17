@@ -16,7 +16,6 @@ import {
   SHARE_TEXT,
   shareAppUrl,
   shareJumpVideo,
-  shouldOpenXApp,
   toShareFile,
   X_APP_RETRY_WINDOW_MS,
   xComposeLinkAttrs,
@@ -157,9 +156,9 @@ describe("X への投稿", () => {
     expect(url.endsWith(";end")).toBe(true);
   });
 
-  it("iOS の投稿リンクは Web の投稿画面のまま（クリック時にアプリへ差し替える）", () => {
+  it("iOS の投稿リンクはアプリのスキーム（preventDefault に頼らずリンクの遷移で渡す）", () => {
     const ios = xComposeLinkAttrs({ platform: "ios" });
-    expect(ios.href).toBe(buildXIntentUrl());
+    expect(ios.href).toBe(buildXAppComposeUrl());
     expect(ios.target).toBeNull();
     expect(ios.rel).toBeNull();
   });
@@ -177,18 +176,16 @@ describe("X への投稿", () => {
     expect(desktop.rel).toBe("noopener noreferrer");
   });
 
-  it("iOS の 1 回目はアプリを叩き、反応が無くて押し直した 2 回目は Web の投稿画面へ回す", () => {
-    const tapped = 1_000;
-    expect(shouldOpenXApp(null, tapped)).toBe(true);
-    expect(shouldOpenXApp(tapped, tapped + 500)).toBe(false);
-    expect(shouldOpenXApp(tapped, tapped + X_APP_RETRY_WINDOW_MS)).toBe(false);
-  });
-
-  it("時間が空いたタップは、また 1 回目としてアプリを叩く", () => {
-    const tapped = 1_000;
+  it("iOS はアプリを叩いたあとだけ、押し直し用に Web の投稿画面へ差し替える", () => {
+    const retry = xComposeLinkAttrs({ platform: "ios", appTried: true });
+    expect(retry.href).toBe(buildXIntentUrl());
+    expect(retry.target).toBeNull();
+    expect(xComposeLinkAttrs({ platform: "ios", appTried: false }).href).toBe(buildXAppComposeUrl());
+    // Android は intent URI が自分で Web に落ちるので、押し直しでも変わらない。
+    expect(xComposeLinkAttrs({ platform: "android", appTried: true }).href).toBe(
+      buildXAndroidComposeUrl(),
+    );
     expect(X_APP_RETRY_WINDOW_MS).toBe(30_000);
-    expect(shouldOpenXApp(tapped, tapped + X_APP_RETRY_WINDOW_MS + 1)).toBe(true);
-    expect(shouldOpenXApp(tapped, tapped + 200, 100)).toBe(true);
   });
 
   it("共有シート後の投稿画面は、スマホなら同じタブで開く", () => {
