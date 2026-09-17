@@ -208,19 +208,147 @@ body {
   box-shadow: 7px 8px 0 var(--ink);
 }
 
+.preview-dialog:not([open]) {
+  display: none;
+}
+
+.preview-dialog {
+  width: min(28rem, calc(100vw - 1.25rem));
+  max-height: calc(100svh - 1.25rem);
+  margin: auto;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 1.4rem;
+  background: var(--card);
+  box-shadow: 6px 7px 0 var(--ink);
+  overflow: hidden;
+}
+
+.preview-dialog:has(.stage[data-aspect="landscape"]) {
+  width: min(32rem, calc(100vw - 1.25rem));
+}
+
+.preview-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  height: min(max-content, calc(100svh - 1.25rem));
+}
+
+.preview-dialog::backdrop {
+  background: rgba(26, 26, 26, 0.48);
+}
+
+.preview-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0.85rem 0.9rem 1rem;
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+
+.preview-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.preview-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.6rem;
+  flex: 0 0 auto;
+}
+
+.preview-field {
+  gap: 0.28rem;
+}
+
+.preview-field legend {
+  font-size: 0.66rem;
+}
+
+.preview-toggle {
+  gap: 0.35rem;
+}
+
+.preview-toggle label {
+  min-height: 2rem;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.preview-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--lime);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: transform 0.16s ease;
+}
+
+.preview-close:hover {
+  transform: translateY(-2px);
+}
+
+.preview-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  padding-top: 0.15rem;
+}
+
+.preview-actions .btn {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  line-height: 1.25;
+}
+
 .stage-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding-top: 0.35rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
-/* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える。
-   再生エリアは操作パネルの下にあるので、縦は 1 画面に収まる高さだけを上限にする。 */
+/* プレビュー確認用。向き／エフェクト切替が残るよう、表示は小さめ。 */
 .stage {
-  width: min(100%, 21rem, calc((100svh - 6rem) * 608 / 1080));
+  width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
+  max-height: calc(100svh - 20rem);
   aspect-ratio: 608 / 1080;
+  height: auto;
+  flex: 0 0 auto;
+  pointer-events: none;
   border-radius: 1.5rem;
   overflow: hidden;
   background: var(--teal);
@@ -229,7 +357,8 @@ body {
 }
 
 .stage[data-aspect="landscape"] {
-  width: min(100%, 26rem);
+  width: min(100%, 22rem);
+  max-height: calc(100svh - 20rem);
   aspect-ratio: 16 / 9;
 }
 
@@ -237,10 +366,21 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
-.slot-meter {
+.slot-meter,
+.preview-state {
   font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+
+.preview-state {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  color: var(--mute);
 }
 
 .panel {
@@ -372,6 +512,22 @@ body {
   color: var(--ink);
 }
 
+/* 投稿は保存の下に一段で置く（グリッドの 2 列ぶん） */
+.btn.share {
+  grid-column: 1 / -1;
+  gap: 0.45rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.92rem;
+}
+
+.btn.share svg {
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
 .btn:disabled,
 .file-btn:has(input:disabled) {
   opacity: 0.38;
@@ -409,6 +565,84 @@ body {
   flex-direction: column;
   gap: 0.7rem;
   text-wrap: pretty;
+}
+
+/* 画面最下部の参考リンク。公式の配信先とアカウントへ別タブで飛ばすだけ。 */
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.links-title {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+}
+
+.link-banners {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-banner {
+  --accent: var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.85rem;
+  padding: 0.4rem 0.6rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--accent) 22%, var(--card));
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 3px 4px 0 var(--ink);
+  transition: transform 0.16s ease;
+}
+
+.link-banner:hover {
+  transform: translateY(-2px);
+}
+
+.link-banner:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.link-banner[data-service="x"] {
+  --accent: var(--teal);
+}
+
+.link-banner[data-service="youtube"] {
+  --accent: var(--coral);
+}
+
+.link-banner[data-service="spotify"] {
+  --accent: var(--lime);
+}
+
+.link-banner[data-service="apple-music"] {
+  --accent: var(--peach);
+}
+
+.link-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .offscreen-video {
