@@ -278,7 +278,10 @@ export async function boot(root: HTMLElement): Promise<void> {
       if (gen !== playGen) {
         video.pause();
         haltLoop();
+        return;
       }
+      video.blur();
+      modalPlayBtn.focus();
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
@@ -507,6 +510,7 @@ function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   video.controls = false;
   video.crossOrigin = "anonymous";
   video.muted = true;
+  video.tabIndex = -1;
   video.className = "offscreen-video";
   return video;
 }
