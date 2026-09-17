@@ -24,13 +24,13 @@ export async function boot(root: HTMLElement): Promise<void> {
   let lastSlot = -1;
 
   root.innerHTML = `
+    <div class="sky" aria-hidden="true">
+      <span class="blob blob-lime"></span>
+      <span class="blob blob-teal"></span>
+      <span class="blob blob-coral"></span>
+      <span class="wind"></span>
+    </div>
     <div class="app">
-      <div class="sky" aria-hidden="true">
-        <span class="blob blob-lime"></span>
-        <span class="blob blob-teal"></span>
-        <span class="blob blob-coral"></span>
-        <span class="wind"></span>
-      </div>
       <header class="hero">
         <div class="breeze" aria-hidden="true"></div>
         <p class="eyebrow">#あのねジャンプ</p>
