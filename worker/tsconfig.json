@@ -14,5 +14,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["./**/*.ts", "../src/stats-shared.ts"]
+  "include": ["./**/*.ts"]
 }
