@@ -9,6 +9,7 @@ import {
   jumpOffsetPx,
   mainPanelRect,
   sharpCoverScale,
+  swapFx,
   usesBlurBackdrop,
 } from "./layout.ts";
 
@@ -49,5 +50,13 @@ describe("backdrop hop", () => {
     const hop = jumpOffsetPx(0.12, [0, 0.467], OUTPUTS.landscape.height);
     expect(hop).toBeLessThan(0);
     expect(sharpCoverScale(OUTPUTS.landscape.height, OUTPUTS.landscape.height)).toBeGreaterThan(1);
+  });
+
+  it("flashes and punches the photo on a cut instead of swapping it raw", () => {
+    const cut = swapFx(0.467, [0, 0.467, 0.933]);
+    const rest = swapFx(0.8, [0, 0.467, 0.933]);
+    expect(cut.flash).toBeGreaterThan(0.7);
+    expect(cut.punch).toBeGreaterThan(rest.punch);
+    expect(rest.flash).toBe(0);
   });
 });

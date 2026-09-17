@@ -11,6 +11,9 @@ import {
   mainPanelRect,
   outputSize,
   sharpCoverScale,
+  swapChromaPx,
+  swapFx,
+  swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
   type AspectMode,
@@ -69,8 +72,9 @@ export function createCompositor(): Compositor {
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
     const hopY = jumpOffsetPx(video.currentTime, slots, h);
+    const fx = swapFx(video.currentTime, slots);
 
-    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, panel, h, mode);
+    composeMain(main, mainCtx, keyed, keyedCtx, halo, haloCtx, photo, video, hopY, fx, panel, h, mode);
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -121,6 +125,7 @@ function composeMain(
   photo: LoadedPhoto | undefined,
   video: HTMLVideoElement,
   hopY: number,
+  fx: ReturnType<typeof swapFx>,
   panel: { w: number; h: number },
   canvasH: number,
   mode: AspectMode,
@@ -136,10 +141,11 @@ function composeMain(
 
   if (photo) {
     const dest = coverDest(photo.bitmap.width, photo.bitmap.height, mw, mh, {
-      scale: sharpCoverScale(canvasH, mh),
+      scale: sharpCoverScale(canvasH, mh) * fx.punch,
       offsetY: hopY,
+      dx: swapSlidePx(fx, mw),
     });
-    mainCtx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+    drawPhotoPlate(mainCtx, photo, dest, fx.skew, swapChromaPx(fx, mw));
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -182,6 +188,35 @@ function composeMain(
     }
     mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
   }
+
+  if (fx.flash > 0.004) {
+    mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+    mainCtx.filter = "none";
+    mainCtx.globalAlpha = 1;
+    mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flash})`;
+    mainCtx.fillRect(0, 0, mw, mh);
+  }
+}
+
+function drawPhotoPlate(
+  ctx: CanvasRenderingContext2D,
+  photo: LoadedPhoto,
+  dest: { x: number; y: number; w: number; h: number },
+  skew: number,
+  chromaPx: number,
+): void {
+  ctx.save();
+  ctx.setTransform(1, 0, skew, 1, 0, 0);
+  ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+  if (chromaPx >= 0.6) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.4;
+    ctx.drawImage(photo.bitmap, dest.x - chromaPx, dest.y, dest.w, dest.h);
+    ctx.drawImage(photo.bitmap, dest.x + chromaPx, dest.y, dest.w, dest.h);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+  ctx.restore();
 }
 
 function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, w: number, h: number): void {

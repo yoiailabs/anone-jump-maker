@@ -34,6 +34,37 @@ export const JUMP_AMPLITUDE = 30 / OUTPUT.height;
 export const JUMP_DURATION = 0.36;
 
 /**
+ * 参考横動画（cola_rumiren0 / anim-ref.mp4、30fps）の切替実測。
+ * カットの 1 フレ前から白フラッシュが立ち上がり、切替フレームはほぼ白飛び
+ * （例: t=1.967 で L≈202・std≈2.6）。新写真はフラッシュの中で現れ、
+ * 続く 2–3 フレでパンチズーム＋横ズレ＋弱い色分れが落ち、hop に続く。
+ */
+export const SWAP_PRE_ROLL = 1 / 30;
+export const SWAP_DURATION = 0.1;
+export const SWAP_FLASH_PEAK = 0.92;
+export const SWAP_PUNCH = 0.18;
+export const SWAP_SLIDE_FRAC = 0.016;
+export const SWAP_CHROMA_FRAC = 0.007;
+export const SWAP_SKEW = 0.04;
+
+export type SwapFx = {
+  /** 0–1。窓の外は 0。 */
+  amount: number;
+  /** 白フラッシュ 0–1。カットで最大。 */
+  flash: number;
+  /** cover 倍率（静止時 1）。 */
+  punch: number;
+  /** パネル幅に対する横ズレ（符号つき）。 */
+  slide: number;
+  /** 色分れの強さ 0–1。 */
+  chroma: number;
+  /** せん断。 */
+  skew: number;
+};
+
+const SWAP_NONE: SwapFx = { amount: 0, flash: 0, punch: 1, slide: 0, chroma: 0, skew: 0 };
+
+/**
  * 本編 16:9 をキャンバスへ cover する倍率。
  * 1 で本編上端→キャンバス上端、本編下端→キャンバス下端（参考と同じ）。
  */
@@ -179,4 +210,58 @@ export function jumpOffsetPx(time: number, slots: readonly number[], canvasHeigh
   const amount = jumpAmount(time, slots);
   if (amount === 0) return 0;
   return -amount * canvasHeight * JUMP_AMPLITUDE;
+}
+
+function slotStartAt(time: number, slots: readonly number[], lookahead: number): { start: number; index: number } {
+  let start = slots[0]!;
+  let index = 0;
+  for (let i = 1; i < slots.length; i += 1) {
+    const t = slots[i]!;
+    if (time + lookahead + 1e-4 >= t) {
+      start = t;
+      index = i;
+    } else {
+      break;
+    }
+  }
+  return { start, index };
+}
+
+/**
+ * カット前後の写真切替エンベロープ。先頭スロットは「切替」ではないので無効。
+ * フラッシュはカットでピーク、パンチ／ズレはそのまま hop に接続する。
+ */
+export function swapFx(time: number, slots: readonly number[]): SwapFx {
+  if (slots.length < 2) return SWAP_NONE;
+  const { start, index } = slotStartAt(time, slots, SWAP_PRE_ROLL);
+  if (index === 0) return SWAP_NONE;
+  const span = SWAP_PRE_ROLL + SWAP_DURATION;
+  const tau = time - (start - SWAP_PRE_ROLL);
+  if (tau < 0 || tau >= span) return SWAP_NONE;
+  const u = tau / span;
+  const uPeak = SWAP_PRE_ROLL / span;
+  const flashEnv = u <= uPeak ? u / Math.max(uPeak, 1e-6) : 1 - (u - uPeak) / Math.max(1 - uPeak, 1e-6);
+  const env = clamp01(flashEnv);
+  const amount = env ** 0.65;
+  const dir = index % 2 === 0 ? 1 : -1;
+  return {
+    amount,
+    flash: env ** 0.85 * SWAP_FLASH_PEAK,
+    punch: 1 + SWAP_PUNCH * amount,
+    slide: dir * SWAP_SLIDE_FRAC * amount,
+    chroma: amount * amount,
+    skew: dir * SWAP_SKEW * amount,
+  };
+}
+
+export function swapSlidePx(fx: SwapFx, panelW: number): number {
+  return fx.slide * panelW;
+}
+
+export function swapChromaPx(fx: SwapFx, panelW: number): number {
+  return fx.chroma * SWAP_CHROMA_FRAC * panelW;
+}
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }

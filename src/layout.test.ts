@@ -7,6 +7,9 @@ import {
   LANDSCAPE_CHAR_SCALE,
   JUMP_AMPLITUDE,
   JUMP_DURATION,
+  SWAP_DURATION,
+  SWAP_FLASH_PEAK,
+  SWAP_PRE_ROLL,
   OUTPUT,
   OUTPUTS,
   PANEL_DIVIDER_PX,
@@ -23,6 +26,9 @@ import {
   outputSize,
   rectToUvBottomLeft,
   sharpCoverScale,
+  swapChromaPx,
+  swapFx,
+  swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
 } from "./layout.ts";
@@ -199,5 +205,37 @@ describe("jumpAmount", () => {
   it("handles an empty slot list", () => {
     expect(jumpAmount(1, [])).toBe(0);
     expect(jumpOffsetPx(0.12, [], OUTPUT.height)).toBe(0);
+  });
+});
+
+describe("swapFx", () => {
+  it("does nothing on the opening slot (no previous photo)", () => {
+    const fx = swapFx(0.02, slots);
+    expect(fx.amount).toBe(0);
+    expect(fx.flash).toBe(0);
+    expect(fx.punch).toBe(1);
+  });
+
+  it("starts a white flash one frame before the cut", () => {
+    const pre = swapFx(slots[1]! - SWAP_PRE_ROLL * 0.6, slots);
+    expect(pre.flash).toBeGreaterThan(0.2);
+    expect(pre.flash).toBeLessThan(SWAP_FLASH_PEAK);
+    expect(pre.punch).toBeGreaterThan(1);
+  });
+
+  it("peaks at the cut then dies within a few frames", () => {
+    const at = swapFx(slots[1]!, slots);
+    const later = swapFx(slots[1]! + SWAP_DURATION + 0.02, slots);
+    expect(at.flash).toBeGreaterThan(0.7);
+    expect(at.punch).toBeGreaterThan(1.1);
+    expect(Math.abs(swapSlidePx(at, 1280))).toBeGreaterThan(4);
+    expect(swapChromaPx(at, 1280)).toBeGreaterThan(1);
+    expect(later.flash).toBe(0);
+    expect(later.punch).toBe(1);
+  });
+
+  it("is idle with one slot or none", () => {
+    expect(swapFx(0.5, [0]).flash).toBe(0);
+    expect(swapFx(0.5, []).flash).toBe(0);
   });
 });
