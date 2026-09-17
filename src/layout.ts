@@ -71,7 +71,7 @@ export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
 export const ZOOM_PRE_ROLL = 1 / 30;
 export const ZOOM_DURATION = 3 / 30;
 export const ZOOM_PUNCH = 0.14;
-export const ZOOM_FLASH_PEAK = 0.08;
+export const ZOOM_FLASH_PEAK = 0;
 export const ZOOM_BLUR_PEAK = 1;
 export const ZOOM_CHROMA_FRAC = 0.016;
 export const ZOOM_WHIP_PEAK = 0.85;
@@ -333,7 +333,7 @@ export function swapFx(time: number, slots: readonly number[], style: SwapStyle 
   if (style === "zoom") {
     return {
       amount,
-      flash: env ** 1.8 * ZOOM_FLASH_PEAK,
+      flash: 0,
       punch: 1 + ZOOM_PUNCH * amount,
       slide: 0,
       chroma: amount,

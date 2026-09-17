@@ -334,15 +334,55 @@ function drawZoomWarpPlate(
   warpCtx.fillStyle = "#0a0806";
   warpCtx.fillRect(0, 0, mw, mh);
 
-  const outAlpha = (1 - fx.mix) * 0.96;
+  const outAlpha = (1 - fx.mix) * 0.88;
   if (outAlpha > 0.02) {
-    paintRadialStreaks(warpCtx, outgoing, dest, 1 + ZOOM_GROW * fx.zoomBlur, outAlpha, fx.zoomBlur, fx.whip);
+    paintRadialStreaks(
+      warpCtx,
+      outgoing,
+      dest,
+      1 + ZOOM_GROW * fx.zoomBlur,
+      outAlpha,
+      fx.zoomBlur,
+      fx.whip,
+      chromaPx,
+    );
   }
-  const inScale = 0.58 + 0.42 * fx.mix;
-  const inAlpha = Math.min(1, 0.22 + fx.mix * 0.92);
-  paintRadialStreaks(warpCtx, incoming, dest, inScale, inAlpha, fx.zoomBlur * Math.max(0.35, fx.mix), fx.whip * 0.7);
+  const inScale = 0.5 + 0.5 * fx.mix;
+  const inAlpha = Math.min(1, 0.4 + fx.mix * 0.6);
+  paintRadialStreaks(
+    warpCtx,
+    incoming,
+    dest,
+    inScale,
+    inAlpha,
+    fx.zoomBlur * Math.max(0.4, fx.mix),
+    fx.whip * 0.7,
+    chromaPx * 0.8,
+  );
 
-  blitWarpPlate(ctx, warp, fx.wave, chromaPx, fx.zoomBlur);
+  blitWavedPlate(ctx, warp, fx.wave, fx.zoomBlur);
+}
+
+function paintCopy(
+  ctx: CanvasRenderingContext2D,
+  bitmap: ImageBitmap,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  alpha: number,
+  chromaPx: number,
+): void {
+  if (chromaPx >= 0.5 && alpha > 0.04) {
+    ctx.globalAlpha = alpha * 0.55;
+    ctx.filter = "sepia(1) saturate(14) hue-rotate(-22deg)";
+    ctx.drawImage(bitmap, x - chromaPx, y, w, h);
+    ctx.filter = "sepia(1) saturate(14) hue-rotate(158deg)";
+    ctx.drawImage(bitmap, x + chromaPx, y, w, h);
+    ctx.filter = "none";
+  }
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(bitmap, x, y, w, h);
 }
 
 function paintRadialStreaks(
@@ -353,49 +393,42 @@ function paintRadialStreaks(
   alpha: number,
   blur: number,
   whip: number,
+  chromaPx: number,
 ): void {
   const cx = dest.x + dest.w / 2;
   const cy = dest.y + dest.h / 2;
-  const steps = Math.max(5, Math.round(8 + 7 * blur));
-  const grow = Math.max(0, scale - 1) + 0.62 * blur;
-  const w0 = dest.w * scale;
-  const h0 = dest.h * scale;
+  const steps = Math.max(6, Math.round(5 + 8 * blur));
+  const grow = 0.48 * blur + Math.max(0, scale - 1) * 0.28;
+  const bitmap = photo.bitmap;
 
   ctx.save();
   ctx.filter = "none";
   ctx.globalCompositeOperation = "source-over";
-  ctx.globalAlpha = alpha;
-  ctx.drawImage(photo.bitmap, cx - w0 / 2, cy - h0 / 2, w0, h0);
 
-  ctx.globalCompositeOperation = "lighter";
-  for (let i = 1; i <= steps; i += 1) {
+  for (let i = steps; i >= 1; i -= 1) {
     const t = i / steps;
     const s = scale * (1 + grow * t);
-    ctx.globalAlpha = (alpha * 0.26 * (1 - t * 0.4)) / Math.sqrt(steps);
     const w = dest.w * s;
     const h = dest.h * s;
-    ctx.drawImage(photo.bitmap, cx - w / 2, cy - h / 2, w, h);
+    paintCopy(ctx, bitmap, cx - w / 2, cy - h / 2, w, h, alpha * 0.18 * (1 - t * 0.45), chromaPx);
   }
 
-  const streak = dest.w * 0.05 * whip;
-  const n = Math.max(0, Math.round(6 * whip));
-  for (let i = 1; i <= n; i += 1) {
-    const t = i / (n + 1);
-    ctx.globalAlpha = (alpha * 0.2 * (1 - t)) / Math.max(n, 1);
-    const dx = streak * (i / n);
-    ctx.drawImage(photo.bitmap, cx - w0 / 2 - dx, cy - h0 / 2, w0, h0);
-    ctx.drawImage(photo.bitmap, cx - w0 / 2 + dx, cy - h0 / 2, w0, h0);
+  const streak = dest.w * 0.046 * whip;
+  const n = Math.max(0, Math.round(5 * whip));
+  const w0 = dest.w * scale;
+  const h0 = dest.h * scale;
+  for (let i = n; i >= 1; i -= 1) {
+    const t = i / n;
+    const ghost = alpha * 0.16 * (1 - t * 0.35);
+    paintCopy(ctx, bitmap, cx - w0 / 2 - streak * t, cy - h0 / 2, w0, h0, ghost, chromaPx);
+    paintCopy(ctx, bitmap, cx - w0 / 2 + streak * t, cy - h0 / 2, w0, h0, ghost, chromaPx);
   }
+
+  paintCopy(ctx, bitmap, cx - w0 / 2, cy - h0 / 2, w0, h0, alpha, chromaPx);
   ctx.restore();
 }
 
-function blitWarpPlate(
-  ctx: CanvasRenderingContext2D,
-  plate: HTMLCanvasElement,
-  wave: number,
-  chromaPx: number,
-  amount: number,
-): void {
+function blitWavedPlate(ctx: CanvasRenderingContext2D, plate: HTMLCanvasElement, wave: number, amount: number): void {
   const w = plate.width;
   const h = plate.height;
   ctx.save();
@@ -403,28 +436,18 @@ function blitWarpPlate(
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-
-  const waveAmp = h * 0.02 * wave;
-  const bands = wave > 0.04 ? 18 : 1;
+  const waveAmp = h * 0.018 * wave;
+  const bands = wave > 0.04 ? 16 : 1;
   if (bands <= 1) {
     ctx.drawImage(plate, 0, 0);
-  } else {
-    const bh = h / bands;
-    for (let i = 0; i < bands; i += 1) {
-      const y = i * bh;
-      const dx = Math.sin((i / bands) * Math.PI * 3.4 + amount * 6) * waveAmp;
-      ctx.drawImage(plate, 0, y, w, bh, dx, y, w, bh);
-    }
+    ctx.restore();
+    return;
   }
-
-  if (chromaPx >= 0.5) {
-    ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.58 * Math.min(1, amount + 0.2);
-    ctx.filter = "sepia(1) saturate(18) hue-rotate(-18deg)";
-    ctx.drawImage(plate, -chromaPx, 0);
-    ctx.filter = "sepia(1) saturate(18) hue-rotate(158deg)";
-    ctx.drawImage(plate, chromaPx, 0);
-    ctx.filter = "none";
+  const bh = h / bands;
+  for (let i = 0; i < bands; i += 1) {
+    const y = i * bh;
+    const dx = Math.sin((i / bands) * Math.PI * 3.4 + amount * 6) * waveAmp;
+    ctx.drawImage(plate, 0, y, w, bh, dx, y, w, bh);
   }
   ctx.restore();
 }

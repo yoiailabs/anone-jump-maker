@@ -301,7 +301,7 @@ describe("landscape swap styles", () => {
     const zoom = swapFx(slots[1]!, slots, "zoom");
     const rest = swapFx(0.8, slots, "zoom");
     const after = swapFx(slots[1]! + ZOOM_DURATION + 0.01, slots, "zoom");
-    expect(zoom.flash).toBeLessThan(0.2);
+    expect(zoom.flash).toBe(0);
     expect(zoom.flash).toBeLessThanOrEqual(ZOOM_FLASH_PEAK);
     expect(jump.flash).toBeGreaterThan(0.7);
     expect(zoom.punch).toBeGreaterThan(1.05);
