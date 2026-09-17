@@ -118,8 +118,7 @@ body {
 
 .hero,
 .stage-wrap,
-.panel,
-.notes {
+.panel {
   position: relative;
   z-index: 1;
 }
@@ -146,7 +145,6 @@ body {
 }
 
 .lede,
-.notes p,
 .status,
 .slot-meter {
   margin: 0;
@@ -542,13 +540,6 @@ body {
 
 .status[data-kind="error"] {
   color: #c44b45;
-}
-
-.notes {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  text-wrap: pretty;
 }
 
 .offscreen-video {

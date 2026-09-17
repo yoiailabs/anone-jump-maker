@@ -40,7 +40,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       <header class="hero">
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
-        <p class="lede">写真を何枚か選択するだけで簡単にあのねジャンプ動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。</p>
+        <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
         <p class="made-count" id="madeCount">—回作られたよ</p>
       </header>
 
@@ -98,9 +98,6 @@ export async function boot(root: HTMLElement): Promise<void> {
         <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
       </section>
 
-      <footer class="notes">
-        <p>ファン制作です。</p>
-      </footer>
     </div>
     <dialog class="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
       <div class="preview-sheet">
