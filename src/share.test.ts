@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildXIntentUrl,
   canShareVideoFile,
+  openExternalTab,
   SHARE_HASHTAG,
   shareJumpVideo,
   toShareFile,
@@ -81,6 +82,15 @@ describe("X への投稿", () => {
   it("ポップアップが塞がれたら blocked を返す", async () => {
     const outcome = await shareJumpVideo({ file: videoFile(), openUrl: () => false });
     expect(outcome).toBe("blocked");
+  });
+
+  it("別タブは noopener 抜きで開き、opener を切る（成功と block を見分けるため）", () => {
+    const tab = { opener: {} as unknown } as Window;
+    const open = vi.fn(() => tab);
+    expect(openExternalTab("https://x.com/intent/post", { open })).toBe(true);
+    expect(open).toHaveBeenCalledWith("https://x.com/intent/post", "_blank");
+    expect(tab.opener).toBeNull();
+    expect(openExternalTab("https://x.com/intent/post", { open: () => null })).toBe(false);
   });
 
   it("保存した動画の名前と MIME をそのまま持たせる", () => {

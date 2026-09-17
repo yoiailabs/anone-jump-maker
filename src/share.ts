@@ -54,6 +54,21 @@ export async function shareJumpVideo(options: {
   return options.openUrl(buildXIntentUrl(text)) ? "intent" : "blocked";
 }
 
+/**
+ * 投稿画面を別タブで開く。`window.open` に `noopener` を渡すと開けても null が返り、
+ * ブロックと見分けられなくなるので、開いてから opener を切る。
+ */
+export function openExternalTab(url: string, opener: Pick<Window, "open">): boolean {
+  const tab = opener.open(url, "_blank");
+  if (!tab) return false;
+  try {
+    tab.opener = null;
+  } catch {
+    /* 別オリジンで弾かれても、タブは開けている */
+  }
+  return true;
+}
+
 function isAbort(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }

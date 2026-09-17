@@ -5,7 +5,7 @@ import { describeMode, describePhotoCount, exportFileName, formatModeLabel } fro
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { downloadBlob } from "./recorder.ts";
-import { SHARE_HASHTAG, shareJumpVideo, toShareFile } from "./share.ts";
+import { openExternalTab, SHARE_HASHTAG, shareJumpVideo, toShareFile } from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -359,7 +359,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     const outcome = await shareJumpVideo({
       file: savedVideo,
       navigator: typeof navigator === "undefined" ? undefined : navigator,
-      openUrl: (url) => window.open(url, "_blank", "noopener,noreferrer") !== null,
+      openUrl: (url) => openExternalTab(url, window),
     });
     if (outcome === "files") {
       setStatus(`${SHARE_HASHTAG} を付けた動画を共有先に渡しました`);
