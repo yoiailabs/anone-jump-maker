@@ -55,51 +55,65 @@ body {
   overflow: hidden;
 }
 
+/* 装飾の円は文字の後ろに沈む「背景」として扱う：輪郭なし・淡い色・大きめ */
 .blob {
   position: absolute;
-  border: 3px solid var(--ink);
   border-radius: 999px;
   pointer-events: none;
+  opacity: 0.6;
+  filter: blur(6px);
 }
 
 .blob-lime {
-  width: 11rem;
-  height: 11rem;
-  background: var(--lime);
-  top: -3.2rem;
-  left: -2.4rem;
+  width: 17rem;
+  height: 17rem;
+  background: color-mix(in srgb, var(--lime) 55%, white);
+  top: -6rem;
+  left: -5rem;
 }
 
 .blob-teal {
-  width: 8.5rem;
-  height: 8.5rem;
-  background: var(--teal);
+  width: 14rem;
+  height: 14rem;
+  background: color-mix(in srgb, var(--teal) 45%, white);
   top: 18%;
-  right: -2.8rem;
+  right: -6rem;
 }
 
 .blob-coral {
-  width: 9rem;
-  height: 9rem;
-  background: var(--coral);
-  bottom: -3.2rem;
-  right: -2.6rem;
-  left: auto;
+  width: 15rem;
+  height: 15rem;
+  background: color-mix(in srgb, var(--coral) 45%, white);
+  bottom: -6rem;
+  right: -5rem;
 }
 
-.wind {
-  position: absolute;
-  top: 7.2rem;
-  left: 12%;
-  width: 4.6rem;
-  height: 1.15rem;
-  border: 3px solid var(--ink);
-  border-left: 0;
-  border-right: 0;
-  border-radius: 999px;
-  opacity: 0.55;
-  pointer-events: none;
-  animation: drift 5.5s ease-in-out infinite;
+/* スマホ幅では本文と重なるため、さらに広く・薄くして文字の可読性を優先する */
+@media (max-width: 40rem) {
+  .blob {
+    opacity: 0.42;
+    filter: blur(10px);
+  }
+
+  .blob-lime {
+    width: 20rem;
+    height: 20rem;
+    top: -8rem;
+    left: -7rem;
+  }
+
+  .blob-teal {
+    width: 17rem;
+    height: 17rem;
+    right: -8rem;
+  }
+
+  .blob-coral {
+    width: 18rem;
+    height: 18rem;
+    bottom: -8rem;
+    right: -7rem;
+  }
 }
 
 .hero,
@@ -153,16 +167,59 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
+.loop-wrap {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.loop-link {
+  display: block;
+  width: min(100%, 26rem);
+  border-radius: 1.5rem;
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.loop-link:hover {
+  transform: translateY(-2px);
+}
+
+.loop-link:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 4px;
+}
+
+.loop-link picture {
+  display: block;
+}
+
+.loop {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 1.5rem;
+  background: var(--card);
+  border: 3.5px solid var(--ink);
+  box-shadow: 7px 8px 0 var(--ink);
+}
+
 .stage-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  padding-top: 0.35rem;
 }
 
-/* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える */
+/* max-width 21rem / 26rem は STAGE_MAX_REM（曲クレジットの画面上サイズ）と揃える。
+   再生エリアは操作パネルの下にあるので、縦は 1 画面に収まる高さだけを上限にする。 */
 .stage {
-  width: min(100%, 21rem, calc((100svh - 27rem) * 608 / 1080));
+  width: min(100%, 21rem, calc((100svh - 6rem) * 608 / 1080));
   aspect-ratio: 608 / 1080;
   border-radius: 1.5rem;
   overflow: hidden;
@@ -262,24 +319,7 @@ body {
 }
 
 .aspect-toggle span {
-  display: flex;
-  flex-direction: column;
   line-height: 1.25;
-}
-
-.aspect-toggle small {
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  color: var(--mute);
-}
-
-/* 縦 × ジャンプ のように、いま選んでいる 2×2 の組み合わせ */
-.mode-summary {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--mute);
-  letter-spacing: 0.04em;
 }
 
 .file-btn,
@@ -393,47 +433,5 @@ body {
   height: 1px;
   opacity: 0;
   pointer-events: none;
-}
-
-.breeze {
-  width: 2.55rem;
-  height: 2.55rem;
-  margin: 0 auto 0.2rem;
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  background: var(--lime);
-  animation: floaty 3.8s ease-in-out infinite;
-}
-
-.breeze::after {
-  content: "";
-  display: block;
-  width: 0.72rem;
-  height: 0.72rem;
-  margin: 0.58rem auto 0;
-  border-radius: 999px;
-  background: var(--ink);
-}
-
-@keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-@keyframes drift {
-  0%,
-  100% {
-    transform: translateX(0);
-    opacity: 0.4;
-  }
-  50% {
-    transform: translateX(14px);
-    opacity: 0.7;
-  }
 }
 
