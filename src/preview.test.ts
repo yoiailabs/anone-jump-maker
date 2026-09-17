@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  PREVIEW_MUTED_DEFAULT,
   PREVIEW_PAUSE_LABEL,
   PREVIEW_PLAY_LABEL,
   PREVIEW_RESTART_LABEL,
+  PREVIEW_SOUND_OFF_LABEL,
+  PREVIEW_SOUND_ON_LABEL,
   playPauseLabel,
+  previewSoundLabel,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
 } from "./preview.ts";
@@ -13,6 +17,16 @@ describe("playPauseLabel", () => {
     expect(playPauseLabel(false)).toBe(PREVIEW_PLAY_LABEL);
     expect(playPauseLabel(true)).toBe(PREVIEW_PAUSE_LABEL);
     expect(PREVIEW_RESTART_LABEL).toBe("最初から再生");
+  });
+});
+
+describe("previewSoundLabel", () => {
+  it("defaults to muted and only names on/off", () => {
+    expect(PREVIEW_MUTED_DEFAULT).toBe(true);
+    expect(previewSoundLabel(true)).toBe(PREVIEW_SOUND_OFF_LABEL);
+    expect(previewSoundLabel(false)).toBe(PREVIEW_SOUND_ON_LABEL);
+    expect(PREVIEW_SOUND_OFF_LABEL).toBe("音声オフ");
+    expect(PREVIEW_SOUND_ON_LABEL).toBe("音声オン");
   });
 });
 

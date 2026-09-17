@@ -20,6 +20,10 @@ describe("offline export plan", () => {
     expect(EXPORT_FALLBACK).toBe("none");
   });
 
+  it("muxes template-file audio so preview mute cannot silence a saved video", () => {
+    expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
+  });
+
   it("emits one timestamp per frame without passing the duration", () => {
     const times = frameTimes(15.54, 30);
     expect(times).toHaveLength(466);

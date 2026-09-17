@@ -6,7 +6,14 @@ import { linkBannersHtml } from "./links.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
-import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart, shouldTrackPreviewStart } from "./preview.ts";
+import {
+  playPauseLabel,
+  PREVIEW_MUTED_DEFAULT,
+  PREVIEW_RESTART_LABEL,
+  previewSoundLabel,
+  shouldSeekPreviewToStart,
+  shouldTrackPreviewStart,
+} from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import {
   copyTextToClipboard,
@@ -32,6 +39,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   let playing = false;
   let recording = false;
   let previewTracked = false;
+  let previewMuted = PREVIEW_MUTED_DEFAULT;
   let playbackBusy = false;
   let playGen = 0;
   let suppressPlayUntil = 0;
@@ -187,6 +195,7 @@ export async function boot(root: HTMLElement): Promise<void> {
         <div class="preview-actions">
           <button type="button" id="modalPlayBtn" class="btn">${playPauseLabel(false)}</button>
           <button type="button" id="restartBtn" class="btn ghost">${PREVIEW_RESTART_LABEL}</button>
+          <button type="button" id="muteBtn" class="btn ghost" aria-pressed="${previewMuted ? "false" : "true"}">${previewSoundLabel(previewMuted)}</button>
         </div>
       </div>
     </dialog>
@@ -205,6 +214,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
+  const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const previewState = must(root, "#previewState");
   const aspectInputs = [
     ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
@@ -257,6 +267,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     saveBtn.disabled = recording || !ready;
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
+    muteBtn.disabled = recording;
     const active = isPreviewPlaying();
     modalPlayBtn.textContent = playPauseLabel(active);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
@@ -287,6 +298,13 @@ export async function boot(root: HTMLElement): Promise<void> {
   const startLoop = async () => {
     haltLoop();
     stopLoop = startVideoPaintLoop(video, paint);
+  };
+
+  const applyPreviewMute = () => {
+    video.muted = previewMuted;
+    video.volume = 1;
+    muteBtn.textContent = previewSoundLabel(previewMuted);
+    muteBtn.setAttribute("aria-pressed", previewMuted ? "false" : "true");
   };
 
   const analyticsParams = () => videoEventParams(mode, swapStyle);
@@ -328,8 +346,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     const gen = (playGen += 1);
     try {
       trackPreviewStart();
-      video.muted = false;
-      video.volume = 1;
+      applyPreviewMute();
       if (
         shouldSeekPreviewToStart({
           fromStart,
@@ -538,6 +555,13 @@ export async function boot(root: HTMLElement): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
     void startPlayback(true);
+  });
+
+  muteBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    previewMuted = !previewMuted;
+    applyPreviewMute();
   });
 
   closePreviewBtn.addEventListener("click", () => {

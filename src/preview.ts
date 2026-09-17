@@ -1,9 +1,17 @@
 export const PREVIEW_PLAY_LABEL = "再生";
 export const PREVIEW_PAUSE_LABEL = "一時停止";
 export const PREVIEW_RESTART_LABEL = "最初から再生";
+export const PREVIEW_SOUND_OFF_LABEL = "音声オフ";
+export const PREVIEW_SOUND_ON_LABEL = "音声オン";
+/** プレビュー再生の初期値。書き出し動画の音声には使わない。 */
+export const PREVIEW_MUTED_DEFAULT = true;
 
 export function playPauseLabel(playing: boolean): string {
   return playing ? PREVIEW_PAUSE_LABEL : PREVIEW_PLAY_LABEL;
+}
+
+export function previewSoundLabel(muted: boolean): string {
+  return muted ? PREVIEW_SOUND_OFF_LABEL : PREVIEW_SOUND_ON_LABEL;
 }
 
 /** 最初から再生、またはクリップ末尾では 0 へシークする。一時停止からの再開は現在位置のまま。 */

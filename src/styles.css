@@ -322,6 +322,10 @@ body {
   line-height: 1.25;
 }
 
+.preview-actions #muteBtn {
+  grid-column: 1 / -1;
+}
+
 .stage-wrap {
   display: flex;
   flex-direction: column;
