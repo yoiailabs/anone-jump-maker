@@ -1,9 +1,9 @@
 import { createCompositor } from "./compositor.ts";
-import { recordRealtime, seekVideo, signalCanvasPainted } from "./export.ts";
+import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, TEMPLATES, type AspectMode } from "./layout.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
-import { downloadBlob, resumeRecordingAudio } from "./recorder.ts";
+import { downloadBlob } from "./recorder.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -123,14 +123,13 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   };
 
-  const paint = () => {
+  const paint = (time?: number) => {
     const slots = timeline().slots;
-    const slot = compositor.draw(video, photos, slots);
+    const slot = compositor.draw(video, photos, slots, time);
     if (slot !== lastSlot) {
       lastSlot = slot;
       slotMeter.textContent = `スロット ${slot + 1} / ${slots.length}`;
     }
-    signalCanvasPainted();
   };
 
   const haltLoop = () => {
@@ -140,7 +139,6 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const startLoop = async () => {
     haltLoop();
-    await resumeRecordingAudio(video);
     stopLoop = startVideoPaintLoop(video, paint);
   };
 
@@ -261,16 +259,25 @@ export async function boot(root: HTMLElement): Promise<void> {
     previewCounted = false;
     video.pause();
     refreshButtons();
-    setStatus("録画中… 画面を消さずにお待ちください", "busy");
+    setStatus("書き出しを準備しています…", "busy");
     try {
-      const result = await recordRealtime({
+      const cuts = timeline();
+      const duration =
+        Number.isFinite(video.duration) && video.duration > 0 ? video.duration : cuts.duration;
+      const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
+      const result = await exportJumpVideo({
         video,
         canvas: compositor.canvas,
-        startLoop,
+        draw: paint,
+        duration,
+        fps,
+        onProgress: (progress) => {
+          setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
+        },
       });
       const aspectTag = mode === "landscape" ? "16x9" : "9x16";
       downloadBlob(result.blob, `anone-jump-${aspectTag}.${result.extension}`);
-      setStatus(`保存しました（${result.extension.toUpperCase()}）`);
+      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）`);
       await reportMade({ action: "save", mime: result.mime });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");

@@ -1,4 +1,4 @@
-/** Assigning `canvas.width` even to the same value resets the bitmap and captureStream. */
+/** Assigning `canvas.width` even to the same value resets the bitmap. */
 export function ensureCanvasSize(
   canvas: { width: number; height: number },
   width: number,

@@ -34,7 +34,12 @@ export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 
 export type Compositor = {
   canvas: HTMLCanvasElement;
-  draw: (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => number;
+  draw: (
+    video: HTMLVideoElement,
+    photos: readonly LoadedPhoto[],
+    slots: readonly number[],
+    time?: number,
+  ) => number;
   setAspect: (mode: AspectMode) => void;
   aspect: () => AspectMode;
   destroy: () => void;
@@ -66,8 +71,12 @@ export function createCompositor(): Compositor {
   const haloCtx = halo.getContext("2d");
   if (!haloCtx) throw new Error("Canvas2D が使えません");
 
-  const draw = (video: HTMLVideoElement, photos: readonly LoadedPhoto[], slots: readonly number[]) => {
-    const time = video.currentTime;
+  const draw = (
+    video: HTMLVideoElement,
+    photos: readonly LoadedPhoto[],
+    slots: readonly number[],
+    time = video.currentTime,
+  ) => {
     const slot = slotForTime(time, slots);
     const photo = photoForSlot(photos, slot);
     applyCanvasSize(canvas, mode);

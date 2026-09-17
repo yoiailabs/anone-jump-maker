@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { collectClientAttrs } from "./stats.ts";
 
 describe("collectClientAttrs", () => {
-  it("records a save with exportMode record", () => {
-    const attrs = collectClientAttrs({ action: "save", mime: "video/webm;codecs=vp9,opus" });
+  it("records a save with exportMode offline", () => {
+    const attrs = collectClientAttrs({ action: "save", mime: "video/mp4" });
     expect(attrs.action).toBe("save");
-    expect(attrs.exportMode).toBe("record");
-    expect(attrs.mime).toBe("video/webm");
+    expect(attrs.exportMode).toBe("offline");
+    expect(attrs.mime).toBe("video/mp4");
     expect(attrs.width).toBe(608);
     expect(attrs.height).toBe(1080);
   });

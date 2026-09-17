@@ -25,7 +25,7 @@ export type GenerateEvent = GenerateAttrs & {
 const BROWSERS = new Set(["chrome", "safari", "firefox", "edge", "opera", "other"]);
 const OSES = new Set(["ios", "android", "macos", "windows", "linux", "other"]);
 const DEVICES = new Set(["mobile", "tablet", "desktop"]);
-/** 新規保存は record 固定。offline は過去イベント用に受け付ける。 */
+/** 新規保存は offline 固定。record は過去イベント用に受け付ける。 */
 const EXPORT_MODES = new Set(["offline", "record"]);
 const GENERATE_ACTIONS = new Set(["preview", "save"]);
 
