@@ -85,9 +85,16 @@ export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
 
 /**
  * 参考 Short の本編キャラ。緑帯 1:1 より大きく、下辺揃えで拡大する。
- * 公式 16:9 とテンプレ緑帯の実測（0.13 / 0.50 / 1.00 / 5.00s）から。
+ * 参考 16:9 とテンプレ緑帯の実測（0.13 / 0.50 / 1.00 / 5.00s）から。
  */
 export const CHAR_SCALE = 1.7;
+
+/**
+ * 縦だけ、下揃えのあとさらに下へずらす（本編 342px での px）。
+ * 1.7 倍のまま足元を揃えると頭が本編上端に寄り、cover ブラー帯の背景キャラも高い。
+ * 参考 Short の 16:9 にテンプレ線画を重ねると、約 +80px で頭・足元が重なる。
+ */
+export const CHAR_SHIFT_Y = 80;
 
 /**
  * 横の公式例（全面 16:9）に合わせた拡大。
@@ -112,13 +119,19 @@ export function characterScale(mode: AspectMode = "portrait"): number {
   return mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
 }
 
-/** キー済み緑帯を本編 16:9 へ置く矩形。下揃え・左右中央。 */
-export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE): Rect {
+/** 縦本編の追加下げ。横は 0。パネル高さに比例させる。 */
+export function characterShiftY(panelH: number, mode: AspectMode = "portrait"): number {
+  if (mode === "landscape") return 0;
+  return CHAR_SHIFT_Y * (panelH / TEMPLATE_BAND_H);
+}
+
+/** キー済み緑帯を本編 16:9 へ置く矩形。下揃え・左右中央。`shiftY` でさらに下へ。 */
+export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE, shiftY = 0): Rect {
   const w = panelW * scale;
   const h = panelH * scale;
   return {
     x: (panelW - w) / 2,
-    y: panelH - h,
+    y: panelH - h + shiftY,
     w,
     h,
   };

@@ -4,6 +4,7 @@ import {
   BLUR_SOURCE,
   CHAR_OUTLINE_PX,
   CHAR_SCALE,
+  CHAR_SHIFT_Y,
   LANDSCAPE_CHAR_SCALE,
   JUMP_AMPLITUDE,
   JUMP_DURATION,
@@ -19,6 +20,7 @@ import {
   characterDest,
   characterOutlinePx,
   characterScale,
+  characterShiftY,
   coverDest,
   isAspectMode,
   jumpAmount,
@@ -74,6 +76,18 @@ describe("characterDest", () => {
     expect(dest.x).toBeCloseTo((608 - dest.w) / 2, 5);
     expect(dest.y + dest.h).toBeCloseTo(342, 5);
     expect(dest.y).toBeLessThan(0);
+  });
+
+  it("shifts the portrait character down so the 16:9 and blur match the reference", () => {
+    expect(CHAR_SHIFT_Y).toBe(80);
+    expect(characterShiftY(TEMPLATE_BAND_H, "portrait")).toBe(80);
+    expect(characterShiftY(TEMPLATE_BAND_H, "landscape")).toBe(0);
+    const dest = characterDest(608, 342, CHAR_SCALE, characterShiftY(342, "portrait"));
+    expect(dest.y + dest.h).toBeCloseTo(342 + CHAR_SHIFT_Y, 5);
+    expect(dest.y).toBeLessThan(0);
+    // still overflows the panel top (scale 1.7), just less than a pure bottom-align
+    const flush = characterDest(608, 342, CHAR_SCALE, 0);
+    expect(dest.y).toBeGreaterThan(flush.y);
   });
 
   it("uses a slightly smaller scale on landscape so the photo stays visible", () => {
