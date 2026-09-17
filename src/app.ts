@@ -46,8 +46,8 @@ export async function boot(root: HTMLElement): Promise<void> {
 
       <section class="panel">
         <fieldset class="aspect-field">
-          <legend>書き出す向き</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="書き出す向き">
+          <legend>動画の向き</legend>
+          <div class="aspect-toggle" role="radiogroup" aria-label="動画の向き">
             <label>
               <input type="radio" name="aspect" value="portrait" checked />
               <span>縦</span>
@@ -59,8 +59,8 @@ export async function boot(root: HTMLElement): Promise<void> {
           </div>
         </fieldset>
         <fieldset class="aspect-field" id="swapField">
-          <legend>写真の切替</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="写真の切替">
+          <legend>エフェクト</legend>
+          <div class="aspect-toggle" role="radiogroup" aria-label="エフェクト">
             <label>
               <input type="radio" name="swap" value="jump" checked />
               <span>ジャンプ</span>
