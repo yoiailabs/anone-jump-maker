@@ -8,18 +8,13 @@ import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import {
-  canShareVideoFile,
   copyTextToClipboard,
-  mobilePlatform,
   openExternalTab,
-  openXCompose,
   SHARE_HASHTAG,
   SHARE_TEXT,
   shareAppUrl,
   shareJumpVideo,
   toShareFile,
-  X_APP_RETRY_WINDOW_MS,
-  xComposeLinkAttrs,
 } from "./share.ts";
 import { fetchGenerateCount, formatCountLabel, recordGenerate } from "./stats.ts";
 import { shouldCountPreview } from "./stats-shared.ts";
@@ -115,12 +110,12 @@ export async function boot(root: HTMLElement): Promise<void> {
       </section>
 
       <div class="share-wrap">
-        <a id="shareBtn" class="btn share">
+        <button type="button" id="shareBtn" class="btn share">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
           </svg>
           ${SHARE_HASHTAG} で X に投稿
-        </a>
+        </button>
         <button type="button" id="shareAppBtn" class="btn share-app">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path
@@ -205,7 +200,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
-  const shareBtn = must(root, "#shareBtn") as HTMLAnchorElement;
+  const shareBtn = must(root, "#shareBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const madeCount = must(root, "#madeCount");
@@ -223,50 +218,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   compositor.canvas.setAttribute("aria-hidden", "true");
   compositor.canvas.removeAttribute("aria-label");
   document.body.append(video);
-
-  const shareNavigator = typeof navigator === "undefined" ? undefined : navigator;
-  const platform = mobilePlatform(shareNavigator);
-
-  // iOS は 1 回目のタップで X アプリのスキームへ、反応が無くて押し直した 2 回目は Web の投稿画面へ。
-  // どちらも href の遷移そのもので、JS は次のタップに備えて href を差し替えるだけ。
-  let xAppTried = false;
-  let xAppRetryTimer = 0;
-
-  const syncComposeHref = () => {
-    const link = xComposeLinkAttrs({ platform, appTried: xAppTried });
-    shareBtn.href = link.href;
-    for (const [name, value] of [
-      ["target", link.target],
-      ["rel", link.rel],
-    ] as const) {
-      if (value) shareBtn.setAttribute(name, value);
-      else shareBtn.removeAttribute(name);
-    }
-  };
-
-  // href を書き換えるのはタップの後。クリックの既定動作は listener が終わってから href を読むので、
-  // その場で差し替えると今まさに押されたタップの行き先まで変わってしまう。
-  const syncComposeHrefSoon = () => window.setTimeout(syncComposeHref, 0);
-
-  const forgetAppTry = () => {
-    window.clearTimeout(xAppRetryTimer);
-    xAppTried = false;
-  };
-
-  syncComposeHref();
-
-  if (platform === "ios") {
-    // 画面が隠れた＝アプリが前に出たので、戻ってきてからのタップはまたアプリへ。
-    const onLeave = () => {
-      if (!xAppTried) return;
-      forgetAppTry();
-      syncComposeHref();
-    };
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) onLeave();
-    });
-    window.addEventListener("pagehide", onLeave);
-  }
 
   const timeline = () => timelines[mode];
 
@@ -666,50 +617,21 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
-  shareBtn.addEventListener("click", (event) => {
-    const file = savedVideo;
-    if (canShareVideoFile(file, shareNavigator)) {
-      event.preventDefault();
-      void (async () => {
-        const outcome = await shareJumpVideo({
-          file,
-          navigator: shareNavigator,
-          openUrl: (url) =>
-            openXCompose({
-              url,
-              appHandoff: platform !== null,
-              navigate: (to) => window.location.assign(to),
-              openTab: (to) => openExternalTab(to, window),
-            }),
-        });
-        if (outcome === "files") {
-          setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
-        } else if (outcome === "intent") {
-          setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
-        } else if (outcome === "blocked") {
-          setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
-        } else {
-          setStatus("投稿をやめました");
-        }
-      })();
-      return;
+  shareBtn.addEventListener("click", async () => {
+    const outcome = await shareJumpVideo({
+      file: savedVideo,
+      navigator: typeof navigator === "undefined" ? undefined : navigator,
+      openUrl: (url) => openExternalTab(url, window),
+    });
+    if (outcome === "files") {
+      setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
+    } else if (outcome === "intent") {
+      setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
+    } else if (outcome === "blocked") {
+      setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
+    } else {
+      setStatus("投稿をやめました");
     }
-    if (platform === "ios" && !xAppTried) {
-      // href のアプリのスキームで遷移中。押し直しに備えて Web の投稿画面へ差し替え、
-      // しばらく反応が無いまま放置されたら、また 1 回目として扱えるよう戻す。
-      xAppTried = true;
-      xAppRetryTimer = window.setTimeout(() => {
-        forgetAppTry();
-        syncComposeHref();
-      }, X_APP_RETRY_WINDOW_MS);
-      syncComposeHrefSoon();
-      setStatus("X アプリの投稿画面を開きました。開かないときは、もう一度押してください。");
-      return;
-    }
-    // iOS の 2 回目、Android と PC はそのまま（Web の投稿画面 / intent URI / 別タブ）。
-    forgetAppTry();
-    syncComposeHrefSoon();
-    setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
   });
 
   shareAppBtn.addEventListener("click", async () => {
