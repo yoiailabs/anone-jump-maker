@@ -6,45 +6,50 @@ import {
   CHAR_SCALE,
   CHAR_SHIFT_Y,
   LANDSCAPE_CHAR_SCALE,
-  JUMP_AMPLITUDE,
-  JUMP_DURATION,
-  JUMP_PEAK_U,
-  SWAP_DURATION,
-  SWAP_FLASH_PEAK,
-  SWAP_PRE_ROLL,
-  ZOOM_DURATION,
-  ZOOM_FLASH_HOLD,
-  ZOOM_FLASH_PEAK,
-  ZOOM_PRE_ROLL,
+  JUMP_COVER_SCALE,
+  JUMP_CYCLE_FRAMES,
+  JUMP_DROP_FRAC,
+  JUMP_FLASH_ADD,
+  JUMP_FLASH_FRAMES,
+  JUMP_FLASH_GLOBAL,
+  JUMP_FLASH_SCREEN,
+  JUMP_REST_SHIFT_FRAC,
+  JUMP_RISE_FRAMES,
+  JUMP_SHRINK,
   OUTPUT,
   OUTPUTS,
   STAGE_MAX_REM,
   PANEL_DIVIDER_PX,
   TEMPLATE_BAND_H,
   TEMPLATE_BAND_Y,
+  TEMPLATE_FPS,
+  ZOOM_IN_START,
+  ZOOM_KEYS,
+  ZOOM_OUT_FRAMES,
+  ZOOM_OUT_SHRINK,
+  ZOOM_SWAP_DELAY_FRAMES,
   characterDest,
   characterOutlinePx,
   characterScale,
   characterShiftY,
   coverDest,
+  hasFrameFx,
   isAspectMode,
-  jumpAmount,
-  jumpOffsetPx,
+  isSwapStyle,
+  jumpCycle,
+  jumpFlashEnvelope,
   mainPanelRect,
   outputSize,
+  plateCoverScale,
+  plateRestShiftFrac,
   rectToUvBottomLeft,
-  sharpCoverScale,
-  effectiveSwapStyle,
-  isSwapStyle,
-  swapChromaPx,
   swapFx,
-  swapSlidePx,
   templateBandRect,
   usesBlurBackdrop,
-  zoomPlateScales,
+  zoomInScale,
+  zoomKeyAt,
+  zoomOutScale,
 } from "./layout.ts";
-
-const slots = [0, 0.467, 0.933, 1.467];
 
 describe("output size", () => {
   it("matches the 608x1080 template", () => {
@@ -160,21 +165,28 @@ describe("coverDest / sharpCoverScale", () => {
     expect(dest.y).toBeCloseTo(0, 5);
   });
 
-  it("scales the sharp 16:9 photo enough that a full hop stays inside the panel", () => {
+  it("gives the jump plate enough overscan that the measured drop never uncovers the panel", () => {
+    expect(plateCoverScale("jump")).toBe(JUMP_COVER_SCALE);
+    expect(plateCoverScale("zoom")).toBe(1);
+    expect(plateRestShiftFrac("jump")).toBe(JUMP_REST_SHIFT_FRAC);
+    expect(plateRestShiftFrac("zoom")).toBe(0);
     const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
-    const scale = sharpCoverScale(OUTPUT.height, panel.h);
-    const hop = OUTPUT.height * JUMP_AMPLITUDE;
-    expect(hop).toBeCloseTo(34, 5);
-    expect(scale).toBeGreaterThan(1);
-    expect((scale - 1) * panel.h).toBeGreaterThanOrEqual(2 * hop - 1e-6);
-    const dest = coverDest(1920, 1080, panel.w, panel.h, {
-      dx: panel.x,
-      dy: panel.y,
-      scale,
-      offsetY: -hop,
+    // at rest (top of travel) the bottom edge must still be covered
+    const rest = coverDest(1920, 1080, panel.w, panel.h, {
+      scale: JUMP_COVER_SCALE,
+      offsetY: JUMP_REST_SHIFT_FRAC * panel.h,
     });
-    expect(dest.y).toBeLessThanOrEqual(panel.y + 1e-6);
-    expect(dest.y + dest.h).toBeGreaterThanOrEqual(panel.y + panel.h - 1e-6);
+    expect(rest.y).toBeLessThanOrEqual(1e-6);
+    expect(rest.y + rest.h).toBeGreaterThanOrEqual(panel.h - 1e-6);
+    // at the cut (smallest + lowest) the top edge must still be covered
+    const cut = coverDest(1920, 1080, panel.w, panel.h, {
+      scale: JUMP_COVER_SCALE * (1 - JUMP_SHRINK),
+      offsetY: (JUMP_REST_SHIFT_FRAC + JUMP_DROP_FRAC) * panel.h,
+    });
+    expect(cut.y).toBeLessThanOrEqual(1e-6);
+    expect(cut.y + cut.h).toBeGreaterThanOrEqual(panel.h - 1e-6);
+    expect(cut.x).toBeLessThanOrEqual(1e-6);
+    expect(cut.x + cut.w).toBeGreaterThanOrEqual(panel.w - 1e-6);
   });
 });
 
@@ -188,157 +200,189 @@ describe("rectToUvBottomLeft", () => {
   });
 });
 
-describe("jumpAmount", () => {
-  it("starts a hop on each cut slot and returns to rest", () => {
-    expect(jumpAmount(0, slots)).toBe(0);
-    expect(jumpAmount(0.08, slots)).toBeGreaterThan(0.4);
-    const peakAt = JUMP_DURATION * JUMP_PEAK_U;
-    expect(peakAt).toBeCloseTo(6.5 / 30, 5);
-    expect(jumpAmount(peakAt, slots)).toBeCloseTo(1, 2);
-    expect(jumpAmount(JUMP_DURATION + 0.02, slots)).toBe(0);
+const F = 1 / TEMPLATE_FPS;
+
+describe("jump cycle (Short o1ROhNU0UNw)", () => {
+  it("starts low and small at the cut and springs back to rest in 7 frames", () => {
+    expect(JUMP_CYCLE_FRAMES).toBe(15);
+    expect(JUMP_RISE_FRAMES).toBe(7);
+    const k0 = jumpCycle(0);
+    expect(k0.dy).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(k0.scale).toBeCloseTo(1 - JUMP_SHRINK, 6);
+    // measured 640px band: 35.4 24.4 15.9 9.7 5.1 2.1 0.5 0  (dy px)
+    const px = (k: number) => jumpCycle(k).dy * 202.7;
+    expect(px(1)).toBeCloseTo(24.4, 0);
+    expect(px(2)).toBeCloseTo(15.9, 0);
+    expect(px(3)).toBeCloseTo(9.7, 0);
+    expect(px(4)).toBeCloseTo(5.1, 0);
+    expect(px(5)).toBeCloseTo(2.1, 0);
+    expect(px(7)).toBe(0);
+    // measured scale .947 .961 .972 .981 .989 .995 .998 1
+    expect(jumpCycle(1).scale).toBeCloseTo(0.961, 2);
+    expect(jumpCycle(3).scale).toBeCloseTo(0.981, 2);
+    expect(jumpCycle(5).scale).toBeCloseTo(0.995, 2);
+    expect(jumpCycle(7).scale).toBe(1);
   });
 
-  it("matches the measured 30fps envelope (rise ~6-7, rounded peak, land ~13)", () => {
-    expect(JUMP_DURATION).toBeCloseTo(13 / 30, 8);
-    expect(JUMP_PEAK_U).toBeCloseTo(0.5, 5);
-    const at = (frame: number) => jumpAmount(frame / 30, slots);
-    expect(at(0)).toBe(0);
-    expect(at(3)).toBeGreaterThan(0.55);
-    expect(at(3)).toBeLessThan(0.75);
-    expect(at(6)).toBeGreaterThan(0.95);
-    expect(at(7)).toBeGreaterThan(0.95);
-    expect(at(6)).toBeGreaterThan(at(3));
-    expect(at(10)).toBeGreaterThan(0.55);
-    expect(at(10)).toBeLessThan(at(7));
-    expect(at(13)).toBe(0);
-    // old 0.34-peak curve reached ~1 by frame 4; the reference is still climbing then
-    expect(at(4)).toBeLessThan(0.9);
+  it("sinks again quadratically toward the next beat and holds at the bottom", () => {
+    // measured k=8..14: 0.3 1.5 4.9 8.6 13.7 19.7 27.0 (dy px @640) ; scale .999 .997 .995 .988 .981 .972 .960
+    const px = (k: number) => jumpCycle(k).dy * 202.7;
+    expect(px(10)).toBeCloseTo(4.9, 0);
+    expect(px(12)).toBeCloseTo(13.7, 0);
+    expect(px(13)).toBeCloseTo(19.7, 0);
+    expect(px(14)).toBeCloseTo(27.0, 0);
+    expect(px(15)).toBeCloseTo(35.4, 0);
+    expect(jumpCycle(14).scale).toBeCloseTo(0.96, 2);
+    expect(jumpCycle(15).scale).toBeCloseTo(1 - JUMP_SHRINK, 6);
+    expect(jumpCycle(20)).toEqual(jumpCycle(15));
+    expect(jumpCycle(-1)).toEqual({ scale: 1, dy: 0 });
   });
 
-  it("restarts at the next photo/cut slot", () => {
-    expect(jumpAmount(0.467, slots)).toBe(0);
-    expect(jumpAmount(0.467 + 0.1, slots)).toBeGreaterThan(0.5);
-    expect(jumpAmount(JUMP_DURATION + 0.01, slots)).toBe(0);
-    expect(JUMP_DURATION + 0.01).toBeLessThan(slots[1]!);
+  it("flashes only after the cut and dies within 3 frames", () => {
+    expect(JUMP_FLASH_FRAMES).toBe(3);
+    expect(jumpFlashEnvelope(-0.5)).toBe(0);
+    expect(jumpFlashEnvelope(0)).toBe(1);
+    expect(jumpFlashEnvelope(1)).toBeCloseTo(4 / 9, 6);
+    expect(jumpFlashEnvelope(2)).toBeCloseTo(1 / 9, 6);
+    expect(jumpFlashEnvelope(3)).toBe(0);
+    expect(JUMP_FLASH_ADD + JUMP_FLASH_SCREEN).toBeGreaterThan(0.4);
+    expect(JUMP_FLASH_GLOBAL).toBeLessThan(0.1);
   });
 
-  it("also hops the landscape photo on the same cut curve", () => {
-    const up = jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height);
-    expect(up).toBeLessThan(0);
-    expect(Math.abs(up)).toBeCloseTo(OUTPUTS.landscape.height * JUMP_AMPLITUDE * jumpAmount(0.12, slots), 5);
-    const rest = coverDest(1920, 1080, 1280, 720);
-    const hopped = coverDest(1920, 1080, 1280, 720, { offsetY: up });
-    expect(hopped.y).toBeLessThan(rest.y);
+  it("drives the plate from the slot start, with no pre-cut flash and no zoom fx", () => {
+    const slots = [0, 15 * F, 30 * F, 45 * F];
+    const before = swapFx(15 * F - 1 * F, slots, "jump");
+    expect(before.plateSlot).toBe(0);
+    expect(before.flashAdd).toBe(0);
+    expect(before.flashScreen).toBe(0);
+    // one frame before the cut the outgoing photo is already sinking (k=14 of its own cycle)
+    expect(before.dy).toBeCloseTo(jumpCycle(14).dy, 6);
+    expect(before.scale).toBeCloseTo(jumpCycle(14).scale, 6);
+    const at = swapFx(15 * F, slots, "jump");
+    expect(at.plateSlot).toBe(1);
+    expect(at.dy).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(at.scale).toBeCloseTo(1 - JUMP_SHRINK, 6);
+    expect(at.flashAdd).toBeCloseTo(JUMP_FLASH_ADD, 6);
+    expect(at.flashScreen).toBeCloseTo(JUMP_FLASH_SCREEN, 6);
+    expect(at.flashGlobal).toBeCloseTo(JUMP_FLASH_GLOBAL, 6);
+    expect(at.blur).toBe(0);
+    expect(at.rgb).toBe(0);
+    expect(at.backdrop).toBe(false);
+    expect(hasFrameFx(at)).toBe(false);
+    const later = swapFx(15 * F + 7 * F, slots, "jump");
+    expect(later.dy).toBe(0);
+    expect(later.scale).toBe(1);
+    expect(later.flashAdd).toBe(0);
+    // the opening slot also starts on the cycle with the flash (the Short does at 0 s)
+    const opening = swapFx(0, slots, "jump");
+    expect(opening.plateSlot).toBe(0);
+    expect(opening.dy).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(opening.flashAdd).toBeCloseTo(JUMP_FLASH_ADD, 6);
   });
 
-  it("offsets upward in canvas space for the sharp 16:9 photo", () => {
-    const up = jumpOffsetPx(0.12, slots, OUTPUT.height);
-    expect(up).toBeLessThan(0);
-    expect(Math.abs(up)).toBeCloseTo(OUTPUT.height * JUMP_AMPLITUDE * jumpAmount(0.12, slots), 5);
-    const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
-    const rest = coverDest(1920, 1080, panel.w, panel.h, { dx: panel.x, dy: panel.y });
-    const hopped = coverDest(1920, 1080, panel.w, panel.h, {
-      dx: panel.x,
-      dy: panel.y,
-      offsetY: up,
-    });
-    expect(hopped.y).toBeLessThan(rest.y);
-    expect(hopped.y - rest.y).toBeCloseTo(up, 5);
-  });
-
-  it("handles an empty slot list", () => {
-    expect(jumpAmount(1, [])).toBe(0);
-    expect(jumpOffsetPx(0.12, [], OUTPUT.height)).toBe(0);
-  });
-});
-
-describe("swapFx", () => {
-  it("does nothing on the opening slot (no previous photo)", () => {
-    const fx = swapFx(0.02, slots);
-    expect(fx.amount).toBe(0);
-    expect(fx.flash).toBe(0);
-    expect(fx.punch).toBe(1);
-  });
-
-  it("starts a white flash one frame before the cut", () => {
-    const pre = swapFx(slots[1]! - SWAP_PRE_ROLL * 0.6, slots);
-    expect(pre.flash).toBeGreaterThan(0.2);
-    expect(pre.flash).toBeLessThan(SWAP_FLASH_PEAK);
-    expect(pre.punch).toBeGreaterThan(1);
-  });
-
-  it("peaks at the cut then dies within a few frames", () => {
-    const at = swapFx(slots[1]!, slots);
-    const later = swapFx(slots[1]! + SWAP_DURATION + 0.02, slots);
-    expect(at.flash).toBeGreaterThan(0.7);
-    expect(at.punch).toBeGreaterThan(1.1);
-    expect(Math.abs(swapSlidePx(at, 1280))).toBeGreaterThan(4);
-    expect(swapChromaPx(at, 1280)).toBeGreaterThan(1);
-    expect(later.flash).toBe(0);
-    expect(later.punch).toBe(1);
-  });
-
-  it("is idle with one slot or none", () => {
-    expect(swapFx(0.5, [0]).flash).toBe(0);
-    expect(swapFx(0.5, []).flash).toBe(0);
+  it("handles an empty or single slot list", () => {
+    expect(swapFx(1, [], "jump").scale).toBe(1);
+    expect(swapFx(0.5, [0], "jump").plateSlot).toBe(0);
+    expect(swapFx(0.5, [0], "zoom").plateSlot).toBe(0);
   });
 });
 
-describe("landscape swap styles", () => {
-  it("keeps zoom as a landscape-only choice", () => {
+describe("zoom cycle (hagikaze_sami)", () => {
+  it("shrinks the outgoing photo over 3 frames to .866 and keeps it one frame past the pose change", () => {
+    expect(ZOOM_OUT_FRAMES).toBe(3);
+    expect(ZOOM_SWAP_DELAY_FRAMES).toBe(1);
+    expect(zoomOutScale(-3)).toBe(1);
+    // measured −2/−1/0: .988 .947 .866
+    expect(zoomOutScale(-2)).toBeCloseTo(0.988, 2);
+    expect(zoomOutScale(-1)).toBeCloseTo(0.947, 2);
+    expect(zoomOutScale(0)).toBeCloseTo(1 - ZOOM_OUT_SHRINK, 6);
+    expect(zoomOutScale(0)).toBeCloseTo(0.866, 3);
+  });
+
+  it("brings the incoming photo in from 1.115 and settles by frame 4", () => {
+    // measured +1/+2/+3/+4: 1.115 1.025 1.004 1
+    expect(zoomInScale(1)).toBeCloseTo(1 + ZOOM_IN_START, 6);
+    expect(zoomInScale(2)).toBeCloseTo(1.023, 2);
+    expect(zoomInScale(3)).toBeCloseTo(1.0046, 3);
+    expect(zoomInScale(4)).toBeCloseTo(1, 2);
+  });
+
+  it("peaks the whole-frame blur / rgb / lift on the pose-change frame and hazes the next", () => {
+    const peak = zoomKeyAt(0);
+    expect(peak.blur).toBeCloseTo(0.027, 6);
+    expect(peak.rgb).toBeCloseTo(0.0065, 6);
+    expect(peak.lift).toBeCloseTo(0.35, 6);
+    expect(peak.haze).toBe(0);
+    const pre = zoomKeyAt(-1);
+    expect(pre.blur).toBeGreaterThan(0);
+    expect(pre.blur).toBeLessThan(peak.blur);
+    expect(pre.lift).toBeGreaterThan(0);
+    expect(pre.lift).toBeLessThan(0.1);
+    const post = zoomKeyAt(1);
+    expect(post.blur).toBeGreaterThan(0);
+    expect(post.blur).toBeLessThan(peak.blur);
+    expect(post.lift).toBe(0);
+    expect(post.haze).toBeCloseTo(0.25, 6);
+    expect(zoomKeyAt(-2).blur).toBe(0);
+    expect(zoomKeyAt(3).blur).toBe(0);
+    expect(zoomKeyAt(-5).lift).toBe(0);
+    // halfway between keys is linear
+    expect(zoomKeyAt(-0.5).blur).toBeCloseTo((pre.blur + peak.blur) / 2, 6);
+    expect(ZOOM_KEYS[0]![1].blur).toBe(0);
+  });
+
+  it("swaps the photo one frame after the pose change, not on it", () => {
+    const slots = [0, 15 * F, 30 * F];
+    const S = 15 * F;
+    const m2 = swapFx(S - 2 * F, slots, "zoom");
+    expect(m2.plateSlot).toBe(0);
+    expect(m2.scale).toBeCloseTo(0.988, 2);
+    expect(m2.backdrop).toBe(true);
+    const m1 = swapFx(S - 1 * F, slots, "zoom");
+    expect(m1.plateSlot).toBe(0);
+    expect(m1.scale).toBeCloseTo(0.947, 2);
+    expect(m1.blur).toBeCloseTo(0.008, 6);
+    expect(m1.cutIndex).toBe(1);
+    const s0 = swapFx(S, slots, "zoom");
+    expect(s0.plateSlot).toBe(0);
+    expect(s0.scale).toBeCloseTo(0.866, 3);
+    expect(s0.blur).toBeCloseTo(0.027, 6);
+    expect(s0.rgb).toBeCloseTo(0.0065, 6);
+    expect(s0.lift).toBeCloseTo(0.35, 6);
+    expect(s0.backdrop).toBe(true);
+    expect(s0.flashAdd).toBe(0);
+    expect(s0.dy).toBe(0);
+    expect(hasFrameFx(s0)).toBe(true);
+    const s1 = swapFx(S + 1 * F, slots, "zoom");
+    expect(s1.plateSlot).toBe(1);
+    expect(s1.scale).toBeCloseTo(1.115, 3);
+    expect(s1.haze).toBeCloseTo(0.25, 6);
+    expect(s1.backdrop).toBe(false);
+    const s2 = swapFx(S + 2 * F, slots, "zoom");
+    expect(s2.scale).toBeCloseTo(1.023, 2);
+    const s4 = swapFx(S + 4 * F, slots, "zoom");
+    expect(s4.scale).toBeCloseTo(1, 2);
+    expect(hasFrameFx(s4)).toBe(false);
+    // the opening slot is static in the reference
+    const opening = swapFx(0, slots, "zoom");
+    expect(opening.scale).toBe(1);
+    expect(hasFrameFx(opening)).toBe(false);
+  });
+
+  it("is available in both aspects (2x2 matrix)", () => {
     expect(isSwapStyle("jump")).toBe(true);
     expect(isSwapStyle("zoom")).toBe(true);
     expect(isSwapStyle("slide")).toBe(false);
-    expect(effectiveSwapStyle("portrait", "zoom")).toBe("jump");
-    expect(effectiveSwapStyle("landscape", "zoom")).toBe("zoom");
-    expect(effectiveSwapStyle("landscape", "jump")).toBe("jump");
-  });
-
-  it("drops hop on zoom and keeps the jump envelope otherwise", () => {
-    const hopped = jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height, "jump");
-    expect(hopped).toBeLessThan(0);
-    expect(jumpOffsetPx(0.12, slots, OUTPUTS.landscape.height, "zoom")).toBe(0);
-    expect(jumpOffsetPx(0.12, slots, OUTPUT.height, "zoom")).toBe(0);
-  });
-
-  it("uses a short radial warp with rgb split and a highlight flash", () => {
-    const jump = swapFx(slots[1]!, slots, "jump");
-    const zoom = swapFx(slots[1]!, slots, "zoom");
-    const pre = swapFx(slots[1]! - ZOOM_PRE_ROLL * 0.6, slots, "zoom");
-    const next = swapFx(slots[1]! + ZOOM_FLASH_HOLD + 1e-4, slots, "zoom");
-    const rest = swapFx(0.8, slots, "zoom");
-    const after = swapFx(slots[1]! + ZOOM_DURATION + 0.01, slots, "zoom");
-    expect(zoom.flash).toBeGreaterThan(0.3);
-    expect(zoom.flash).toBeCloseTo(ZOOM_FLASH_PEAK, 5);
-    expect(zoom.flash).toBeLessThan(jump.flash);
-    expect(zoom.flash).toBeLessThan(SWAP_FLASH_PEAK);
-    expect(pre.flash).toBeGreaterThan(0.15);
-    expect(pre.flash).toBeLessThan(zoom.flash);
-    expect(next.flash).toBe(0);
-    expect(next.zoomBlur).toBeGreaterThan(0);
-    expect(jump.flash).toBeGreaterThan(0.7);
-    expect(zoom.punch).toBeLessThan(1);
-    expect(zoom.punch).toBeGreaterThan(0.8);
-    expect(zoom.zoomBlur).toBeGreaterThan(0.5);
-    const plates = zoomPlateScales(zoom);
-    expect(plates.outgoing).toBeLessThan(1);
-    expect(plates.incoming).toBeGreaterThan(1);
-    expect(plates.incoming).toBeGreaterThan(plates.outgoing);
-    expect(jump.zoomBlur).toBe(0);
-    expect(zoom.slide).toBe(0);
-    expect(zoom.skew).toBe(0);
-    expect(zoom.chroma).toBeGreaterThan(0.5);
-    expect(zoom.whip).toBeGreaterThan(0.3);
-    expect(zoom.wave).toBeGreaterThan(0.1);
-    expect(zoom.smear).toBeGreaterThan(0.2);
-    expect(zoom.mix).toBeGreaterThan(0.1);
-    expect(zoom.mix).toBeLessThan(0.75);
-    expect(zoom.cutIndex).toBe(1);
-    expect(rest.zoomBlur).toBe(0);
-    expect(rest.flash).toBe(0);
-    expect(after.zoomBlur).toBe(0);
-    expect(ZOOM_PRE_ROLL + ZOOM_DURATION).toBeGreaterThanOrEqual(0.05);
-    expect(ZOOM_PRE_ROLL + ZOOM_DURATION).toBeLessThanOrEqual(0.15);
-    expect(ZOOM_FLASH_HOLD).toBeCloseTo(1 / 30, 8);
+    // the fx model is aspect-agnostic: fractions of panel size
+    const slots = [0, 0.5, 1.0];
+    const zoom = swapFx(0.5, slots, "zoom");
+    const jump = swapFx(0.5, slots, "jump");
+    for (const [w, h] of [
+      [OUTPUT.width, mainPanelRect(OUTPUT.width, OUTPUT.height).h],
+      [OUTPUTS.landscape.width, OUTPUTS.landscape.height],
+    ] as const) {
+      expect(zoom.blur * w).toBeGreaterThan(5);
+      expect(Math.abs(jump.dy) * h).toBeGreaterThan(20);
+    }
   });
 });

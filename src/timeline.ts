@@ -1,7 +1,10 @@
 export type CutTimeline = {
   duration: number;
+  /** 各スロットの開始秒（frame/fps）。 */
   slots: number[];
   fps?: number;
+  /** `slots` と同じ拍のテンプレフレーム番号（参考用）。 */
+  slotFrames?: number[];
 };
 
 export function slotForTime(time: number, slots: readonly number[]): number {

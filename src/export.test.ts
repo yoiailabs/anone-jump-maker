@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { jumpOffsetPx, swapFx } from "./layout.ts";
+import { swapFx } from "./layout.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
@@ -41,11 +41,13 @@ describe("offline export plan", () => {
     const t = frameTimes(1, 30)[10]!;
     expect(t).toBeCloseTo(10 / 30, 8);
     expect(slotForTime(t, slots)).toBe(0);
-    expect(jumpOffsetPx(t, slots, 1080)).toBe(jumpOffsetPx(t, slots, 1080));
-    expect(swapFx(t, slots).flash).toBe(swapFx(t, slots).flash);
-    expect(swapFx(slots[1]!, slots, "zoom").flash).toBe(swapFx(slots[1]!, slots, "zoom").flash);
-    expect(swapFx(slots[1]!, slots, "zoom").flash).toBeGreaterThan(0.3);
-    expect(swapFx(slots[1]!, slots, "jump").flash).toBeGreaterThan(0.7);
+    expect(swapFx(t, slots, "jump")).toEqual(swapFx(t, slots, "jump"));
+    expect(swapFx(t, slots, "zoom")).toEqual(swapFx(t, slots, "zoom"));
+    // the export clock lands exactly on slot starts stored as frame/30
+    const exact = [0, 59 / 30, 118 / 30];
+    expect(slotForTime(frameTimes(4, 30)[59]!, exact)).toBe(1);
+    expect(slotForTime(frameTimes(4, 30)[118]!, exact)).toBe(2);
+    expect(slotForTime(frameTimes(4, 30)[117]!, exact)).toBe(1);
   });
 });
 
