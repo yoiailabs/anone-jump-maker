@@ -27,11 +27,18 @@ export const TEMPLATE_BAND_H = 342;
 
 export const MAIN_PANEL_Y_FRAC = TEMPLATE_BAND_Y / OUTPUT.height;
 
-/** 参考 Short の hop。1080p で約 30px 上。 */
-export const JUMP_AMPLITUDE = 30 / OUTPUT.height;
+/**
+ * 参考 Short（30fps・608×1080）の本編 16:9 写真 hop。
+ * キャラを塗って潰した写真に ECC 並進＋特徴点をかけ、同一写真ショット末（静止）基準で測った。
+ * きれいな区間のピークはおおよそ 30–44px、中央値 ≈ 34px。予備の 7–15px はカット混入。
+ */
+export const JUMP_AMPLITUDE = 34 / OUTPUT.height;
 
-/** 1 ジャンプの長さ（秒）。スロット間隔より長くはしない。 */
-export const JUMP_DURATION = 0.36;
+/** 1 ジャンプの長さ（秒）。実測 13 フレ @30fps。スロット間隔より長くはしない。 */
+export const JUMP_DURATION = 13 / 30;
+
+/** 頂点の位置（duration 比）。実測は 6–7 フレ目 ≈ 半分。短い滞空は正弦ローブで出す。 */
+export const JUMP_PEAK_U = 0.5;
 
 /**
  * 参考横動画（cola_rumiren0 / anim-ref.mp4、30fps）の切替実測。
@@ -199,10 +206,9 @@ export function jumpAmount(time: number, slots: readonly number[]): number {
   const duration = Math.min(JUMP_DURATION, Math.max(0.2, next - start));
   const u = (time - start) / duration;
   if (u <= 0 || u >= 1) return 0;
-  if (u < 0.34) {
-    return Math.sin(((u / 0.34) * Math.PI) / 2);
-  }
-  return Math.cos((((u - 0.34) / 0.66) * Math.PI) / 2);
+  // 実測エンベロープは対称に近い（6–7 フレで頂点、2 フレほど丸い滞空、6–7 フレで着地）。
+  // 旧 0.34/0.66 の sin→cos は立ち上がりが約 4 フレと速すぎた。
+  return Math.sin(Math.PI * u);
 }
 
 /** 上方向が負（Canvas2D）。本編 16:9 内の写真 hop に使う。 */

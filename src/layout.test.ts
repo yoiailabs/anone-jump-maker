@@ -7,6 +7,7 @@ import {
   LANDSCAPE_CHAR_SCALE,
   JUMP_AMPLITUDE,
   JUMP_DURATION,
+  JUMP_PEAK_U,
   SWAP_DURATION,
   SWAP_FLASH_PEAK,
   SWAP_PRE_ROLL,
@@ -139,7 +140,7 @@ describe("coverDest / sharpCoverScale", () => {
     const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
     const scale = sharpCoverScale(OUTPUT.height, panel.h);
     const hop = OUTPUT.height * JUMP_AMPLITUDE;
-    expect(hop).toBeCloseTo(30, 5);
+    expect(hop).toBeCloseTo(34, 5);
     expect(scale).toBeGreaterThan(1);
     expect((scale - 1) * panel.h).toBeGreaterThanOrEqual(2 * hop - 1e-6);
     const dest = coverDest(1920, 1080, panel.w, panel.h, {
@@ -167,9 +168,27 @@ describe("jumpAmount", () => {
   it("starts a hop on each cut slot and returns to rest", () => {
     expect(jumpAmount(0, slots)).toBe(0);
     expect(jumpAmount(0.08, slots)).toBeGreaterThan(0.4);
-    const peakAt = JUMP_DURATION * 0.34;
+    const peakAt = JUMP_DURATION * JUMP_PEAK_U;
+    expect(peakAt).toBeCloseTo(6.5 / 30, 5);
     expect(jumpAmount(peakAt, slots)).toBeCloseTo(1, 2);
     expect(jumpAmount(JUMP_DURATION + 0.02, slots)).toBe(0);
+  });
+
+  it("matches the measured 30fps envelope (rise ~6-7, rounded peak, land ~13)", () => {
+    expect(JUMP_DURATION).toBeCloseTo(13 / 30, 8);
+    expect(JUMP_PEAK_U).toBeCloseTo(0.5, 5);
+    const at = (frame: number) => jumpAmount(frame / 30, slots);
+    expect(at(0)).toBe(0);
+    expect(at(3)).toBeGreaterThan(0.55);
+    expect(at(3)).toBeLessThan(0.75);
+    expect(at(6)).toBeGreaterThan(0.95);
+    expect(at(7)).toBeGreaterThan(0.95);
+    expect(at(6)).toBeGreaterThan(at(3));
+    expect(at(10)).toBeGreaterThan(0.55);
+    expect(at(10)).toBeLessThan(at(7));
+    expect(at(13)).toBe(0);
+    // old 0.34-peak curve reached ~1 by frame 4; the reference is still climbing then
+    expect(at(4)).toBeLessThan(0.9);
   });
 
   it("restarts at the next photo/cut slot", () => {
