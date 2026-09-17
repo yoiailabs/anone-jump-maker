@@ -2,7 +2,7 @@ import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import { isAspectMode, isSwapStyle, TEMPLATES, type AspectMode, type SwapStyle } from "./layout.ts";
 import { linkBannersHtml } from "./links.ts";
-import { describePhotoCount, exportFileName } from "./modes.ts";
+import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
@@ -11,6 +11,7 @@ import {
   copyTextToClipboard,
   openExternalTab,
   SHARE_HASHTAG,
+  SHARE_TEXT,
   shareAppUrl,
   shareJumpVideo,
   toShareFile,
@@ -495,7 +496,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus(
         photos.length === 0
           ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました。大きな写真は書き出し用に縮小しています。${describePhotoCount(photos.length)}`,
+          : `${photos.length} 枚を読み込みました`,
       );
     } catch (error) {
       renderThumbs();
@@ -583,7 +584,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       const filename = exportFileName(mode, swapStyle, result.extension);
       downloadBlob(result.blob, filename);
       savedVideo = toShareFile(result.blob, filename);
-      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_HASHTAG} を付けて X に投稿できます。`);
+      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
       await reportMade({ action: "save", mime: result.mime });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
@@ -606,7 +607,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       openUrl: (url) => openExternalTab(url, window),
     });
     if (outcome === "files") {
-      setStatus(`${SHARE_HASHTAG} を付けた動画を共有先に渡しました`);
+      setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
     } else if (outcome === "intent") {
       setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
     } else if (outcome === "blocked") {

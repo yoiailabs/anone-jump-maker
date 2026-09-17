@@ -1,5 +1,11 @@
-/** 投稿に付けてもらうハッシュタグ。 */
+/** 画面の投稿ボタンに出すハッシュタグ。 */
 export const SHARE_HASHTAG = "#あのねジャンプ";
+
+/** メーカー名のハッシュタグ。投稿本文に足す。 */
+export const SHARE_MAKER_HASHTAG = "#あのねジャンプメーカー";
+
+/** X の投稿／共有シートに渡す本文。 */
+export const SHARE_TEXT = `${SHARE_HASHTAG} ${SHARE_MAKER_HASHTAG}`;
 
 /** アプリ本体の共有 URL。プレビュー URL ではなく本番を渡す。 */
 export const APP_SHARE_URL = "https://anone.yoiailabs.com";
@@ -25,7 +31,7 @@ export type ShareOutcome = "files" | "intent" | "cancelled" | "blocked";
 /** shared: Web Share / copied: クリップボード / cancelled: ユーザーが閉じた */
 export type AppShareOutcome = "shared" | "copied" | "cancelled" | "unsupported";
 
-export function buildXIntentUrl(text: string = SHARE_HASHTAG): string {
+export function buildXIntentUrl(text: string = SHARE_TEXT): string {
   return `${X_INTENT_ENDPOINT}?text=${encodeURIComponent(text)}`;
 }
 
@@ -54,7 +60,7 @@ export async function shareJumpVideo(options: {
   navigator?: ShareNavigatorLike;
   openUrl: (url: string) => boolean;
 }): Promise<ShareOutcome> {
-  const text = options.text ?? SHARE_HASHTAG;
+  const text = options.text ?? SHARE_TEXT;
   const { file, navigator: nav } = options;
   if (file && nav?.share && canShareVideoFile(file, nav)) {
     try {
