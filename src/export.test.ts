@@ -109,6 +109,10 @@ function createVideo(init?: Partial<Pick<VideoStub, "currentTime" | "duration" |
   };
 }
 
+function asVideo(video: VideoStub): HTMLVideoElement {
+  return video as unknown as HTMLVideoElement;
+}
+
 function createStuckVideo() {
   const video = createVideo();
   let shown = 0;
@@ -155,13 +159,13 @@ describe("seekVideo", () => {
         assigned = true;
       },
     });
-    await seekVideo(video as HTMLVideoElement, 1.2);
+    await seekVideo(asVideo(video), 1.2);
     expect(assigned).toBe(false);
   });
 
   it("resolves on seeked without waiting for the timeout", async () => {
     const video = createVideo();
-    const pending = seekVideo(video as HTMLVideoElement, 1.2);
+    const pending = seekVideo(asVideo(video), 1.2);
     video.dispatch("seeked");
     await pending;
   });
@@ -175,14 +179,14 @@ describe("seekVideo", () => {
       },
       set() {},
     });
-    const pending = seekVideo(video as HTMLVideoElement, 1.2);
+    const pending = seekVideo(asVideo(video), 1.2);
     await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS);
     await pending;
   });
 
   it("retries currentTime after a timeout, then succeeds on seeked", async () => {
     const stuck = createStuckVideo();
-    const pending = seekVideo(stuck.video as HTMLVideoElement, 1.2);
+    const pending = seekVideo(asVideo(stuck.video), 1.2);
     expect(stuck.assigns()).toBe(1);
     await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS - 1);
     expect(stuck.assigns()).toBe(1);
@@ -194,7 +198,7 @@ describe("seekVideo", () => {
 
   it("rejects only after the timeout retries are exhausted", async () => {
     const stuck = createStuckVideo();
-    const pending = seekVideo(stuck.video as HTMLVideoElement, 1.2);
+    const pending = seekVideo(asVideo(stuck.video), 1.2);
     let settled = false;
     void pending.then(
       () => {
@@ -213,7 +217,7 @@ describe("seekVideo", () => {
 
   it("rejects when the video errors", async () => {
     const video = createVideo();
-    const pending = seekVideo(video as HTMLVideoElement, 1.2);
+    const pending = seekVideo(asVideo(video), 1.2);
     video.dispatch("error");
     await expect(pending).rejects.toThrow("シークに失敗しました");
   });
