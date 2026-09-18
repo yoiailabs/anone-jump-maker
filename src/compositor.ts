@@ -1,4 +1,9 @@
-import { applySoftwareBlur } from "./blur.ts";
+import {
+  applySoftwareBlur,
+  EXPORT_BLUR_QUALITY,
+  PREVIEW_BLUR_QUALITY,
+  type SoftwareBlurQuality,
+} from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import { keyImageData } from "./keying.ts";
 import {
@@ -46,6 +51,12 @@ export const IMAGE_FILTER_TARGET = "photo-plate" as const;
 /** iOS / Safari は ctx.filter が無効なので、画素の箱型ぼかしを使う。 */
 export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
 
+/** プレビューだけ安い近似。保存はフル品質の `applySoftwareBlur`。 */
+export const IMAGE_FILTER_BLUR_PREVIEW = PREVIEW_BLUR_QUALITY;
+
+/** オフライン encode / 保存は現行の 2 パス品質。 */
+export const IMAGE_FILTER_BLUR_EXPORT = EXPORT_BLUR_QUALITY;
+
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
  * ブラウザによっては（ImageBitmap が既に GL 向け Y 反転済みのため）写真だけ上下逆になる。
@@ -66,14 +77,20 @@ export type Compositor = {
   setAspect: (mode: AspectMode) => void;
   setResolutionScale: (scale: number) => void;
   resolutionScale: () => number;
+  setBlurQuality: (quality: SoftwareBlurQuality) => void;
+  blurQuality: () => SoftwareBlurQuality;
   aspect: () => AspectMode;
   destroy: () => void;
   kind: "2d";
 };
 
-export function createCompositor(options?: { resolutionScale?: number }): Compositor {
+export function createCompositor(options?: {
+  resolutionScale?: number;
+  blurQuality?: SoftwareBlurQuality;
+}): Compositor {
   let mode: AspectMode = DEFAULT_ASPECT;
   let resolutionScale = options?.resolutionScale ?? 1;
+  let blurQuality: SoftwareBlurQuality = options?.blurQuality ?? EXPORT_BLUR_QUALITY;
   const canvas = document.createElement("canvas");
   applyCanvasSize(canvas, mode, resolutionScale);
   canvas.className = "stage-canvas";
@@ -128,7 +145,7 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
     const fx = swapFx(time, slots, swapStyle);
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
 
-    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode, imageFilter);
+    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode, imageFilter, blurQuality);
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -154,6 +171,12 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
     },
     resolutionScale() {
       return resolutionScale;
+    },
+    setBlurQuality(next) {
+      blurQuality = next === PREVIEW_BLUR_QUALITY ? PREVIEW_BLUR_QUALITY : EXPORT_BLUR_QUALITY;
+    },
+    blurQuality() {
+      return blurQuality;
     },
     aspect() {
       return mode;
@@ -209,6 +232,7 @@ function composeMain(
   panel: { w: number; h: number },
   mode: AspectMode,
   imageFilter: ImageFilter,
+  blurQuality: SoftwareBlurQuality,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -220,7 +244,7 @@ function composeMain(
 
   if (plate) {
     drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
-    applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
+    applyPhotoFilter(main, mainCtx, surfaces, imageFilter, blurQuality);
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -461,10 +485,11 @@ function applyPhotoFilter(
   mainCtx: CanvasRenderingContext2D,
   { blur, blurCtx }: FxSurfaces,
   filter: ImageFilter,
+  quality: SoftwareBlurQuality,
 ): void {
   if (!hasImageFilter(filter)) return;
   const px = filterBlurPx(filter, Math.max(main.width, main.height));
-  applySoftwareBlur(main, mainCtx, blur, blurCtx, px);
+  applySoftwareBlur(main, mainCtx, blur, blurCtx, px, quality);
 }
 
 function paintOutput(

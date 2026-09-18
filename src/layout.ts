@@ -91,7 +91,8 @@ export function isImageFilter(value: string): value is ImageFilter {
 
 /**
  * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強はその一段上。
- * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
+ * 半径の基準はプレビューと保存で同じ。プレビューだけ安い近似、保存はフル品質。
+ * iOS では画素ぼかしで再現する。
  */
 export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
   none: 0,

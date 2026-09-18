@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
+import {
+  EXPORT_BLUR_QUALITY,
+  PREVIEW_BLUR_QUALITY,
+  SOFTWARE_BLUR_PASSES,
+  resolveSoftwareBlurSettings,
+} from "./blur.ts";
 import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
-import { swapFx, outputSize } from "./layout.ts";
+import { filterBlurPx, outputSize, swapFx } from "./layout.ts";
 import { PREVIEW_FPS } from "./playback.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
@@ -32,6 +38,18 @@ describe("offline export plan", () => {
     expect(scaleCanvasSize(1280, 720, PREVIEW_RESOLUTION_SCALE)).not.toEqual({ width: 1280, height: 720 });
     expect(PREVIEW_FPS).toBe(24);
     expect(PREVIEW_FPS).not.toBe(EXPORT_FPS);
+  });
+
+  it("forces full software blur quality so preview lightening cannot leak into save", () => {
+    expect(EXPORT_BLUR_QUALITY).toBe("full");
+    expect(PREVIEW_BLUR_QUALITY).toBe("preview");
+    const px = filterBlurPx("blur-strong", 1280);
+    const saved = resolveSoftwareBlurSettings(px, EXPORT_BLUR_QUALITY);
+    const preview = resolveSoftwareBlurSettings(px, PREVIEW_BLUR_QUALITY);
+    expect(saved.passes).toBe(SOFTWARE_BLUR_PASSES);
+    expect(saved.px).toBe(px);
+    expect(saved.downscale).toBeGreaterThan(preview.downscale);
+    expect(preview.passes).toBeLessThan(saved.passes);
   });
 
   it("muxes template-file audio so preview mute cannot silence a saved video", () => {

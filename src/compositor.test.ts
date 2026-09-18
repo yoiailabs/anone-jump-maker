@@ -3,7 +3,9 @@ import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import {
   BLUR_SOURCE,
   FRAME_FX_TARGET,
+  IMAGE_FILTER_BLUR_EXPORT,
   IMAGE_FILTER_BLUR_IMPL,
+  IMAGE_FILTER_BLUR_PREVIEW,
   IMAGE_FILTER_TARGET,
   JUMP_FLASH_TARGET,
   PHOTO_UPLOAD_PATH,
@@ -48,6 +50,8 @@ describe("swap fx draw path", () => {
   it("applies the image filter to the photo plate only, with a software blur that works on iOS", () => {
     expect(IMAGE_FILTER_TARGET).toBe("photo-plate");
     expect(IMAGE_FILTER_BLUR_IMPL).toBe("image-data-box");
+    expect(IMAGE_FILTER_BLUR_PREVIEW).toBe("preview");
+    expect(IMAGE_FILTER_BLUR_EXPORT).toBe("full");
   });
 
   it("places the official 16:9 character 1:1 so it is not larger than the CapCut / X template", () => {
