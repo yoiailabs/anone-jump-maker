@@ -53,6 +53,103 @@ export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
  */
 export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 
+/**
+ * 写真層（blit + レイアウト + 画像フィルター）はオフスクリーンに残し、
+ * スロット／写真／幾何が同じなら毎フレーム描き直さない。
+ */
+export const PHOTO_PLATE_CACHE = "offscreen-canvas" as const;
+
+export type PhotoPlateCacheKey = {
+  photoId: string;
+  bitmapW: number;
+  bitmapH: number;
+  plateSlot: number;
+  swapStyle: SwapStyle;
+  imageFilter: ImageFilter;
+  aspect: AspectMode;
+  panelW: number;
+  panelH: number;
+  scale: number;
+  dy: number;
+  backdrop: boolean;
+};
+
+export type PhotoPlateCacheInput = {
+  photo: Pick<LoadedPhoto, "id"> & { bitmap: Pick<LoadedPhoto["bitmap"], "width" | "height"> };
+  plateSlot: number;
+  swapStyle: SwapStyle;
+  imageFilter: ImageFilter;
+  aspect: AspectMode;
+  panelW: number;
+  panelH: number;
+  fx: Pick<SwapFx, "scale" | "dy" | "backdrop">;
+};
+
+/** 時刻依存のキーイング／全面 FX／ジャンプフラッシュはキーに入れない。 */
+export function photoPlateCacheKey(input: PhotoPlateCacheInput): PhotoPlateCacheKey {
+  return {
+    photoId: input.photo.id,
+    bitmapW: input.photo.bitmap.width,
+    bitmapH: input.photo.bitmap.height,
+    plateSlot: input.plateSlot,
+    swapStyle: input.swapStyle,
+    imageFilter: input.imageFilter,
+    aspect: input.aspect,
+    panelW: input.panelW,
+    panelH: input.panelH,
+    scale: input.fx.scale,
+    dy: input.fx.dy,
+    backdrop: input.fx.backdrop,
+  };
+}
+
+export function samePhotoPlateCacheKey(a: PhotoPlateCacheKey, b: PhotoPlateCacheKey): boolean {
+  return (
+    a.photoId === b.photoId &&
+    a.bitmapW === b.bitmapW &&
+    a.bitmapH === b.bitmapH &&
+    a.plateSlot === b.plateSlot &&
+    a.swapStyle === b.swapStyle &&
+    a.imageFilter === b.imageFilter &&
+    a.aspect === b.aspect &&
+    a.panelW === b.panelW &&
+    a.panelH === b.panelH &&
+    a.scale === b.scale &&
+    a.dy === b.dy &&
+    a.backdrop === b.backdrop
+  );
+}
+
+export type PhotoPlateCache = {
+  /** 同じキーなら true（再利用）。変わっていれば false（再描画して記録）。 */
+  reuse: (key: PhotoPlateCacheKey) => boolean;
+  draws: () => number;
+  hits: () => number;
+};
+
+export function createPhotoPlateCache(): PhotoPlateCache {
+  let last: PhotoPlateCacheKey | undefined;
+  let draws = 0;
+  let hits = 0;
+  return {
+    reuse(key) {
+      if (last && samePhotoPlateCacheKey(last, key)) {
+        hits += 1;
+        return true;
+      }
+      last = key;
+      draws += 1;
+      return false;
+    },
+    draws() {
+      return draws;
+    },
+    hits() {
+      return hits;
+    },
+  };
+}
+
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (
@@ -109,6 +206,11 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
   const blurCtx = blur.getContext("2d", { alpha: false, willReadFrequently: true });
   if (!blurCtx) throw new Error("Canvas2D が使えません");
 
+  const plateLayer = document.createElement("canvas");
+  const plateLayerCtx = plateLayer.getContext("2d", { alpha: false });
+  if (!plateLayerCtx) throw new Error("Canvas2D が使えません");
+  const plateCache = createPhotoPlateCache();
+
   const surfaces: FxSurfaces = { keyed, keyedCtx, halo, haloCtx, fxA, fxACtx, fxB, fxBCtx, blur, blurCtx };
 
   const draw = (
@@ -128,7 +230,21 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
     const fx = swapFx(time, slots, swapStyle);
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
 
-    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode, imageFilter);
+    composeMain(
+      main,
+      mainCtx,
+      surfaces,
+      plateLayer,
+      plateLayerCtx,
+      plateCache,
+      plate,
+      video,
+      fx,
+      swapStyle,
+      panel,
+      mode,
+      imageFilter,
+    );
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -175,6 +291,8 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
       fxB.height = 0;
       blur.width = 0;
       blur.height = 0;
+      plateLayer.width = 0;
+      plateLayer.height = 0;
     },
   };
 }
@@ -202,6 +320,9 @@ function composeMain(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
+  plateLayer: HTMLCanvasElement,
+  plateLayerCtx: CanvasRenderingContext2D,
+  plateCache: PhotoPlateCache,
   plate: LoadedPhoto | undefined,
   video: HTMLVideoElement,
   fx: SwapFx,
@@ -219,8 +340,22 @@ function composeMain(
   mainCtx.fillRect(0, 0, mw, mh);
 
   if (plate) {
-    drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
-    applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
+    const key = photoPlateCacheKey({
+      photo: plate,
+      plateSlot: fx.plateSlot,
+      swapStyle: style,
+      imageFilter,
+      aspect: mode,
+      panelW: mw,
+      panelH: mh,
+      fx,
+    });
+    if (!plateCache.reuse(key)) {
+      paintCachedPhotoPlate(plateLayer, plateLayerCtx, surfaces, plate, fx, style, imageFilter, mw, mh);
+    }
+    resetCtx(mainCtx);
+    mainCtx.drawImage(plateLayer, 0, 0);
+    applyPlateFlash(mainCtx, plate, fx, style, mw, mh);
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -260,9 +395,28 @@ export function plateDest(
   });
 }
 
+function paintCachedPhotoPlate(
+  plateLayer: HTMLCanvasElement,
+  plateLayerCtx: CanvasRenderingContext2D,
+  surfaces: FxSurfaces,
+  photo: LoadedPhoto,
+  fx: SwapFx,
+  style: SwapStyle,
+  imageFilter: ImageFilter,
+  mw: number,
+  mh: number,
+): void {
+  ensureCanvasSize(plateLayer, mw, mh);
+  resetCtx(plateLayerCtx);
+  plateLayerCtx.fillStyle = "#0a0806";
+  plateLayerCtx.fillRect(0, 0, mw, mh);
+  drawPhotoPlate(plateLayerCtx, photo, fx, style, mw, mh);
+  applyPhotoFilter(plateLayer, plateLayerCtx, surfaces, imageFilter);
+}
+
 /**
  * 写真層。ズームで縮んだときは同じ写真の cover ぼかしを後ろに敷いて黒帯を見せない。
- * ジャンプのフラッシュ（加算＋スクリーン）は写真層にだけ乗せる。
+ * ジャンプのフラッシュはキャッシュせず、合成時に毎フレーム乗せる。
  */
 function drawPhotoPlate(
   ctx: CanvasRenderingContext2D,
@@ -285,6 +439,20 @@ function drawPhotoPlate(
   }
   const dest = plateDest(bitmap.width, bitmap.height, mw, mh, fx, style);
   ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
+}
+
+/** ジャンプのフラッシュ（加算＋スクリーン）は写真層にだけ乗せる。 */
+function applyPlateFlash(
+  ctx: CanvasRenderingContext2D,
+  photo: LoadedPhoto,
+  fx: SwapFx,
+  style: SwapStyle,
+  mw: number,
+  mh: number,
+): void {
+  if (fx.flashAdd <= 0.002 && fx.flashScreen <= 0.002) return;
+  const dest = plateDest(photo.bitmap.width, photo.bitmap.height, mw, mh, fx, style);
+  resetCtx(ctx);
   if (fx.flashAdd > 0.002) {
     ctx.globalCompositeOperation = "lighter";
     ctx.fillStyle = `rgba(255, 255, 255, ${fx.flashAdd})`;

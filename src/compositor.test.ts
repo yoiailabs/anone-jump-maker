@@ -6,12 +6,17 @@ import {
   IMAGE_FILTER_BLUR_IMPL,
   IMAGE_FILTER_TARGET,
   JUMP_FLASH_TARGET,
+  PHOTO_PLATE_CACHE,
   PHOTO_UPLOAD_PATH,
   SONG_CREDIT,
   blurTapCount,
+  createPhotoPlateCache,
+  photoPlateCacheKey,
   plateDest,
+  samePhotoPlateCacheKey,
   songCreditFontSize,
   songCreditLayout,
+  type PhotoPlateCacheInput,
 } from "./compositor.ts";
 import {
   CHAR_SCALE,
@@ -25,6 +30,8 @@ import {
   mainPanelRect,
   swapFx,
   usesBlurBackdrop,
+  type ImageFilter,
+  type SwapStyle,
 } from "./layout.ts";
 
 const F = 1 / TEMPLATE_FPS;
@@ -107,6 +114,181 @@ describe("swap fx draw path", () => {
     expect(swapFx(0.12, slots, "jump")).toEqual(swapFx(0.12, slots, "jump"));
     expect(swapFx(0.5, slots, "zoom")).toEqual(swapFx(0.5, slots, "zoom"));
     expect(swapFx(0.12, slots, "jump").flashAdd).toBe(0);
+  });
+});
+
+describe("photo plate cache", () => {
+  const panel = { w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height };
+
+  const photo = (id: string, width = 1920, height = 1080) => ({
+    id,
+    bitmap: { width, height },
+  });
+
+  const baseInput = (
+    overrides: Partial<Omit<PhotoPlateCacheInput, "photo" | "fx">> & {
+      photo?: PhotoPlateCacheInput["photo"];
+      fx?: Partial<PhotoPlateCacheInput["fx"]>;
+    } = {},
+  ): PhotoPlateCacheInput => ({
+    photo: overrides.photo ?? photo("p-a"),
+    plateSlot: overrides.plateSlot ?? 0,
+    swapStyle: overrides.swapStyle ?? "zoom",
+    imageFilter: overrides.imageFilter ?? "none",
+    aspect: overrides.aspect ?? "landscape",
+    panelW: overrides.panelW ?? panel.w,
+    panelH: overrides.panelH ?? panel.h,
+    fx: {
+      scale: 1,
+      dy: 0,
+      backdrop: false,
+      ...overrides.fx,
+    },
+  });
+
+  it("keeps the photo plate on an offscreen canvas so preview can reuse it", () => {
+    expect(PHOTO_PLATE_CACHE).toBe("offscreen-canvas");
+  });
+
+  it("reuses the plate when slot, photos, style, filter, aspect, and geometry stay the same", () => {
+    const cache = createPhotoPlateCache();
+    const key = photoPlateCacheKey(baseInput());
+    expect(cache.reuse(key)).toBe(false);
+    expect(cache.reuse(photoPlateCacheKey(baseInput()))).toBe(true);
+    expect(cache.reuse(key)).toBe(true);
+    expect(cache.draws()).toBe(1);
+    expect(cache.hits()).toBe(2);
+    expect(samePhotoPlateCacheKey(key, photoPlateCacheKey(baseInput()))).toBe(true);
+  });
+
+  it("does not treat jump flash as a plate-cache input", () => {
+    const rest = swapFx(0.2, [0, 0.5, 1], "jump");
+    const flash = swapFx(0, [0, 0.5, 1], "jump");
+    expect(flash.flashAdd).toBeGreaterThan(0);
+    expect(rest.flashAdd).toBe(0);
+    const restKey = photoPlateCacheKey(baseInput({ swapStyle: "jump", fx: rest }));
+    const flashKey = photoPlateCacheKey(baseInput({ swapStyle: "jump", fx: flash }));
+    expect(restKey.scale).not.toBe(flashKey.scale);
+    const sameGeom = photoPlateCacheKey(
+      baseInput({
+        swapStyle: "jump",
+        fx: { scale: rest.scale, dy: rest.dy, backdrop: rest.backdrop },
+      }),
+    );
+    const sameGeomFlash = photoPlateCacheKey(
+      baseInput({
+        swapStyle: "jump",
+        fx: { scale: rest.scale, dy: rest.dy, backdrop: rest.backdrop },
+      }),
+    );
+    expect(samePhotoPlateCacheKey(sameGeom, sameGeomFlash)).toBe(true);
+    expect(sameGeom).not.toHaveProperty("flashAdd");
+  });
+
+  it("invalidates when any plate input changes", () => {
+    const cache = createPhotoPlateCache();
+    const first = photoPlateCacheKey(baseInput());
+    expect(cache.reuse(first)).toBe(false);
+
+    const changes: Array<[string, PhotoPlateCacheInput]> = [
+      ["photo id", baseInput({ photo: photo("p-b") })],
+      ["bitmap size", baseInput({ photo: photo("p-a", 1280, 720) })],
+      ["plate slot", baseInput({ plateSlot: 1 })],
+      ["swap style", baseInput({ swapStyle: "jump" })],
+      ["image filter", baseInput({ imageFilter: "blur-weak" })],
+      ["aspect", baseInput({ aspect: "portrait", panelW: 608, panelH: 342 })],
+      ["panel size", baseInput({ panelW: 608, panelH: 342 })],
+      ["scale", baseInput({ fx: { scale: 0.9 } })],
+      ["dy", baseInput({ fx: { dy: 0.1 } })],
+      ["backdrop", baseInput({ fx: { backdrop: true } })],
+    ];
+
+    for (const [, input] of changes) {
+      const key = photoPlateCacheKey(input);
+      expect(samePhotoPlateCacheKey(first, key)).toBe(false);
+      expect(cache.reuse(key)).toBe(false);
+    }
+    expect(cache.draws()).toBe(1 + changes.length);
+    expect(cache.hits()).toBe(0);
+  });
+
+  it("reuses the plate while scrubbing time inside a zoom slot whose geometry is still", () => {
+    const cache = createPhotoPlateCache();
+    const slots = [0, 15 * F, 30 * F];
+    const times = [0.2, 0.22, 0.28, 0.33, 0.4];
+    for (const time of times) {
+      const fx = swapFx(time, slots, "zoom");
+      expect(fx.plateSlot).toBe(0);
+      expect(fx.scale).toBe(1);
+      expect(fx.backdrop).toBe(false);
+      cache.reuse(
+        photoPlateCacheKey(
+          baseInput({
+            plateSlot: fx.plateSlot,
+            swapStyle: "zoom",
+            fx,
+          }),
+        ),
+      );
+    }
+    expect(cache.draws()).toBe(1);
+    expect(cache.hits()).toBe(times.length - 1);
+  });
+
+  it("redraws when jump motion changes plate geometry, then reuses a still frame", () => {
+    const cache = createPhotoPlateCache();
+    const slots = [0, 15 * F, 30 * F];
+    const moving = [0, F, 2 * F];
+    for (const time of moving) {
+      const fx = swapFx(time, slots, "jump");
+      cache.reuse(
+        photoPlateCacheKey(
+          baseInput({
+            plateSlot: fx.plateSlot,
+            swapStyle: "jump",
+            fx,
+          }),
+        ),
+      );
+    }
+    expect(cache.draws()).toBe(moving.length);
+    const still = swapFx(7 * F, slots, "jump");
+    const stillKey = photoPlateCacheKey(
+      baseInput({
+        plateSlot: still.plateSlot,
+        swapStyle: "jump",
+        fx: still,
+      }),
+    );
+    expect(cache.reuse(stillKey)).toBe(false);
+    expect(cache.reuse(stillKey)).toBe(true);
+    expect(cache.draws()).toBe(moving.length + 1);
+    expect(cache.hits()).toBe(1);
+  });
+
+  it("counts fewer plate redraws than paints when only video time advances in-slot", () => {
+    const cache = createPhotoPlateCache();
+    const slots = [0, 1, 2];
+    let paints = 0;
+    for (let frame = 6; frame <= 26; frame += 1) {
+      const time = frame / TEMPLATE_FPS;
+      const fx = swapFx(time, slots, "zoom");
+      paints += 1;
+      cache.reuse(
+        photoPlateCacheKey(
+          baseInput({
+            plateSlot: fx.plateSlot,
+            swapStyle: "zoom" satisfies SwapStyle,
+            imageFilter: "blur-strong" satisfies ImageFilter,
+            fx,
+          }),
+        ),
+      );
+    }
+    expect(paints).toBe(21);
+    expect(cache.draws()).toBeLessThan(paints);
+    expect(cache.draws()).toBe(1);
+    expect(cache.hits()).toBe(paints - 1);
   });
 });
 
