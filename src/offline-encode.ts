@@ -24,11 +24,13 @@ import {
   EXPORT_CHARACTER_FALLBACK,
   EXPORT_CHARACTER_PIXELS,
   EXPORT_FPS,
+  EXPORT_PROBE_TIMEOUT_MS,
   TEMPLATE_FRAME_MISSING_MESSAGE,
   assertCharacterAdvanced,
   characterFrameFromCanvas,
   chooseExportCharacterPath,
   copySampleRgba,
+  firstResolved,
   frameTimes,
   hasWebCodecsVideoEncoder,
   putRgbaOnCanvas,
@@ -101,7 +103,12 @@ export async function encodeOffline(options: {
   video.muted = true;
   try {
     const frameSink = template ? await openTemplateFrameSink(template) : null;
-    const characterPath = frameSink ? await probeExportCharacterPath(frameSink) : EXPORT_CHARACTER_FALLBACK;
+    const characterPath = frameSink
+      ? await firstResolved([
+          probeExportCharacterPath(frameSink),
+          sleep(EXPORT_PROBE_TIMEOUT_MS).then(() => EXPORT_CHARACTER_FALLBACK),
+        ])
+      : EXPORT_CHARACTER_FALLBACK;
     const pumpAudio = template ? await attachTemplateAudio(output, plan.format, template) : null;
     await output.start();
     if (pumpAudio) {
@@ -247,7 +254,8 @@ async function encodeWithHtmlVideo(options: {
   const { video, times, frameDuration, draw, videoSource, onProgress } = options;
   for (let i = 0; i < times.length; i += 1) {
     const time = times[i]!;
-    await seekVideo(video, time);
+    // iOS フォールバックは #52 以前と同じ seeked のみ。毎フレーム rVFC すると 466×400ms になる。
+    await seekVideo(video, time, { waitForPresented: false });
     draw(time);
     await videoSource.add(i * frameDuration, frameDuration);
     if (i === 0 || i === times.length - 1 || i % 8 === 0) {
@@ -295,20 +303,21 @@ async function attachTemplateAudio(
 }
 
 async function openTemplateFrameSink(input: Input): Promise<VideoSampleSink | null> {
+  if (typeof VideoDecoder !== "function") return null;
   try {
     const track = await input.getPrimaryVideoTrack();
     if (!track || !(await track.canDecode())) return null;
-    const software = new VideoSampleSink(track, { hardwareAcceleration: "prefer-software" });
-    try {
-      const probe = await software.getSample(0);
-      probe?.close();
-      return software;
-    } catch {
-      return new VideoSampleSink(track);
-    }
+    // ここではデコードしない。getSample(0) すると iOS software で数秒かかり、そのあとまた probe する。
+    return new VideoSampleSink(track, { hardwareAcceleration: "prefer-software" });
   } catch {
     return null;
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 async function pickAudioCodec(format: OutputFormat): Promise<AudioCodec | null> {

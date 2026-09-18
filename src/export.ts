@@ -63,20 +63,38 @@ export function hasWebCodecsVideoEncoder(): boolean {
 }
 
 /**
- * シーク完了後に canvas/WebGL へ提示されたフレームを待つ上限。
- * Android Chrome は seeked / currentTime 更新後もしばらく先頭フレームのままになる。
+ * シーク後の提示待ち上限。
+ * html-video-seek で毎フレーム待ると 466×400ms ≈ 186s になるので、保存フォールバックでは使わない。
  */
 export const SEEK_PRESENT_TIMEOUT_MS = 400;
 
-export async function seekVideo(video: HTMLVideoElement, time: number): Promise<void> {
+/** RGBA プローブ全体の上限。WebKit の software デコードがここで止まらないようにする。 */
+export const EXPORT_PROBE_TIMEOUT_MS = 1200;
+
+export type SeekVideoOptions = {
+  /**
+   * 提示フレームを待つ。Android の HTML video 固まり対策用。
+   * iOS の html-video-seek 保存では false（#52 以前と同じ seeked のみ）。
+   */
+  waitForPresented?: boolean;
+};
+
+export async function seekVideo(
+  video: HTMLVideoElement,
+  time: number,
+  options: SeekVideoOptions = {},
+): Promise<void> {
   const duration = Number.isFinite(video.duration) ? video.duration : 0;
   const target = clamp(time, 0, duration > 0 ? Math.max(0, duration - 1e-4) : time);
   video.pause();
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && Math.abs(video.currentTime - target) < 8e-4) {
     return;
   }
+  const waitForPresented = options.waitForPresented === true;
   // rVFC は currentTime 代入より前に登録する。代入後だと paused seek の提示を取り逃す。
-  const presented = waitForPresentedFrame(video, SEEK_PRESENT_TIMEOUT_MS, { mediaTime: target });
+  const presented = waitForPresented
+    ? waitForPresentedFrame(video, SEEK_PRESENT_TIMEOUT_MS, { mediaTime: target })
+    : null;
   const seeked = new Promise<void>((resolve, reject) => {
     const finish = () => {
       window.clearTimeout(timer);
@@ -104,7 +122,15 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
     video.addEventListener("error", onError);
     video.currentTime = target;
   });
-  await Promise.all([seeked, presented]);
+  if (presented) {
+    await Promise.all([seeked, presented]);
+    return;
+  }
+  await seeked;
+}
+
+export async function firstResolved<T>(promises: ReadonlyArray<Promise<T>>): Promise<T> {
+  return Promise.race(promises);
 }
 
 /** デコード済みフレームを保存のキャラ源にする。HTMLVideoElement は使わない。 */

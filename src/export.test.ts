@@ -12,6 +12,7 @@ import {
   EXPORT_FALLBACK,
   EXPORT_FPS,
   EXPORT_PATH,
+  EXPORT_PROBE_TIMEOUT_MS,
   SEEK_PRESENT_TIMEOUT_MS,
   TEMPLATE_FRAME_FROZEN_MESSAGE,
   TEMPLATE_FRAME_MISSING_MESSAGE,
@@ -22,6 +23,7 @@ import {
   copySampleRgba,
   exportJumpVideo,
   fingerprintRgba,
+  firstResolved,
   frameTimes,
   hasWebCodecsVideoEncoder,
   packedRgba,
@@ -271,9 +273,18 @@ describe("seekVideo", () => {
     }
   });
 
-  it("registers requestVideoFrameCallback before assigning currentTime", async () => {
+  it("waits only for seeked by default so html-video-seek does not pay rVFC per frame", async () => {
     const video = createVideo();
     const pending = seekVideo(asVideo(video), 1.2);
+    expect(video.events).toEqual(["seek"]);
+    expect(video.events).not.toContain("rvfc");
+    video.dispatch("seeked");
+    await pending;
+  });
+
+  it("registers requestVideoFrameCallback before assigning currentTime when present wait is requested", async () => {
+    const video = createVideo();
+    const pending = seekVideo(asVideo(video), 1.2, { waitForPresented: true });
     expect(video.events.indexOf("rvfc")).toBe(0);
     expect(video.events.indexOf("seek")).toBe(1);
     video.dispatch("seeked");
@@ -292,12 +303,33 @@ describe("seekVideo", () => {
     vi.useFakeTimers();
     try {
       const video = createVideo();
-      const pending = seekVideo(asVideo(video), 1.2);
+      const pending = seekVideo(asVideo(video), 1.2, { waitForPresented: true });
       video.dispatch("seeked");
       await vi.advanceTimersByTimeAsync(SEEK_PRESENT_TIMEOUT_MS);
       await pending;
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("iOS export timing", () => {
+  it("does not wait the present-timeout on every html-video-seek frame", () => {
+    const frames = frameTimes(15.54, 30);
+    expect(frames).toHaveLength(466);
+    expect(frames.length * SEEK_PRESENT_TIMEOUT_MS).toBe(186_400);
+    expect(EXPORT_PROBE_TIMEOUT_MS).toBe(1200);
+    expect(EXPORT_PROBE_TIMEOUT_MS).toBeLessThan(frames.length * SEEK_PRESENT_TIMEOUT_MS);
+  });
+
+  it("takes the first finished probe result so a hung software decode can fall back", async () => {
+    let later = 0;
+    const result = await firstResolved([
+      new Promise<string>(() => undefined),
+      Promise.resolve(EXPORT_CHARACTER_FALLBACK),
+    ]);
+    later = 1;
+    expect(result).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(later).toBe(1);
   });
 });
