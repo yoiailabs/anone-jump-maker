@@ -20,9 +20,9 @@ import {
 } from "mediabunny";
 import {
   EXPORT_FPS,
+  composeExportFrame,
   frameTimes,
   hasWebCodecsVideoEncoder,
-  seekVideo,
   type ExportProgress,
   type ExportResult,
 } from "./export.ts";
@@ -95,8 +95,7 @@ export async function encodeOffline(options: {
     }
     for (let i = 0; i < times.length; i += 1) {
       const time = times[i]!;
-      await seekVideo(video, time);
-      draw(time);
+      await composeExportFrame(video, time, draw);
       await videoSource.add(i * frameDuration, frameDuration);
       if (i === 0 || i === times.length - 1 || i % 8 === 0) {
         onProgress?.({ mode: "offline", current: i + 1, total: times.length });

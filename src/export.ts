@@ -1,3 +1,5 @@
+import { waitForPresentedFrame } from "./playback.ts";
+
 export const EXPORT_FPS = 30;
 
 /** 保存はリアルタイム録画ではなく、フレームをシークして組み立てる。 */
@@ -41,6 +43,12 @@ export function hasWebCodecsVideoEncoder(): boolean {
   return typeof VideoEncoder === "function";
 }
 
+/**
+ * シーク完了後に canvas/WebGL へ提示されたフレームを待つ上限。
+ * Android Chrome は seeked / currentTime 更新後もしばらく先頭フレームのままになる。
+ */
+export const SEEK_PRESENT_TIMEOUT_MS = 400;
+
 export async function seekVideo(video: HTMLVideoElement, time: number): Promise<void> {
   const duration = Number.isFinite(video.duration) ? video.duration : 0;
   const target = clamp(time, 0, duration > 0 ? Math.max(0, duration - 1e-4) : time);
@@ -48,7 +56,9 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && Math.abs(video.currentTime - target) < 8e-4) {
     return;
   }
-  await new Promise<void>((resolve, reject) => {
+  // rVFC は currentTime 代入より前に登録する。代入後だと paused seek の提示を取り逃す。
+  const presented = waitForPresentedFrame(video, SEEK_PRESENT_TIMEOUT_MS, { mediaTime: target });
+  const seeked = new Promise<void>((resolve, reject) => {
     const finish = () => {
       window.clearTimeout(timer);
       video.removeEventListener("seeked", onSeeked);
@@ -75,6 +85,21 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
     video.addEventListener("error", onError);
     video.currentTime = target;
   });
+  await Promise.all([seeked, presented]);
+}
+
+/**
+ * オフライン保存の1フレーム: テンプレを提示時刻までシークしてから合成する。
+ * `draw(time)` の写真層は論理時刻、キャラは video 画素なので、提示待ちを挟まないと
+ * Android Chrome でキャラだけ先頭フレームのままになる。
+ */
+export async function composeExportFrame(
+  video: HTMLVideoElement,
+  time: number,
+  draw: (time: number) => void,
+): Promise<void> {
+  await seekVideo(video, time);
+  draw(time);
 }
 
 /**

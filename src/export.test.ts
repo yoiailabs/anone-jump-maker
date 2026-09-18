@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import { swapFx, outputSize } from "./layout.ts";
 import { PREVIEW_FPS } from "./playback.ts";
@@ -9,10 +9,13 @@ import {
   EXPORT_FALLBACK,
   EXPORT_FPS,
   EXPORT_PATH,
+  SEEK_PRESENT_TIMEOUT_MS,
   UNSUPPORTED_EXPORT_MESSAGE,
+  composeExportFrame,
   exportJumpVideo,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  seekVideo,
 } from "./export.ts";
 
 describe("offline export plan", () => {
@@ -90,5 +93,127 @@ describe("offline capability", () => {
         fps: 30,
       }),
     ).rejects.toThrow(UNSUPPORTED_EXPORT_MESSAGE);
+  });
+});
+
+type FrameCallback = (now: number, metadata?: { mediaTime?: number }) => void;
+
+type VideoStub = {
+  currentTime: number;
+  duration: number;
+  readyState: number;
+  pause: () => void;
+  addEventListener: (type: string, fn: () => void) => void;
+  removeEventListener: (type: string, fn: () => void) => void;
+  requestVideoFrameCallback: (cb: FrameCallback) => number;
+  cancelVideoFrameCallback: (handle: number) => void;
+  dispatch: (type: string) => void;
+  present: (mediaTime: number) => void;
+  events: string[];
+};
+
+function createVideo(init?: Partial<Pick<VideoStub, "currentTime" | "duration" | "readyState">>): VideoStub {
+  const listeners = new Map<string, Set<() => void>>();
+  const frameCallbacks: FrameCallback[] = [];
+  const events: string[] = [];
+  let shown = init?.currentTime ?? 0;
+  return {
+    events,
+    duration: init?.duration ?? 10,
+    readyState: init?.readyState ?? 2,
+    get currentTime() {
+      return shown;
+    },
+    set currentTime(value: number) {
+      events.push("seek");
+      shown = value;
+    },
+    pause() {},
+    addEventListener(type, fn) {
+      const set = listeners.get(type) ?? new Set();
+      set.add(fn);
+      listeners.set(type, set);
+    },
+    removeEventListener(type, fn) {
+      listeners.get(type)?.delete(fn);
+    },
+    requestVideoFrameCallback(cb) {
+      events.push("rvfc");
+      frameCallbacks.push(cb);
+      return frameCallbacks.length;
+    },
+    cancelVideoFrameCallback() {
+      frameCallbacks.length = 0;
+    },
+    dispatch(type) {
+      events.push(type);
+      for (const fn of [...(listeners.get(type) ?? [])]) fn();
+    },
+    present(mediaTime) {
+      const cb = frameCallbacks.shift();
+      cb?.(0, { mediaTime });
+    },
+  };
+}
+
+function asVideo(video: VideoStub): HTMLVideoElement {
+  return video as unknown as HTMLVideoElement;
+}
+
+describe("seekVideo / composeExportFrame", () => {
+  beforeEach(() => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    if (!("window" in globalThis)) {
+      Object.assign(globalThis, { window: globalThis });
+    }
+  });
+
+  it("registers requestVideoFrameCallback before assigning currentTime", async () => {
+    const video = createVideo();
+    const pending = seekVideo(asVideo(video), 1.2);
+    expect(video.events.indexOf("rvfc")).toBe(0);
+    expect(video.events.indexOf("seek")).toBe(1);
+    video.dispatch("seeked");
+    video.present(1.2);
+    await pending;
+  });
+
+  it("does not draw until a presented frame matches the sought time", async () => {
+    const video = createVideo();
+    const order: string[] = [];
+    const pending = composeExportFrame(asVideo(video), 0.4, () => {
+      order.push("draw");
+    });
+    video.dispatch("seeked");
+    await Promise.resolve();
+    expect(order).toEqual([]);
+    video.present(0);
+    await Promise.resolve();
+    expect(order).toEqual([]);
+    video.present(0.4);
+    await pending;
+    expect(order).toEqual(["draw"]);
+  });
+
+  it("returns immediately when the frame is already current", async () => {
+    const video = createVideo({ currentTime: 1.2, readyState: 2 });
+    video.events.length = 0;
+    await seekVideo(asVideo(video), 1.2);
+    expect(video.events).toEqual([]);
+  });
+
+  it("resolves after seeked even if the presented-frame wait times out", async () => {
+    vi.useFakeTimers();
+    try {
+      const video = createVideo();
+      const pending = seekVideo(asVideo(video), 1.2);
+      video.dispatch("seeked");
+      await vi.advanceTimersByTimeAsync(SEEK_PRESENT_TIMEOUT_MS);
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
