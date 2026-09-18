@@ -280,4 +280,50 @@ describe("waitForPresentedFrame", () => {
     cb?.();
     await wait;
   });
+
+  it("ignores a stale mediaTime and waits for the sought frame", async () => {
+    const pending: Array<(now: number, metadata: { mediaTime: number }) => void> = [];
+    const video = {
+      requestVideoFrameCallback(next: (now: number, metadata: { mediaTime: number }) => void) {
+        pending.push(next);
+        return pending.length;
+      },
+      cancelVideoFrameCallback() {
+        pending.length = 0;
+      },
+    };
+    let done = false;
+    const wait = waitForPresentedFrame(video as unknown as HTMLVideoElement, 5_000, {
+      mediaTime: 1.2,
+    }).then(() => {
+      done = true;
+    });
+    pending.shift()?.(0, { mediaTime: 0 });
+    await Promise.resolve();
+    expect(done).toBe(false);
+    expect(pending).toHaveLength(1);
+    pending.shift()?.(0, { mediaTime: 1.2 });
+    await wait;
+    expect(done).toBe(true);
+  });
+
+  it("falls back to two animation frames when rVFC is missing", async () => {
+    const { rafs, restore } = stubQueuedRaf();
+    try {
+      let done = false;
+      const wait = waitForPresentedFrame({ paused: true } as HTMLVideoElement, 5_000).then(() => {
+        done = true;
+      });
+      expect(rafs).toHaveLength(1);
+      rafs.shift()?.();
+      await Promise.resolve();
+      expect(done).toBe(false);
+      expect(rafs).toHaveLength(1);
+      rafs.shift()?.();
+      await wait;
+      expect(done).toBe(true);
+    } finally {
+      restore();
+    }
+  });
 });

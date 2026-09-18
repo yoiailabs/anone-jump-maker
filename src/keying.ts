@@ -12,6 +12,12 @@ export const KEY_PARAMS = {
   greenSoft: 40,
 } as const;
 
+/** Shared with the WebGL keyer so CPU / GPU stay on the same look. */
+export const KEY_GREEN_KILL = 0.85;
+export const KEY_DESPILL_INNER = 0.4;
+export const KEY_DESPILL_STRENGTH = 0.7;
+export const KEY_SAMPLE_COUNT = 7;
+
 export function colorDistance(
   r: number,
   g: number,
@@ -43,7 +49,7 @@ export function keyAlpha(
   const dist = colorDistance(r, g, b, kr, kg, kb);
   let alpha = clamp01((dist - params.tolerance) / params.softness);
   const greenScreen = Math.max(0, g - Math.max(r, b));
-  const greenKill = clamp01((greenScreen - params.greenBoost) / params.greenSoft) * 0.85;
+  const greenKill = clamp01((greenScreen - params.greenBoost) / params.greenSoft) * KEY_GREEN_KILL;
   alpha = Math.min(alpha, 1 - greenKill);
   if (luma(r, g, b) < params.darkProtect) {
     alpha = 1;
@@ -61,18 +67,15 @@ export function despill(
   params = KEY_PARAMS,
 ): [number, number, number] {
   const dist = colorDistance(r, g, b, kr, kg, kb);
-  const spill = 1 - clamp01((dist - params.tolerance * 0.4) / (params.tolerance + params.softness));
+  const spill = 1 - clamp01((dist - params.tolerance * KEY_DESPILL_INNER) / (params.tolerance + params.softness));
   const y = luma(r, g, b);
-  const t = spill * 0.7;
+  const t = spill * KEY_DESPILL_STRENGTH;
   return [r + (y - r) * t, g + (y - g) * t, b + (y - b) * t];
 }
 
-export function sampleKeyColor(
-  data: Uint8ClampedArray,
-  width: number,
-  height: number,
-): [number, number, number] {
-  const points: Array<[number, number]> = [
+/** Corner / top-edge pixels used to estimate the plate color each frame. */
+export function keySamplePixels(width: number, height: number): ReadonlyArray<readonly [number, number]> {
+  return [
     [2, 2],
     [width - 3, 2],
     [Math.floor(width / 2), 3],
@@ -81,6 +84,36 @@ export function sampleKeyColor(
     [2, height - 3],
     [width - 3, height - 3],
   ];
+}
+
+/**
+ * Sample UVs in WebGL space (origin bottom-left) after the video band is mapped
+ * through `rectToUvBottomLeft`. Pixel centers match `keySamplePixels`.
+ */
+export function keySampleUvBottomLeft(
+  width: number,
+  height: number,
+  bandUv: readonly [number, number, number, number] = [0, 0, 1, 1],
+): Float32Array {
+  const points = keySamplePixels(width, height);
+  const uv = new Float32Array(KEY_SAMPLE_COUNT * 2);
+  const [bx, by, bw, bh] = bandUv;
+  for (let i = 0; i < KEY_SAMPLE_COUNT; i += 1) {
+    const [px, py] = points[i]!;
+    const glX = (px + 0.5) / width;
+    const glY = 1 - (py + 0.5) / height;
+    uv[i * 2] = bx + glX * bw;
+    uv[i * 2 + 1] = by + glY * bh;
+  }
+  return uv;
+}
+
+export function sampleKeyColor(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): [number, number, number] {
+  const points = keySamplePixels(width, height);
   let r = 0;
   let g = 0;
   let b = 0;

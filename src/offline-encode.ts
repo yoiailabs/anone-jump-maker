@@ -11,6 +11,7 @@ import {
   Mp4OutputFormat,
   Output,
   Quality,
+  VideoSampleSink,
   WebMOutputFormat,
   getFirstEncodableAudioCodec,
   getFirstEncodableVideoCodec,
@@ -18,11 +19,24 @@ import {
   type OutputFormat,
   type VideoCodec,
 } from "mediabunny";
+import type { CharacterFrame } from "./compositor.ts";
 import {
+  EXPORT_CHARACTER_FALLBACK,
+  EXPORT_CHARACTER_PIXELS,
   EXPORT_FPS,
+  EXPORT_PROBE_TIMEOUT_MS,
+  TEMPLATE_FRAME_MISSING_MESSAGE,
+  assertCharacterAdvanced,
+  characterFrameFromCanvas,
+  chooseExportCharacterPath,
+  copySampleRgba,
+  firstResolved,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  putRgbaOnCanvas,
   seekVideo,
+  templateFrameMatchesTime,
+  type ExportCharacterPath,
   type ExportProgress,
   type ExportResult,
 } from "./export.ts";
@@ -65,7 +79,7 @@ export async function pickOfflinePlan(width: number, height: number): Promise<Of
 export async function encodeOffline(options: {
   video: HTMLVideoElement;
   canvas: HTMLCanvasElement;
-  draw: (time: number) => void;
+  draw: (time: number, character?: CharacterFrame) => void;
   duration: number;
   fps: number;
   plan: OfflinePlan;
@@ -84,24 +98,40 @@ export async function encodeOffline(options: {
   });
   output.addVideoTrack(videoSource, { frameRate: fps > 0 ? fps : EXPORT_FPS });
 
-  const pumpAudio = await attachTemplateAudio(output, plan.format, video.currentSrc || video.src);
-
+  const template = await openTemplateInput(video.currentSrc || video.src);
   video.pause();
   video.muted = true;
-  await output.start();
   try {
+    const frameSink = template ? await openTemplateFrameSink(template) : null;
+    const characterPath = frameSink
+      ? await firstResolved([
+          probeExportCharacterPath(frameSink),
+          sleep(EXPORT_PROBE_TIMEOUT_MS).then(() => EXPORT_CHARACTER_FALLBACK),
+        ])
+      : EXPORT_CHARACTER_FALLBACK;
+    const pumpAudio = template ? await attachTemplateAudio(output, plan.format, template) : null;
+    await output.start();
     if (pumpAudio) {
       await pumpAudio();
     }
-    for (let i = 0; i < times.length; i += 1) {
-      const time = times[i]!;
-      await seekVideo(video, time);
-      draw(time);
-      await videoSource.add(i * frameDuration, frameDuration);
-      if (i === 0 || i === times.length - 1 || i % 8 === 0) {
-        onProgress?.({ mode: "offline", current: i + 1, total: times.length });
-        await yieldToUi();
-      }
+    if (characterPath === EXPORT_CHARACTER_PIXELS && frameSink) {
+      await encodeWithRgbaFrames({
+        sink: frameSink,
+        times,
+        frameDuration,
+        draw,
+        videoSource,
+        onProgress,
+      });
+    } else {
+      await encodeWithHtmlVideo({
+        video,
+        times,
+        frameDuration,
+        draw,
+        videoSource,
+        onProgress,
+      });
     }
     await output.finalize();
   } catch (error) {
@@ -109,6 +139,8 @@ export async function encodeOffline(options: {
       await output.cancel();
     }
     throw error;
+  } finally {
+    template?.dispose();
   }
 
   const buffer = target.buffer;
@@ -125,58 +157,167 @@ export async function encodeOffline(options: {
   };
 }
 
+async function probeExportCharacterPath(sink: VideoSampleSink): Promise<ExportCharacterPath> {
+  const probe = {
+    copiedFirst: false,
+    copiedLater: false,
+    firstTimeOk: false,
+    laterTimeOk: false,
+    pixelsAdvanced: false,
+  };
+  try {
+    const first = await sink.getSample(0);
+    if (!first) return chooseExportCharacterPath(probe);
+    try {
+      const rgba0 = await copySampleRgba(first);
+      probe.copiedFirst = true;
+      probe.firstTimeOk = templateFrameMatchesTime(rgba0.timestamp, 0);
+      const later = await sink.getSample(1);
+      if (!later) return chooseExportCharacterPath(probe);
+      try {
+        const rgba1 = await copySampleRgba(later);
+        probe.copiedLater = true;
+        probe.laterTimeOk = templateFrameMatchesTime(rgba1.timestamp, 1);
+        probe.pixelsAdvanced = rgba1.fingerprint !== rgba0.fingerprint;
+      } finally {
+        later.close();
+      }
+    } finally {
+      first.close();
+    }
+  } catch {
+    // copyTo / PTS / decoder が WebKit で落ちても HTML video に落とす
+  }
+  return chooseExportCharacterPath(probe);
+}
+
+async function encodeWithRgbaFrames(options: {
+  sink: VideoSampleSink;
+  times: number[];
+  frameDuration: number;
+  draw: (time: number, character?: CharacterFrame) => void;
+  videoSource: { add: (timestamp: number, duration: number) => Promise<unknown> };
+  onProgress?: (progress: ExportProgress) => void;
+}): Promise<void> {
+  const { sink, times, frameDuration, draw, videoSource, onProgress } = options;
+  const frameCanvas = document.createElement("canvas");
+  const frameCtx = frameCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  if (!frameCtx) {
+    throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+  }
+  let i = 0;
+  let firstFingerprint: number | undefined;
+  for await (const sample of sink.samplesAtTimestamps(times)) {
+    const time = times[i];
+    if (time === undefined) {
+      sample?.close();
+      break;
+    }
+    if (!sample) {
+      throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+    }
+    try {
+      const rgba = await copySampleRgba(sample);
+      if (!templateFrameMatchesTime(rgba.timestamp, time)) {
+        throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+      }
+      if (firstFingerprint === undefined) {
+        firstFingerprint = rgba.fingerprint;
+      } else {
+        assertCharacterAdvanced(firstFingerprint, rgba.fingerprint, time);
+      }
+      putRgbaOnCanvas(frameCanvas, frameCtx, rgba);
+      draw(time, characterFrameFromCanvas(frameCanvas));
+    } finally {
+      sample.close();
+    }
+    await videoSource.add(i * frameDuration, frameDuration);
+    if (i === 0 || i === times.length - 1 || i % 8 === 0) {
+      onProgress?.({ mode: "offline", current: i + 1, total: times.length });
+      await yieldToUi();
+    }
+    i += 1;
+  }
+  if (i !== times.length) {
+    throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+  }
+}
+
+async function encodeWithHtmlVideo(options: {
+  video: HTMLVideoElement;
+  times: number[];
+  frameDuration: number;
+  draw: (time: number, character?: CharacterFrame) => void;
+  videoSource: { add: (timestamp: number, duration: number) => Promise<unknown> };
+  onProgress?: (progress: ExportProgress) => void;
+}): Promise<void> {
+  const { video, times, frameDuration, draw, videoSource, onProgress } = options;
+  for (let i = 0; i < times.length; i += 1) {
+    const time = times[i]!;
+    // iOS フォールバックは #52 以前と同じ seeked のみ。毎フレーム rVFC すると 466×400ms になる。
+    await seekVideo(video, time, { waitForPresented: false });
+    draw(time);
+    await videoSource.add(i * frameDuration, frameDuration);
+    if (i === 0 || i === times.length - 1 || i % 8 === 0) {
+      onProgress?.({ mode: "offline", current: i + 1, total: times.length });
+      await yieldToUi();
+    }
+  }
+}
+
 async function attachTemplateAudio(
   output: Output,
   format: OutputFormat,
-  templateSrc: string,
+  input: Input,
 ): Promise<(() => Promise<void>) | null> {
-  const input = await openTemplateInput(templateSrc);
-  if (!input) return null;
   try {
     const track = await input.getPrimaryAudioTrack();
-    if (!track) {
-      input.dispose();
-      return null;
-    }
+    if (!track) return null;
     const packetCodec = await track.getCodec();
     if (packetCodec && format.getSupportedAudioCodecs().includes(packetCodec)) {
       const source = new EncodedAudioPacketSource(packetCodec);
       output.addAudioTrack(source);
       return async () => {
-        try {
-          const sink = new EncodedPacketSink(track);
-          const decoderConfig = await track.getDecoderConfig();
-          let first = true;
-          for await (const packet of sink.packets()) {
-            await source.add(packet, first && decoderConfig ? { decoderConfig } : undefined);
-            first = false;
-          }
-        } finally {
-          input.dispose();
+        const sink = new EncodedPacketSink(track);
+        const decoderConfig = await track.getDecoderConfig();
+        let first = true;
+        for await (const packet of sink.packets()) {
+          await source.add(packet, first && decoderConfig ? { decoderConfig } : undefined);
+          first = false;
         }
       };
     }
     const encodeCodec = await pickAudioCodec(format);
-    if (!encodeCodec || !(await track.canDecode())) {
-      input.dispose();
-      return null;
-    }
+    if (!encodeCodec || !(await track.canDecode())) return null;
     const source = new AudioBufferSource({ codec: encodeCodec, quality: AUDIO_QUALITY });
     output.addAudioTrack(source);
     return async () => {
-      try {
-        const sink = new AudioBufferSink(track);
-        for await (const wrapped of sink.buffers()) {
-          await source.add(wrapped.buffer);
-        }
-      } finally {
-        input.dispose();
+      const sink = new AudioBufferSink(track);
+      for await (const wrapped of sink.buffers()) {
+        await source.add(wrapped.buffer);
       }
     };
   } catch {
-    input.dispose();
     return null;
   }
+}
+
+async function openTemplateFrameSink(input: Input): Promise<VideoSampleSink | null> {
+  if (typeof VideoDecoder !== "function") return null;
+  try {
+    const track = await input.getPrimaryVideoTrack();
+    if (!track || !(await track.canDecode())) return null;
+    // ここではデコードしない。getSample(0) すると iOS software で数秒かかり、そのあとまた probe する。
+    return new VideoSampleSink(track, { hardwareAcceleration: "prefer-software" });
+  } catch {
+    return null;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 async function pickAudioCodec(format: OutputFormat): Promise<AudioCodec | null> {
