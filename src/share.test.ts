@@ -28,9 +28,10 @@ describe("ハッシュタグをコピー", () => {
 describe("このアプリを共有する", () => {
   it("本番 URL とタイトルを Web Share に渡す", () => {
     expect(APP_SHARE_DATA).toEqual({
-      title: "あのねジャンプメーカー",
+      title: SHARE_MAKER_HASHTAG,
       url: APP_SHARE_URL,
     });
+    expect(APP_SHARE_DATA.title).toBe("#あのねジャンプメーカー");
     expect(APP_SHARE_URL).toBe("https://anone.yoiailabs.com");
   });
 

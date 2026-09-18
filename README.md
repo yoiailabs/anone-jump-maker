@@ -26,7 +26,7 @@
 
 - 本文はハッシュタグだけで、このサイトの URL は足しません。
 
-「ハッシュタグをコピー」の下の「このアプリを共有する」は、Web Share API（`navigator.share({ title, url })`）で本番 URL `https://anone.yoiailabs.com` を渡します。共有シートが無い環境では同じ URL をクリップボードへコピーします。プレビュー URL は使いません。
+「ハッシュタグをコピー」の下の「このアプリを共有する」は、Web Share API（`navigator.share({ title, url })`）でタイトル `#あのねジャンプメーカー` と本番 URL `https://anone.yoiailabs.com` を渡します。共有シートが無い環境では同じ URL をクリップボードへコピーします。プレビュー URL は使いません。
 
 ## 写真の切替（2×2）
 
