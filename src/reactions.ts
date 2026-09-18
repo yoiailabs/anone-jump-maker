@@ -32,6 +32,14 @@ export const REACTION_POSTS: readonly ReactionPost[] = [
     dateLabel: "2026年9月17日",
     bodyHtml: `おおおお簡単に作れた！！すげぇ！！<a href="${HASHTAG_ANONE}">#あのねジャンプ</a>　<a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/bE2NrhhaEI">pic.twitter.com/bE2NrhhaEI</a>`,
   },
+  {
+    id: "2100880092864122959",
+    handle: "_nakotanmaru",
+    author: "nakotanmaru",
+    href: "https://x.com/_nakotanmaru/status/2100880092864122959",
+    dateLabel: "2026年9月18日",
+    bodyHtml: `僕の好きな空の写真でやってみた<br>同じ空は二度と見れないんだよ<br> <a href="${HASHTAG_ANONE}">#あのねジャンプ</a> <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/ocpFNsQRb9">pic.twitter.com/ocpFNsQRb9</a>`,
+  },
 ];
 
 const WIDGETS_SRC = "https://platform.twitter.com/widgets.js";
