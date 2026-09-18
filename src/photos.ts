@@ -1,5 +1,4 @@
 import { OUTPUTS } from "./layout.ts";
-import { reportError } from "./sentry.ts";
 
 export type LoadedPhoto = {
   id: string;
@@ -40,6 +39,17 @@ export const PHOTO_DECODE_ATTEMPTS = [
 ] as const;
 
 export type ImageSignature = "jpeg" | "png" | "webp" | "gif" | "bmp" | "avif" | "heic" | "unknown";
+
+/** Sentry に載せてよい診断。ファイル名や画素は入れない。 */
+export type PhotoDecodeExtras = {
+  signature: ImageSignature;
+  mime: string;
+  extension: string;
+  byteSize: number;
+  decodeAttempts: string[];
+};
+
+export type ErrorWithPhotoExtras = Error & { extras?: PhotoDecodeExtras };
 
 const IMAGE_EXTENSIONS = new Set([
   "jpg",
@@ -263,6 +273,44 @@ export function selectImageFiles(files: readonly File[]): File[] {
   return files.filter((file) => isLikelyImageFile(file));
 }
 
+export function photoDecodeExtras(
+  file: { name: string; type: string; size: number },
+  signature: ImageSignature,
+  decodeAttempts: readonly string[] = decodeAttemptNames(file, signature),
+): PhotoDecodeExtras {
+  const mime = guessImageMime(file, signature) || file.type.trim().toLowerCase();
+  return {
+    signature,
+    mime: mime || "(empty)",
+    extension: fileExtension(file.name) || "(none)",
+    byteSize: file.size,
+    decodeAttempts: [...decodeAttempts],
+  };
+}
+
+export function attachPhotoDecodeExtras(error: Error, extras: PhotoDecodeExtras): ErrorWithPhotoExtras {
+  const next = error as ErrorWithPhotoExtras;
+  next.extras = extras;
+  return next;
+}
+
+export function isExpectedPhotoLoadError(error: unknown): boolean {
+  return error instanceof Error && (error.message === IMAGE_LOAD_ERROR || error.message === HEIC_UNSUPPORTED_MESSAGE);
+}
+
+export function photoLoadStatusText(loaded: number, failures: readonly Error[]): string {
+  if (loaded === 0 && failures.length === 0) return "画像ファイルを選んでください";
+  if (loaded === 0) return pickLoadError(failures).message;
+  if (failures.length === 0) return `${loaded} 枚を読み込みました`;
+  return `${loaded} 枚を読み込みました（${failures.length} 枚は読めませんでした）`;
+}
+
+function ensurePhotoDecodeExtras(error: Error, file: File): ErrorWithPhotoExtras {
+  const current = error as ErrorWithPhotoExtras;
+  if (current.extras) return current;
+  return attachPhotoDecodeExtras(error, photoDecodeExtras(file, "unknown"));
+}
+
 export async function loadPhotos(
   files: File[],
   options: {
@@ -271,7 +319,6 @@ export async function loadPhotos(
     onError?: (error: unknown) => void;
   } = {},
 ): Promise<LoadedPhoto[]> {
-  const report = options.onError ?? reportError;
   const imageFiles = selectImageFiles(files);
   const total = imageFiles.length;
   const failures: Error[] = [];
@@ -286,14 +333,18 @@ export async function loadPhotos(
         options.onProgress?.(loadedCount, total);
         return photo;
       } catch (error) {
-        failures.push(error instanceof Error ? error : new Error(IMAGE_LOAD_ERROR));
+        const failure = ensurePhotoDecodeExtras(
+          error instanceof Error ? error : new Error(IMAGE_LOAD_ERROR),
+          file,
+        );
+        failures.push(failure);
         return null;
       }
     });
     const loaded = results.filter((photo): photo is LoadedPhoto => photo !== null);
     if (loaded.length > 0) {
       for (const failure of failures) {
-        report(failure);
+        options.onError?.(failure);
       }
       return loaded;
     }
@@ -348,10 +399,11 @@ export async function decodeRasterBitmap(file: File, signature: ImageSignature =
     "html-data-url": () => bitmapFromDataUrl(typed),
   };
 
+  const attempts = decodeAttemptNames(file, signature);
   try {
-    return await tryInOrder(decodeAttemptNames(file, signature).map((name) => jobs[name as (typeof PHOTO_DECODE_ATTEMPTS)[number]]));
+    return await tryInOrder(attempts.map((name) => jobs[name as (typeof PHOTO_DECODE_ATTEMPTS)[number]]));
   } catch {
-    throw new Error(IMAGE_LOAD_ERROR);
+    throw attachPhotoDecodeExtras(new Error(IMAGE_LOAD_ERROR), photoDecodeExtras(file, signature, attempts));
   }
 }
 
@@ -368,6 +420,9 @@ export async function decodeFullBitmap(
 }
 
 async function decodeHeicBitmap(file: File, convertHeic: HeicConverter): Promise<ImageBitmap> {
+  const heicAttempts = ["bitmap-orient", "bitmap-plain", "heic-convert"];
+  const heicError = () =>
+    attachPhotoDecodeExtras(new Error(HEIC_UNSUPPORTED_MESSAGE), photoDecodeExtras(file, "heic", heicAttempts));
   try {
     return await tryInOrder([
       () => bitmapFromBlob(file, { imageOrientation: "from-image" }),
@@ -380,7 +435,7 @@ async function decodeHeicBitmap(file: File, convertHeic: HeicConverter): Promise
   try {
     converted = await convertHeic(file);
   } catch {
-    throw new Error(HEIC_UNSUPPORTED_MESSAGE);
+    throw heicError();
   }
   if (isImageBitmapLike(converted)) {
     return assertBitmap(converted);
@@ -391,7 +446,7 @@ async function decodeHeicBitmap(file: File, convertHeic: HeicConverter): Promise
   try {
     return await decodeRasterBitmap(jpeg, "jpeg");
   } catch {
-    throw new Error(HEIC_UNSUPPORTED_MESSAGE);
+    throw heicError();
   }
 }
 

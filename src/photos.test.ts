@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   HEIC_UNSUPPORTED_MESSAGE,
+  IMAGE_LOAD_ERROR,
   PHOTO_DECODE_ATTEMPTS,
   PHOTO_DECODE_CONCURRENCY,
   PHOTO_MAX_EDGE,
@@ -8,20 +9,26 @@ import {
   PHOTO_THUMB_EDGE,
   decodeAttemptNames,
   decodeFullBitmap,
+  decodeRasterBitmap,
   fileExtension,
   guessImageMime,
+  isExpectedPhotoLoadError,
   isHeicLike,
   isLikelyImageFile,
   loadPhotos,
   mapLimit,
   mimeFromSignature,
+  photoDecodeExtras,
   photoFitSize,
+  photoLoadStatusText,
   revokePhotos,
   selectImageFiles,
   sniffImageSignature,
   tryInOrder,
+  type ErrorWithPhotoExtras,
   type LoadedPhoto,
 } from "./photos.ts";
+import { reportError } from "./sentry.ts";
 
 describe("photoFitSize", () => {
   it("does not upscale a small photo", () => {
@@ -152,6 +159,37 @@ describe("image signature / HEIC", () => {
     expect(guessImageMime({ name: "IMG_0001.JPG", type: "" })).toBe("image/jpeg");
     expect(guessImageMime({ name: "1000000123", type: "" }, "jpeg")).toBe("image/jpeg");
     expect(fileExtension("DCIM/Camera/IMG_0001.JPEG")).toBe("jpeg");
+  });
+
+  it("builds decode extras without a filename", () => {
+    expect(photoDecodeExtras({ name: "shot.PNG", type: "", size: 2048 }, "png")).toEqual({
+      signature: "png",
+      mime: "image/png",
+      extension: "png",
+      byteSize: 2048,
+      decodeAttempts: [...PHOTO_DECODE_ATTEMPTS],
+    });
+  });
+});
+
+describe("photo load status / expected failures", () => {
+  it("treats generic and HEIC decode messages as expected user-file failures", () => {
+    expect(isExpectedPhotoLoadError(new Error(IMAGE_LOAD_ERROR))).toBe(true);
+    expect(isExpectedPhotoLoadError(new Error(HEIC_UNSUPPORTED_MESSAGE))).toBe(true);
+    expect(isExpectedPhotoLoadError(new Error("サムネを作れませんでした"))).toBe(false);
+    expect(isExpectedPhotoLoadError("画像を読み込めませんでした")).toBe(false);
+  });
+
+  it("mentions skipped files after a partial load", () => {
+    expect(photoLoadStatusText(0, [])).toBe("画像ファイルを選んでください");
+    expect(photoLoadStatusText(3, [])).toBe("3 枚を読み込みました");
+    expect(photoLoadStatusText(3, [new Error(IMAGE_LOAD_ERROR)])).toBe(
+      "3 枚を読み込みました（1 枚は読めませんでした）",
+    );
+    expect(photoLoadStatusText(0, [new Error(IMAGE_LOAD_ERROR)])).toBe(IMAGE_LOAD_ERROR);
+    expect(photoLoadStatusText(0, [new Error(IMAGE_LOAD_ERROR), new Error(HEIC_UNSUPPORTED_MESSAGE)])).toBe(
+      HEIC_UNSUPPORTED_MESSAGE,
+    );
   });
 });
 
@@ -328,6 +366,34 @@ describe("tryInOrder / decode fallback order", () => {
     }
   });
 
+  it("attaches decode extras when every raster attempt fails", async () => {
+    const file = new File([new Uint8Array([0x00, 0x11, 0x22])], "x.webp", { type: "" });
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => {
+      throw new Error("bitmap");
+    }));
+    stubFailedHtmlDecode();
+    try {
+      await decodeRasterBitmap(file, "unknown").then(
+        () => {
+          throw new Error("expected decodeRasterBitmap to reject");
+        },
+        (error: unknown) => {
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toBe(IMAGE_LOAD_ERROR);
+          expect((error as ErrorWithPhotoExtras).extras).toEqual({
+            signature: "unknown",
+            mime: "image/webp",
+            extension: "webp",
+            byteSize: 3,
+            decodeAttempts: [...PHOTO_DECODE_ATTEMPTS],
+          });
+        },
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("accepts an ImageBitmap from the HEIC converter", async () => {
     const file = heicFile();
     const bitmap = fakeBitmap(32, 24);
@@ -397,6 +463,100 @@ describe("loadPhotos", () => {
       expect(seen).toHaveLength(1);
       expect(seen[0]).toBeInstanceOf(Error);
       expect((seen[0] as Error).message).toBe(HEIC_UNSUPPORTED_MESSAGE);
+      expect(isExpectedPhotoLoadError(seen[0])).toBe(true);
+      expect((seen[0] as ErrorWithPhotoExtras).extras).toMatchObject({
+        signature: "heic",
+        mime: "image/heic",
+        extension: "heic",
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("skips an undecodable raster file, keeps the rest, and does not report to Sentry", async () => {
+    const jpeg = jpegFile("ok.jpg", "image/jpeg");
+    const bad = new File([new Uint8Array([0x00, 0x01, 0x02, 0x03])], "broken.jpg", { type: "image/jpeg" });
+    const bitmap = fakeBitmap(16, 16);
+    stubPhotoGlobals(bitmap, (source) => {
+      if (source instanceof Blob && source === bad) throw new Error("undecodable");
+      if (source instanceof Blob && source.size === bad.size && source.type === bad.type) {
+        throw new Error("undecodable");
+      }
+    });
+    stubFailedHtmlDecode();
+    const capture = vi.fn();
+    try {
+      const seen: unknown[] = [];
+      const photos = await loadPhotos([bad, jpeg], {
+        onError: (error) => {
+          seen.push(error);
+          if (!isExpectedPhotoLoadError(error)) {
+            reportError(error, capture);
+          }
+        },
+      });
+      expect(photos.map((photo) => photo.name)).toEqual(["ok.jpg"]);
+      expect(seen).toHaveLength(1);
+      expect((seen[0] as Error).message).toBe(IMAGE_LOAD_ERROR);
+      expect(isExpectedPhotoLoadError(seen[0])).toBe(true);
+      expect((seen[0] as ErrorWithPhotoExtras).extras).toEqual({
+        signature: "unknown",
+        mime: "image/jpeg",
+        extension: "jpg",
+        byteSize: 4,
+        decodeAttempts: ["bitmap-orient", "bitmap-plain", "html-object-url", "html-data-url"],
+      });
+      expect(capture).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("throws the expected message when every selected file fails to decode", async () => {
+    const bad = new File([new Uint8Array([0x00, 0x01])], "broken.jpg", { type: "image/jpeg" });
+    stubPhotoGlobals(fakeBitmap(8, 8), () => {
+      throw new Error("undecodable");
+    });
+    stubFailedHtmlDecode();
+    try {
+      await expect(loadPhotos([bad])).rejects.toThrow(IMAGE_LOAD_ERROR);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps unexpected thumb failures distinguishable from bad gallery files", async () => {
+    const file = jpegFile("ok.jpg", "image/jpeg");
+    stubPhotoGlobals(fakeBitmap(12, 8));
+    vi.stubGlobal("document", {
+      createElement: (tag: string) => {
+        if (tag !== "canvas") throw new Error(tag);
+        return {
+          width: 0,
+          height: 0,
+          getContext: () => ({ drawImage: () => {} }),
+          toBlob: (cb: (blob: Blob | null) => void) => cb(null),
+        };
+      },
+    });
+    try {
+      await loadPhotos([file]).then(
+        () => {
+          throw new Error("expected loadPhotos to reject");
+        },
+        (error: unknown) => {
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toBe("サムネを作れませんでした");
+          expect(isExpectedPhotoLoadError(error)).toBe(false);
+          expect((error as ErrorWithPhotoExtras).extras).toMatchObject({
+            signature: "unknown",
+            mime: "image/jpeg",
+            extension: "jpg",
+            byteSize: file.size,
+          });
+        },
+      );
     } finally {
       vi.unstubAllGlobals();
     }
@@ -418,6 +578,27 @@ describe("loadPhotos", () => {
     }
   });
 });
+
+function stubFailedHtmlDecode(): void {
+  vi.stubGlobal(
+    "Image",
+    class {
+      onerror: (() => void) | null = null;
+      set src(_value: string) {
+        queueMicrotask(() => this.onerror?.());
+      }
+    },
+  );
+  vi.stubGlobal(
+    "FileReader",
+    class {
+      onerror: (() => void) | null = null;
+      readAsDataURL() {
+        queueMicrotask(() => this.onerror?.());
+      }
+    },
+  );
+}
 
 function stubPhotoGlobals(bitmap: ImageBitmap, beforeCreate?: (source: unknown) => void): void {
   vi.stubGlobal(

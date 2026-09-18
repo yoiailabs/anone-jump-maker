@@ -27,11 +27,32 @@ type ScrubEvent = {
   extra?: Record<string, unknown>;
 };
 
+/** デコード失敗の切り分け用。ファイル名や画素は含めない。 */
+export const SENTRY_DIAGNOSTIC_EXTRA_KEYS = new Set([
+  "signature",
+  "mime",
+  "extension",
+  "byteSize",
+  "decodeAttempts",
+]);
+
 function looksLikeBlobOrData(value: unknown): boolean {
   return typeof value === "string" && (value.startsWith("blob:") || value.startsWith("data:"));
 }
 
-/** 写真名・blob・PII を載せない。 */
+export function errorReportExtras(error: unknown): Record<string, unknown> | undefined {
+  if (!error || typeof error !== "object" || !("extras" in error)) return undefined;
+  const extras = error.extras;
+  if (!extras || typeof extras !== "object") return undefined;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(extras as Record<string, unknown>)) {
+    if (!SENTRY_DIAGNOSTIC_EXTRA_KEYS.has(key) || looksLikeBlobOrData(value)) continue;
+    out[key] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** 写真名・blob・PII を載せない。診断キー（signature 等）は残す。 */
 export function scrubSentryEvent<T extends ScrubEvent>(event: T): T {
   delete event.user;
   if (event.request) {
@@ -40,6 +61,7 @@ export function scrubSentryEvent<T extends ScrubEvent>(event: T): T {
   }
   if (event.extra) {
     for (const [key, value] of Object.entries(event.extra)) {
+      if (SENTRY_DIAGNOSTIC_EXTRA_KEYS.has(key) && !looksLikeBlobOrData(value)) continue;
       if (looksLikeBlobOrData(value) || /photo|filename|file|blob|image/i.test(key)) {
         delete event.extra[key];
       }
@@ -63,7 +85,15 @@ export function initSentry(): void {
 export function reportError(
   error: unknown,
   capture: (error: unknown) => void = (value) => {
-    Sentry.captureException(value);
+    const extras = errorReportExtras(value);
+    if (extras) {
+      Sentry.withScope((scope) => {
+        scope.setExtras(extras);
+        Sentry.captureException(value);
+      });
+    } else {
+      Sentry.captureException(value);
+    }
   },
 ): void {
   capture(error);

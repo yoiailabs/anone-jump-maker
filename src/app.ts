@@ -14,7 +14,14 @@ import {
 import { linkBannersHtml } from "./links.ts";
 import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
-import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import {
+  IMAGE_LOAD_ERROR,
+  isExpectedPhotoLoadError,
+  loadPhotos,
+  photoLoadStatusText,
+  revokePhotos,
+  type LoadedPhoto,
+} from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
 import {
   muteButtonHtml,
@@ -298,7 +305,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   const setErrorStatus = (error: unknown, fallback: string) => {
-    reportError(error);
+    if (!isExpectedPhotoLoadError(error)) {
+      reportError(error);
+    }
     setStatus(error instanceof Error ? error.message : fallback, "error");
   };
 
@@ -596,19 +605,23 @@ export async function boot(root: HTMLElement): Promise<void> {
       revokePhotos(photos);
       photos = [];
       renderThumbs();
+      const failures: Error[] = [];
       photos = await loadPhotos(files, {
         onProgress: (current, total) => {
           setStatus(`写真を読み込み中… ${current} / ${total}`, "busy");
+        },
+        onError: (error) => {
+          const failure = error instanceof Error ? error : new Error(IMAGE_LOAD_ERROR);
+          failures.push(failure);
+          if (!isExpectedPhotoLoadError(failure)) {
+            reportError(failure);
+          }
         },
       });
       renderThumbs();
       paint();
       refreshButtons();
-      setStatus(
-        photos.length === 0
-          ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました`,
-      );
+      setStatus(photoLoadStatusText(photos.length, failures), failures.length > 0 ? "error" : "idle");
     } catch (error) {
       renderThumbs();
       paint();

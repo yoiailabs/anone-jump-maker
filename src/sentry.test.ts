@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_SENTRY_DSN,
+  errorReportExtras,
   reportError,
   resolveSentryDsn,
   scrubSentryEvent,
@@ -56,6 +57,51 @@ describe("scrubSentryEvent", () => {
     expect(scrubbed.user).toBeUndefined();
     expect(scrubbed.request).toEqual({ url: "/ok" });
     expect(scrubbed.extra).toEqual({ ok: "fine" });
+  });
+
+  it("keeps decode diagnostics and still drops filenames", () => {
+    const event = {
+      extra: {
+        signature: "unknown",
+        mime: "image/jpeg",
+        extension: "jpg",
+        byteSize: 128,
+        decodeAttempts: ["bitmap-orient", "bitmap-plain"],
+        photoName: "vacation.jpg",
+        filename: "face.png",
+      },
+    };
+
+    expect(scrubSentryEvent(event).extra).toEqual({
+      signature: "unknown",
+      mime: "image/jpeg",
+      extension: "jpg",
+      byteSize: 128,
+      decodeAttempts: ["bitmap-orient", "bitmap-plain"],
+    });
+  });
+});
+
+describe("errorReportExtras", () => {
+  it("copies only allowlisted extras off the error", () => {
+    const error = Object.assign(new Error("画像を読み込めませんでした"), {
+      extras: {
+        signature: "unknown",
+        mime: "image/jpeg",
+        extension: "jpg",
+        byteSize: 12,
+        decodeAttempts: ["bitmap-orient"],
+        photoName: "secret.jpg",
+      },
+    });
+    expect(errorReportExtras(error)).toEqual({
+      signature: "unknown",
+      mime: "image/jpeg",
+      extension: "jpg",
+      byteSize: 12,
+      decodeAttempts: ["bitmap-orient"],
+    });
+    expect(errorReportExtras(new Error("export failed"))).toBeUndefined();
   });
 });
 
