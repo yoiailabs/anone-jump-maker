@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_SENTRY_DSN,
+  reportError,
   resolveSentryDsn,
   scrubSentryEvent,
   sentryEnvironment,
@@ -55,5 +56,15 @@ describe("scrubSentryEvent", () => {
     expect(scrubbed.user).toBeUndefined();
     expect(scrubbed.request).toEqual({ url: "/ok" });
     expect(scrubbed.extra).toEqual({ ok: "fine" });
+  });
+});
+
+describe("reportError", () => {
+  it("forwards the exception to the capture function", () => {
+    const capture = vi.fn();
+    const error = new Error("export failed");
+    reportError(error, capture);
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith(error);
   });
 });

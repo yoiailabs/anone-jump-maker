@@ -386,12 +386,17 @@ describe("loadPhotos", () => {
       },
     );
     try {
+      const seen: unknown[] = [];
       const photos = await loadPhotos([heic, jpeg], {
         convertHeic: async () => {
           throw new Error("no wasm");
         },
+        onError: (error) => seen.push(error),
       });
       expect(photos.map((photo) => photo.name)).toEqual(["ok.jpg"]);
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toBeInstanceOf(Error);
+      expect((seen[0] as Error).message).toBe(HEIC_UNSUPPORTED_MESSAGE);
     } finally {
       vi.unstubAllGlobals();
     }

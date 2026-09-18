@@ -25,6 +25,7 @@ import {
   shouldTrackPreviewStart,
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
+import { reportError } from "./sentry.ts";
 import { copyTextToClipboard, SHARE_TEXT, shareAppUrl } from "./share.ts";
 import type { CutTimeline } from "./timeline.ts";
 
@@ -296,6 +297,11 @@ export async function boot(root: HTMLElement): Promise<void> {
     statusEl.dataset.kind = kind;
   };
 
+  const setErrorStatus = (error: unknown, fallback: string) => {
+    reportError(error);
+    setStatus(error instanceof Error ? error.message : fallback, "error");
+  };
+
   const syncAspectRadios = (value: AspectMode) => {
     for (const input of aspectInputs) {
       input.checked = input.value === value;
@@ -453,7 +459,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       previewTracked = false;
       haltLoop();
       refreshButtons();
-      setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
+      setErrorStatus(error, "再生できませんでした");
     } finally {
       if (gen === playGen) playbackBusy = false;
     }
@@ -461,10 +467,14 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const openPreview = async () => {
     if (recording || !canUse() || previewDialog.open) return;
-    previewDialog.showModal();
-    lastSlot = -1;
-    paint();
-    await startPlayback(true);
+    try {
+      previewDialog.showModal();
+      lastSlot = -1;
+      paint();
+      await startPlayback(true);
+    } catch (error) {
+      setErrorStatus(error, "プレビューを開けませんでした");
+    }
   };
 
   const closePreview = () => {
@@ -532,9 +542,10 @@ export async function boot(root: HTMLElement): Promise<void> {
         } else {
           refreshButtons();
         }
-      } catch {
+      } catch (error) {
         paint();
         refreshButtons();
+        setErrorStatus(error, "プレビューの再開に失敗しました");
       }
     })();
   });
@@ -544,6 +555,15 @@ export async function boot(root: HTMLElement): Promise<void> {
       paint();
       setStatus("プレビューが終わりました");
     }
+  });
+  video.addEventListener("error", () => {
+    if (recording) return;
+    const code = video.error?.code;
+    setErrorStatus(
+      new Error(code != null ? `テンプレ動画を読み込めませんでした (${code})` : "テンプレ動画を読み込めませんでした"),
+      "テンプレ動画を読み込めませんでした",
+    );
+    refreshButtons();
   });
 
   for (const input of aspectInputs) {
@@ -593,7 +613,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       renderThumbs();
       paint();
       refreshButtons();
-      setStatus(error instanceof Error ? error.message : "読み込みに失敗しました", "error");
+      setErrorStatus(error, "読み込みに失敗しました");
     }
   });
 
@@ -696,7 +716,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。ハッシュタグをコピーして X に投稿できます。`);
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
+      setErrorStatus(error, "保存に失敗しました");
     } finally {
       recording = false;
       playing = false;
