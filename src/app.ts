@@ -1,6 +1,8 @@
+import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import {
+  DEFAULT_ASPECT,
   isAspectMode,
   isImageFilter,
   isSwapStyle,
@@ -13,7 +15,14 @@ import { linkBannersHtml } from "./links.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { startVideoPaintLoop } from "./playback.ts";
-import { playPauseLabel, PREVIEW_RESTART_LABEL, shouldSeekPreviewToStart } from "./preview.ts";
+import {
+  muteButtonHtml,
+  playPauseButtonHtml,
+  PREVIEW_MUTED_DEFAULT,
+  restartButtonHtml,
+  shouldSeekPreviewToStart,
+  shouldTrackPreviewStart,
+} from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import {
   copyTextToClipboard,
@@ -31,21 +40,23 @@ type StatusKind = "idle" | "busy" | "error";
 export async function boot(root: HTMLElement): Promise<void> {
   const timelines = await loadTimelines();
   const compositor = createCompositor();
-  const video = createTemplateVideo("portrait");
+  const video = createTemplateVideo(DEFAULT_ASPECT);
 
-  let mode: AspectMode = "portrait";
+  let mode: AspectMode = DEFAULT_ASPECT;
   let swapStyle: SwapStyle = "jump";
   let imageFilter: ImageFilter = "none";
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
+  let previewTracked = false;
+  let previewMuted = PREVIEW_MUTED_DEFAULT;
   let playbackBusy = false;
   let playGen = 0;
   let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
   let savedVideo: File | null = null;
-  let aspectResume: { play: boolean; time: number } | null = null;
+  let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   root.innerHTML = `
     <div class="sky" aria-hidden="true">
@@ -80,12 +91,12 @@ export async function boot(root: HTMLElement): Promise<void> {
           <legend>動画の向き</legend>
           <div class="aspect-toggle" role="radiogroup" aria-label="動画の向き">
             <label>
-              <input type="radio" name="aspect" value="portrait" checked />
-              <span>縦</span>
+              <input type="radio" name="aspect" value="landscape" checked />
+              <span>横</span>
             </label>
             <label>
-              <input type="radio" name="aspect" value="landscape" />
-              <span>横</span>
+              <input type="radio" name="aspect" value="portrait" />
+              <span>縦</span>
             </label>
           </div>
         </fieldset>
@@ -171,12 +182,12 @@ export async function boot(root: HTMLElement): Promise<void> {
             <legend>向き</legend>
             <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューの向き">
               <label>
-                <input type="radio" name="preview-aspect" value="portrait" checked />
-                <span>縦</span>
+                <input type="radio" name="preview-aspect" value="landscape" checked />
+                <span>横</span>
               </label>
               <label>
-                <input type="radio" name="preview-aspect" value="landscape" />
-                <span>横</span>
+                <input type="radio" name="preview-aspect" value="portrait" />
+                <span>縦</span>
               </label>
             </div>
           </fieldset>
@@ -216,18 +227,19 @@ export async function boot(root: HTMLElement): Promise<void> {
             type="button"
             class="stage"
             id="stage"
-            data-aspect="portrait"
+            data-aspect="${DEFAULT_ASPECT}"
             aria-pressed="false"
             aria-label="プレビュー。クリックで再生と一時停止"
           >
             <span class="stage-play-hint" aria-hidden="true"></span>
           </button>
         </div>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timelines.portrait.slots.length}</p>
+        <p class="slot-meter" id="slotMeter">スロット — / ${timelines[DEFAULT_ASPECT].slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
         <div class="preview-actions">
-          <button type="button" id="modalPlayBtn" class="btn">${playPauseLabel(false)}</button>
-          <button type="button" id="restartBtn" class="btn ghost">${PREVIEW_RESTART_LABEL}</button>
+          <button type="button" id="modalPlayBtn" class="btn">${playPauseButtonHtml(false)}</button>
+          <button type="button" id="restartBtn" class="btn ghost">${restartButtonHtml()}</button>
+          <button type="button" id="muteBtn" class="btn ghost" aria-pressed="${previewMuted ? "false" : "true"}">${muteButtonHtml(previewMuted)}</button>
         </div>
       </div>
     </dialog>
@@ -246,6 +258,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
+  const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const previewState = must(root, "#previewState");
   const aspectInputs = [
     ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
@@ -307,8 +320,9 @@ export async function boot(root: HTMLElement): Promise<void> {
     saveBtn.disabled = recording || !ready;
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
+    muteBtn.disabled = recording;
     const active = isPreviewPlaying();
-    modalPlayBtn.textContent = playPauseLabel(active);
+    modalPlayBtn.innerHTML = playPauseButtonHtml(active);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
     stage.setAttribute("aria-pressed", active ? "true" : "false");
     previewState.textContent = active ? "再生中" : "停止中";
@@ -342,10 +356,28 @@ export async function boot(root: HTMLElement): Promise<void> {
     stopLoop = startVideoPaintLoop(video, paint);
   };
 
+  const applyPreviewMute = () => {
+    video.muted = previewMuted;
+    video.volume = 1;
+    muteBtn.innerHTML = muteButtonHtml(previewMuted);
+    muteBtn.setAttribute("aria-pressed", previewMuted ? "false" : "true");
+  };
+
+  const analyticsParams = () => videoEventParams(mode, swapStyle);
+
+  const trackPreviewStart = () => {
+    if (!shouldTrackPreviewStart({ event: "start", recording, trackedThisPlayback: previewTracked })) {
+      return;
+    }
+    previewTracked = true;
+    trackEvent(VIDEO_PREVIEW_EVENT, analyticsParams());
+  };
+
   const stopPlayback = () => {
     playGen += 1;
     playbackBusy = false;
     playing = false;
+    previewTracked = false;
     haltLoop();
     video.pause();
     refreshButtons();
@@ -369,8 +401,8 @@ export async function boot(root: HTMLElement): Promise<void> {
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
-      video.muted = false;
-      video.volume = 1;
+      trackPreviewStart();
+      applyPreviewMute();
       if (
         shouldSeekPreviewToStart({
           fromStart,
@@ -402,6 +434,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
+      previewTracked = false;
       haltLoop();
       refreshButtons();
       setStatus(error instanceof Error ? error.message : "再生できませんでした", "error");
@@ -427,12 +460,17 @@ export async function boot(root: HTMLElement): Promise<void> {
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
     const inPreview = previewDialog.open;
-    aspectResume = inPreview ? { play: isPreviewPlaying(), time: video.currentTime } : null;
+    aspectResume = inPreview
+      ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
+      : null;
     playGen += 1;
     playbackBusy = false;
     playing = false;
     haltLoop();
     video.pause();
+    if (!inPreview) {
+      previewTracked = false;
+    }
     mode = next;
     compositor.setAspect(mode);
     stage.dataset.aspect = mode;
@@ -467,6 +505,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     const resume = aspectResume;
     aspectResume = null;
     if (!resume || !previewDialog.open || recording) return;
+    previewTracked = resume.tracked;
     void (async () => {
       try {
         await seekVideo(video, resume.time);
@@ -588,6 +627,13 @@ export async function boot(root: HTMLElement): Promise<void> {
     void startPlayback(true);
   });
 
+  muteBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    previewMuted = !previewMuted;
+    applyPreviewMute();
+  });
+
   closePreviewBtn.addEventListener("click", () => {
     closePreview();
   });
@@ -610,6 +656,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     closePreview();
     recording = true;
     playing = false;
+    previewTracked = false;
     video.pause();
     refreshButtons();
     setStatus("書き出しを準備しています…", "busy");
@@ -632,11 +679,13 @@ export async function boot(root: HTMLElement): Promise<void> {
       downloadBlob(result.blob, filename);
       savedVideo = toShareFile(result.blob, filename);
       setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
+      trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
     } finally {
       recording = false;
       playing = false;
+      previewTracked = false;
       haltLoop();
       video.pause();
       video.muted = true;
