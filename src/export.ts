@@ -41,6 +41,12 @@ export function hasWebCodecsVideoEncoder(): boolean {
   return typeof VideoEncoder === "function";
 }
 
+/** 1回のシーク待ち。Android Chrome では seeked が遅れたり欠けることがある。 */
+export const SEEK_TIMEOUT_MS = 10_000;
+
+/** タイムアウト後に currentTime を再設定する回数。 */
+export const SEEK_TIMEOUT_RETRIES = 2;
+
 export async function seekVideo(video: HTMLVideoElement, time: number): Promise<void> {
   const duration = Number.isFinite(video.duration) ? video.duration : 0;
   const target = clamp(time, 0, duration > 0 ? Math.max(0, duration - 1e-4) : time);
@@ -49,6 +55,8 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
     return;
   }
   await new Promise<void>((resolve, reject) => {
+    let retriesLeft = SEEK_TIMEOUT_RETRIES;
+    let timer = 0;
     const finish = () => {
       window.clearTimeout(timer);
       video.removeEventListener("seeked", onSeeked);
@@ -62,18 +70,27 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
       video.removeEventListener("error", onError);
       reject(new Error("シークに失敗しました"));
     };
-    const timer = window.setTimeout(() => {
-      video.removeEventListener("seeked", onSeeked);
-      video.removeEventListener("error", onError);
-      if (Math.abs(video.currentTime - target) < 0.05) {
-        resolve();
-        return;
-      }
-      reject(new Error("シークがタイムアウトしました"));
-    }, 2500);
+    const armTimer = () => {
+      timer = window.setTimeout(() => {
+        if (Math.abs(video.currentTime - target) < 0.05) {
+          finish();
+          return;
+        }
+        if (retriesLeft > 0) {
+          retriesLeft -= 1;
+          video.currentTime = target;
+          armTimer();
+          return;
+        }
+        video.removeEventListener("seeked", onSeeked);
+        video.removeEventListener("error", onError);
+        reject(new Error("シークがタイムアウトしました"));
+      }, SEEK_TIMEOUT_MS);
+    };
     video.addEventListener("seeked", onSeeked);
     video.addEventListener("error", onError);
     video.currentTime = target;
+    armTimer();
   });
 }
 

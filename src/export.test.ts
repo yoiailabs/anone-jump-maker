@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { swapFx } from "./layout.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
@@ -7,10 +7,13 @@ import {
   EXPORT_FALLBACK,
   EXPORT_FPS,
   EXPORT_PATH,
+  SEEK_TIMEOUT_MS,
+  SEEK_TIMEOUT_RETRIES,
   UNSUPPORTED_EXPORT_MESSAGE,
   exportJumpVideo,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  seekVideo,
 } from "./export.ts";
 
 describe("offline export plan", () => {
@@ -72,5 +75,146 @@ describe("offline capability", () => {
         fps: 30,
       }),
     ).rejects.toThrow(UNSUPPORTED_EXPORT_MESSAGE);
+  });
+});
+
+type VideoStub = {
+  currentTime: number;
+  duration: number;
+  readyState: number;
+  pause: () => void;
+  addEventListener: (type: string, fn: () => void) => void;
+  removeEventListener: (type: string, fn: () => void) => void;
+  dispatch: (type: string) => void;
+};
+
+function createVideo(init?: Partial<Pick<VideoStub, "currentTime" | "duration" | "readyState">>): VideoStub {
+  const listeners = new Map<string, Set<() => void>>();
+  return {
+    currentTime: init?.currentTime ?? 0,
+    duration: init?.duration ?? 10,
+    readyState: init?.readyState ?? 0,
+    pause() {},
+    addEventListener(type, fn) {
+      const set = listeners.get(type) ?? new Set();
+      set.add(fn);
+      listeners.set(type, set);
+    },
+    removeEventListener(type, fn) {
+      listeners.get(type)?.delete(fn);
+    },
+    dispatch(type) {
+      for (const fn of [...(listeners.get(type) ?? [])]) fn();
+    },
+  };
+}
+
+function createStuckVideo() {
+  const video = createVideo();
+  let shown = 0;
+  let assigns = 0;
+  Object.defineProperty(video, "currentTime", {
+    configurable: true,
+    get() {
+      return shown;
+    },
+    set() {
+      assigns += 1;
+    },
+  });
+  return {
+    video,
+    assigns: () => assigns,
+  };
+}
+
+describe("seekVideo", () => {
+  beforeEach(() => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    if (!("window" in globalThis)) {
+      Object.assign(globalThis, { window: globalThis });
+    }
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns immediately when the frame is already current", async () => {
+    const video = createVideo({ currentTime: 1.2, duration: 10, readyState: 2 });
+    let assigned = false;
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      get() {
+        return 1.2;
+      },
+      set() {
+        assigned = true;
+      },
+    });
+    await seekVideo(video as HTMLVideoElement, 1.2);
+    expect(assigned).toBe(false);
+  });
+
+  it("resolves on seeked without waiting for the timeout", async () => {
+    const video = createVideo();
+    const pending = seekVideo(video as HTMLVideoElement, 1.2);
+    video.dispatch("seeked");
+    await pending;
+  });
+
+  it("resolves on a near-match after the longer wait", async () => {
+    const video = createVideo();
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      get() {
+        return 1.19;
+      },
+      set() {},
+    });
+    const pending = seekVideo(video as HTMLVideoElement, 1.2);
+    await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS);
+    await pending;
+  });
+
+  it("retries currentTime after a timeout, then succeeds on seeked", async () => {
+    const stuck = createStuckVideo();
+    const pending = seekVideo(stuck.video as HTMLVideoElement, 1.2);
+    expect(stuck.assigns()).toBe(1);
+    await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS - 1);
+    expect(stuck.assigns()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(stuck.assigns()).toBe(2);
+    stuck.video.dispatch("seeked");
+    await pending;
+  });
+
+  it("rejects only after the timeout retries are exhausted", async () => {
+    const stuck = createStuckVideo();
+    const pending = seekVideo(stuck.video as HTMLVideoElement, 1.2);
+    let settled = false;
+    void pending.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS * (SEEK_TIMEOUT_RETRIES + 1) - 2500);
+    expect(stuck.assigns()).toBe(1 + SEEK_TIMEOUT_RETRIES);
+    await expect(pending).rejects.toThrow("シークがタイムアウトしました");
+  });
+
+  it("rejects when the video errors", async () => {
+    const video = createVideo();
+    const pending = seekVideo(video as HTMLVideoElement, 1.2);
+    video.dispatch("error");
+    await expect(pending).rejects.toThrow("シークに失敗しました");
   });
 });
