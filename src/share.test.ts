@@ -25,13 +25,13 @@ describe("ハッシュタグをコピー", () => {
   });
 });
 
-describe("このアプリを共有する", () => {
-  it("本番 URL とタイトルを Web Share に渡す", () => {
+describe("共有する", () => {
+  it("本番 URL と両方のハッシュタグを Web Share に渡す", () => {
     expect(APP_SHARE_DATA).toEqual({
-      title: SHARE_MAKER_HASHTAG,
+      title: SHARE_TEXT,
       url: APP_SHARE_URL,
     });
-    expect(APP_SHARE_DATA.title).toBe("#あのねジャンプメーカー");
+    expect(APP_SHARE_DATA.title).toBe("#あのねジャンプ #あのねジャンプメーカー");
     expect(APP_SHARE_URL).toBe("https://anone.yoiailabs.com");
   });
 

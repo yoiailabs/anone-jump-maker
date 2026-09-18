@@ -4,13 +4,13 @@ export const SHARE_HASHTAG = "#あのねジャンプ";
 /** メーカー名のハッシュタグ。コピー本文に足す。 */
 export const SHARE_MAKER_HASHTAG = "#あのねジャンプメーカー";
 
-/** ハッシュタグをコピーするときに渡す本文。 */
+/** ハッシュタグをコピー／アプリ共有するときに渡す本文。 */
 export const SHARE_TEXT = `${SHARE_HASHTAG} ${SHARE_MAKER_HASHTAG}`;
 
 /** アプリ本体の共有 URL。プレビュー URL ではなく本番を渡す。 */
 export const APP_SHARE_URL = "https://anone.yoiailabs.com";
 
-export const APP_SHARE_TITLE = SHARE_MAKER_HASHTAG;
+export const APP_SHARE_TITLE = SHARE_TEXT;
 
 export const APP_SHARE_DATA: ShareData = {
   title: APP_SHARE_TITLE,

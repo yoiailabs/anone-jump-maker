@@ -136,6 +136,19 @@ export async function boot(root: HTMLElement): Promise<void> {
       </section>
 
       <div class="share-wrap">
+        <button type="button" id="shareAppBtn" class="btn share-app">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M12 3v10M8.2 6.8 12 3l3.8 3.8M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          共有する
+        </button>
         <div class="hashtag-copy">
           <button type="button" id="copyHashtagsBtn" class="btn copy-hashtags" aria-describedby="hashtagCopyHint">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -162,19 +175,6 @@ export async function boot(root: HTMLElement): Promise<void> {
           </button>
           <p class="hashtag-copy-hint" id="hashtagCopyHint">${SHARE_TEXT}</p>
         </div>
-        <button type="button" id="shareAppBtn" class="btn share-app">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path
-              d="M12 3v10M8.2 6.8 12 3l3.8 3.8M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.1"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-          このアプリを共有する
-        </button>
       </div>
 
       <footer class="notes">
