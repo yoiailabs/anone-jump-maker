@@ -164,6 +164,7 @@ export type Compositor = {
   setResolutionScale: (scale: number) => void;
   resolutionScale: () => number;
   aspect: () => AspectMode;
+  plateCacheStats: () => { draws: number; hits: number };
   destroy: () => void;
   kind: "2d";
 };
@@ -273,6 +274,9 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
     },
     aspect() {
       return mode;
+    },
+    plateCacheStats() {
+      return { draws: plateCache.draws(), hits: plateCache.hits() };
     },
     destroy() {
       canvas.width = 0;
