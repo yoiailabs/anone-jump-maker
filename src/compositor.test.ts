@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_SOURCE,
   FRAME_FX_TARGET,
+  COMPOSITOR_PIXELS,
   IMAGE_FILTER_BLUR_IMPL,
   IMAGE_FILTER_TARGET,
   JUMP_FLASH_TARGET,
@@ -31,6 +32,10 @@ const F = 1 / TEMPLATE_FPS;
 describe("photo orientation", () => {
   it("uploads photos via Canvas2D so UNPACK_FLIP_Y_WEBGL does not invert ImageBitmap", () => {
     expect(PHOTO_UPLOAD_PATH).toBe("canvas2d-blit");
+  });
+
+  it("does not claim the compositor itself is WASM; pixels can be", () => {
+    expect(COMPOSITOR_PIXELS).toBe("wasm-or-js");
   });
 });
 

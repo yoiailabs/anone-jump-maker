@@ -53,6 +53,9 @@ export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
  */
 export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 
+/** レイアウトは Canvas2D。キーイングと箱型ぼかしは WASM（未ロード時は JS）。 */
+export const COMPOSITOR_PIXELS = "wasm-or-js" as const;
+
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (

@@ -2,6 +2,21 @@ import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } f
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import {
+  actionAvailability,
+  GENERATE_PHOTOS_HINT,
+  GENERATE_PREPARE_STATUS,
+  GENERATE_READY_STATUS,
+  GENERATE_STALE_STATUS,
+  generateButtonLabel,
+  generateProgressText,
+  generationErrorMessage,
+  isArtifactCurrent,
+  photosLoadedStatus,
+  revokeGeneratedArtifact,
+  settingsFingerprint,
+  type GeneratedArtifact,
+} from "./generate.ts";
+import {
   DEFAULT_ASPECT,
   isAspectMode,
   isImageFilter,
@@ -12,10 +27,8 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import { linkBannersHtml } from "./links.ts";
-import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
-import { startVideoPaintLoop } from "./playback.ts";
 import {
   muteButtonHtml,
   playPauseButtonHtml,
@@ -24,32 +37,36 @@ import {
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
 } from "./preview.ts";
+import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
 import { copyTextToClipboard, SHARE_TEXT, shareAppUrl } from "./share.ts";
 import type { CutTimeline } from "./timeline.ts";
+import wasmUrl from "./wasm/pixel.wasm?url";
+import { loadPixelWasm } from "./pixel-wasm.ts";
 
 type StatusKind = "idle" | "busy" | "error";
 
 export async function boot(root: HTMLElement): Promise<void> {
   const timelines = await loadTimelines();
+  await loadPixelWasm(wasmUrl);
   const compositor = createCompositor();
-  const video = createTemplateVideo(DEFAULT_ASPECT);
+  const template = createTemplateVideo(DEFAULT_ASPECT);
+  const resultVideo = createResultVideo();
 
   let mode: AspectMode = DEFAULT_ASPECT;
   let swapStyle: SwapStyle = "jump";
   let imageFilter: ImageFilter = "none";
   let photos: LoadedPhoto[] = [];
   let playing = false;
-  let recording = false;
+  let generating = false;
+  let artifact: GeneratedArtifact | null = null;
   let previewTracked = false;
   let previewMuted = PREVIEW_MUTED_DEFAULT;
   let playbackBusy = false;
   let playGen = 0;
   let suppressPlayUntil = 0;
-  let stopLoop: (() => void) | null = null;
-  let lastSlot = -1;
-  let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
+  let generateGen = 0;
 
   root.innerHTML = `
     <div class="sky" aria-hidden="true">
@@ -129,10 +146,11 @@ export async function boot(root: HTMLElement): Promise<void> {
           </div>
         </fieldset>
         <div class="actions">
+          <button type="button" id="generateBtn" class="btn" disabled>${generateButtonLabel(false)}</button>
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
-          <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
+          <button type="button" id="saveBtn" class="btn ghost" disabled>動画を保存</button>
         </div>
-        <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
+        <p class="status" id="status" data-kind="idle">${GENERATE_PHOTOS_HINT}</p>
       </section>
 
       <div class="share-wrap">
@@ -194,51 +212,6 @@ export async function boot(root: HTMLElement): Promise<void> {
           <h2 id="previewTitle">プレビュー</h2>
           <button type="button" id="closePreviewBtn" class="preview-close" aria-label="閉じる">×</button>
         </header>
-        <div class="preview-options">
-          <fieldset class="aspect-field preview-field">
-            <legend>向き</legend>
-            <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューの向き">
-              <label>
-                <input type="radio" name="preview-aspect" value="landscape" checked />
-                <span>横</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-aspect" value="portrait" />
-                <span>縦</span>
-              </label>
-            </div>
-          </fieldset>
-          <fieldset class="aspect-field preview-field">
-            <legend>エフェクト</legend>
-            <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューのエフェクト">
-              <label>
-                <input type="radio" name="preview-swap" value="jump" checked />
-                <span>ジャンプ</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-swap" value="zoom" />
-                <span>ズーム</span>
-              </label>
-            </div>
-          </fieldset>
-          <fieldset class="aspect-field preview-field preview-field-span">
-            <legend>フィルター</legend>
-            <div class="aspect-toggle preview-toggle cols-3" role="radiogroup" aria-label="プレビューのフィルター">
-              <label>
-                <input type="radio" name="preview-filter" value="none" checked />
-                <span>なし</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-filter" value="blur-weak" />
-                <span>ブラー(弱)</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-filter" value="blur-strong" />
-                <span>ブラー(強)</span>
-              </label>
-            </div>
-          </fieldset>
-        </div>
         <div class="stage-wrap">
           <button
             type="button"
@@ -251,7 +224,6 @@ export async function boot(root: HTMLElement): Promise<void> {
             <span class="stage-play-hint" aria-hidden="true"></span>
           </button>
         </div>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timelines[DEFAULT_ASPECT].slots.length}</p>
         <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
         <div class="preview-actions">
           <button type="button" id="modalPlayBtn" class="btn">${playPauseButtonHtml(false)}</button>
@@ -264,8 +236,8 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const stage = must(root, "#stage");
   const thumbs = must(root, "#thumbs");
-  const slotMeter = must(root, "#slotMeter");
   const statusEl = must(root, "#status");
+  const generateBtn = must(root, "#generateBtn") as HTMLButtonElement;
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
@@ -277,20 +249,23 @@ export async function boot(root: HTMLElement): Promise<void> {
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
   const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const previewState = must(root, "#previewState");
-  const aspectInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
-  ];
-  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
-  const filterInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="filter"], input[name="preview-filter"]'),
-  ];
+  const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
+  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
+  const filterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="filter"]')];
 
-  stage.prepend(compositor.canvas);
-  compositor.canvas.setAttribute("aria-hidden", "true");
-  compositor.canvas.removeAttribute("aria-label");
-  document.body.append(video);
+  stage.prepend(resultVideo);
+  document.body.append(template);
 
   const timeline = () => timelines[mode];
+
+  const currentSettings = () => ({
+    aspect: mode,
+    swap: swapStyle,
+    filter: imageFilter,
+    photoIds: photos.map((photo) => photo.id),
+  });
+
+  const hasCurrentArtifact = () => isArtifactCurrent(artifact?.key, currentSettings());
 
   const setStatus = (text: string, kind: StatusKind = "idle") => {
     statusEl.textContent = text;
@@ -299,7 +274,7 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const setErrorStatus = (error: unknown, fallback: string) => {
     reportError(error);
-    setStatus(error instanceof Error ? error.message : fallback, "error");
+    setStatus(generationErrorMessage(error, fallback), "error");
   };
 
   const syncAspectRadios = (value: AspectMode) => {
@@ -332,55 +307,39 @@ export async function boot(root: HTMLElement): Promise<void> {
     );
   };
 
-  const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+  const templateReady = () => template.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 
-  const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
+  const isPreviewPlaying = () => playing || (!resultVideo.paused && !resultVideo.ended);
 
   const refreshButtons = () => {
-    const ready = canUse();
-    playBtn.disabled = recording || !ready;
-    saveBtn.disabled = recording || !ready;
-    modalPlayBtn.disabled = recording || !ready;
-    restartBtn.disabled = recording || !ready;
-    muteBtn.disabled = recording;
+    const actions = actionAvailability({
+      generating,
+      photosReady: photos.length > 0,
+      templateReady: templateReady(),
+      hasCurrentArtifact: hasCurrentArtifact(),
+    });
+    generateBtn.disabled = !actions.canGenerate;
+    generateBtn.textContent = generateButtonLabel(hasCurrentArtifact());
+    playBtn.disabled = !actions.canPreview;
+    saveBtn.disabled = !actions.canSave;
+    modalPlayBtn.disabled = generating || !hasCurrentArtifact();
+    restartBtn.disabled = generating || !hasCurrentArtifact();
+    muteBtn.disabled = generating;
     const active = isPreviewPlaying();
     modalPlayBtn.innerHTML = playPauseButtonHtml(active);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
     stage.setAttribute("aria-pressed", active ? "true" : "false");
+    stage.dataset.aspect = mode;
     previewState.textContent = active ? "再生中" : "停止中";
-    for (const input of aspectInputs) {
-      input.disabled = recording;
-    }
-    for (const input of swapInputs) {
-      input.disabled = recording;
-    }
-    for (const input of filterInputs) {
-      input.disabled = recording;
-    }
-  };
-
-  const paint = (time?: number) => {
-    const cuts = timeline();
-    const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter);
-    if (slot !== lastSlot) {
-      lastSlot = slot;
-      slotMeter.textContent = `スロット ${slot + 1} / ${cuts.slots.length}`;
-    }
-  };
-
-  const haltLoop = () => {
-    stopLoop?.();
-    stopLoop = null;
-  };
-
-  const startLoop = async () => {
-    haltLoop();
-    stopLoop = startVideoPaintLoop(video, paint);
+    picker.disabled = generating;
+    for (const input of aspectInputs) input.disabled = generating;
+    for (const input of swapInputs) input.disabled = generating;
+    for (const input of filterInputs) input.disabled = generating;
   };
 
   const applyPreviewMute = () => {
-    video.muted = previewMuted;
-    video.volume = 1;
+    resultVideo.muted = previewMuted;
+    resultVideo.volume = 1;
     muteBtn.innerHTML = muteButtonHtml(previewMuted);
     muteBtn.setAttribute("aria-pressed", previewMuted ? "false" : "true");
   };
@@ -388,11 +347,38 @@ export async function boot(root: HTMLElement): Promise<void> {
   const analyticsParams = () => videoEventParams(mode, swapStyle);
 
   const trackPreviewStart = () => {
-    if (!shouldTrackPreviewStart({ event: "start", recording, trackedThisPlayback: previewTracked })) {
+    if (!shouldTrackPreviewStart({ event: "start", recording: generating, trackedThisPlayback: previewTracked })) {
       return;
     }
     previewTracked = true;
     trackEvent(VIDEO_PREVIEW_EVENT, analyticsParams());
+  };
+
+  const bindResultVideo = () => {
+    if (!artifact) {
+      resultVideo.removeAttribute("src");
+      resultVideo.load();
+      return;
+    }
+    if (resultVideo.src !== artifact.url) {
+      resultVideo.src = artifact.url;
+    }
+    stage.dataset.aspect = mode;
+  };
+
+  const dropArtifact = (status?: string) => {
+    if (!artifact) return;
+    revokeGeneratedArtifact(artifact);
+    artifact = null;
+    bindResultVideo();
+    if (status) setStatus(status);
+  };
+
+  const invalidateArtifact = () => {
+    if (!artifact) return;
+    closePreview();
+    dropArtifact(GENERATE_STALE_STATUS);
+    refreshButtons();
   };
 
   const stopPlayback = () => {
@@ -400,8 +386,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     playbackBusy = false;
     playing = false;
     previewTracked = false;
-    haltLoop();
-    video.pause();
+    resultVideo.pause();
     refreshButtons();
   };
 
@@ -410,54 +395,56 @@ export async function boot(root: HTMLElement): Promise<void> {
     playbackBusy = false;
     playing = false;
     suppressPlayUntil = Date.now() + 350;
-    haltLoop();
-    video.pause();
-    paint();
+    resultVideo.pause();
     refreshButtons();
     setStatus("一時停止しました");
   };
 
   const startPlayback = async (fromStart: boolean) => {
-    if (recording || playbackBusy || !canUse()) return;
+    if (generating || playbackBusy || !hasCurrentArtifact()) return;
     if (!fromStart && Date.now() < suppressPlayUntil) return;
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
+      bindResultVideo();
       trackPreviewStart();
       applyPreviewMute();
       if (
         shouldSeekPreviewToStart({
           fromStart,
-          ended: video.ended,
-          currentTime: video.currentTime,
-          duration: Number.isFinite(video.duration) ? video.duration : 0,
+          ended: resultVideo.ended,
+          currentTime: resultVideo.currentTime,
+          duration: Number.isFinite(resultVideo.duration) ? resultVideo.duration : 0,
         })
       ) {
-        await seekVideo(video, 0);
+        await seekVideo(resultVideo, 0);
       }
       if (gen !== playGen) return;
       playing = true;
       refreshButtons();
       setStatus("プレビュー中");
-      await startLoop();
+      try {
+        await resultVideo.play();
+      } catch (error) {
+        if (!previewMuted) {
+          previewMuted = true;
+          applyPreviewMute();
+          await resultVideo.play();
+          setStatus("ブラウザが音声付き自動再生を止めました。音声オフで再生しています。");
+        } else {
+          throw error;
+        }
+      }
       if (gen !== playGen) {
-        video.pause();
-        haltLoop();
+        resultVideo.pause();
         return;
       }
-      await video.play();
-      if (gen !== playGen) {
-        video.pause();
-        haltLoop();
-        return;
-      }
-      video.blur();
+      resultVideo.blur();
       modalPlayBtn.focus();
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
       previewTracked = false;
-      haltLoop();
       refreshButtons();
       setErrorStatus(error, "再生できませんでした");
     } finally {
@@ -466,11 +453,10 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   const openPreview = async () => {
-    if (recording || !canUse() || previewDialog.open) return;
+    if (generating || !hasCurrentArtifact() || previewDialog.open) return;
     try {
+      bindResultVideo();
       previewDialog.showModal();
-      lastSlot = -1;
-      paint();
       await startPlayback(true);
     } catch (error) {
       setErrorStatus(error, "プレビューを開けませんでした");
@@ -485,26 +471,15 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
-    const inPreview = previewDialog.open;
-    aspectResume = inPreview
-      ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
-      : null;
-    playGen += 1;
-    playbackBusy = false;
-    playing = false;
-    haltLoop();
-    video.pause();
-    if (!inPreview) {
-      previewTracked = false;
-    }
+    closePreview();
+    stopPlayback();
     mode = next;
     compositor.setAspect(mode);
     stage.dataset.aspect = mode;
-    lastSlot = -1;
-    slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
     syncAspectRadios(mode);
-    video.src = TEMPLATES[mode].video;
-    video.load();
+    template.src = TEMPLATES[mode].video;
+    template.load();
+    invalidateArtifact();
     refreshButtons();
   };
 
@@ -512,53 +487,83 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (next === swapStyle) return;
     swapStyle = next;
     syncSwapRadios(swapStyle);
-    paint();
+    invalidateArtifact();
   };
 
   const applyFilter = (next: ImageFilter) => {
     if (next === imageFilter) return;
     imageFilter = next;
     syncFilterRadios(imageFilter);
-    paint();
+    invalidateArtifact();
   };
 
-  video.addEventListener("loadeddata", () => {
-    paint();
+  const paintFrame = (time?: number) => {
+    compositor.draw(template, photos, timeline(), time, swapStyle, imageFilter);
+  };
+
+  const runGenerate = async () => {
+    if (generating || photos.length === 0 || !templateReady()) return;
+    closePreview();
+    generating = true;
+    playing = false;
+    previewTracked = false;
+    resultVideo.pause();
+    const gen = (generateGen += 1);
     refreshButtons();
-    if (!recording) {
+    setStatus(GENERATE_PREPARE_STATUS, "busy");
+    try {
+      const cuts = timeline();
+      const duration =
+        Number.isFinite(template.duration) && template.duration > 0 ? template.duration : cuts.duration;
+      const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
+      const result = await exportJumpVideo({
+        video: template,
+        canvas: compositor.canvas,
+        draw: paintFrame,
+        duration,
+        fps,
+        onProgress: (progress) => {
+          setStatus(generateProgressText(progress.current, progress.total), "busy");
+        },
+      });
+      if (gen !== generateGen) return;
+      revokeGeneratedArtifact(artifact);
+      const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
+      artifact = {
+        ...result,
+        filename,
+        url: URL.createObjectURL(result.blob),
+        key: settingsFingerprint(currentSettings()),
+      };
+      bindResultVideo();
+      setStatus(GENERATE_READY_STATUS);
+    } catch (error) {
+      if (gen !== generateGen) return;
+      setErrorStatus(error, "生成に失敗しました");
+    } finally {
+      if (gen === generateGen) {
+        generating = false;
+        template.pause();
+        template.muted = true;
+        refreshButtons();
+      }
+    }
+  };
+
+  template.addEventListener("loadeddata", () => {
+    refreshButtons();
+    if (generating) return;
+    if (hasCurrentArtifact()) {
+      setStatus(GENERATE_READY_STATUS);
+    } else if (photos.length > 0) {
+      setStatus(photosLoadedStatus(photos.length));
+    } else {
       setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
     }
-    const resume = aspectResume;
-    aspectResume = null;
-    if (!resume || !previewDialog.open || recording) return;
-    previewTracked = resume.tracked;
-    void (async () => {
-      try {
-        await seekVideo(video, resume.time);
-        lastSlot = -1;
-        paint();
-        if (resume.play) {
-          await startPlayback(false);
-        } else {
-          refreshButtons();
-        }
-      } catch (error) {
-        paint();
-        refreshButtons();
-        setErrorStatus(error, "プレビューの再開に失敗しました");
-      }
-    })();
   });
-  video.addEventListener("ended", () => {
-    if (!recording) {
-      stopPlayback();
-      paint();
-      setStatus("プレビューが終わりました");
-    }
-  });
-  video.addEventListener("error", () => {
-    if (recording) return;
-    const code = video.error?.code;
+  template.addEventListener("error", () => {
+    if (generating) return;
+    const code = template.error?.code;
     setErrorStatus(
       new Error(code != null ? `テンプレ動画を読み込めませんでした (${code})` : "テンプレ動画を読み込めませんでした"),
       "テンプレ動画を読み込めませんでした",
@@ -566,23 +571,34 @@ export async function boot(root: HTMLElement): Promise<void> {
     refreshButtons();
   });
 
+  resultVideo.addEventListener("ended", () => {
+    if (generating) return;
+    stopPlayback();
+    setStatus("プレビューが終わりました");
+  });
+  resultVideo.addEventListener("error", () => {
+    if (generating || !artifact) return;
+    setErrorStatus(new Error("生成した動画を再生できませんでした"), "生成した動画を再生できませんでした");
+    refreshButtons();
+  });
+
   for (const input of aspectInputs) {
     input.addEventListener("change", () => {
-      if (recording || !input.checked || !isAspectMode(input.value)) return;
+      if (generating || !input.checked || !isAspectMode(input.value)) return;
       applyAspect(input.value);
     });
   }
 
   for (const input of swapInputs) {
     input.addEventListener("change", () => {
-      if (recording || !input.checked || !isSwapStyle(input.value)) return;
+      if (generating || !input.checked || !isSwapStyle(input.value)) return;
       applySwap(input.value);
     });
   }
 
   for (const input of filterInputs) {
     input.addEventListener("change", () => {
-      if (recording || !input.checked || !isImageFilter(input.value)) return;
+      if (generating || !input.checked || !isImageFilter(input.value)) return;
       applyFilter(input.value);
     });
   }
@@ -591,6 +607,8 @@ export async function boot(root: HTMLElement): Promise<void> {
     const files = [...(picker.files ?? [])];
     picker.value = "";
     if (files.length === 0) return;
+    closePreview();
+    dropArtifact();
     setStatus("写真を読み込み中…", "busy");
     try {
       revokePhotos(photos);
@@ -602,19 +620,17 @@ export async function boot(root: HTMLElement): Promise<void> {
         },
       });
       renderThumbs();
-      paint();
       refreshButtons();
-      setStatus(
-        photos.length === 0
-          ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました`,
-      );
+      setStatus(photosLoadedStatus(photos.length));
     } catch (error) {
       renderThumbs();
-      paint();
       refreshButtons();
       setErrorStatus(error, "読み込みに失敗しました");
     }
+  });
+
+  generateBtn.addEventListener("click", () => {
+    void runGenerate();
   });
 
   playBtn.addEventListener("click", () => {
@@ -684,48 +700,17 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   previewDialog.addEventListener("close", () => {
     stopPlayback();
-    video.muted = true;
+    resultVideo.muted = true;
   });
 
-  saveBtn.addEventListener("click", async () => {
-    if (recording || photos.length === 0) return;
-    closePreview();
-    recording = true;
-    playing = false;
-    previewTracked = false;
-    video.pause();
-    refreshButtons();
-    setStatus("書き出しを準備しています…", "busy");
+  saveBtn.addEventListener("click", () => {
+    if (generating || !artifact || !hasCurrentArtifact()) return;
     try {
-      const cuts = timeline();
-      const duration =
-        Number.isFinite(video.duration) && video.duration > 0 ? video.duration : cuts.duration;
-      const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
-      const result = await exportJumpVideo({
-        video,
-        canvas: compositor.canvas,
-        draw: paint,
-        duration,
-        fps,
-        onProgress: (progress) => {
-          setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
-        },
-      });
-      const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
-      downloadBlob(result.blob, filename);
-      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。ハッシュタグをコピーして X に投稿できます。`);
+      downloadBlob(artifact.blob, artifact.filename);
+      setStatus(`保存しました（${artifact.extension.toUpperCase()}・生成）。ハッシュタグをコピーして X に投稿できます。`);
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
       setErrorStatus(error, "保存に失敗しました");
-    } finally {
-      recording = false;
-      playing = false;
-      previewTracked = false;
-      haltLoop();
-      video.pause();
-      video.muted = true;
-      refreshButtons();
-      paint();
     }
   });
 
@@ -761,7 +746,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
-  void video.load();
+  void template.load();
   hydrateReactionEmbed(must(root, "#reactionsEmbed"));
 }
 
@@ -793,6 +778,19 @@ function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   video.muted = true;
   video.tabIndex = -1;
   video.className = "offscreen-video";
+  return video;
+}
+
+function createResultVideo(): HTMLVideoElement {
+  const video = document.createElement("video");
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+  video.preload = "auto";
+  video.controls = false;
+  video.tabIndex = -1;
+  video.className = "stage-video";
+  video.setAttribute("aria-hidden", "true");
   return video;
 }
 

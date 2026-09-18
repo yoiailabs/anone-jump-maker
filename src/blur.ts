@@ -1,3 +1,5 @@
+import { boxBlurRgbaWasm } from "./pixel-wasm.ts";
+
 /**
  * iOS / Safari は Canvas2D の `filter` が無効（caniuse: disabled by default）。
  * 縮小バッファへ箱型ぼかしを掛けてから戻す。
@@ -15,8 +17,21 @@ export function softwareBlurDownscale(px: number): number {
 /**
  * RGBA 画素の分離箱型ぼかし。2 パスでガウスに近い。
  * Canvas2D `filter` を使わないので iOS でも効く。
+ * 生成時は WASM を優先し、未ロード時だけ JS に落とす。
  */
 export function boxBlurRgba(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  radius: number,
+  passes = SOFTWARE_BLUR_PASSES,
+): void {
+  if (radius < 1 || width < 1 || height < 1 || passes < 1) return;
+  if (boxBlurRgbaWasm(data, width, height, radius, passes)) return;
+  boxBlurRgbaJs(data, width, height, radius, passes);
+}
+
+export function boxBlurRgbaJs(
   data: Uint8ClampedArray,
   width: number,
   height: number,

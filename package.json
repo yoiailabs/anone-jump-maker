@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "check": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json",
     "test": "vitest run",
+    "wasm": "bash scripts/build-pixel-wasm.sh",
     "og": "node scripts/render-og.mjs",
     "deploy": "pnpm build && wrangler deploy",
     "dev:worker": "pnpm build && wrangler dev -c wrangler.toml"

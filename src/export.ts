@@ -41,6 +41,10 @@ export function hasWebCodecsVideoEncoder(): boolean {
   return typeof VideoEncoder === "function";
 }
 
+/** Android Chrome は seeked が遅れがちなので、生成本線では長めに待つ。 */
+export const SEEK_TIMEOUT_MS = 8000;
+export const SEEK_TIMEOUT_RETRIES = 1;
+
 export async function seekVideo(video: HTMLVideoElement, time: number): Promise<void> {
   const duration = Number.isFinite(video.duration) ? video.duration : 0;
   const target = clamp(time, 0, duration > 0 ? Math.max(0, duration - 1e-4) : time);
@@ -48,7 +52,23 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && Math.abs(video.currentTime - target) < 8e-4) {
     return;
   }
-  await new Promise<void>((resolve, reject) => {
+  let attempt = 0;
+  while (true) {
+    try {
+      await seekVideoOnce(video, target);
+      return;
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== "シークがタイムアウトしました") {
+        throw error;
+      }
+      if (attempt >= SEEK_TIMEOUT_RETRIES) throw error;
+      attempt += 1;
+    }
+  }
+}
+
+function seekVideoOnce(video: HTMLVideoElement, target: number): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     const finish = () => {
       window.clearTimeout(timer);
       video.removeEventListener("seeked", onSeeked);
@@ -69,8 +89,13 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
         resolve();
         return;
       }
+      try {
+        video.currentTime = target;
+      } catch {
+        /* 再設定できなくてもタイムアウトとして扱う */
+      }
       reject(new Error("シークがタイムアウトしました"));
-    }, 2500);
+    }, SEEK_TIMEOUT_MS);
     video.addEventListener("seeked", onSeeked);
     video.addEventListener("error", onError);
     video.currentTime = target;
@@ -78,8 +103,8 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
 }
 
 /**
- * プレビューと同じ compositor / 論理時刻でオフライン生成する。
- * WebCodecs が無い環境では録画に落とさず、方針を明示して失敗する。
+ * オフライン生成。compositor.draw（画素は WASM）を論理時刻で描き、WebCodecs で積む。
+ * ライブ Canvas プレビューは使わない。WebCodecs が無い環境では録画に落とさない。
  */
 export async function exportJumpVideo(options: {
   video: HTMLVideoElement;

@@ -98,7 +98,7 @@ export async function encodeOffline(options: {
       await seekVideo(video, time);
       draw(time);
       await videoSource.add(i * frameDuration, frameDuration);
-      if (i === 0 || i === times.length - 1 || i % 8 === 0) {
+      if (i === 0 || i === times.length - 1 || i % 4 === 0) {
         onProgress?.({ mode: "offline", current: i + 1, total: times.length });
         await yieldToUi();
       }

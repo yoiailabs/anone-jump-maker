@@ -7,6 +7,8 @@ import {
   EXPORT_FALLBACK,
   EXPORT_FPS,
   EXPORT_PATH,
+  SEEK_TIMEOUT_MS,
+  SEEK_TIMEOUT_RETRIES,
   UNSUPPORTED_EXPORT_MESSAGE,
   exportJumpVideo,
   frameTimes,
@@ -18,6 +20,8 @@ describe("offline export plan", () => {
     expect(EXPORT_PATH).toBe("offline");
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
     expect(EXPORT_FALLBACK).toBe("none");
+    expect(SEEK_TIMEOUT_MS).toBeGreaterThanOrEqual(8000);
+    expect(SEEK_TIMEOUT_RETRIES).toBeGreaterThanOrEqual(1);
   });
 
   it("muxes template-file audio so preview mute cannot silence a saved video", () => {

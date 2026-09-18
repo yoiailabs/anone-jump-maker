@@ -1,3 +1,5 @@
+import { keyImageDataWasm } from "./pixel-wasm.ts";
+
 /** Adaptive near-solid background key + mild green chroma assist. */
 
 export const KEY_PARAMS = {
@@ -96,6 +98,15 @@ export function sampleKeyColor(
 
 /** In-place RGBA key. Returns the sampled key color. */
 export function keyImageData(image: ImageData, params = KEY_PARAMS): [number, number, number] {
+  const key = sampleKeyColor(image.data, image.width, image.height);
+  if (params === KEY_PARAMS && keyImageDataWasm(image)) {
+    return key;
+  }
+  return keyImageDataJs(image, params);
+}
+
+/** JS 参照実装。WASM が使えないときとテスト用。 */
+export function keyImageDataJs(image: ImageData, params = KEY_PARAMS): [number, number, number] {
   const { data, width, height } = image;
   const key = sampleKeyColor(data, width, height);
   const [kr, kg, kb] = key;
