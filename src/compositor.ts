@@ -53,7 +53,7 @@ export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
  */
 export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 
-/** 保存は HTMLVideoElement ではなく、ファイルからデコードしたキャンバスをキャラ源にする。 */
+/** 保存は HTMLVideoElement ではなく、ファイルから RGBA コピーしたキャンバスをキャラ源にする。 */
 export type CharacterFrame = {
   source: CanvasImageSource;
   width: number;
