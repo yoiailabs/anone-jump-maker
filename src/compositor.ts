@@ -53,6 +53,22 @@ export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
  */
 export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 
+/** 保存は HTMLVideoElement ではなく、ファイルからデコードしたキャンバスをキャラ源にする。 */
+export type CharacterFrame = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+};
+
+export function resolveCharacterSource(
+  video: HTMLVideoElement,
+  override?: CharacterFrame,
+): CharacterFrame | null {
+  if (override && override.width > 0 && override.height > 0) return override;
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
+  return { source: video, width: video.videoWidth, height: video.videoHeight };
+}
+
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (
@@ -62,6 +78,7 @@ export type Compositor = {
     time?: number,
     swapStyle?: SwapStyle,
     imageFilter?: ImageFilter,
+    character?: CharacterFrame,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   setResolutionScale: (scale: number) => void;
@@ -118,6 +135,7 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
     time = video.currentTime,
     swapStyle: SwapStyle = "jump",
     imageFilter: ImageFilter = "none",
+    character?: CharacterFrame,
   ) => {
     const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
@@ -127,8 +145,9 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle);
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
+    const characterSource = resolveCharacterSource(video, character);
 
-    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode, imageFilter);
+    composeMain(main, mainCtx, surfaces, plate, characterSource, fx, swapStyle, panel, mode, imageFilter);
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -203,7 +222,7 @@ function composeMain(
   mainCtx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
   plate: LoadedPhoto | undefined,
-  video: HTMLVideoElement,
+  character: CharacterFrame | null,
   fx: SwapFx,
   style: SwapStyle,
   panel: { w: number; h: number },
@@ -223,8 +242,8 @@ function composeMain(
     applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
   }
 
-  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    drawCharacter(mainCtx, surfaces, video, mw, mh, mode);
+  if (character) {
+    drawCharacter(mainCtx, surfaces, character, mw, mh, mode);
   }
 
   if (hasFrameFx(fx)) {
@@ -300,19 +319,19 @@ function drawPhotoPlate(
 function drawCharacter(
   mainCtx: CanvasRenderingContext2D,
   { keyed, keyedCtx, halo, haloCtx }: FxSurfaces,
-  video: HTMLVideoElement,
+  character: CharacterFrame,
   mw: number,
   mh: number,
   mode: AspectMode,
 ): void {
   const fallback = outputSize(mode);
-  const vw = video.videoWidth || fallback.width;
-  const vh = video.videoHeight || fallback.height;
+  const vw = character.width || fallback.width;
+  const vh = character.height || fallback.height;
   const band = templateBandRect(vw, vh, mode);
   keyed.width = mw;
   keyed.height = mh;
   keyedCtx.clearRect(0, 0, mw, mh);
-  keyedCtx.drawImage(video, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
+  keyedCtx.drawImage(character.source, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
   const image = keyedCtx.getImageData(0, 0, mw, mh);
   keyImageData(image);
   keyedCtx.putImageData(image, 0, 0);

@@ -3,6 +3,7 @@ import {
   AudioBufferSource,
   BlobSource,
   BufferTarget,
+  CanvasSink,
   CanvasSource,
   EncodedAudioPacketSource,
   EncodedPacketSink,
@@ -18,11 +19,14 @@ import {
   type OutputFormat,
   type VideoCodec,
 } from "mediabunny";
+import type { CharacterFrame } from "./compositor.ts";
 import {
   EXPORT_FPS,
-  composeExportFrame,
+  TEMPLATE_DECODE_MESSAGE,
+  TEMPLATE_FRAME_MISSING_MESSAGE,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  paintDecodedExportFrame,
   type ExportProgress,
   type ExportResult,
 } from "./export.ts";
@@ -65,7 +69,7 @@ export async function pickOfflinePlan(width: number, height: number): Promise<Of
 export async function encodeOffline(options: {
   video: HTMLVideoElement;
   canvas: HTMLCanvasElement;
-  draw: (time: number) => void;
+  draw: (time: number, character?: CharacterFrame) => void;
   duration: number;
   fps: number;
   plan: OfflinePlan;
@@ -84,23 +88,33 @@ export async function encodeOffline(options: {
   });
   output.addVideoTrack(videoSource, { frameRate: fps > 0 ? fps : EXPORT_FPS });
 
-  const pumpAudio = await attachTemplateAudio(output, plan.format, video.currentSrc || video.src);
-
+  const template = await openTemplateInput(video.currentSrc || video.src);
   video.pause();
   video.muted = true;
-  await output.start();
   try {
+    const frameSink = template ? await openTemplateFrameSink(template) : null;
+    if (!template || !frameSink) {
+      throw new Error(TEMPLATE_DECODE_MESSAGE);
+    }
+    const pumpAudio = await attachTemplateAudio(output, plan.format, template);
+    await output.start();
     if (pumpAudio) {
       await pumpAudio();
     }
-    for (let i = 0; i < times.length; i += 1) {
-      const time = times[i]!;
-      await composeExportFrame(video, time, draw);
+    let i = 0;
+    for await (const wrapped of frameSink.canvasesAtTimestamps(times)) {
+      const time = times[i];
+      if (time === undefined) break;
+      paintDecodedExportFrame(time, wrapped, draw);
       await videoSource.add(i * frameDuration, frameDuration);
       if (i === 0 || i === times.length - 1 || i % 8 === 0) {
         onProgress?.({ mode: "offline", current: i + 1, total: times.length });
         await yieldToUi();
       }
+      i += 1;
+    }
+    if (i !== times.length) {
+      throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
     }
     await output.finalize();
   } catch (error) {
@@ -108,6 +122,8 @@ export async function encodeOffline(options: {
       await output.cancel();
     }
     throw error;
+  } finally {
+    template?.dispose();
   }
 
   const buffer = target.buffer;
@@ -127,53 +143,46 @@ export async function encodeOffline(options: {
 async function attachTemplateAudio(
   output: Output,
   format: OutputFormat,
-  templateSrc: string,
+  input: Input,
 ): Promise<(() => Promise<void>) | null> {
-  const input = await openTemplateInput(templateSrc);
-  if (!input) return null;
   try {
     const track = await input.getPrimaryAudioTrack();
-    if (!track) {
-      input.dispose();
-      return null;
-    }
+    if (!track) return null;
     const packetCodec = await track.getCodec();
     if (packetCodec && format.getSupportedAudioCodecs().includes(packetCodec)) {
       const source = new EncodedAudioPacketSource(packetCodec);
       output.addAudioTrack(source);
       return async () => {
-        try {
-          const sink = new EncodedPacketSink(track);
-          const decoderConfig = await track.getDecoderConfig();
-          let first = true;
-          for await (const packet of sink.packets()) {
-            await source.add(packet, first && decoderConfig ? { decoderConfig } : undefined);
-            first = false;
-          }
-        } finally {
-          input.dispose();
+        const sink = new EncodedPacketSink(track);
+        const decoderConfig = await track.getDecoderConfig();
+        let first = true;
+        for await (const packet of sink.packets()) {
+          await source.add(packet, first && decoderConfig ? { decoderConfig } : undefined);
+          first = false;
         }
       };
     }
     const encodeCodec = await pickAudioCodec(format);
-    if (!encodeCodec || !(await track.canDecode())) {
-      input.dispose();
-      return null;
-    }
+    if (!encodeCodec || !(await track.canDecode())) return null;
     const source = new AudioBufferSource({ codec: encodeCodec, quality: AUDIO_QUALITY });
     output.addAudioTrack(source);
     return async () => {
-      try {
-        const sink = new AudioBufferSink(track);
-        for await (const wrapped of sink.buffers()) {
-          await source.add(wrapped.buffer);
-        }
-      } finally {
-        input.dispose();
+      const sink = new AudioBufferSink(track);
+      for await (const wrapped of sink.buffers()) {
+        await source.add(wrapped.buffer);
       }
     };
   } catch {
-    input.dispose();
+    return null;
+  }
+}
+
+async function openTemplateFrameSink(input: Input): Promise<CanvasSink | null> {
+  try {
+    const track = await input.getPrimaryVideoTrack();
+    if (!track || !(await track.canDecode())) return null;
+    return new CanvasSink(track, { poolSize: 2 });
+  } catch {
     return null;
   }
 }

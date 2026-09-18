@@ -6,16 +6,20 @@ import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
   EXPORT_AUDIO_SOURCE,
+  EXPORT_CHARACTER_SOURCE,
   EXPORT_FALLBACK,
   EXPORT_FPS,
   EXPORT_PATH,
   SEEK_PRESENT_TIMEOUT_MS,
+  TEMPLATE_FRAME_MISSING_MESSAGE,
   UNSUPPORTED_EXPORT_MESSAGE,
-  composeExportFrame,
+  characterFrameFromCanvas,
   exportJumpVideo,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  paintDecodedExportFrame,
   seekVideo,
+  templateFrameMatchesTime,
 } from "./export.ts";
 
 describe("offline export plan", () => {
@@ -38,6 +42,11 @@ describe("offline export plan", () => {
   });
 
   it("muxes template-file audio so preview mute cannot silence a saved video", () => {
+    expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
+  });
+
+  it("keys the saved character from a file-decoded frame, not HTMLVideoElement pixels", () => {
+    expect(EXPORT_CHARACTER_SOURCE).toBe("template-file-decode");
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
   });
 
@@ -160,7 +169,32 @@ function asVideo(video: VideoStub): HTMLVideoElement {
   return video as unknown as HTMLVideoElement;
 }
 
-describe("seekVideo / composeExportFrame", () => {
+describe("decoded export frames", () => {
+  it("accepts a sample at or just before the export timestamp", () => {
+    expect(templateFrameMatchesTime(0, 0)).toBe(true);
+    expect(templateFrameMatchesTime(10 / 30, 10 / 30)).toBe(true);
+    expect(templateFrameMatchesTime(9 / 30, 10 / 30)).toBe(true);
+    expect(templateFrameMatchesTime(1 / 30, 0)).toBe(true);
+    expect(templateFrameMatchesTime(0, 10 / 30)).toBe(false);
+    expect(templateFrameMatchesTime(1.2, 0.4)).toBe(false);
+  });
+
+  it("draws from the decoded canvas and rejects a frozen first frame", () => {
+    const drawn: Array<{ time: number; width: number }> = [];
+    const canvas = { width: 1920, height: 1080 };
+    paintDecodedExportFrame(0.4, { canvas, timestamp: 0.4 }, (time, character) => {
+      drawn.push({ time, width: character?.width ?? 0 });
+    });
+    expect(drawn).toEqual([{ time: 0.4, width: 1920 }]);
+    expect(characterFrameFromCanvas(canvas).width).toBe(1920);
+    expect(() => paintDecodedExportFrame(0.4, { canvas, timestamp: 0 }, () => undefined)).toThrow(
+      TEMPLATE_FRAME_MISSING_MESSAGE,
+    );
+    expect(() => paintDecodedExportFrame(0.4, null, () => undefined)).toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
+  });
+});
+
+describe("seekVideo", () => {
   beforeEach(() => {
     if (!("HTMLMediaElement" in globalThis)) {
       Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
@@ -178,23 +212,6 @@ describe("seekVideo / composeExportFrame", () => {
     video.dispatch("seeked");
     video.present(1.2);
     await pending;
-  });
-
-  it("does not draw until a presented frame matches the sought time", async () => {
-    const video = createVideo();
-    const order: string[] = [];
-    const pending = composeExportFrame(asVideo(video), 0.4, () => {
-      order.push("draw");
-    });
-    video.dispatch("seeked");
-    await Promise.resolve();
-    expect(order).toEqual([]);
-    video.present(0);
-    await Promise.resolve();
-    expect(order).toEqual([]);
-    video.present(0.4);
-    await pending;
-    expect(order).toEqual(["draw"]);
   });
 
   it("returns immediately when the frame is already current", async () => {

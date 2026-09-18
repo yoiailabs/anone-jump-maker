@@ -1,3 +1,4 @@
+import type { CharacterFrame } from "./compositor.ts";
 import { waitForPresentedFrame } from "./playback.ts";
 
 export const EXPORT_FPS = 30;
@@ -7,6 +8,15 @@ export const EXPORT_PATH = "offline" as const;
 
 /** 音声はテンプレファイルから mux。キャプチャストリームは使わない。 */
 export const EXPORT_AUDIO_SOURCE = "template-file" as const;
+
+/**
+ * 保存のキャラ画素は HTMLVideoElement ではなく、同じテンプレファイルを VideoDecoder で読む。
+ * Android Chrome は paused seek 後も video テクスチャが先頭フレームのままになる。
+ */
+export const EXPORT_CHARACTER_SOURCE = "template-file-decode" as const;
+
+export const TEMPLATE_DECODE_MESSAGE = "テンプレ映像をデコードできませんでした";
+export const TEMPLATE_FRAME_MISSING_MESSAGE = "テンプレのフレームを取得できませんでした";
 
 /** 保存パスに MediaRecorder フォールバックは置かない。未対応ブラウザは明示エラー。 */
 export const EXPORT_FALLBACK = "none" as const;
@@ -88,18 +98,32 @@ export async function seekVideo(video: HTMLVideoElement, time: number): Promise<
   await Promise.all([seeked, presented]);
 }
 
+/** デコード済みフレームを保存のキャラ源にする。HTMLVideoElement は使わない。 */
+export function characterFrameFromCanvas(canvas: {
+  width: number;
+  height: number;
+}): CharacterFrame {
+  return { source: canvas as CanvasImageSource, width: canvas.width, height: canvas.height };
+}
+
 /**
- * オフライン保存の1フレーム: テンプレを提示時刻までシークしてから合成する。
- * `draw(time)` の写真層は論理時刻、キャラは video 画素なので、提示待ちを挟まないと
- * Android Chrome でキャラだけ先頭フレームのままになる。
+ * ファイルデコーダが返した PTS が、保存の論理時刻に使えるか。
+ * 先頭フレーム（t≈0）の使い回しはここで落とす。
  */
-export async function composeExportFrame(
-  video: HTMLVideoElement,
+export function templateFrameMatchesTime(sampleTime: number, targetTime: number): boolean {
+  if (!Number.isFinite(sampleTime) || !Number.isFinite(targetTime)) return false;
+  return Math.abs(sampleTime - targetTime) < 3 / EXPORT_FPS + 1e-3;
+}
+
+export function paintDecodedExportFrame(
   time: number,
-  draw: (time: number) => void,
-): Promise<void> {
-  await seekVideo(video, time);
-  draw(time);
+  frame: { canvas: { width: number; height: number }; timestamp: number } | null,
+  draw: (time: number, character?: CharacterFrame) => void,
+): void {
+  if (!frame || frame.canvas.width < 1 || frame.canvas.height < 1 || !templateFrameMatchesTime(frame.timestamp, time)) {
+    throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+  }
+  draw(time, characterFrameFromCanvas(frame.canvas));
 }
 
 /**
@@ -109,7 +133,7 @@ export async function composeExportFrame(
 export async function exportJumpVideo(options: {
   video: HTMLVideoElement;
   canvas: HTMLCanvasElement;
-  draw: (time: number) => void;
+  draw: (time: number, character?: CharacterFrame) => void;
   duration: number;
   fps: number;
   onProgress?: (progress: ExportProgress) => void;
