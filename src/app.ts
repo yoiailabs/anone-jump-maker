@@ -821,7 +821,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   hydrateReactionEmbed(must(root, "#reactionsEmbed"));
 }
 
-async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {
+export async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {
   const [portrait, landscape] = await Promise.all([
     loadTimeline(TEMPLATES.portrait.cuts),
     loadTimeline(TEMPLATES.landscape.cuts),
@@ -829,7 +829,7 @@ async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {
   return { portrait, landscape };
 }
 
-async function loadTimeline(url: string): Promise<CutTimeline> {
+export async function loadTimeline(url: string): Promise<CutTimeline> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error("カット表を読み込めませんでした");
@@ -837,7 +837,8 @@ async function loadTimeline(url: string): Promise<CutTimeline> {
   return (await response.json()) as CutTimeline;
 }
 
-function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
+/** iOS Safari は playsinline が無いとフルスクリーンに逃げる。 */
+export function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   const video = document.createElement("video");
   video.src = TEMPLATES[mode].video;
   video.playsInline = true;

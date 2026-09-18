@@ -22,6 +22,10 @@ describe("ハッシュタグをコピー", () => {
     expect(await copyTextToClipboard(SHARE_TEXT, { writeText })).toBe(true);
     expect(writeText).toHaveBeenCalledWith(SHARE_TEXT);
     expect(await copyTextToClipboard(SHARE_TEXT)).toBe(false);
+    const denied = vi.fn(async () => {
+      throw new Error("denied");
+    });
+    expect(await copyTextToClipboard(SHARE_TEXT, { writeText: denied })).toBe(false);
   });
 });
 

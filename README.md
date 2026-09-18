@@ -58,9 +58,14 @@
 ```bash
 pnpm install   # または npm install
 pnpm dev       # または npm run dev
-pnpm test
+pnpm test            # ユニット（Node / Vitest）
+pnpm test:browser    # Chromium + WebKit（Vitest Browser）
+pnpm test:e2e        # Playwright。Pixel 7 と iPhone 13 のエミュレーション含む
+pnpm test:all
 pnpm build
 ```
+
+GitHub Actions（`.github/workflows/test.yml`）が pull request と `main` への push で `pnpm check`・ユニット・ブラウザ・e2e を回します。実機の iOS Safari / Android Chrome は CI に載せられないので、Playwright の WebKit（iPhone 13）と Chromium（Pixel 7）でプレビューと短い保存クリップを確認します。ブラウザテストの初回は `pnpm exec playwright install --with-deps chromium webkit` が必要です。
 
 デプロイ（DNS は設定しない）:
 

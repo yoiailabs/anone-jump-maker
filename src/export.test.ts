@@ -76,6 +76,7 @@ describe("offline export plan", () => {
   it("returns a single zero frame when duration is empty", () => {
     expect(frameTimes(0, 30)).toEqual([0]);
     expect(frameTimes(Number.NaN, EXPORT_FPS)).toEqual([0]);
+    expect(frameTimes(1, 0)).toEqual(frameTimes(1, EXPORT_FPS));
   });
 
   it("keeps hop and swap on the planned timestamp", () => {
@@ -205,6 +206,11 @@ describe("decoded export frames", () => {
     expect(() => paintDecodedExportFrame(0.4, null, () => undefined)).toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
   });
 
+  it("rejects an empty or undersized RGBA layout", () => {
+    expect(() => packedRgba(new Uint8Array(4), 2, 2, 8)).toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
+    expect(() => packedRgba(new Uint8Array(), 1, 1, 4)).toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
+  });
+
   it("packs strided RGBA and fingerprints a grid of pixels", () => {
     const width = 2;
     const height = 2;
@@ -260,6 +266,18 @@ describe("decoded export frames", () => {
     expect(frame.width).toBe(2);
     expect([...frame.data]).toEqual([9, 8, 7, 255, 1, 2, 3, 255]);
     expect(frame.fingerprint).toBe(fingerprintRgba(frame.data, 2, 1));
+  });
+
+  it("rejects a sample with no coded size", async () => {
+    await expect(
+      copySampleRgba({
+        timestamp: 0,
+        codedWidth: 0,
+        codedHeight: 10,
+        allocationSize: () => 0,
+        async copyTo() {},
+      }),
+    ).rejects.toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
   });
 });
 
