@@ -434,6 +434,7 @@ body {
   aspect-ratio: 16 / 9;
 }
 
+/* 内部ビットマップは PREVIEW_RESOLUTION_SCALE。表示は .stage の大きさへ拡大する。 */
 .stage-canvas {
   display: block;
   width: 100%;

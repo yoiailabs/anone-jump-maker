@@ -1,5 +1,5 @@
 import { applySoftwareBlur } from "./blur.ts";
-import { ensureCanvasSize } from "./canvas-size.ts";
+import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
@@ -64,15 +64,18 @@ export type Compositor = {
     imageFilter?: ImageFilter,
   ) => number;
   setAspect: (mode: AspectMode) => void;
+  setResolutionScale: (scale: number) => void;
+  resolutionScale: () => number;
   aspect: () => AspectMode;
   destroy: () => void;
   kind: "2d";
 };
 
-export function createCompositor(): Compositor {
+export function createCompositor(options?: { resolutionScale?: number }): Compositor {
   let mode: AspectMode = DEFAULT_ASPECT;
+  let resolutionScale = options?.resolutionScale ?? 1;
   const canvas = document.createElement("canvas");
-  applyCanvasSize(canvas, mode);
+  applyCanvasSize(canvas, mode, resolutionScale);
   canvas.className = "stage-canvas";
   canvas.setAttribute("aria-label", "合成プレビュー");
   const ctx = canvas.getContext("2d", { alpha: false });
@@ -118,7 +121,7 @@ export function createCompositor(): Compositor {
   ) => {
     const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
-    applyCanvasSize(canvas, mode);
+    applyCanvasSize(canvas, mode, resolutionScale);
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
@@ -141,7 +144,16 @@ export function createCompositor(): Compositor {
     kind: "2d",
     setAspect(next) {
       mode = next;
-      applyCanvasSize(canvas, mode);
+      applyCanvasSize(canvas, mode, resolutionScale);
+    },
+    setResolutionScale(next) {
+      const safe = Number.isFinite(next) && next > 0 ? next : 1;
+      if (safe === resolutionScale) return;
+      resolutionScale = safe;
+      applyCanvasSize(canvas, mode, resolutionScale);
+    },
+    resolutionScale() {
+      return resolutionScale;
     },
     aspect() {
       return mode;
@@ -180,9 +192,10 @@ type FxSurfaces = {
   blurCtx: CanvasRenderingContext2D;
 };
 
-function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
+function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode, scale: number): void {
   const size = outputSize(mode);
-  ensureCanvasSize(canvas, size.width, size.height);
+  const bitmap = scaleCanvasSize(size.width, size.height, scale);
+  ensureCanvasSize(canvas, bitmap.width, bitmap.height);
 }
 
 function composeMain(
@@ -499,13 +512,15 @@ export const SONG_CREDIT = "♪ あのね - ナナツカゼ";
 export const SONG_CREDIT_FONT_FRAC = 0.055;
 
 /** 横プレビュー（26rem / 1280）でのクレジットの画面上サイズに、縦を合わせる。 */
-export function songCreditFontSize(mode: AspectMode): number {
+export function songCreditFontSize(mode: AspectMode, resolutionScale = 1): number {
   const landscapeShort = Math.min(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
   const landscapeFont = Math.max(12, Math.round(landscapeShort * SONG_CREDIT_FONT_FRAC));
-  if (mode === "landscape") return landscapeFont;
+  const scale = Number.isFinite(resolutionScale) && resolutionScale > 0 ? resolutionScale : 1;
+  const scaled = (font: number) => Math.max(1, Math.round(font * scale));
+  if (mode === "landscape") return scaled(landscapeFont);
   const canvasPerRem =
     (OUTPUTS.portrait.width / STAGE_MAX_REM.portrait) * (STAGE_MAX_REM.landscape / OUTPUTS.landscape.width);
-  return Math.max(12, Math.round(landscapeFont * canvasPerRem));
+  return scaled(Math.max(12, Math.round(landscapeFont * canvasPerRem)));
 }
 
 export type SongCreditLayout = {
@@ -529,7 +544,9 @@ export function songCreditLayout(
   mode: AspectMode = canvasW < canvasH ? "portrait" : "landscape",
 ): SongCreditLayout {
   const short = Math.min(canvasW, canvasH);
-  const fontSize = songCreditFontSize(mode);
+  const fullW = OUTPUTS[mode].width;
+  const resolutionScale = fullW > 0 ? canvasW / fullW : 1;
+  const fontSize = songCreditFontSize(mode, resolutionScale);
   const pad = Math.max(8, Math.round(short * 0.016));
   const x = canvasW - pad;
   if (mode === "portrait") {

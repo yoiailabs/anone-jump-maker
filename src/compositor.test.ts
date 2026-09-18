@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import {
   BLUR_SOURCE,
   FRAME_FX_TARGET,
@@ -147,5 +148,19 @@ describe("song credit", () => {
     expect(credit.pad).toBeLessThan(20);
     expect(credit.textAlign).toBe("right");
     expect(credit.textBaseline).toBe("bottom");
+  });
+
+  it("shrinks credit with the preview bitmap so CSS upscale keeps the on-screen size", () => {
+    const full = songCreditLayout(OUTPUTS.landscape.width, OUTPUTS.landscape.height, "landscape");
+    const previewSize = scaleCanvasSize(
+      OUTPUTS.landscape.width,
+      OUTPUTS.landscape.height,
+      PREVIEW_RESOLUTION_SCALE,
+    );
+    const preview = songCreditLayout(previewSize.width, previewSize.height, "landscape");
+    expect(full.fontSize).toBe(songCreditFontSize("landscape"));
+    expect(preview.fontSize).toBe(songCreditFontSize("landscape", PREVIEW_RESOLUTION_SCALE));
+    expect(preview.fontSize).toBeCloseTo(full.fontSize * PREVIEW_RESOLUTION_SCALE, 0);
+    expect(preview.fontSize).toBeLessThan(full.fontSize);
   });
 });

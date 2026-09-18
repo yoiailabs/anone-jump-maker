@@ -1,4 +1,5 @@
 import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
+import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
 import { createCompositor } from "./compositor.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import {
@@ -33,7 +34,7 @@ type StatusKind = "idle" | "busy" | "error";
 
 export async function boot(root: HTMLElement): Promise<void> {
   const timelines = await loadTimelines();
-  const compositor = createCompositor();
+  const compositor = createCompositor({ resolutionScale: PREVIEW_RESOLUTION_SCALE });
   const video = createTemplateVideo(DEFAULT_ASPECT);
 
   let mode: AspectMode = DEFAULT_ASPECT;
@@ -696,6 +697,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     video.pause();
     refreshButtons();
     setStatus("書き出しを準備しています…", "busy");
+    compositor.setResolutionScale(1);
     try {
       const cuts = timeline();
       const duration =
@@ -718,6 +720,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     } catch (error) {
       setErrorStatus(error, "保存に失敗しました");
     } finally {
+      compositor.setResolutionScale(PREVIEW_RESOLUTION_SCALE);
       recording = false;
       playing = false;
       previewTracked = false;

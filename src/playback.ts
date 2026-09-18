@@ -1,22 +1,48 @@
 /** Composition clock: never wall time or a frame counter. */
 export const PAINT_CLOCK = "video.currentTime" as const;
 
+/**
+ * Preview compose rate. Export/save uses `EXPORT_FPS` (30) on the offline
+ * path and is independent of this value.
+ */
+export const PREVIEW_FPS = 24;
+
+export const PREVIEW_FRAME_INTERVAL = 1 / PREVIEW_FPS;
+
 type VideoWithFrameCallback = HTMLVideoElement & {
   requestVideoFrameCallback?: (callback: (now: number, metadata: unknown) => void) => number;
   cancelVideoFrameCallback?: (handle: number) => void;
 };
 
+/** Whether a preview paint should run for this media time. */
+export function shouldPaintPreviewFrame(
+  currentTime: number,
+  lastPaintTime: number,
+  extras: { paused?: boolean; lastSeenTime?: number } = {},
+): boolean {
+  if (!Number.isFinite(lastPaintTime)) return true;
+  if (extras.paused) return true;
+  const sincePaint = currentTime - lastPaintTime;
+  if (sincePaint < 0 || sincePaint >= PREVIEW_FRAME_INTERVAL) return true;
+  if (Number.isFinite(extras.lastSeenTime)) {
+    const step = currentTime - extras.lastSeenTime!;
+    if (step < 0 || step > PREVIEW_FRAME_INTERVAL) return true;
+  }
+  return false;
+}
+
 /**
- * Paint on each presented video frame (rVFC). An rAF watchdog also paints
- * when `currentTime` moved but rVFC did not fire (headless / background).
- * The paint callback must read `video.currentTime` itself.
+ * Paint presented video frames (rVFC), rate-limited to `PREVIEW_FPS`.
+ * An rAF watchdog also paints when `currentTime` moved but rVFC did not fire
+ * (headless / background). The paint callback must read `video.currentTime` itself.
  */
 export function startVideoPaintLoop(video: HTMLVideoElement, paint: () => void): () => void {
   const media = video as VideoWithFrameCallback;
   let raf = 0;
   let rvfc = 0;
   let running = true;
-  let lastTime = Number.NaN;
+  let lastSeenTime = Number.NaN;
+  let lastPaintTime = Number.NaN;
 
   const clearScheduled = () => {
     if (raf) {
@@ -30,7 +56,14 @@ export function startVideoPaintLoop(video: HTMLVideoElement, paint: () => void):
   };
 
   const runPaint = () => {
-    lastTime = video.currentTime;
+    const time = video.currentTime;
+    const due = shouldPaintPreviewFrame(time, lastPaintTime, {
+      paused: video.paused === true,
+      lastSeenTime,
+    });
+    lastSeenTime = time;
+    if (!due) return;
+    lastPaintTime = time;
     paint();
   };
 
@@ -49,7 +82,7 @@ export function startVideoPaintLoop(video: HTMLVideoElement, paint: () => void):
     raf = requestAnimationFrame(() => {
       raf = 0;
       if (!running) return;
-      if (video.currentTime !== lastTime) {
+      if (video.currentTime !== lastSeenTime) {
         runPaint();
       }
       scheduleWatchdog();

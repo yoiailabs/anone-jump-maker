@@ -11,7 +11,7 @@ export type Rect = {
   h: number;
 };
 
-/** 縦はテンプレ miWuv4NK9Qk と同じ 608×1080。横は 1280×720（プレビュー＝保存）。 */
+/** 縦はテンプレ miWuv4NK9Qk と同じ 608×1080。横は 1280×720。保存はこのサイズ。 */
 export const OUTPUTS = {
   portrait: { width: 608, height: 1080 },
   landscape: { width: 1280, height: 720 },
