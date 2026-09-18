@@ -146,10 +146,13 @@ export function createCompositor(options?: {
   if (!blurCtx) throw new Error("Canvas2D が使えません");
 
   const dropGpuKeyer = () => {
+    const debug = gpuKeyer?.debug;
     gpuKeyer?.destroy();
     gpuKeyer = null;
     keying = "cpu";
-    keyingDebug = describeKeying("cpu");
+    keyingDebug = debug
+      ? { backend: "cpu", ...debug }
+      : describeKeying("cpu");
   };
   const surfaces: FxSurfaces = {
     keyed,
@@ -387,11 +390,14 @@ function keyCharacterBand(
   mh: number,
 ): CanvasImageSource {
   const gpu = surfaces.gpuKeyer;
-  const framed = Boolean(gpu?.keyVideoBand(video, band, mw, mh));
-  if (shouldUseGpuFrame(gpu, framed)) {
-    return gpu.canvas;
+  if (gpu?.isLost()) {
+    surfaces.dropGpuKeyer();
+  } else {
+    const framed = Boolean(gpu?.keyVideoBand(video, band, mw, mh));
+    if (shouldUseGpuFrame(gpu, framed)) {
+      return gpu.canvas;
+    }
   }
-  if (gpu) surfaces.dropGpuKeyer();
 
   const { keyed, keyedCtx } = surfaces;
   keyed.width = mw;

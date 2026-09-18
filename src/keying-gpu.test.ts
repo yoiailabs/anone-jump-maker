@@ -11,6 +11,7 @@ import {
   gpuKeyUniforms,
   KEYING_FRAGMENT_SHADER,
   pickKeyingBackend,
+  shouldDropGpuKeyer,
   shouldUseGpuFrame,
 } from "./keying-gpu.ts";
 
@@ -18,6 +19,7 @@ const fakeKeyer = {
   canvas: {} as HTMLCanvasElement,
   keyVideoBand: () => true,
   destroy() {},
+  isLost: () => false,
 };
 
 describe("pickKeyingBackend", () => {
@@ -28,11 +30,13 @@ describe("pickKeyingBackend", () => {
 });
 
 describe("shouldUseGpuFrame", () => {
-  it("keeps GPU only while the frame succeeds, so a failed upload falls back to CPU", () => {
+  it("uses GPU only while the frame succeeds; a missed frame does not destroy the keyer", () => {
     expect(shouldUseGpuFrame(fakeKeyer, true)).toBe(true);
     expect(shouldUseGpuFrame(fakeKeyer, false)).toBe(false);
     expect(shouldUseGpuFrame(null, true)).toBe(false);
     expect(shouldUseGpuFrame(null, false)).toBe(false);
+    expect(shouldDropGpuKeyer(false)).toBe(false);
+    expect(shouldDropGpuKeyer(true)).toBe(true);
   });
 });
 

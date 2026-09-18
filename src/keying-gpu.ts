@@ -22,6 +22,7 @@ export type GpuKeyer = {
   canvas: HTMLCanvasElement;
   keyVideoBand: (video: HTMLVideoElement, band: Rect, destW: number, destH: number) => boolean;
   destroy: () => void;
+  isLost: () => boolean;
   debug?: GpuKeyDebug;
 };
 
@@ -37,6 +38,11 @@ export function pickKeyingBackend(keyer: GpuKeyer | null): KeyingBackend {
 /** Keep the GPU keyer only while the current frame uploaded and drew. */
 export function shouldUseGpuFrame(keyer: GpuKeyer | null, frameOk: boolean): keyer is GpuKeyer {
   return keyer !== null && frameOk;
+}
+
+/** Destroy the GPU keyer only when the context is gone, not on a single missed frame. */
+export function shouldDropGpuKeyer(lost: boolean): boolean {
+  return lost;
 }
 
 export function gpuKeyUniforms(params = KEY_PARAMS) {
@@ -207,8 +213,10 @@ export function createGpuKeyer(): GpuKeyer | null {
       false,
     );
 
+    const isLost = () => lost || gl.isContextLost();
+
     const keyVideoBand = (video: HTMLVideoElement, band: Rect, destW: number, destH: number): boolean => {
-      if (lost || gl.isContextLost()) {
+      if (isLost()) {
         lost = true;
         return false;
       }
@@ -243,7 +251,11 @@ export function createGpuKeyer(): GpuKeyer | null {
       gl.enableVertexAttribArray(aUv);
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      return gl.getError() === gl.NO_ERROR;
+      if (gl.isContextLost()) {
+        lost = true;
+        return false;
+      }
+      return true;
     };
 
     const destroy = () => {
@@ -253,7 +265,7 @@ export function createGpuKeyer(): GpuKeyer | null {
       canvas.height = 0;
     };
 
-    return { canvas, keyVideoBand, destroy, debug };
+    return { canvas, keyVideoBand, destroy, isLost, debug };
   } catch {
     return null;
   }
