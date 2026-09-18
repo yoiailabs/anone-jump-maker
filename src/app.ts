@@ -25,15 +25,7 @@ import {
   shouldTrackPreviewStart,
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
-import {
-  copyTextToClipboard,
-  openExternalTab,
-  SHARE_HASHTAG,
-  SHARE_TEXT,
-  shareAppUrl,
-  shareJumpVideo,
-  toShareFile,
-} from "./share.ts";
+import { copyTextToClipboard, SHARE_TEXT, shareAppUrl } from "./share.ts";
 import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
@@ -56,7 +48,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let lastSlot = -1;
-  let savedVideo: File | null = null;
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   root.innerHTML = `
@@ -144,12 +135,32 @@ export async function boot(root: HTMLElement): Promise<void> {
       </section>
 
       <div class="share-wrap">
-        <button type="button" id="shareBtn" class="btn share">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-          ${SHARE_HASHTAG} で X に投稿
-        </button>
+        <div class="hashtag-copy">
+          <button type="button" id="copyHashtagsBtn" class="btn copy-hashtags" aria-describedby="hashtagCopyHint">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect
+                x="8.2"
+                y="8.2"
+                width="11.5"
+                height="13"
+                rx="2"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.1"
+              />
+              <path
+                d="M15.8 8.2V6.4A1.8 1.8 0 0 0 14 4.6H6.4A1.8 1.8 0 0 0 4.6 6.4V18A1.8 1.8 0 0 0 6.4 19.8H8.2"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            ハッシュタグをコピー
+          </button>
+          <p class="hashtag-copy-hint" id="hashtagCopyHint">${SHARE_TEXT}</p>
+        </div>
         <button type="button" id="shareAppBtn" class="btn share-app">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path
@@ -256,7 +267,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
-  const shareBtn = must(root, "#shareBtn") as HTMLButtonElement;
+  const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
@@ -682,8 +693,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       });
       const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
       downloadBlob(result.blob, filename);
-      savedVideo = toShareFile(result.blob, filename);
-      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。${SHARE_TEXT} を付けて X に投稿できます。`);
+      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。ハッシュタグをコピーして X に投稿できます。`);
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "保存に失敗しました", "error");
@@ -699,20 +709,15 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   });
 
-  shareBtn.addEventListener("click", async () => {
-    const outcome = await shareJumpVideo({
-      file: savedVideo,
-      navigator: typeof navigator === "undefined" ? undefined : navigator,
-      openUrl: (url) => openExternalTab(url, window),
-    });
-    if (outcome === "files") {
-      setStatus(`${SHARE_TEXT} を付けた動画を共有先に渡しました`);
-    } else if (outcome === "intent") {
-      setStatus("X の投稿画面を開きました。保存した動画を添付して投稿してください。");
-    } else if (outcome === "blocked") {
-      setStatus("ブラウザが新しいタブを塞いでいます。ポップアップを許可してください。", "error");
+  copyHashtagsBtn.addEventListener("click", async () => {
+    const copied = await copyTextToClipboard(
+      SHARE_TEXT,
+      typeof navigator === "undefined" ? undefined : navigator.clipboard,
+    );
+    if (copied) {
+      setStatus("ハッシュタグをコピーしました");
     } else {
-      setStatus("投稿をやめました");
+      setStatus(`このブラウザではコピーできません。${SHARE_TEXT} を手でコピーしてください。`, "error");
     }
   });
 
