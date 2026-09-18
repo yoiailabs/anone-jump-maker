@@ -1,5 +1,12 @@
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
+import {
+  createGpuKeyer,
+  pickKeyingBackend,
+  shouldUseGpuFrame,
+  type GpuKeyer,
+  type KeyingBackend,
+} from "./keying-gpu.ts";
 import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
@@ -53,6 +60,11 @@ export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
  */
 export const PHOTO_UPLOAD_PATH = "canvas2d-blit" as const;
 
+/** Preview and export share `draw()`; GPU keying is preferred when WebGL exists. */
+export const KEYING_PREFERRED = "webgl" as const;
+export const KEYING_FALLBACK = "cpu" as const;
+export const KEYING_EXPORT_PATH = "shared-compositor" as const;
+
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (
@@ -69,9 +81,15 @@ export type Compositor = {
   aspect: () => AspectMode;
   destroy: () => void;
   kind: "2d";
+  keying: KeyingBackend;
 };
 
-export function createCompositor(options?: { resolutionScale?: number }): Compositor {
+export function createCompositor(options?: {
+  resolutionScale?: number;
+  createKeyer?: () => GpuKeyer | null;
+}): Compositor {
+  let gpuKeyer = (options?.createKeyer ?? createGpuKeyer)();
+  let keying = pickKeyingBackend(gpuKeyer);
   let mode: AspectMode = DEFAULT_ASPECT;
   let resolutionScale = options?.resolutionScale ?? 1;
   const canvas = document.createElement("canvas");
@@ -109,7 +127,27 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
   const blurCtx = blur.getContext("2d", { alpha: false, willReadFrequently: true });
   if (!blurCtx) throw new Error("Canvas2D が使えません");
 
-  const surfaces: FxSurfaces = { keyed, keyedCtx, halo, haloCtx, fxA, fxACtx, fxB, fxBCtx, blur, blurCtx };
+  const dropGpuKeyer = () => {
+    gpuKeyer?.destroy();
+    gpuKeyer = null;
+    keying = "cpu";
+  };
+  const surfaces: FxSurfaces = {
+    keyed,
+    keyedCtx,
+    halo,
+    haloCtx,
+    fxA,
+    fxACtx,
+    fxB,
+    fxBCtx,
+    blur,
+    blurCtx,
+    get gpuKeyer() {
+      return gpuKeyer;
+    },
+    dropGpuKeyer,
+  };
 
   const draw = (
     video: HTMLVideoElement,
@@ -142,6 +180,9 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
     canvas,
     draw,
     kind: "2d",
+    get keying() {
+      return keying;
+    },
     setAspect(next) {
       mode = next;
       applyCanvasSize(canvas, mode, resolutionScale);
@@ -159,6 +200,7 @@ export function createCompositor(options?: { resolutionScale?: number }): Compos
       return mode;
     },
     destroy() {
+      dropGpuKeyer();
       canvas.width = 0;
       canvas.height = 0;
       main.width = 0;
@@ -190,6 +232,8 @@ type FxSurfaces = {
   fxBCtx: CanvasRenderingContext2D;
   blur: HTMLCanvasElement;
   blurCtx: CanvasRenderingContext2D;
+  gpuKeyer: GpuKeyer | null;
+  dropGpuKeyer: () => void;
 };
 
 function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode, scale: number): void {
@@ -299,7 +343,7 @@ function drawPhotoPlate(
 
 function drawCharacter(
   mainCtx: CanvasRenderingContext2D,
-  { keyed, keyedCtx, halo, haloCtx }: FxSurfaces,
+  surfaces: FxSurfaces,
   video: HTMLVideoElement,
   mw: number,
   mh: number,
@@ -309,6 +353,25 @@ function drawCharacter(
   const vw = video.videoWidth || fallback.width;
   const vh = video.videoHeight || fallback.height;
   const band = templateBandRect(vw, vh, mode);
+  const keyedSource = keyCharacterBand(surfaces, video, band, mw, mh);
+  paintCharacterOverlay(mainCtx, surfaces, keyedSource, mw, mh, mode);
+}
+
+function keyCharacterBand(
+  surfaces: FxSurfaces,
+  video: HTMLVideoElement,
+  band: { x: number; y: number; w: number; h: number },
+  mw: number,
+  mh: number,
+): CanvasImageSource {
+  const gpu = surfaces.gpuKeyer;
+  const framed = Boolean(gpu?.keyVideoBand(video, band, mw, mh));
+  if (shouldUseGpuFrame(gpu, framed)) {
+    return gpu.canvas;
+  }
+  if (gpu) surfaces.dropGpuKeyer();
+
+  const { keyed, keyedCtx } = surfaces;
   keyed.width = mw;
   keyed.height = mh;
   keyedCtx.clearRect(0, 0, mw, mh);
@@ -316,12 +379,22 @@ function drawCharacter(
   const image = keyedCtx.getImageData(0, 0, mw, mh);
   keyImageData(image);
   keyedCtx.putImageData(image, 0, 0);
+  return keyed;
+}
 
+function paintCharacterOverlay(
+  mainCtx: CanvasRenderingContext2D,
+  { halo, haloCtx }: FxSurfaces,
+  keyedSource: CanvasImageSource,
+  mw: number,
+  mh: number,
+  mode: AspectMode,
+): void {
   halo.width = mw;
   halo.height = mh;
   haloCtx.clearRect(0, 0, mw, mh);
   haloCtx.globalCompositeOperation = "source-over";
-  haloCtx.drawImage(keyed, 0, 0);
+  haloCtx.drawImage(keyedSource, 0, 0);
   haloCtx.globalCompositeOperation = "source-in";
   haloCtx.fillStyle = "#ffffff";
   haloCtx.fillRect(0, 0, mw, mh);
@@ -343,7 +416,7 @@ function drawCharacter(
   for (const [ox, oy] of ring) {
     mainCtx.drawImage(halo, dest.x + ox, dest.y + oy, dest.w, dest.h);
   }
-  mainCtx.drawImage(keyed, dest.x, dest.y, dest.w, dest.h);
+  mainCtx.drawImage(keyedSource, dest.x, dest.y, dest.w, dest.h);
 }
 
 /** 横モーションブラーのコピー数。長さに応じて増やし、平均合成で滑らかにする。 */

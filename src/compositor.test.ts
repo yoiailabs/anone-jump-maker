@@ -6,6 +6,9 @@ import {
   IMAGE_FILTER_BLUR_IMPL,
   IMAGE_FILTER_TARGET,
   JUMP_FLASH_TARGET,
+  KEYING_EXPORT_PATH,
+  KEYING_FALLBACK,
+  KEYING_PREFERRED,
   PHOTO_UPLOAD_PATH,
   SONG_CREDIT,
   blurTapCount,
@@ -32,6 +35,14 @@ const F = 1 / TEMPLATE_FPS;
 describe("photo orientation", () => {
   it("uploads photos via Canvas2D so UNPACK_FLIP_Y_WEBGL does not invert ImageBitmap", () => {
     expect(PHOTO_UPLOAD_PATH).toBe("canvas2d-blit");
+  });
+});
+
+describe("chroma key path", () => {
+  it("prefers WebGL in the shared preview/export compositor and keeps CPU as fallback", () => {
+    expect(KEYING_PREFERRED).toBe("webgl");
+    expect(KEYING_FALLBACK).toBe("cpu");
+    expect(KEYING_EXPORT_PATH).toBe("shared-compositor");
   });
 });
 
