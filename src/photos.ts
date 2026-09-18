@@ -1,4 +1,5 @@
 import { OUTPUTS } from "./layout.ts";
+import { reportError } from "./sentry.ts";
 
 export type LoadedPhoto = {
   id: string;
@@ -285,7 +286,12 @@ export async function loadPhotos(
       }
     });
     const loaded = results.filter((photo): photo is LoadedPhoto => photo !== null);
-    if (loaded.length > 0) return loaded;
+    if (loaded.length > 0) {
+      for (const failure of failures) {
+        reportError(failure);
+      }
+      return loaded;
+    }
     if (failures.length > 0) throw pickLoadError(failures);
     return [];
   } catch (error) {

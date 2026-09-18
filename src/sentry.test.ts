@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import * as Sentry from "@sentry/browser";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_SENTRY_DSN,
+  reportError,
   resolveSentryDsn,
   scrubSentryEvent,
   sentryEnvironment,
@@ -55,5 +57,19 @@ describe("scrubSentryEvent", () => {
     expect(scrubbed.user).toBeUndefined();
     expect(scrubbed.request).toEqual({ url: "/ok" });
     expect(scrubbed.extra).toEqual({ ok: "fine" });
+  });
+});
+
+describe("reportError", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("forwards the exception to Sentry.captureException", () => {
+    const capture = vi.spyOn(Sentry, "captureException").mockReturnValue("ok");
+    const error = new Error("export failed");
+    reportError(error);
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith(error);
   });
 });
