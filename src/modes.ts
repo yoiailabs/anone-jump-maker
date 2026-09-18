@@ -1,7 +1,13 @@
-import type { AspectMode, SwapStyle } from "./layout.ts";
+import type { AspectMode, ImageFilter, SwapStyle } from "./layout.ts";
 
-/** 保存ファイル名。向きと切替を含める。 */
-export function exportFileName(mode: AspectMode, style: SwapStyle, extension: string): string {
+/** 保存ファイル名。向き・切替・フィルターを含める。なしは従来どおり省略。 */
+export function exportFileName(
+  mode: AspectMode,
+  style: SwapStyle,
+  extension: string,
+  filter: ImageFilter = "none",
+): string {
   const aspectTag = mode === "landscape" ? "16x9" : "9x16";
-  return `anone-${style}-${aspectTag}.${extension}`;
+  const filterTag = filter === "none" ? "" : `-${filter}`;
+  return `anone-${style}-${aspectTag}${filterTag}.${extension}`;
 }

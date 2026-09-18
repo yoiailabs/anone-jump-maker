@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_SOURCE,
   FRAME_FX_TARGET,
+  IMAGE_FILTER_BLUR_IMPL,
+  IMAGE_FILTER_TARGET,
   JUMP_FLASH_TARGET,
   PHOTO_UPLOAD_PATH,
   SONG_CREDIT,
@@ -40,6 +42,11 @@ describe("swap fx draw path", () => {
   it("applies the zoom blur / rgb split to the composited frame and the jump flash to the photo layer", () => {
     expect(FRAME_FX_TARGET).toBe("composited-main");
     expect(JUMP_FLASH_TARGET).toBe("photo-plate");
+  });
+
+  it("applies the image filter to the photo plate only, with a software blur that works on iOS", () => {
+    expect(IMAGE_FILTER_TARGET).toBe("photo-plate");
+    expect(IMAGE_FILTER_BLUR_IMPL).toBe("image-data-box");
   });
 
   it("places the official 16:9 character 1:1 so it is not larger than the CapCut / X template", () => {

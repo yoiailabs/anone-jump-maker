@@ -1,3 +1,4 @@
+import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize } from "./canvas-size.ts";
 import { keyImageData } from "./keying.ts";
 import {
@@ -11,7 +12,9 @@ import {
   characterShiftY,
   coverDest,
   DEFAULT_ASPECT,
+  filterBlurPx,
   hasFrameFx,
+  hasImageFilter,
   mainPanelRect,
   OUTPUTS,
   outputSize,
@@ -22,6 +25,7 @@ import {
   templateBandRect,
   usesBlurBackdrop,
   type AspectMode,
+  type ImageFilter,
   type SwapFx,
   type SwapStyle,
 } from "./layout.ts";
@@ -35,6 +39,12 @@ export const FRAME_FX_TARGET = "composited-main" as const;
 
 /** ジャンプのフラッシュは写真層に乗せ、キャラは薄い全面分だけ。 */
 export const JUMP_FLASH_TARGET = "photo-plate" as const;
+
+/** 画像フィルターは写真層だけ。線画キャラとクレジットには掛けない。 */
+export const IMAGE_FILTER_TARGET = "photo-plate" as const;
+
+/** iOS / Safari は ctx.filter が無効なので、画素の箱型ぼかしを使う。 */
+export const IMAGE_FILTER_BLUR_IMPL = "image-data-box" as const;
 
 /**
  * ImageBitmap を WebGL に直接 texImage2D し、かつ UNPACK_FLIP_Y_WEBGL=1 にすると
@@ -51,6 +61,7 @@ export type Compositor = {
     timeline: SlotTimeline,
     time?: number,
     swapStyle?: SwapStyle,
+    imageFilter?: ImageFilter,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   aspect: () => AspectMode;
@@ -91,7 +102,11 @@ export function createCompositor(): Compositor {
   const fxBCtx = fxB.getContext("2d", { alpha: false });
   if (!fxBCtx) throw new Error("Canvas2D が使えません");
 
-  const surfaces: FxSurfaces = { keyed, keyedCtx, halo, haloCtx, fxA, fxACtx, fxB, fxBCtx };
+  const blur = document.createElement("canvas");
+  const blurCtx = blur.getContext("2d", { alpha: false, willReadFrequently: true });
+  if (!blurCtx) throw new Error("Canvas2D が使えません");
+
+  const surfaces: FxSurfaces = { keyed, keyedCtx, halo, haloCtx, fxA, fxACtx, fxB, fxBCtx, blur, blurCtx };
 
   const draw = (
     video: HTMLVideoElement,
@@ -99,6 +114,7 @@ export function createCompositor(): Compositor {
     timeline: SlotTimeline,
     time = video.currentTime,
     swapStyle: SwapStyle = "jump",
+    imageFilter: ImageFilter = "none",
   ) => {
     const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
@@ -109,7 +125,7 @@ export function createCompositor(): Compositor {
     const fx = swapFx(time, slots, swapStyle);
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
 
-    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode);
+    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode, imageFilter);
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -145,6 +161,8 @@ export function createCompositor(): Compositor {
       fxA.height = 0;
       fxB.width = 0;
       fxB.height = 0;
+      blur.width = 0;
+      blur.height = 0;
     },
   };
 }
@@ -158,6 +176,8 @@ type FxSurfaces = {
   fxACtx: CanvasRenderingContext2D;
   fxB: HTMLCanvasElement;
   fxBCtx: CanvasRenderingContext2D;
+  blur: HTMLCanvasElement;
+  blurCtx: CanvasRenderingContext2D;
 };
 
 function applyCanvasSize(canvas: HTMLCanvasElement, mode: AspectMode): void {
@@ -175,6 +195,7 @@ function composeMain(
   style: SwapStyle,
   panel: { w: number; h: number },
   mode: AspectMode,
+  imageFilter: ImageFilter,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -186,6 +207,7 @@ function composeMain(
 
   if (plate) {
     drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
+    applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
   }
 
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -415,6 +437,21 @@ function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.drawImage(main, 0, 0, w, h);
+}
+
+/**
+ * 写真層だけをぼかす。キャラ描画の前に呼ぶ。
+ * iOS / Safari では Canvas2D filter が無効なので画素ぼかしを使う。
+ */
+function applyPhotoFilter(
+  main: HTMLCanvasElement,
+  mainCtx: CanvasRenderingContext2D,
+  { blur, blurCtx }: FxSurfaces,
+  filter: ImageFilter,
+): void {
+  if (!hasImageFilter(filter)) return;
+  const px = filterBlurPx(filter, Math.max(main.width, main.height));
+  applySoftwareBlur(main, mainCtx, blur, blurCtx, px);
 }
 
 function paintOutput(
