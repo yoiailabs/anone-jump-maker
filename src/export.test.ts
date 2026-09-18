@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import { swapFx, outputSize } from "./layout.ts";
 import { PREVIEW_FPS } from "./playback.ts";
@@ -6,13 +6,28 @@ import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
   EXPORT_AUDIO_SOURCE,
+  EXPORT_CHARACTER_FALLBACK,
+  EXPORT_CHARACTER_PIXELS,
+  EXPORT_CHARACTER_SOURCE,
   EXPORT_FALLBACK,
   EXPORT_FPS,
   EXPORT_PATH,
+  SEEK_PRESENT_TIMEOUT_MS,
+  TEMPLATE_FRAME_FROZEN_MESSAGE,
+  TEMPLATE_FRAME_MISSING_MESSAGE,
   UNSUPPORTED_EXPORT_MESSAGE,
+  assertCharacterAdvanced,
+  characterFrameFromCanvas,
+  chooseExportCharacterPath,
+  copySampleRgba,
   exportJumpVideo,
+  fingerprintRgba,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  packedRgba,
+  paintDecodedExportFrame,
+  seekVideo,
+  templateFrameMatchesTime,
 } from "./export.ts";
 
 describe("offline export plan", () => {
@@ -35,6 +50,13 @@ describe("offline export plan", () => {
   });
 
   it("muxes template-file audio so preview mute cannot silence a saved video", () => {
+    expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
+  });
+
+  it("keys the saved character from a file-decoded frame when that path works", () => {
+    expect(EXPORT_CHARACTER_SOURCE).toBe("capability-branch");
+    expect(EXPORT_CHARACTER_PIXELS).toBe("rgba-copyTo");
+    expect(EXPORT_CHARACTER_FALLBACK).toBe("html-video-seek");
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
   });
 
@@ -90,5 +112,192 @@ describe("offline capability", () => {
         fps: 30,
       }),
     ).rejects.toThrow(UNSUPPORTED_EXPORT_MESSAGE);
+  });
+});
+
+type FrameCallback = (now: number, metadata?: { mediaTime?: number }) => void;
+
+type VideoStub = {
+  currentTime: number;
+  duration: number;
+  readyState: number;
+  pause: () => void;
+  addEventListener: (type: string, fn: () => void) => void;
+  removeEventListener: (type: string, fn: () => void) => void;
+  requestVideoFrameCallback: (cb: FrameCallback) => number;
+  cancelVideoFrameCallback: (handle: number) => void;
+  dispatch: (type: string) => void;
+  present: (mediaTime: number) => void;
+  events: string[];
+};
+
+function createVideo(init?: Partial<Pick<VideoStub, "currentTime" | "duration" | "readyState">>): VideoStub {
+  const listeners = new Map<string, Set<() => void>>();
+  const frameCallbacks: FrameCallback[] = [];
+  const events: string[] = [];
+  let shown = init?.currentTime ?? 0;
+  return {
+    events,
+    duration: init?.duration ?? 10,
+    readyState: init?.readyState ?? 2,
+    get currentTime() {
+      return shown;
+    },
+    set currentTime(value: number) {
+      events.push("seek");
+      shown = value;
+    },
+    pause() {},
+    addEventListener(type, fn) {
+      const set = listeners.get(type) ?? new Set();
+      set.add(fn);
+      listeners.set(type, set);
+    },
+    removeEventListener(type, fn) {
+      listeners.get(type)?.delete(fn);
+    },
+    requestVideoFrameCallback(cb) {
+      events.push("rvfc");
+      frameCallbacks.push(cb);
+      return frameCallbacks.length;
+    },
+    cancelVideoFrameCallback() {
+      frameCallbacks.length = 0;
+    },
+    dispatch(type) {
+      events.push(type);
+      for (const fn of [...(listeners.get(type) ?? [])]) fn();
+    },
+    present(mediaTime) {
+      const cb = frameCallbacks.shift();
+      cb?.(0, { mediaTime });
+    },
+  };
+}
+
+function asVideo(video: VideoStub): HTMLVideoElement {
+  return video as unknown as HTMLVideoElement;
+}
+
+describe("decoded export frames", () => {
+  it("accepts a sample at or just before the export timestamp", () => {
+    expect(templateFrameMatchesTime(0, 0)).toBe(true);
+    expect(templateFrameMatchesTime(10 / 30, 10 / 30)).toBe(true);
+    expect(templateFrameMatchesTime(9 / 30, 10 / 30)).toBe(true);
+    expect(templateFrameMatchesTime(1 / 30, 0)).toBe(true);
+    expect(templateFrameMatchesTime(0, 10 / 30)).toBe(false);
+    expect(templateFrameMatchesTime(1.2, 0.4)).toBe(false);
+  });
+
+  it("draws from the decoded canvas and rejects a frozen first frame", () => {
+    const drawn: Array<{ time: number; width: number }> = [];
+    const canvas = { width: 1920, height: 1080 };
+    paintDecodedExportFrame(0.4, { canvas, timestamp: 0.4 }, (time, character) => {
+      drawn.push({ time, width: character?.width ?? 0 });
+    });
+    expect(drawn).toEqual([{ time: 0.4, width: 1920 }]);
+    expect(characterFrameFromCanvas(canvas).width).toBe(1920);
+    expect(() => paintDecodedExportFrame(0.4, { canvas, timestamp: 0 }, () => undefined)).toThrow(
+      TEMPLATE_FRAME_MISSING_MESSAGE,
+    );
+    expect(() => paintDecodedExportFrame(0.4, null, () => undefined)).toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
+  });
+
+  it("packs strided RGBA and fingerprints a grid of pixels", () => {
+    const width = 2;
+    const height = 2;
+    const stride = 16;
+    const src = new Uint8Array(stride * height);
+    src.set([1, 2, 3, 255, 4, 5, 6, 255], 0);
+    src.set([7, 8, 9, 255, 10, 11, 12, 255], stride);
+    const packed = packedRgba(src, width, height, stride);
+    expect([...packed]).toEqual([1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255]);
+    const a = fingerprintRgba(packed, width, height);
+    packed[0] = 40;
+    expect(fingerprintRgba(packed, width, height)).not.toBe(a);
+  });
+
+  it("uses RGBA copy when the probe can decode two advancing frames", () => {
+    const ok = {
+      copiedFirst: true,
+      copiedLater: true,
+      firstTimeOk: true,
+      laterTimeOk: true,
+      pixelsAdvanced: true,
+    };
+    expect(chooseExportCharacterPath(ok)).toBe(EXPORT_CHARACTER_PIXELS);
+    expect(chooseExportCharacterPath({ ...ok, copiedFirst: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, copiedLater: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, firstTimeOk: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, laterTimeOk: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, pixelsAdvanced: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+  });
+
+  it("rejects a character fingerprint that is still the first frame after 1s", () => {
+    expect(() => assertCharacterAdvanced(1, 1, 0.5)).not.toThrow();
+    expect(() => assertCharacterAdvanced(1, 2, 1)).not.toThrow();
+    expect(() => assertCharacterAdvanced(1, 1, 1)).toThrow(TEMPLATE_FRAME_FROZEN_MESSAGE);
+  });
+
+  it("copies a sample to tight RGBA via copyTo", async () => {
+    const width = 2;
+    const height = 1;
+    const pixels = new Uint8Array([9, 8, 7, 255, 1, 2, 3, 255]);
+    const frame = await copySampleRgba({
+      timestamp: 0.2,
+      codedWidth: width,
+      codedHeight: height,
+      allocationSize: () => pixels.byteLength,
+      async copyTo(dest) {
+        const bytes = dest instanceof Uint8Array ? dest : new Uint8Array(dest as ArrayBuffer);
+        bytes.set(pixels);
+        return [{ stride: width * 4 }];
+      },
+    });
+    expect(frame.timestamp).toBe(0.2);
+    expect(frame.width).toBe(2);
+    expect([...frame.data]).toEqual([9, 8, 7, 255, 1, 2, 3, 255]);
+    expect(frame.fingerprint).toBe(fingerprintRgba(frame.data, 2, 1));
+  });
+});
+
+describe("seekVideo", () => {
+  beforeEach(() => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    if (!("window" in globalThis)) {
+      Object.assign(globalThis, { window: globalThis });
+    }
+  });
+
+  it("registers requestVideoFrameCallback before assigning currentTime", async () => {
+    const video = createVideo();
+    const pending = seekVideo(asVideo(video), 1.2);
+    expect(video.events.indexOf("rvfc")).toBe(0);
+    expect(video.events.indexOf("seek")).toBe(1);
+    video.dispatch("seeked");
+    video.present(1.2);
+    await pending;
+  });
+
+  it("returns immediately when the frame is already current", async () => {
+    const video = createVideo({ currentTime: 1.2, readyState: 2 });
+    video.events.length = 0;
+    await seekVideo(asVideo(video), 1.2);
+    expect(video.events).toEqual([]);
+  });
+
+  it("resolves after seeked even if the presented-frame wait times out", async () => {
+    vi.useFakeTimers();
+    try {
+      const video = createVideo();
+      const pending = seekVideo(asVideo(video), 1.2);
+      video.dispatch("seeked");
+      await vi.advanceTimersByTimeAsync(SEEK_PRESENT_TIMEOUT_MS);
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

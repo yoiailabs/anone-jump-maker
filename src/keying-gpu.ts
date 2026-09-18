@@ -20,11 +20,30 @@ export type GpuKeyDebug = {
 
 export type GpuKeyer = {
   canvas: HTMLCanvasElement;
-  keyVideoBand: (video: HTMLVideoElement, band: Rect, destW: number, destH: number) => boolean;
+  /** Preview HTML video or export RGBA canvas — both upload via texImage2D. */
+  keyVideoBand: (
+    source: TexImageSource,
+    sourceWidth: number,
+    sourceHeight: number,
+    band: Rect,
+    destW: number,
+    destH: number,
+  ) => boolean;
   destroy: () => void;
   isLost: () => boolean;
   debug?: GpuKeyDebug;
 };
+
+/** WebGL can key preview video and the export RGBA canvas through the same texImage2D path. */
+export function gpuKeyTexImageSource(source: CanvasImageSource): TexImageSource | null {
+  if (typeof HTMLVideoElement !== "undefined" && source instanceof HTMLVideoElement) return source;
+  if (typeof HTMLCanvasElement !== "undefined" && source instanceof HTMLCanvasElement) return source;
+  if (typeof ImageBitmap !== "undefined" && source instanceof ImageBitmap) return source;
+  if (typeof ImageData !== "undefined" && source instanceof ImageData) return source;
+  if (typeof OffscreenCanvas !== "undefined" && source instanceof OffscreenCanvas) return source;
+  if (typeof VideoFrame !== "undefined" && source instanceof VideoFrame) return source;
+  return null;
+}
 
 export function isSoftwareWebGLRenderer(renderer: string, vendor = ""): boolean {
   const text = `${renderer} ${vendor}`.toLowerCase();
@@ -215,13 +234,20 @@ export function createGpuKeyer(): GpuKeyer | null {
 
     const isLost = () => lost || gl.isContextLost();
 
-    const keyVideoBand = (video: HTMLVideoElement, band: Rect, destW: number, destH: number): boolean => {
+    const keyVideoBand = (
+      source: TexImageSource,
+      sourceWidth: number,
+      sourceHeight: number,
+      band: Rect,
+      destW: number,
+      destH: number,
+    ): boolean => {
       if (isLost()) {
         lost = true;
         return false;
       }
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
+      const vw = sourceWidth;
+      const vh = sourceHeight;
       if (!(vw > 0) || !(vh > 0) || destW < 1 || destH < 1) return false;
 
       const resized = ensureCanvasSize(canvas, destW, destH);
@@ -231,7 +257,7 @@ export function createGpuKeyer(): GpuKeyer | null {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);

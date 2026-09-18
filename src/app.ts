@@ -1,6 +1,6 @@
 import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
-import { createCompositor } from "./compositor.ts";
+import { createCompositor, type CharacterFrame } from "./compositor.ts";
 import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import {
@@ -373,10 +373,10 @@ export async function boot(root: HTMLElement): Promise<void> {
   const paintSamples: number[] = [];
   let paintClockStart = 0;
 
-  const paint = (time?: number) => {
+  const paint = (time?: number, character?: CharacterFrame) => {
     const started = benchFlags.bench ? performance.now() : 0;
     const cuts = timeline();
-    const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter);
+    const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character);
     if (benchFlags.bench) {
       if (paintClockStart === 0) paintClockStart = started;
       paintSamples.push(performance.now() - started);

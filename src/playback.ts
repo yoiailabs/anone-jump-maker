@@ -99,28 +99,78 @@ export function startVideoPaintLoop(video: HTMLVideoElement, paint: () => void):
   };
 }
 
-/** Resolves on the next presented video frame, or after a short timeout. */
-export function waitForPresentedFrame(video: HTMLVideoElement, timeoutMs = 2000): Promise<void> {
+export type PresentedFrameWait = {
+  /** Only accept a callback whose `metadata.mediaTime` is this close (seconds). */
+  mediaTime?: number;
+  tolerance?: number;
+};
+
+/** Half a 30fps frame. Tight enough to reject the previous pose, loose enough for snap. */
+export const PRESENTED_FRAME_TOLERANCE = 1 / 60;
+
+type VideoFrameCallbackMetadata = {
+  mediaTime?: number;
+};
+
+/** Resolves when a video frame is presented, or after a short timeout. */
+export function waitForPresentedFrame(
+  video: HTMLVideoElement,
+  timeoutMs = 2000,
+  options: PresentedFrameWait = {},
+): Promise<void> {
   const media = video as VideoWithFrameCallback;
+  const target = options.mediaTime;
+  const tolerance = options.tolerance ?? PRESENTED_FRAME_TOLERANCE;
   return new Promise((resolve) => {
     let settled = false;
     let handle = 0;
+    let raf1 = 0;
+    let raf2 = 0;
     const finish = () => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (handle && typeof media.cancelVideoFrameCallback === "function") {
+        media.cancelVideoFrameCallback(handle);
+      }
+      if (raf1 && typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf1);
+      if (raf2 && typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf2);
       resolve();
     };
 
-    const timer = setTimeout(() => {
-      if (!settled && handle && typeof media.cancelVideoFrameCallback === "function") {
-        media.cancelVideoFrameCallback(handle);
+    const timer = setTimeout(finish, timeoutMs);
+
+    const onFrame = (_now: number, metadata?: VideoFrameCallbackMetadata) => {
+      handle = 0;
+      if (settled) return;
+      if (typeof target === "number" && Number.isFinite(target)) {
+        const presented = metadata?.mediaTime;
+        if (typeof presented === "number" && Number.isFinite(presented)) {
+          if (Math.abs(presented - target) > tolerance) {
+            if (typeof media.requestVideoFrameCallback === "function") {
+              handle = media.requestVideoFrameCallback(onFrame);
+              return;
+            }
+          }
+        }
       }
       finish();
-    }, timeoutMs);
+    };
 
     if (typeof media.requestVideoFrameCallback === "function") {
-      handle = media.requestVideoFrameCallback(() => finish());
+      handle = media.requestVideoFrameCallback(onFrame);
+      return;
+    }
+
+    // rVFC が無い環境では、シーク後にコンポジタが更新されるまで 2 垂直同期待つ。
+    if (typeof requestAnimationFrame === "function") {
+      raf1 = requestAnimationFrame(() => {
+        raf1 = 0;
+        raf2 = requestAnimationFrame(() => {
+          raf2 = 0;
+          finish();
+        });
+      });
       return;
     }
 

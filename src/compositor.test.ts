@@ -13,6 +13,7 @@ import {
   SONG_CREDIT,
   blurTapCount,
   plateDest,
+  resolveCharacterSource,
   songCreditFontSize,
   songCreditLayout,
 } from "./compositor.ts";
@@ -42,6 +43,17 @@ describe("chroma key path", () => {
   it("prefers WebGL in the shared preview/export compositor and keeps CPU as fallback", () => {
     expect(KEYING_PREFERRED).toBe("webgl");
     expect(KEYING_FALLBACK).toBe("cpu");
+    expect(KEYING_EXPORT_PATH).toBe("shared-compositor");
+  });
+
+  it("lets an export RGBA canvas override the HTML video without leaving the shared compositor", () => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    const video = { readyState: 2, videoWidth: 608, videoHeight: 1080 } as HTMLVideoElement;
+    const canvas = { width: 1920, height: 1080 } as CanvasImageSource;
+    const override = { source: canvas, width: 1920, height: 1080 };
+    expect(resolveCharacterSource(video, override)).toEqual(override);
     expect(KEYING_EXPORT_PATH).toBe("shared-compositor");
   });
 });
@@ -173,5 +185,18 @@ describe("song credit", () => {
     expect(preview.fontSize).toBe(songCreditFontSize("landscape", PREVIEW_RESOLUTION_SCALE));
     expect(preview.fontSize).toBeCloseTo(full.fontSize * PREVIEW_RESOLUTION_SCALE, 0);
     expect(preview.fontSize).toBeLessThan(full.fontSize);
+  });
+});
+
+describe("resolveCharacterSource", () => {
+  it("prefers a decoded export frame over the HTML video element", () => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    const video = { readyState: 2, videoWidth: 608, videoHeight: 1080 } as HTMLVideoElement;
+    const override = { source: { width: 1920, height: 1080 } as CanvasImageSource, width: 1920, height: 1080 };
+    expect(resolveCharacterSource(video, override)).toEqual(override);
+    expect(resolveCharacterSource(video)?.source).toBe(video);
+    expect(resolveCharacterSource({ readyState: 0, videoWidth: 0, videoHeight: 0 } as HTMLVideoElement)).toBeNull();
   });
 });

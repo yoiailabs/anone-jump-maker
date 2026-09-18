@@ -8,6 +8,7 @@ import {
 } from "./keying.ts";
 import {
   createGpuKeyer,
+  gpuKeyTexImageSource,
   gpuKeyUniforms,
   KEYING_FRAGMENT_SHADER,
   pickKeyingBackend,
@@ -78,5 +79,20 @@ describe("createGpuKeyer", () => {
     expect(typeof document).toBe("undefined");
     expect(createGpuKeyer()).toBeNull();
     expect(pickKeyingBackend(createGpuKeyer())).toBe("cpu");
+  });
+});
+
+describe("gpuKeyTexImageSource", () => {
+  it("rejects a plain object so CPU keying can still draw the export canvas", () => {
+    expect(gpuKeyTexImageSource({ width: 1920, height: 1080 } as CanvasImageSource)).toBeNull();
+  });
+
+  it("accepts HTML video and canvas when those constructors exist", () => {
+    if (typeof HTMLVideoElement === "undefined" || typeof HTMLCanvasElement === "undefined") {
+      expect(typeof HTMLVideoElement === "undefined" || typeof HTMLCanvasElement === "undefined").toBe(true);
+      return;
+    }
+    expect(gpuKeyTexImageSource(document.createElement("video"))).toBeInstanceOf(HTMLVideoElement);
+    expect(gpuKeyTexImageSource(document.createElement("canvas"))).toBeInstanceOf(HTMLCanvasElement);
   });
 });

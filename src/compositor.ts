@@ -2,6 +2,7 @@ import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
   createGpuKeyer,
+  gpuKeyTexImageSource,
   pickKeyingBackend,
   shouldUseGpuFrame,
   type GpuKeyDebug,
@@ -81,6 +82,25 @@ export function describeKeying(backend: KeyingBackend, debug?: GpuKeyDebug): Key
   return { backend: "cpu", context: "none", renderer: "", vendor: "", software: false };
 }
 
+/**
+ * 保存は使えるならファイルから RGBA コピーしたキャンバス、
+ * 能力検出が落ちたら HTML video をキャラ源にする。どちらも同じ compositor `draw()` に渡す。
+ */
+export type CharacterFrame = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+};
+
+export function resolveCharacterSource(
+  video: HTMLVideoElement,
+  override?: CharacterFrame,
+): CharacterFrame | null {
+  if (override && override.width > 0 && override.height > 0) return override;
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
+  return { source: video, width: video.videoWidth, height: video.videoHeight };
+}
+
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (
@@ -90,6 +110,7 @@ export type Compositor = {
     time?: number,
     swapStyle?: SwapStyle,
     imageFilter?: ImageFilter,
+    character?: CharacterFrame,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   setResolutionScale: (scale: number) => void;
@@ -178,6 +199,7 @@ export function createCompositor(options?: {
     time = video.currentTime,
     swapStyle: SwapStyle = "jump",
     imageFilter: ImageFilter = "none",
+    character?: CharacterFrame,
   ) => {
     const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
@@ -187,8 +209,9 @@ export function createCompositor(options?: {
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle);
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
+    const characterSource = resolveCharacterSource(video, character);
 
-    composeMain(main, mainCtx, surfaces, plate, video, fx, swapStyle, panel, mode, imageFilter);
+    composeMain(main, mainCtx, surfaces, plate, characterSource, fx, swapStyle, panel, mode, imageFilter);
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -272,7 +295,7 @@ function composeMain(
   mainCtx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
   plate: LoadedPhoto | undefined,
-  video: HTMLVideoElement,
+  character: CharacterFrame | null,
   fx: SwapFx,
   style: SwapStyle,
   panel: { w: number; h: number },
@@ -292,8 +315,8 @@ function composeMain(
     applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
   }
 
-  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    drawCharacter(mainCtx, surfaces, video, mw, mh, mode);
+  if (character) {
+    drawCharacter(mainCtx, surfaces, character, mw, mh, mode);
   }
 
   if (hasFrameFx(fx)) {
@@ -369,22 +392,22 @@ function drawPhotoPlate(
 function drawCharacter(
   mainCtx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
-  video: HTMLVideoElement,
+  character: CharacterFrame,
   mw: number,
   mh: number,
   mode: AspectMode,
 ): void {
   const fallback = outputSize(mode);
-  const vw = video.videoWidth || fallback.width;
-  const vh = video.videoHeight || fallback.height;
+  const vw = character.width || fallback.width;
+  const vh = character.height || fallback.height;
   const band = templateBandRect(vw, vh, mode);
-  const keyedSource = keyCharacterBand(surfaces, video, band, mw, mh);
+  const keyedSource = keyCharacterBand(surfaces, character, band, mw, mh);
   paintCharacterOverlay(mainCtx, surfaces, keyedSource, mw, mh, mode);
 }
 
 function keyCharacterBand(
   surfaces: FxSurfaces,
-  video: HTMLVideoElement,
+  character: CharacterFrame,
   band: { x: number; y: number; w: number; h: number },
   mw: number,
   mh: number,
@@ -393,7 +416,10 @@ function keyCharacterBand(
   if (gpu?.isLost()) {
     surfaces.dropGpuKeyer();
   } else {
-    const framed = Boolean(gpu?.keyVideoBand(video, band, mw, mh));
+    const source = gpuKeyTexImageSource(character.source);
+    const framed = Boolean(
+      source && gpu?.keyVideoBand(source, character.width, character.height, band, mw, mh),
+    );
     if (shouldUseGpuFrame(gpu, framed)) {
       return gpu.canvas;
     }
@@ -403,7 +429,7 @@ function keyCharacterBand(
   keyed.width = mw;
   keyed.height = mh;
   keyedCtx.clearRect(0, 0, mw, mh);
-  keyedCtx.drawImage(video, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
+  keyedCtx.drawImage(character.source, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
   const image = keyedCtx.getImageData(0, 0, mw, mh);
   keyImageData(image);
   keyedCtx.putImageData(image, 0, 0);
