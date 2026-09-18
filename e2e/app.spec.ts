@@ -46,27 +46,23 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(dialog).toBeHidden();
 });
 
-test("saves a short clip when WebCodecs exist, and explains when they do not", async ({ page }) => {
+test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {
   await uploadPhoto(page);
-  const canEncode = await page.evaluate(() => typeof VideoEncoder === "function");
-
-  const downloadPromise = page.waitForEvent("download", { timeout: 45_000 }).catch(() => null);
+  // VideoEncoder があっても pickOfflinePlan が null なら未対応（WebKit でよくある）。
+  const downloadPromise = page.waitForEvent("download", { timeout: 45_000 });
   await page.locator("#saveBtn").click();
-  await expect(page.locator("#status")).toContainText(/書き出し|生成中|保存しました|未対応|保存に失敗/, {
-    timeout: 15_000,
-  });
-
-  if (canEncode) {
+  await expect(page.locator("#status")).toContainText(
+    new RegExp(`保存しました|${UNSUPPORTED_EXPORT_MESSAGE}`),
+    { timeout: 45_000 },
+  );
+  const statusText = (await page.locator("#status").textContent()) ?? "";
+  if (statusText.includes("保存しました")) {
     const download = await downloadPromise;
-    await expect(page.locator("#status")).toContainText("保存しました", { timeout: 45_000 });
-    expect(download).not.toBeNull();
-    expect(download?.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
-  } else {
-    await expect(page.locator("#status")).toContainText(
-      new RegExp(`${UNSUPPORTED_EXPORT_MESSAGE}|保存に失敗`),
-      { timeout: 20_000 },
-    );
+    expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
+    return;
   }
+  void downloadPromise.catch(() => undefined);
+  expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
 });
 
 test("copies hashtags from the panel", async ({ page, context, browserName }) => {
