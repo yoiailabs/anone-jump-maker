@@ -70,7 +70,7 @@ describe("output size", () => {
     expect(OUTPUT.width / OUTPUT.height).toBeCloseTo(608 / 1080, 5);
   });
 
-  it("uses 1280x720 for landscape preview and save", () => {
+  it("uses 1280x720 for landscape export size", () => {
     expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
     expect(OUTPUTS.landscape).toEqual({ width: 1280, height: 720 });
     expect(OUTPUTS.landscape.width / OUTPUTS.landscape.height).toBeCloseTo(16 / 9, 5);

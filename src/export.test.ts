@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { swapFx } from "./layout.ts";
+import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
+import { swapFx, outputSize } from "./layout.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
@@ -18,6 +19,16 @@ describe("offline export plan", () => {
     expect(EXPORT_PATH).toBe("offline");
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
     expect(EXPORT_FALLBACK).toBe("none");
+  });
+
+  it("keeps full template resolution and 30fps for offline save", () => {
+    expect(EXPORT_FPS).toBe(30);
+    expect(outputSize("portrait")).toEqual({ width: 608, height: 1080 });
+    expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
+    expect(scaleCanvasSize(608, 1080, 1)).toEqual({ width: 608, height: 1080 });
+    expect(scaleCanvasSize(1280, 720, 1)).toEqual({ width: 1280, height: 720 });
+    expect(PREVIEW_RESOLUTION_SCALE).toBeLessThan(1);
+    expect(scaleCanvasSize(1280, 720, PREVIEW_RESOLUTION_SCALE)).not.toEqual({ width: 1280, height: 720 });
   });
 
   it("muxes template-file audio so preview mute cannot silence a saved video", () => {
