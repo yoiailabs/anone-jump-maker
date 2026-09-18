@@ -88,6 +88,11 @@ export async function boot(root: HTMLElement): Promise<void> {
       </div>
 
       <section class="panel">
+        <label class="file-btn">
+          <input id="picker" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/*" multiple />
+          写真を選ぶ
+        </label>
+        <div class="thumbs" id="thumbs" hidden></div>
         <fieldset class="aspect-field">
           <legend>動画の向き</legend>
           <div class="aspect-toggle" role="radiogroup" aria-label="動画の向き">
@@ -131,11 +136,6 @@ export async function boot(root: HTMLElement): Promise<void> {
             </label>
           </div>
         </fieldset>
-        <label class="file-btn">
-          <input id="picker" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/*" multiple />
-          写真を選ぶ
-        </label>
-        <div class="thumbs" id="thumbs" hidden></div>
         <div class="actions">
           <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
           <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
