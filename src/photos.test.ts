@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/browser";
 import { describe, expect, it, vi } from "vitest";
 import {
   HEIC_UNSUPPORTED_MESSAGE,
@@ -386,19 +385,19 @@ describe("loadPhotos", () => {
         }
       },
     );
-    const capture = vi.spyOn(Sentry, "captureException").mockReturnValue("ok");
     try {
+      const seen: unknown[] = [];
       const photos = await loadPhotos([heic, jpeg], {
         convertHeic: async () => {
           throw new Error("no wasm");
         },
+        onError: (error) => seen.push(error),
       });
       expect(photos.map((photo) => photo.name)).toEqual(["ok.jpg"]);
-      expect(capture).toHaveBeenCalled();
-      expect(capture.mock.calls[0]?.[0]).toBeInstanceOf(Error);
-      expect((capture.mock.calls[0]?.[0] as Error).message).toBe(HEIC_UNSUPPORTED_MESSAGE);
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toBeInstanceOf(Error);
+      expect((seen[0] as Error).message).toBe(HEIC_UNSUPPORTED_MESSAGE);
     } finally {
-      capture.mockRestore();
       vi.unstubAllGlobals();
     }
   });

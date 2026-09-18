@@ -265,8 +265,13 @@ export function selectImageFiles(files: readonly File[]): File[] {
 
 export async function loadPhotos(
   files: File[],
-  options: { onProgress?: (current: number, total: number) => void; convertHeic?: HeicConverter } = {},
+  options: {
+    onProgress?: (current: number, total: number) => void;
+    convertHeic?: HeicConverter;
+    onError?: (error: unknown) => void;
+  } = {},
 ): Promise<LoadedPhoto[]> {
+  const report = options.onError ?? reportError;
   const imageFiles = selectImageFiles(files);
   const total = imageFiles.length;
   const failures: Error[] = [];
@@ -288,7 +293,7 @@ export async function loadPhotos(
     const loaded = results.filter((photo): photo is LoadedPhoto => photo !== null);
     if (loaded.length > 0) {
       for (const failure of failures) {
-        reportError(failure);
+        report(failure);
       }
       return loaded;
     }

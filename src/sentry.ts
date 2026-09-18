@@ -60,6 +60,11 @@ export function initSentry(): void {
   });
 }
 
-export function reportError(error: unknown): void {
-  Sentry.captureException(error);
+export function reportError(
+  error: unknown,
+  capture: (error: unknown) => void = (value) => {
+    Sentry.captureException(value);
+  },
+): void {
+  capture(error);
 }
