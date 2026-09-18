@@ -1,6 +1,7 @@
 import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
 import { createCompositor } from "./compositor.ts";
+import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
 import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
 import {
   DEFAULT_ASPECT,
@@ -16,7 +17,7 @@ import { linkBannersHtml } from "./links.ts";
 import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
-import { startVideoPaintLoop } from "./playback.ts";
+import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
   muteButtonHtml,
   playPauseButtonHtml,
@@ -34,7 +35,11 @@ type StatusKind = "idle" | "busy" | "error";
 
 export async function boot(root: HTMLElement): Promise<void> {
   const timelines = await loadTimelines();
-  const compositor = createCompositor({ resolutionScale: PREVIEW_RESOLUTION_SCALE });
+  const benchFlags = readPreviewBenchFlags(typeof location === "undefined" ? "" : location.search);
+  const compositor = createCompositor({
+    resolutionScale: PREVIEW_RESOLUTION_SCALE,
+    createKeyer: benchFlags.forceCpuKeying ? () => null : undefined,
+  });
   const video = createTemplateVideo(DEFAULT_ASPECT);
 
   let mode: AspectMode = DEFAULT_ASPECT;
@@ -278,6 +283,11 @@ export async function boot(root: HTMLElement): Promise<void> {
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
   const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const previewState = must(root, "#previewState");
+  const benchFlag = document.createElement("p");
+  benchFlag.id = "benchFlag";
+  benchFlag.hidden = !benchFlags.bench;
+  benchFlag.style.cssText = "margin:0.4rem 0 0;font-size:0.78rem;color:#5c5146";
+  previewState.after(benchFlag);
   const aspectInputs = [
     ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
   ];
@@ -360,14 +370,57 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   };
 
+  const paintSamples: number[] = [];
+  let paintClockStart = 0;
+
   const paint = (time?: number) => {
+    const started = benchFlags.bench ? performance.now() : 0;
     const cuts = timeline();
     const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter);
+    if (benchFlags.bench) {
+      if (paintClockStart === 0) paintClockStart = started;
+      paintSamples.push(performance.now() - started);
+    }
     if (slot !== lastSlot) {
       lastSlot = slot;
       slotMeter.textContent = `スロット ${slot + 1} / ${cuts.slots.length}`;
     }
+    refreshBenchFlag();
   };
+
+  const benchSnapshot = () => {
+    const elapsed = paintClockStart === 0 ? 0 : performance.now() - paintClockStart;
+    const paints = summarizePaintSamples(paintSamples, elapsed, PREVIEW_FPS);
+    const debug = compositor.keyingDebug();
+    return {
+      keying: compositor.keying,
+      forcedCpu: benchFlags.forceCpuKeying,
+      resolutionScale: compositor.resolutionScale(),
+      aspect: mode,
+      ...debug,
+      paints,
+    };
+  };
+
+  const refreshBenchFlag = () => {
+    if (!benchFlags.bench) return;
+    const snap = benchSnapshot();
+    const renderer = snap.renderer ? ` / ${snap.renderer}` : "";
+    const soft = snap.software ? " software" : "";
+    benchFlag.textContent = `bench keying=${snap.keying}${soft}${renderer} scale=${snap.resolutionScale} n=${snap.paints.n}`;
+  };
+
+  if (benchFlags.bench && typeof window !== "undefined") {
+    Object.assign(window, {
+      __anoneBench: {
+        snapshot: benchSnapshot,
+        reset() {
+          paintSamples.length = 0;
+          paintClockStart = 0;
+        },
+      },
+    });
+  }
 
   const haltLoop = () => {
     stopLoop?.();

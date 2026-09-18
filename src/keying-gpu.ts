@@ -11,11 +11,24 @@ import { rectToUvBottomLeft, type Rect } from "./layout.ts";
 
 export type KeyingBackend = "webgl" | "cpu";
 
+export type GpuKeyDebug = {
+  context: "webgl2" | "webgl";
+  renderer: string;
+  vendor: string;
+  software: boolean;
+};
+
 export type GpuKeyer = {
   canvas: HTMLCanvasElement;
   keyVideoBand: (video: HTMLVideoElement, band: Rect, destW: number, destH: number) => boolean;
   destroy: () => void;
+  debug?: GpuKeyDebug;
 };
+
+export function isSoftwareWebGLRenderer(renderer: string, vendor = ""): boolean {
+  const text = `${renderer} ${vendor}`.toLowerCase();
+  return /swiftshader|llvmpipe|softpipe|software|microsoft basic render|mesa offscreen/.test(text);
+}
 
 export function pickKeyingBackend(keyer: GpuKeyer | null): KeyingBackend {
   return keyer ? "webgl" : "cpu";
@@ -121,6 +134,7 @@ export function createGpuKeyer(): GpuKeyer | null {
     const gl = getWebGLContext(canvas);
     if (!gl) return null;
 
+    const debug = readGpuDebug(gl);
     const program = linkProgram(gl, KEYING_VERTEX_SHADER, KEYING_FRAGMENT_SHADER);
     if (!program) return null;
 
@@ -239,7 +253,7 @@ export function createGpuKeyer(): GpuKeyer | null {
       canvas.height = 0;
     };
 
-    return { canvas, keyVideoBand, destroy };
+    return { canvas, keyVideoBand, destroy, debug };
   } catch {
     return null;
   }
@@ -252,6 +266,23 @@ function getWebGLContext(canvas: HTMLCanvasElement): GL | null {
     if (gl) return gl as GL;
   }
   return null;
+}
+
+function readGpuDebug(gl: GL): GpuKeyDebug {
+  const infoExt = gl.getExtension("WEBGL_debug_renderer_info");
+  const vendor = infoExt ? String(gl.getParameter(infoExt.UNMASKED_VENDOR_WEBGL) ?? "") : "";
+  const renderer = infoExt
+    ? String(gl.getParameter(infoExt.UNMASKED_RENDERER_WEBGL) ?? "")
+    : String(gl.getParameter(gl.RENDERER) ?? "");
+  const isWebgl2 =
+    typeof WebGL2RenderingContext === "function" && gl instanceof WebGL2RenderingContext;
+  const context: GpuKeyDebug["context"] = isWebgl2 ? "webgl2" : "webgl";
+  return {
+    context,
+    renderer,
+    vendor,
+    software: isSoftwareWebGLRenderer(renderer, vendor),
+  };
 }
 
 function linkProgram(gl: GL, vertexSrc: string, fragmentSrc: string): WebGLProgram | null {

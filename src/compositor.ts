@@ -4,6 +4,7 @@ import {
   createGpuKeyer,
   pickKeyingBackend,
   shouldUseGpuFrame,
+  type GpuKeyDebug,
   type GpuKeyer,
   type KeyingBackend,
 } from "./keying-gpu.ts";
@@ -65,6 +66,21 @@ export const KEYING_PREFERRED = "webgl" as const;
 export const KEYING_FALLBACK = "cpu" as const;
 export const KEYING_EXPORT_PATH = "shared-compositor" as const;
 
+export type KeyingDebug = {
+  backend: KeyingBackend;
+  context: GpuKeyDebug["context"] | "none";
+  renderer: string;
+  vendor: string;
+  software: boolean;
+};
+
+export function describeKeying(backend: KeyingBackend, debug?: GpuKeyDebug): KeyingDebug {
+  if (backend === "webgl" && debug) {
+    return { backend, ...debug };
+  }
+  return { backend: "cpu", context: "none", renderer: "", vendor: "", software: false };
+}
+
 export type Compositor = {
   canvas: HTMLCanvasElement;
   draw: (
@@ -82,6 +98,7 @@ export type Compositor = {
   destroy: () => void;
   kind: "2d";
   keying: KeyingBackend;
+  keyingDebug: () => KeyingDebug;
 };
 
 export function createCompositor(options?: {
@@ -90,6 +107,7 @@ export function createCompositor(options?: {
 }): Compositor {
   let gpuKeyer = (options?.createKeyer ?? createGpuKeyer)();
   let keying = pickKeyingBackend(gpuKeyer);
+  let keyingDebug = describeKeying(keying, gpuKeyer?.debug);
   let mode: AspectMode = DEFAULT_ASPECT;
   let resolutionScale = options?.resolutionScale ?? 1;
   const canvas = document.createElement("canvas");
@@ -131,6 +149,7 @@ export function createCompositor(options?: {
     gpuKeyer?.destroy();
     gpuKeyer = null;
     keying = "cpu";
+    keyingDebug = describeKeying("cpu");
   };
   const surfaces: FxSurfaces = {
     keyed,
@@ -182,6 +201,9 @@ export function createCompositor(options?: {
     kind: "2d",
     get keying() {
       return keying;
+    },
+    keyingDebug() {
+      return keyingDebug;
     },
     setAspect(next) {
       mode = next;
