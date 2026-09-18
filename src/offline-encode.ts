@@ -3,7 +3,6 @@ import {
   AudioBufferSource,
   BlobSource,
   BufferTarget,
-  CanvasSink,
   CanvasSource,
   EncodedAudioPacketSource,
   EncodedPacketSink,
@@ -12,6 +11,7 @@ import {
   Mp4OutputFormat,
   Output,
   Quality,
+  VideoSampleSink,
   WebMOutputFormat,
   getFirstEncodableAudioCodec,
   getFirstEncodableVideoCodec,
@@ -24,9 +24,13 @@ import {
   EXPORT_FPS,
   TEMPLATE_DECODE_MESSAGE,
   TEMPLATE_FRAME_MISSING_MESSAGE,
+  assertCharacterAdvanced,
+  characterFrameFromCanvas,
+  copySampleRgba,
   frameTimes,
   hasWebCodecsVideoEncoder,
-  paintDecodedExportFrame,
+  putRgbaOnCanvas,
+  templateFrameMatchesTime,
   type ExportProgress,
   type ExportResult,
 } from "./export.ts";
@@ -97,15 +101,41 @@ export async function encodeOffline(options: {
       throw new Error(TEMPLATE_DECODE_MESSAGE);
     }
     const pumpAudio = await attachTemplateAudio(output, plan.format, template);
+    const frameCanvas = document.createElement("canvas");
+    const frameCtx = frameCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
+    if (!frameCtx) {
+      throw new Error(TEMPLATE_DECODE_MESSAGE);
+    }
     await output.start();
     if (pumpAudio) {
       await pumpAudio();
     }
     let i = 0;
-    for await (const wrapped of frameSink.canvasesAtTimestamps(times)) {
+    let firstFingerprint: number | undefined;
+    for await (const sample of frameSink.samplesAtTimestamps(times)) {
       const time = times[i];
-      if (time === undefined) break;
-      paintDecodedExportFrame(time, wrapped, draw);
+      if (time === undefined) {
+        sample?.close();
+        break;
+      }
+      if (!sample) {
+        throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+      }
+      try {
+        const rgba = await copySampleRgba(sample);
+        if (!templateFrameMatchesTime(rgba.timestamp, time)) {
+          throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+        }
+        if (firstFingerprint === undefined) {
+          firstFingerprint = rgba.fingerprint;
+        } else {
+          assertCharacterAdvanced(firstFingerprint, rgba.fingerprint, time);
+        }
+        putRgbaOnCanvas(frameCanvas, frameCtx, rgba);
+        draw(time, characterFrameFromCanvas(frameCanvas));
+      } finally {
+        sample.close();
+      }
       await videoSource.add(i * frameDuration, frameDuration);
       if (i === 0 || i === times.length - 1 || i % 8 === 0) {
         onProgress?.({ mode: "offline", current: i + 1, total: times.length });
@@ -177,11 +207,18 @@ async function attachTemplateAudio(
   }
 }
 
-async function openTemplateFrameSink(input: Input): Promise<CanvasSink | null> {
+async function openTemplateFrameSink(input: Input): Promise<VideoSampleSink | null> {
   try {
     const track = await input.getPrimaryVideoTrack();
     if (!track || !(await track.canDecode())) return null;
-    return new CanvasSink(track, { poolSize: 2 });
+    const software = new VideoSampleSink(track, { hardwareAcceleration: "prefer-software" });
+    try {
+      const probe = await software.getSample(0);
+      probe?.close();
+      return software;
+    } catch {
+      return new VideoSampleSink(track);
+    }
   } catch {
     return null;
   }

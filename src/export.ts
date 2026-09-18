@@ -15,8 +15,12 @@ export const EXPORT_AUDIO_SOURCE = "template-file" as const;
  */
 export const EXPORT_CHARACTER_SOURCE = "template-file-decode" as const;
 
+/** キャラ画素は VideoFrame/canvas blit ではなく、デコーダ出力の RGBA コピー。 */
+export const EXPORT_CHARACTER_PIXELS = "rgba-copyTo" as const;
+
 export const TEMPLATE_DECODE_MESSAGE = "テンプレ映像をデコードできませんでした";
 export const TEMPLATE_FRAME_MISSING_MESSAGE = "テンプレのフレームを取得できませんでした";
+export const TEMPLATE_FRAME_FROZEN_MESSAGE = "テンプレのフレームが先頭のままです";
 
 /** 保存パスに MediaRecorder フォールバックは置かない。未対応ブラウザは明示エラー。 */
 export const EXPORT_FALLBACK = "none" as const;
@@ -124,6 +128,101 @@ export function paintDecodedExportFrame(
     throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
   }
   draw(time, characterFrameFromCanvas(frame.canvas));
+}
+
+export type RgbaFrame = {
+  timestamp: number;
+  width: number;
+  height: number;
+  data: Uint8ClampedArray;
+  fingerprint: number;
+};
+
+export type CopyableSample = {
+  timestamp: number;
+  codedWidth: number;
+  codedHeight: number;
+  allocationSize: (options: { format: "RGBA" }) => number;
+  copyTo: (
+    dest: AllowSharedBufferSource,
+    options: { format: "RGBA" },
+  ) => Promise<ReadonlyArray<{ stride?: number }> | void>;
+};
+
+/** stride 付き RGBA を密な ImageData 用バッファに直す。 */
+export function packedRgba(src: Uint8Array, width: number, height: number, stride: number): Uint8ClampedArray {
+  const row = width * 4;
+  const out = new Uint8ClampedArray(row * height);
+  if (!(width > 0 && height > 0 && stride >= row && src.byteLength >= stride * (height - 1) + row)) {
+    throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+  }
+  if (stride === row) {
+    out.set(src.subarray(0, row * height));
+    return out;
+  }
+  for (let y = 0; y < height; y += 1) {
+    out.set(src.subarray(y * stride, y * stride + row), y * row);
+  }
+  return out;
+}
+
+/** 粗い格子の画素ハッシュ。先頭フレームの使い回し検出用。 */
+export function fingerprintRgba(data: Uint8ClampedArray, width: number, height: number): number {
+  let hash = 2166136261;
+  const stepX = Math.max(1, Math.floor(width / 8));
+  const stepY = Math.max(1, Math.floor(height / 8));
+  for (let y = 0; y < height; y += stepY) {
+    for (let x = 0; x < width; x += stepX) {
+      const i = (y * width + x) * 4;
+      hash ^= (data[i] ?? 0) | ((data[i + 1] ?? 0) << 8) | ((data[i + 2] ?? 0) << 16);
+      hash = Math.imul(hash, 16777619);
+    }
+  }
+  return hash >>> 0;
+}
+
+export function assertCharacterAdvanced(firstFingerprint: number, fingerprint: number, time: number): void {
+  if (time >= 1 && fingerprint === firstFingerprint) {
+    throw new Error(TEMPLATE_FRAME_FROZEN_MESSAGE);
+  }
+}
+
+export async function copySampleRgba(sample: CopyableSample): Promise<RgbaFrame> {
+  const width = sample.codedWidth;
+  const height = sample.codedHeight;
+  if (!(width > 0 && height > 0)) {
+    throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+  }
+  const options = { format: "RGBA" as const };
+  const raw = new Uint8Array(sample.allocationSize(options));
+  const layout = await sample.copyTo(raw, options);
+  const stride =
+    Array.isArray(layout) && layout[0] && typeof layout[0].stride === "number" ? layout[0].stride : width * 4;
+  const data = packedRgba(raw, width, height, stride);
+  return {
+    timestamp: sample.timestamp,
+    width,
+    height,
+    data,
+    fingerprint: fingerprintRgba(data, width, height),
+  };
+}
+
+export function putRgbaOnCanvas(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  frame: Pick<RgbaFrame, "data" | "width" | "height">,
+): void {
+  if (typeof ImageData !== "function") {
+    throw new Error(TEMPLATE_DECODE_MESSAGE);
+  }
+  if (canvas.width !== frame.width || canvas.height !== frame.height) {
+    canvas.width = frame.width;
+    canvas.height = frame.height;
+  }
+  const pixels = new Uint8ClampedArray(frame.data.length);
+  pixels.set(frame.data);
+  ctx.putImageData(new ImageData(pixels, frame.width, frame.height), 0, 0);
 }
 
 /**

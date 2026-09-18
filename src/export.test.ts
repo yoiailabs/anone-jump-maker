@@ -6,17 +6,23 @@ import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
   EXPORT_AUDIO_SOURCE,
+  EXPORT_CHARACTER_PIXELS,
   EXPORT_CHARACTER_SOURCE,
   EXPORT_FALLBACK,
   EXPORT_FPS,
   EXPORT_PATH,
   SEEK_PRESENT_TIMEOUT_MS,
+  TEMPLATE_FRAME_FROZEN_MESSAGE,
   TEMPLATE_FRAME_MISSING_MESSAGE,
   UNSUPPORTED_EXPORT_MESSAGE,
+  assertCharacterAdvanced,
   characterFrameFromCanvas,
+  copySampleRgba,
   exportJumpVideo,
+  fingerprintRgba,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  packedRgba,
   paintDecodedExportFrame,
   seekVideo,
   templateFrameMatchesTime,
@@ -47,6 +53,7 @@ describe("offline export plan", () => {
 
   it("keys the saved character from a file-decoded frame, not HTMLVideoElement pixels", () => {
     expect(EXPORT_CHARACTER_SOURCE).toBe("template-file-decode");
+    expect(EXPORT_CHARACTER_PIXELS).toBe("rgba-copyTo");
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
   });
 
@@ -191,6 +198,47 @@ describe("decoded export frames", () => {
       TEMPLATE_FRAME_MISSING_MESSAGE,
     );
     expect(() => paintDecodedExportFrame(0.4, null, () => undefined)).toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
+  });
+
+  it("packs strided RGBA and fingerprints a grid of pixels", () => {
+    const width = 2;
+    const height = 2;
+    const stride = 16;
+    const src = new Uint8Array(stride * height);
+    src.set([1, 2, 3, 255, 4, 5, 6, 255], 0);
+    src.set([7, 8, 9, 255, 10, 11, 12, 255], stride);
+    const packed = packedRgba(src, width, height, stride);
+    expect([...packed]).toEqual([1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255]);
+    const a = fingerprintRgba(packed, width, height);
+    packed[0] = 40;
+    expect(fingerprintRgba(packed, width, height)).not.toBe(a);
+  });
+
+  it("rejects a character fingerprint that is still the first frame after 1s", () => {
+    expect(() => assertCharacterAdvanced(1, 1, 0.5)).not.toThrow();
+    expect(() => assertCharacterAdvanced(1, 2, 1)).not.toThrow();
+    expect(() => assertCharacterAdvanced(1, 1, 1)).toThrow(TEMPLATE_FRAME_FROZEN_MESSAGE);
+  });
+
+  it("copies a sample to tight RGBA via copyTo", async () => {
+    const width = 2;
+    const height = 1;
+    const pixels = new Uint8Array([9, 8, 7, 255, 1, 2, 3, 255]);
+    const frame = await copySampleRgba({
+      timestamp: 0.2,
+      codedWidth: width,
+      codedHeight: height,
+      allocationSize: () => pixels.byteLength,
+      async copyTo(dest) {
+        const bytes = dest instanceof Uint8Array ? dest : new Uint8Array(dest as ArrayBuffer);
+        bytes.set(pixels);
+        return [{ stride: width * 4 }];
+      },
+    });
+    expect(frame.timestamp).toBe(0.2);
+    expect(frame.width).toBe(2);
+    expect([...frame.data]).toEqual([9, 8, 7, 255, 1, 2, 3, 255]);
+    expect(frame.fingerprint).toBe(fingerprintRgba(frame.data, 2, 1));
   });
 });
 
