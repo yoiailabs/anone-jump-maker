@@ -50,6 +50,7 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   await uploadPhoto(page);
   // VideoEncoder があっても pickOfflinePlan が null なら未対応（WebKit でよくある）。
   const downloadPromise = page.waitForEvent("download", { timeout: 45_000 });
+  void downloadPromise.catch(() => undefined);
   await page.locator("#saveBtn").click();
   await expect(page.locator("#status")).toContainText(
     new RegExp(`保存しました|${UNSUPPORTED_EXPORT_MESSAGE}`),
@@ -61,7 +62,6 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
     return;
   }
-  void downloadPromise.catch(() => undefined);
   expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
 });
 
