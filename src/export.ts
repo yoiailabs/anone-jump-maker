@@ -10,13 +10,18 @@ export const EXPORT_PATH = "offline" as const;
 export const EXPORT_AUDIO_SOURCE = "template-file" as const;
 
 /**
- * 保存のキャラ画素は HTMLVideoElement ではなく、同じテンプレファイルを VideoDecoder で読む。
- * Android Chrome は paused seek 後も video テクスチャが先頭フレームのままになる。
+ * 保存のキャラは、使えるならテンプレファイルの VideoDecoder。
+ * それが落ちる環境（iOS / WebKit）は HTML video シークに落とす。
  */
-export const EXPORT_CHARACTER_SOURCE = "template-file-decode" as const;
+export const EXPORT_CHARACTER_SOURCE = "capability-branch" as const;
 
 /** キャラ画素は VideoFrame/canvas blit ではなく、デコーダ出力の RGBA コピー。 */
 export const EXPORT_CHARACTER_PIXELS = "rgba-copyTo" as const;
+
+/** RGBA 経路が使えない環境（WebKit など）は HTML video シークに落とす。 */
+export const EXPORT_CHARACTER_FALLBACK = "html-video-seek" as const;
+
+export type ExportCharacterPath = typeof EXPORT_CHARACTER_PIXELS | typeof EXPORT_CHARACTER_FALLBACK;
 
 export const TEMPLATE_DECODE_MESSAGE = "テンプレ映像をデコードできませんでした";
 export const TEMPLATE_FRAME_MISSING_MESSAGE = "テンプレのフレームを取得できませんでした";
@@ -185,6 +190,25 @@ export function assertCharacterAdvanced(firstFingerprint: number, fingerprint: n
   if (time >= 1 && fingerprint === firstFingerprint) {
     throw new Error(TEMPLATE_FRAME_FROZEN_MESSAGE);
   }
+}
+
+export type ExportCharacterProbe = {
+  copiedFirst: boolean;
+  copiedLater: boolean;
+  firstTimeOk: boolean;
+  laterTimeOk: boolean;
+  pixelsAdvanced: boolean;
+};
+
+/**
+ * Android では RGBA コピーが通って画素も進む。
+ * iOS / WebKit は copyTo('RGBA')・PTS・デコーダのいずれかが落ちることがある。
+ */
+export function chooseExportCharacterPath(probe: ExportCharacterProbe): ExportCharacterPath {
+  if (probe.copiedFirst && probe.copiedLater && probe.firstTimeOk && probe.laterTimeOk && probe.pixelsAdvanced) {
+    return EXPORT_CHARACTER_PIXELS;
+  }
+  return EXPORT_CHARACTER_FALLBACK;
 }
 
 export async function copySampleRgba(sample: CopyableSample): Promise<RgbaFrame> {

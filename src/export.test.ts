@@ -6,6 +6,7 @@ import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
   EXPORT_AUDIO_SOURCE,
+  EXPORT_CHARACTER_FALLBACK,
   EXPORT_CHARACTER_PIXELS,
   EXPORT_CHARACTER_SOURCE,
   EXPORT_FALLBACK,
@@ -17,6 +18,7 @@ import {
   UNSUPPORTED_EXPORT_MESSAGE,
   assertCharacterAdvanced,
   characterFrameFromCanvas,
+  chooseExportCharacterPath,
   copySampleRgba,
   exportJumpVideo,
   fingerprintRgba,
@@ -51,9 +53,10 @@ describe("offline export plan", () => {
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
   });
 
-  it("keys the saved character from a file-decoded frame, not HTMLVideoElement pixels", () => {
-    expect(EXPORT_CHARACTER_SOURCE).toBe("template-file-decode");
+  it("keys the saved character from a file-decoded frame when that path works", () => {
+    expect(EXPORT_CHARACTER_SOURCE).toBe("capability-branch");
     expect(EXPORT_CHARACTER_PIXELS).toBe("rgba-copyTo");
+    expect(EXPORT_CHARACTER_FALLBACK).toBe("html-video-seek");
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
   });
 
@@ -212,6 +215,22 @@ describe("decoded export frames", () => {
     const a = fingerprintRgba(packed, width, height);
     packed[0] = 40;
     expect(fingerprintRgba(packed, width, height)).not.toBe(a);
+  });
+
+  it("uses RGBA copy when the probe can decode two advancing frames", () => {
+    const ok = {
+      copiedFirst: true,
+      copiedLater: true,
+      firstTimeOk: true,
+      laterTimeOk: true,
+      pixelsAdvanced: true,
+    };
+    expect(chooseExportCharacterPath(ok)).toBe(EXPORT_CHARACTER_PIXELS);
+    expect(chooseExportCharacterPath({ ...ok, copiedFirst: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, copiedLater: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, firstTimeOk: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, laterTimeOk: false })).toBe(EXPORT_CHARACTER_FALLBACK);
+    expect(chooseExportCharacterPath({ ...ok, pixelsAdvanced: false })).toBe(EXPORT_CHARACTER_FALLBACK);
   });
 
   it("rejects a character fingerprint that is still the first frame after 1s", () => {
