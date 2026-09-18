@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { KEY_PARAMS, keyAlpha } from "./keying.ts";
+import {
+  KEY_DESPILL_INNER,
+  KEY_DESPILL_STRENGTH,
+  KEY_GREEN_KILL,
+  KEY_PARAMS,
+  KEY_SAMPLE_COUNT,
+  keyAlpha,
+  keySamplePixels,
+  keySampleUvBottomLeft,
+} from "./keying.ts";
 
 describe("keyAlpha", () => {
   it("keys a near-solid background", () => {
@@ -28,5 +37,28 @@ describe("keyAlpha", () => {
   it("uses the shared thresholds", () => {
     expect(KEY_PARAMS.tolerance).toBeGreaterThan(20);
     expect(KEY_PARAMS.darkProtect).toBeLessThan(80);
+    expect(KEY_GREEN_KILL).toBe(0.85);
+    expect(KEY_DESPILL_INNER).toBe(0.4);
+    expect(KEY_DESPILL_STRENGTH).toBe(0.7);
+  });
+});
+
+describe("key sample points", () => {
+  it("uses seven corner / top-edge pixels", () => {
+    const points = keySamplePixels(1280, 720);
+    expect(points).toHaveLength(KEY_SAMPLE_COUNT);
+    expect(points[0]).toEqual([2, 2]);
+    expect(points[1]).toEqual([1277, 2]);
+    expect(points[2]).toEqual([640, 3]);
+    expect(points[5]).toEqual([2, 717]);
+    expect(points[6]).toEqual([1277, 717]);
+  });
+
+  it("maps those pixels to WebGL UVs with the band and Y flip", () => {
+    const uv = keySampleUvBottomLeft(100, 50, [0.1, 0.2, 0.4, 0.3]);
+    expect(uv).toHaveLength(KEY_SAMPLE_COUNT * 2);
+    // pixel (2, 2) → GL (2.5/100, 1 - 2.5/50) then into the band
+    expect(uv[0]).toBeCloseTo(0.1 + 0.025 * 0.4);
+    expect(uv[1]).toBeCloseTo(0.2 + (1 - 0.05) * 0.3);
   });
 });
