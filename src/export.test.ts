@@ -20,6 +20,10 @@ describe("offline export plan", () => {
     expect(EXPORT_FALLBACK).toBe("none");
   });
 
+  it("keeps export at 30fps independent of preview paint rate", () => {
+    expect(EXPORT_FPS).toBe(30);
+  });
+
   it("muxes template-file audio so preview mute cannot silence a saved video", () => {
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
   });
