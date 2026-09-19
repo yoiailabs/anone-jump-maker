@@ -258,6 +258,8 @@ describe("community list markup", () => {
     expect(html).not.toContain("communityPager");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain(`<h1 id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h1>`);
+    expect(html).toContain('id="communityHashtagSearch"');
+    expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("communityHashtagSearch"));
   });
 });
 
