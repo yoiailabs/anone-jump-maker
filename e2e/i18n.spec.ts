@@ -67,6 +67,29 @@ test.describe("language switcher", () => {
 });
 
 test.describe("localized OGP and SEO", () => {
+  test("emits Japanese Open Graph, Twitter, and hreflang on /", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "ja_JP");
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", t("ja", "makerTitle"));
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", t("ja", "makerTitle"));
+    await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute(
+      "content",
+      t("ja", "metaMakerDescription"),
+    );
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+      "content",
+      "https://anone.yoiailabs.com/og.png",
+    );
+    await expect(page.locator('link[rel="alternate"][hreflang="x-default"]')).toHaveAttribute(
+      "href",
+      "https://anone.yoiailabs.com/",
+    );
+    const jsonLd = await page.locator('script[type="application/ld+json"]').evaluate((el) => el.textContent ?? "");
+    expect(jsonLd).toContain('"inLanguage":"ja"');
+    expect(jsonLd).toContain(t("ja", "makerTitle"));
+  });
+
   test("emits English Open Graph, Twitter, and hreflang on /en", async ({ page }) => {
     await page.goto("/en");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -124,6 +147,22 @@ test.describe("crawlers keep the default Japanese URL", () => {
     await expect(page).not.toHaveURL(/\/en(\/|$)/);
     await expect(page.locator("html")).toHaveAttribute("lang", "ja");
     await expect(page).toHaveTitle(t("ja", "makerTitle"));
+    await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "ja_JP");
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", t("ja", "makerTitle"));
+    await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+      "content",
+      t("ja", "metaMakerDescription"),
+    );
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", t("ja", "makerTitle"));
+    await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute(
+      "content",
+      t("ja", "metaMakerDescription"),
+    );
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", "https://anone.yoiailabs.com/");
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+      "content",
+      "https://anone.yoiailabs.com/og.png",
+    );
   });
 });
 

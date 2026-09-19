@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import worker from "../worker/index.ts";
 
-function assetsEnv(body = "<html lang=\"ja\">maker</html>") {
+const JA_HTML = `<html lang="ja"><head><title>あのねジャンプメーカー</title><meta property="og:title" content="あのねジャンプメーカー" /><meta property="og:locale" content="ja_JP" /></head><body>maker</body></html>`;
+
+function assetsEnv(body = JA_HTML) {
   return {
     ASSETS: {
       async fetch() {
@@ -29,8 +31,8 @@ describe("worker fetch", () => {
       assetsEnv(),
     );
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("maker");
-    expect(response.headers.get("vary")).toMatch(/Accept-Language/);
+    expect(await response.text()).toContain("あのねジャンプメーカー");
+    expect(response.headers.get("vary")).toBe("Cookie");
   });
 
   it("asks ASSETS for the original URL so auto-trailing-slash cannot loop", async () => {
@@ -54,26 +56,37 @@ describe("worker fetch", () => {
     expect(fetched).toBe("/");
   });
 
-  it("redirects / to /en when Accept-Language prefers English", async () => {
+  it("keeps Japanese HTML on / even when Accept-Language prefers English", async () => {
     const response = await worker.fetch(
-      new Request("https://anone.yoiailabs.com/", { headers: { "accept-language": "en-US,en;q=0.9" } }),
+      new Request("https://anone.yoiailabs.com/", {
+        headers: {
+          "accept-language": "en-US,en;q=0.9",
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        },
+      }),
       assetsEnv(),
     );
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("/en");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('lang="ja"');
+    expect(html).toContain('property="og:title" content="あのねジャンプメーカー"');
+    expect(html).toContain('property="og:locale" content="ja_JP"');
+    expect(response.headers.get("vary")).toBe("Cookie");
   });
 
-  it("redirects /community to a prefixed community path for Korean", async () => {
+  it("keeps Japanese HTML on /community when Accept-Language is Korean", async () => {
     const response = await worker.fetch(
       new Request("https://anone.yoiailabs.com/community?from=x", {
         headers: { "accept-language": "ko" },
       }),
+      assetsEnv(),
     );
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("/ko/community?from=x");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
   });
 
-  it("lets a language cookie override Accept-Language", async () => {
+  it("redirects / when a language cookie is set", async () => {
     const response = await worker.fetch(
       new Request("https://anone.yoiailabs.com/", {
         headers: { "accept-language": "ja", cookie: "anone-locale=zh" },
@@ -100,19 +113,26 @@ describe("worker fetch", () => {
       assetsEnv(),
     );
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("maker");
+    const html = await response.text();
+    expect(html).toContain("あのねジャンプメーカー");
+    expect(html).toContain("ja_JP");
   });
 
-  it("does not language-redirect Twitterbot on /", async () => {
-    const response = await worker.fetch(
-      new Request("https://anone.yoiailabs.com/", {
-        headers: {
-          "accept-language": "en",
-          "user-agent": "Twitterbot/1.0",
-        },
-      }),
-      assetsEnv(),
-    );
-    expect(response.status).toBe(200);
+  it("does not language-redirect Twitterbot, Facebook, or LINE on /", async () => {
+    for (const userAgent of [
+      "Twitterbot/1.0",
+      "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+      "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari Line/13.6.0",
+    ]) {
+      const response = await worker.fetch(
+        new Request("https://anone.yoiailabs.com/", {
+          headers: { "accept-language": "en", "user-agent": userAgent },
+        }),
+        assetsEnv(),
+      );
+      expect(response.status, userAgent).toBe(200);
+      expect(await response.text()).toContain('og:title" content="あのねジャンプメーカー"');
+    }
   });
 });

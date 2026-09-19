@@ -15,7 +15,8 @@ enabled = true
 
 # Vite / Astro の dist を Workers 静的アセットとして配信する。
 # プレフィックスなしの `/` `/community` だけ Worker が先に受け、
-# Cookie / Accept-Language で /en /ko /zh へ寄せる。
+# Cookie があるときだけ /en /ko /zh へ寄せる。Accept-Language では寄せない
+# （クローラが日本語の title / OGP を掴むため。ブラウザはクライアント JS で寄せる）。
 [assets]
 directory = "./dist"
 binding = "ASSETS"
