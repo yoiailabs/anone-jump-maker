@@ -33,7 +33,6 @@ import {
   parseAppView,
   type AppView,
 } from "./nav.ts";
-import { pageUrl } from "./page-meta.ts";
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNearViewport } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
@@ -49,7 +48,7 @@ import {
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
-import { copyTextToClipboard, SHARE_TEXT, shareAppUrl } from "./share.ts";
+import { copyTextToClipboard, SHARE_TEXT, shareHashtags } from "./share.ts";
 import { isolateVolatileChrome, setTextIfChanged } from "./translate-guard.ts";
 import type { CutTimeline } from "./timeline.ts";
 
@@ -946,24 +945,22 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   shareAppBtn.addEventListener("click", async () => {
-    const shareUrl = pageUrl(locale, "maker");
-    const outcome = await shareAppUrl({
+    const outcome = await shareHashtags({
       navigator: typeof navigator === "undefined" ? undefined : navigator,
       copyText: (text) =>
         copyTextToClipboard(
           text,
           typeof navigator === "undefined" ? undefined : navigator.clipboard,
         ),
-      url: shareUrl,
     });
     if (outcome === "shared") {
       setStatus(msg("statusShared"));
     } else if (outcome === "copied") {
-      setStatus(msg("statusUrlCopied"));
+      setStatus(msg("statusHashtagsCopied"));
     } else if (outcome === "cancelled") {
       setStatus(msg("statusShareCancelled"));
     } else {
-      setStatus(msg("statusShareUnsupported", { url: shareUrl }), "error");
+      setStatus(msg("statusShareUnsupported", { text: SHARE_TEXT }), "error");
     }
   });
 
