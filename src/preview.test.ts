@@ -14,6 +14,8 @@ import {
   restartButtonHtml,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
+  syncMuteControl,
+  syncPlayPauseControl,
 } from "./preview.ts";
 
 describe("playPauseLabel", () => {
@@ -35,20 +37,107 @@ describe("previewSoundLabel", () => {
 });
 
 describe("preview control markup", () => {
-  it("puts a state icon on play, restart, and mute", () => {
-    expect(playPauseButtonHtml(false)).toContain("<svg");
+  it("keeps both play and pause icons in the tree and only flips hidden", () => {
+    expect(playPauseButtonHtml(false)).toContain('data-preview-icon="play"');
+    expect(playPauseButtonHtml(false)).toContain('data-preview-icon="pause"');
+    expect(playPauseButtonHtml(false)).toContain(" hidden");
     expect(playPauseButtonHtml(false)).toContain(PREVIEW_PLAY_LABEL);
     expect(playPauseButtonHtml(true)).toContain(PREVIEW_PAUSE_LABEL);
+    expect(playPauseButtonHtml(false)).toContain('translate="no"');
     expect(playPauseButtonHtml(false)).not.toBe(playPauseButtonHtml(true));
     expect(restartButtonHtml()).toContain("<svg");
     expect(restartButtonHtml()).toContain("最初から");
     expect(restartButtonHtml()).not.toContain("最初から再生");
-    expect(muteButtonHtml(false)).toContain("<svg");
-    expect(muteButtonHtml(true)).toContain("<svg");
+    expect(muteButtonHtml(false)).toContain('data-preview-icon="sound-on"');
+    expect(muteButtonHtml(true)).toContain('data-preview-icon="sound-off"');
     expect(muteButtonHtml(false)).not.toBe(muteButtonHtml(true));
     expect(muteButtonHtml(false)).toContain(PREVIEW_MUTE_HINT);
     expect(muteButtonHtml(true)).toContain(PREVIEW_MUTE_HINT);
     expect(PREVIEW_MUTE_HINT).toBe("プレビュー再生中の音声をミュートできます");
+  });
+});
+
+describe("syncPlayPauseControl", () => {
+  it("toggles hidden and skips the label write when the text is unchanged", () => {
+    let labelWrites = 0;
+    const play = {
+      hidden: false,
+      textContent: null as string | null,
+      toggleAttribute: (_name: string, force?: boolean) => {
+        play.hidden = Boolean(force);
+        return play.hidden;
+      },
+    };
+    const pause = {
+      hidden: true,
+      textContent: null as string | null,
+      toggleAttribute: (_name: string, force?: boolean) => {
+        pause.hidden = Boolean(force);
+        return pause.hidden;
+      },
+    };
+    const label = {
+      current: PREVIEW_PLAY_LABEL,
+      get textContent() {
+        return this.current;
+      },
+      set textContent(value: string) {
+        labelWrites += 1;
+        this.current = value;
+      },
+      toggleAttribute: () => false,
+    };
+    const root = {
+      querySelector(selector: string) {
+        if (selector.includes('"play"')) return play;
+        if (selector.includes('"pause"')) return pause;
+        if (selector.includes("preview-ctrl-label")) return label;
+        return null;
+      },
+    };
+    syncPlayPauseControl(root, false);
+    expect(labelWrites).toBe(0);
+    syncPlayPauseControl(root, true);
+    expect(play.hidden).toBe(true);
+    expect(pause.hidden).toBe(false);
+    expect(label.textContent).toBe(PREVIEW_PAUSE_LABEL);
+    expect(labelWrites).toBe(1);
+    syncPlayPauseControl(root, true);
+    expect(labelWrites).toBe(1);
+  });
+});
+
+describe("syncMuteControl", () => {
+  it("toggles sound icons without replacing the hint", () => {
+    const soundOn = {
+      hidden: false,
+      textContent: null as string | null,
+      toggleAttribute: (_name: string, force?: boolean) => {
+        soundOn.hidden = Boolean(force);
+        return soundOn.hidden;
+      },
+    };
+    const soundOff = {
+      hidden: true,
+      textContent: null as string | null,
+      toggleAttribute: (_name: string, force?: boolean) => {
+        soundOff.hidden = Boolean(force);
+        return soundOff.hidden;
+      },
+    };
+    const label = { textContent: PREVIEW_SOUND_ON_LABEL, toggleAttribute: () => false };
+    const root = {
+      querySelector(selector: string) {
+        if (selector.includes("sound-on")) return soundOn;
+        if (selector.includes("sound-off")) return soundOff;
+        if (selector.includes("preview-ctrl-label")) return label;
+        return null;
+      },
+    };
+    syncMuteControl(root, true);
+    expect(soundOn.hidden).toBe(true);
+    expect(soundOff.hidden).toBe(false);
+    expect(label.textContent).toBe(PREVIEW_SOUND_OFF_LABEL);
   });
 });
 

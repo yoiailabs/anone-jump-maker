@@ -167,7 +167,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 {t(locale, "makerSave")}
               </Button>
             </div>
-            <p className="status" id="status" data-kind="idle">
+            <p className="status notranslate" id="status" data-kind="idle" translate="no">
               {t(locale, "makerStatusIdle")}
             </p>
           </section>
@@ -314,10 +314,10 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <span className="stage-play-hint" aria-hidden="true" />
             </button>
           </div>
-          <p className="slot-meter" id="slotMeter">
+          <p className="slot-meter notranslate" id="slotMeter" translate="no">
             {t(locale, "previewSlotPending")}
           </p>
-          <p className="preview-state" id="previewState" aria-live="polite">
+          <p className="preview-state notranslate" id="previewState" translate="no" aria-live="polite">
             {t(locale, "previewStopped")}
           </p>
           <div className="preview-actions">
@@ -325,7 +325,8 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               variant="site"
               type="button"
               id="modalPlayBtn"
-              className="btn"
+              className="btn notranslate"
+              translate="no"
               dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
             />
             <Button
@@ -339,7 +340,8 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               variant="site"
               type="button"
               id="muteBtn"
-              className="btn ghost"
+              className="btn ghost notranslate"
+              translate="no"
               aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
               dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
             />
@@ -357,7 +359,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           <header className="preview-head">
             <h2 id="exportTitle">{t(locale, "exportTitle")}</h2>
           </header>
-          <p className="export-status" id="exportStatus" aria-live="polite">
+          <p className="export-status notranslate" id="exportStatus" translate="no" aria-live="polite">
             {t(locale, "statusExportPreparing")}
           </p>
           <div className="export-progress">
@@ -368,7 +370,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               value={0}
               aria-label={t(locale, "exportProgressAria")}
             />
-            <span className="export-progress-label" id="exportProgressLabel">
+            <span className="export-progress-label notranslate" id="exportProgressLabel" translate="no">
               {t(locale, "exportPercent", { percent: 0 })}
             </span>
           </div>

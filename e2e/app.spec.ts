@@ -11,6 +11,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("boots the maker with preview and save disabled until a photo is chosen", async ({ page }) => {
+  await expect(page.locator("html")).not.toHaveAttribute("translate", "no");
+  await expect(page.locator("#status")).toHaveAttribute("translate", "no");
   await expect(page).toHaveTitle("あのねジャンプメーカー");
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
     "content",

@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, t, type Locale } from "./i18n.ts";
+import { setTextIfChanged } from "./translate-guard.ts";
 
 export const PREVIEW_PLAY_LABEL = t("ja", "previewPlay");
 export const PREVIEW_PAUSE_LABEL = t("ja", "previewPause");
@@ -28,8 +29,17 @@ export function previewSoundLabel(muted: boolean, locale: Locale = DEFAULT_LOCAL
   return t(locale, muted ? "previewSoundOff" : "previewSoundOn");
 }
 
+function controlIcon(name: string, svg: string, visible: boolean): string {
+  const hidden = visible ? "" : " hidden";
+  return svg.replace("<svg ", `<svg class="preview-ctrl-icon" data-preview-icon="${name}"${hidden} `);
+}
+
+function volatileLabel(text: string): string {
+  return `<span class="preview-ctrl-label notranslate" translate="no">${text}</span>`;
+}
+
 export function playPauseButtonHtml(playing: boolean, locale: Locale = DEFAULT_LOCALE): string {
-  return `${playing ? ICON_PAUSE : ICON_PLAY}<span class="preview-ctrl-label">${playPauseLabel(playing, locale)}</span>`;
+  return `${controlIcon("play", ICON_PLAY, !playing)}${controlIcon("pause", ICON_PAUSE, playing)}${volatileLabel(playPauseLabel(playing, locale))}`;
 }
 
 export function restartButtonHtml(locale: Locale = DEFAULT_LOCALE): string {
@@ -37,7 +47,41 @@ export function restartButtonHtml(locale: Locale = DEFAULT_LOCALE): string {
 }
 
 export function muteButtonHtml(muted: boolean, locale: Locale = DEFAULT_LOCALE): string {
-  return `<span class="preview-ctrl-row">${muted ? ICON_SOUND_OFF : ICON_SOUND_ON}<span class="preview-ctrl-label">${previewSoundLabel(muted, locale)}</span></span><small class="preview-mute-hint">${t(locale, "previewMuteHint")}</small>`;
+  return `<span class="preview-ctrl-row">${controlIcon("sound-on", ICON_SOUND_ON, !muted)}${controlIcon("sound-off", ICON_SOUND_OFF, muted)}${volatileLabel(previewSoundLabel(muted, locale))}</span><small class="preview-mute-hint">${t(locale, "previewMuteHint")}</small>`;
+}
+
+export type PreviewControlRoot = {
+  querySelector: (selector: string) => {
+    toggleAttribute: (name: string, force?: boolean) => boolean;
+    textContent?: string | null;
+  } | null;
+};
+
+function showControlIcon(root: PreviewControlRoot, name: string, visible: boolean): void {
+  root.querySelector(`[data-preview-icon="${name}"]`)?.toggleAttribute("hidden", !visible);
+}
+
+/** innerHTML を張り替えず、アイコンの hidden とラベル文字列だけ変える。 */
+export function syncPlayPauseControl(
+  root: PreviewControlRoot,
+  playing: boolean,
+  locale: Locale = DEFAULT_LOCALE,
+): void {
+  showControlIcon(root, "play", !playing);
+  showControlIcon(root, "pause", playing);
+  const label = root.querySelector(".preview-ctrl-label");
+  if (label) setTextIfChanged(label, playPauseLabel(playing, locale));
+}
+
+export function syncMuteControl(
+  root: PreviewControlRoot,
+  muted: boolean,
+  locale: Locale = DEFAULT_LOCALE,
+): void {
+  showControlIcon(root, "sound-on", !muted);
+  showControlIcon(root, "sound-off", muted);
+  const label = root.querySelector(".preview-ctrl-label");
+  if (label) setTextIfChanged(label, previewSoundLabel(muted, locale));
 }
 
 /** 最初から再生、またはクリップ末尾では 0 へシークする。一時停止からの再開は現在位置のまま。 */

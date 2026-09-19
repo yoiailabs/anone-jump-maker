@@ -40,15 +40,16 @@ import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
-  muteButtonHtml,
-  playPauseButtonHtml,
   PREVIEW_MUTED_DEFAULT,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
+  syncMuteControl,
+  syncPlayPauseControl,
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
 import { copyTextToClipboard, SHARE_TEXT, shareAppUrl } from "./share.ts";
+import { isolateVolatileChrome, setTextIfChanged } from "./translate-guard.ts";
 import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
@@ -185,20 +186,30 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     return compositorPromise;
   };
 
+  isolateVolatileChrome(statusEl);
+  isolateVolatileChrome(slotMeter);
+  isolateVolatileChrome(previewState);
+  isolateVolatileChrome(benchFlag);
+  isolateVolatileChrome(exportStatus);
+  isolateVolatileChrome(exportProgressLabel);
+
   const timeline = () => {
     if (!timelines) throw new Error(msg("statusCutsMissing"));
     return timelines[mode];
   };
 
   const refreshSlotMeter = () => {
-    slotMeter.textContent = timelines
-      ? msg("previewSlotEmpty", { total: timelines[mode].slots.length })
-      : msg("previewSlotPending");
+    setTextIfChanged(
+      slotMeter,
+      timelines
+        ? msg("previewSlotEmpty", { total: timelines[mode].slots.length })
+        : msg("previewSlotPending"),
+    );
   };
   refreshSlotMeter();
 
   const setStatus = (text: string, kind: StatusKind = "idle") => {
-    statusEl.textContent = text;
+    setTextIfChanged(statusEl, text);
     statusEl.dataset.kind = kind;
   };
 
@@ -261,10 +272,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
-    modalPlayBtn.innerHTML = playPauseButtonHtml(active, locale);
+    syncPlayPauseControl(modalPlayBtn, active, locale);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
     stage.setAttribute("aria-pressed", active ? "true" : "false");
-    previewState.textContent = active ? msg("previewPlaying") : msg("previewStopped");
+    setTextIfChanged(previewState, active ? msg("previewPlaying") : msg("previewStopped"));
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -290,7 +301,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
     if (slot !== lastSlot) {
       lastSlot = slot;
-      slotMeter.textContent = msg("previewSlot", { n: slot + 1, total: cuts.slots.length });
+      setTextIfChanged(slotMeter, msg("previewSlot", { n: slot + 1, total: cuts.slots.length }));
     }
     refreshBenchFlag();
   };
@@ -350,7 +361,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const snap = benchSnapshot();
     const renderer = snap.renderer ? ` / ${snap.renderer}` : "";
     const soft = snap.software ? " software" : "";
-    benchFlag.textContent = `bench keying=${snap.keying}${soft}${renderer} scale=${snap.resolutionScale} n=${snap.paints.n}`;
+    setTextIfChanged(
+      benchFlag,
+      `bench keying=${snap.keying}${soft}${renderer} scale=${snap.resolutionScale} n=${snap.paints.n}`,
+    );
   };
 
   if (benchFlags.bench && typeof window !== "undefined") {
@@ -378,7 +392,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const applyPreviewMute = () => {
     video.muted = previewMuted;
     video.volume = 1;
-    muteBtn.innerHTML = muteButtonHtml(previewMuted, locale);
+    syncMuteControl(muteBtn, previewMuted, locale);
     muteBtn.setAttribute("aria-pressed", previewMuted ? "false" : "true");
   };
 
@@ -465,8 +479,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const setExportProgress = (percent: number, statusText: string) => {
     const value = Math.min(100, Math.max(0, percent));
     exportProgress.value = value;
-    exportProgressLabel.textContent = msg("exportPercent", { percent: value });
-    exportStatus.textContent = statusText;
+    setTextIfChanged(exportProgressLabel, msg("exportPercent", { percent: value }));
+    setTextIfChanged(exportStatus, statusText);
     setStatus(statusText, "busy");
   };
 
