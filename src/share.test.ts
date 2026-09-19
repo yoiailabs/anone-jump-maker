@@ -47,7 +47,7 @@ describe("共有する", () => {
   });
 
   it("Web Share API でハッシュタグ本文だけを渡す", async () => {
-    const share = vi.fn(async () => {});
+    const share = vi.fn(async (_data: ShareData) => {});
     const copyText = vi.fn(async () => true);
     const outcome = await shareHashtags({
       navigator: { share, canShare: () => true },
@@ -55,8 +55,10 @@ describe("共有する", () => {
     });
     expect(outcome).toBe("shared");
     expect(share).toHaveBeenCalledWith(APP_SHARE_DATA);
-    expect(share.mock.calls[0]?.[0]).not.toHaveProperty("url");
-    expect(share.mock.calls[0]?.[0]).not.toHaveProperty("title");
+    const payload = share.mock.calls[0]?.[0];
+    expect(payload).toEqual({ text: SHARE_TEXT });
+    expect(payload).not.toHaveProperty("url");
+    expect(payload).not.toHaveProperty("title");
     expect(copyText).not.toHaveBeenCalled();
   });
 
