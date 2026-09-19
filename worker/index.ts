@@ -4,9 +4,13 @@ type AssetsEnv = {
   ASSETS?: { fetch(input: Request | URL, init?: RequestInit): Promise<Response> };
 };
 
+/** Cookie の言語選択だけ HTTP で寄せる。Accept-Language は使わない。 */
+const VARY = "Cookie";
+
 /**
  * 静的アセットは wrangler の [assets] が配信する。
- * プレフィックスなしのページだけ Worker が言語ネゴシエーションする。
+ * プレフィックスなしの `/` `/community` は日本語 HTML（SEO / OGP）を返す。
+ * ブラウザの言語寄せはクライアント JS。Cookie があるときだけ 302 する。
  */
 export default {
   async fetch(request: Request, env: AssetsEnv = {}): Promise<Response> {
@@ -28,13 +32,14 @@ export default {
       request.headers.get("cookie"),
       request.headers.get("accept-language"),
       request.headers.get("user-agent"),
+      { acceptLanguageRedirect: false },
     );
     if (dest) {
       return new Response(null, {
         status: 302,
         headers: {
           location: dest,
-          vary: "Accept-Language, Cookie",
+          vary: VARY,
           "cache-control": "private, no-store",
         },
       });
@@ -47,7 +52,7 @@ export default {
     // Worker が / を先に受けるため、それをそのまま返すと無限リダイレクトになる。
     const asset = await env.ASSETS.fetch(request);
     const headers = new Headers(asset.headers);
-    headers.set("vary", "Accept-Language, Cookie");
+    headers.set("vary", VARY);
     return new Response(asset.body, { status: asset.status, headers });
   },
 };

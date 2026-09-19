@@ -88,6 +88,16 @@ describe("localeRedirectLocation", () => {
     ).toBeNull();
     expect(localeRedirectLocation("/ja", "", null, "en", "Googlebot/2.1")).toBe("/");
   });
+
+  it("ignores Accept-Language on the worker so unknown crawlers still get Japanese /", () => {
+    expect(localeRedirectLocation("/", "", null, "en-US", "Chrome/128", { acceptLanguageRedirect: false })).toBeNull();
+    expect(
+      localeRedirectLocation("/community", "?from=x", null, "ko", "Chrome/128", { acceptLanguageRedirect: false }),
+    ).toBeNull();
+    expect(
+      localeRedirectLocation("/", "", "anone-locale=en", "ja", "Chrome/128", { acceptLanguageRedirect: false }),
+    ).toBe("/en");
+  });
 });
 
 describe("messages", () => {
@@ -119,6 +129,19 @@ describe("document crawlers", () => {
       true,
     );
     expect(isDocumentCrawler("Twitterbot/1.0")).toBe(true);
+    expect(isDocumentCrawler("meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)")).toBe(
+      true,
+    );
+    expect(
+      isDocumentCrawler(
+        "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.122 Mobile Safari/537.36 (compatible; GoogleOther)",
+      ),
+    ).toBe(true);
+    expect(
+      isDocumentCrawler(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari Line/13.6.0",
+      ),
+    ).toBe(true);
     expect(
       isDocumentCrawler(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
