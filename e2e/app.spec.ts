@@ -568,6 +568,44 @@ test("copies hashtags from the panel", async ({ page, context, browserName }) =>
   await expect(page.locator("#status")).toContainText(/コピーしました|コピーできません/);
 });
 
+test("share button sends hashtag text only", async ({ page }) => {
+  await page.evaluate(() => {
+    const calls: ShareData[] = [];
+    Object.assign(window, { __shareCalls: calls });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async (data: ShareData) => {
+        calls.push(data);
+      },
+    });
+    Object.defineProperty(navigator, "canShare", {
+      configurable: true,
+      value: () => true,
+    });
+  });
+  await page.locator("#shareAppBtn").click();
+  await expect(page.locator("#status")).toContainText("ハッシュタグを共有先に渡しました");
+  const payload = await page.evaluate(() => (window as unknown as { __shareCalls: ShareData[] }).__shareCalls[0]);
+  expect(payload).toEqual({ text: SHARE_TEXT });
+  expect(payload).not.toHaveProperty("url");
+  expect(payload).not.toHaveProperty("title");
+});
+
+test("share fallback copies hashtags instead of a URL", async ({ page, context, browserName }) => {
+  if (browserName === "chromium") {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  }
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: undefined });
+  });
+  await page.locator("#shareAppBtn").click();
+  await expect(page.locator("#status")).toContainText(/ハッシュタグをコピーしました|コピーしてください|コピーできません/);
+  if (browserName === "chromium") {
+    await expect.poll(async () => page.evaluate(() => navigator.clipboard.readText())).toBe(SHARE_TEXT);
+  }
+});
+
 async function uploadPhoto(page: Page): Promise<void> {
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
   await expect(page.locator("#status")).toContainText("1 枚を読み込みました", { timeout: 20_000 });

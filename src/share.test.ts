@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   APP_SHARE_DATA,
-  APP_SHARE_URL,
-  canShareAppUrl,
+  canShareHashtags,
   copyTextToClipboard,
   SHARE_HASHTAG,
   SHARE_MAKER_HASHTAG,
   SHARE_TEXT,
-  shareAppUrl,
+  shareHashtags,
 } from "./share.ts";
 
 describe("ハッシュタグをコピー", () => {
@@ -30,37 +29,40 @@ describe("ハッシュタグをコピー", () => {
 });
 
 describe("共有する", () => {
-  it("本番 URL と両方のハッシュタグを Web Share に渡す", () => {
+  it("Web Share にはハッシュタグ本文だけを渡し URL は付けない", () => {
     expect(APP_SHARE_DATA).toEqual({
-      title: SHARE_TEXT,
-      url: APP_SHARE_URL,
+      text: SHARE_TEXT,
     });
-    expect(APP_SHARE_DATA.title).toBe("#あのねジャンプ #あのねジャンプメーカー");
-    expect(APP_SHARE_URL).toBe("https://anone.yoiailabs.com");
+    expect(APP_SHARE_DATA).not.toHaveProperty("url");
+    expect(APP_SHARE_DATA).not.toHaveProperty("title");
+    expect(APP_SHARE_DATA.text).toBe("#あのねジャンプ #あのねジャンプメーカー");
+    expect(JSON.stringify(APP_SHARE_DATA)).not.toMatch(/https?:\/\//);
   });
 
-  it("share があるときだけアプリ URL をシートに出せる", () => {
-    expect(canShareAppUrl({ share: async () => {} })).toBe(true);
-    expect(canShareAppUrl({ share: async () => {}, canShare: () => true })).toBe(true);
-    expect(canShareAppUrl({ share: async () => {}, canShare: () => false })).toBe(false);
-    expect(canShareAppUrl(undefined)).toBe(false);
+  it("share があるときだけハッシュタグをシートに出せる", () => {
+    expect(canShareHashtags({ share: async () => {} })).toBe(true);
+    expect(canShareHashtags({ share: async () => {}, canShare: () => true })).toBe(true);
+    expect(canShareHashtags({ share: async () => {}, canShare: () => false })).toBe(false);
+    expect(canShareHashtags(undefined)).toBe(false);
   });
 
-  it("Web Share API で本番 URL を渡す", async () => {
+  it("Web Share API でハッシュタグ本文だけを渡す", async () => {
     const share = vi.fn(async () => {});
     const copyText = vi.fn(async () => true);
-    const outcome = await shareAppUrl({
+    const outcome = await shareHashtags({
       navigator: { share, canShare: () => true },
       copyText,
     });
     expect(outcome).toBe("shared");
     expect(share).toHaveBeenCalledWith(APP_SHARE_DATA);
+    expect(share.mock.calls[0]?.[0]).not.toHaveProperty("url");
+    expect(share.mock.calls[0]?.[0]).not.toHaveProperty("title");
     expect(copyText).not.toHaveBeenCalled();
   });
 
   it("ユーザーが共有シートを閉じたらコピーしない", async () => {
     const copyText = vi.fn(async () => true);
-    const outcome = await shareAppUrl({
+    const outcome = await shareHashtags({
       navigator: {
         share: async () => {
           throw Object.assign(new Error("share canceled"), { name: "AbortError" });
@@ -73,15 +75,16 @@ describe("共有する", () => {
     expect(copyText).not.toHaveBeenCalled();
   });
 
-  it("Web Share が無い環境では URL をコピーする", async () => {
+  it("Web Share が無い環境ではハッシュタグ本文をコピーする", async () => {
     const copyText = vi.fn(async () => true);
-    const outcome = await shareAppUrl({ copyText });
+    const outcome = await shareHashtags({ copyText });
     expect(outcome).toBe("copied");
-    expect(copyText).toHaveBeenCalledWith(APP_SHARE_URL);
+    expect(copyText).toHaveBeenCalledWith(SHARE_TEXT);
+    expect(copyText).not.toHaveBeenCalledWith(expect.stringMatching(/https?:\/\//));
   });
 
   it("共有もコピーもできなければ unsupported", async () => {
-    const outcome = await shareAppUrl({
+    const outcome = await shareHashtags({
       navigator: { share: async () => {}, canShare: () => false },
       copyText: async () => false,
     });
@@ -90,8 +93,8 @@ describe("共有する", () => {
 
   it("クリップボードへ書いたら true", async () => {
     const writeText = vi.fn(async () => {});
-    expect(await copyTextToClipboard(APP_SHARE_URL, { writeText })).toBe(true);
-    expect(writeText).toHaveBeenCalledWith(APP_SHARE_URL);
-    expect(await copyTextToClipboard(APP_SHARE_URL)).toBe(false);
+    expect(await copyTextToClipboard(SHARE_TEXT, { writeText })).toBe(true);
+    expect(writeText).toHaveBeenCalledWith(SHARE_TEXT);
+    expect(await copyTextToClipboard(SHARE_TEXT)).toBe(false);
   });
 });
