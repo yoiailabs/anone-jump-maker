@@ -21,7 +21,6 @@ import {
   OUTPUT,
   OUTPUTS,
   STAGE_MAX_REM,
-  PANEL_DIVIDER_PX,
   TEMPLATE_BAND_H,
   TEMPLATE_BAND_Y,
   TEMPLATE_FPS,
@@ -85,9 +84,8 @@ describe("output size", () => {
     expect(isAspectMode("square")).toBe(false);
   });
 
-  it("uses a main-frame blur with a 1px divider", () => {
+  it("uses a main-frame blur with no painted panel divider", () => {
     expect(BLUR_COVER_SCALE).toBe(1);
-    expect(PANEL_DIVIDER_PX).toBe(1);
     expect(BLUR_SOURCE).toBe("main-frame");
   });
 

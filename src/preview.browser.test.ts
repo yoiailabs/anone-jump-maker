@@ -78,7 +78,7 @@ describe("createCompositor", () => {
     }
   });
 
-  it("does not paint a white seam on the top edge of the portrait 16:9 panel", async () => {
+  it("does not paint a white or dark seam on the portrait 16:9 panel edges", async () => {
     const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
     const rest = 7 / 30;
     const photo = await makePhoto("#3a6ea5");
@@ -98,7 +98,7 @@ describe("createCompositor", () => {
           height: character.height,
         });
         const panel = mainPanelRect(compositor.canvas.width, compositor.canvas.height, "portrait");
-        assertNoBrightSeam(compositor.canvas, panel.y);
+        assertNoPanelEdgeSeam(compositor.canvas, panel);
 
         compositor.setAspect("landscape");
         compositor.draw(video, [photo], timeline, rest, "jump", "none");
@@ -282,14 +282,30 @@ function rowMeanLuma(ctx: CanvasRenderingContext2D, y: number, x: number, width:
   return sum / n;
 }
 
-function assertNoBrightSeam(canvas: HTMLCanvasElement, panelY: number): void {
+function assertNoPanelEdgeSeam(
+  canvas: HTMLCanvasElement,
+  panel: { y: number; h: number },
+): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas");
-  const y0 = Math.round(panelY);
+  const top = Math.round(panel.y);
+  const bottom = Math.round(panel.y + panel.h) - 1;
   const x = Math.floor(canvas.width * 0.08);
   const width = Math.max(8, Math.floor(canvas.width * 0.84));
-  const start = Math.max(0, y0 - 2);
-  const end = Math.min(canvas.height - 1, y0 + 4);
+  assertNoBrightSpike(ctx, canvas.height, top, x, width);
+  assertNoBrightSpike(ctx, canvas.height, bottom, x, width);
+  assertNoDarkDividerStripe(ctx, top, bottom, x, width);
+}
+
+function assertNoBrightSpike(
+  ctx: CanvasRenderingContext2D,
+  canvasH: number,
+  edgeY: number,
+  x: number,
+  width: number,
+): void {
+  const start = Math.max(0, edgeY - 2);
+  const end = Math.min(canvasH - 1, edgeY + 2);
   const lumas: number[] = [];
   for (let y = start; y <= end; y += 1) {
     lumas.push(rowMeanLuma(ctx, y, x, width));
@@ -303,6 +319,26 @@ function assertNoBrightSeam(canvas: HTMLCanvasElement, panelY: number): void {
       false,
     );
   }
+}
+
+function assertNoDarkDividerStripe(
+  ctx: CanvasRenderingContext2D,
+  top: number,
+  bottom: number,
+  x: number,
+  width: number,
+): void {
+  const inset = Math.min(6, Math.max(2, Math.floor((bottom - top) / 8)));
+  const interior = rowMeanLuma(ctx, top + inset, x, width);
+  const topEdge = rowMeanLuma(ctx, top, x, width);
+  const bottomEdge = rowMeanLuma(ctx, bottom, x, width);
+  expect(topEdge, `dark top divider: edge=${topEdge.toFixed(1)} interior=${interior.toFixed(1)}`).toBeGreaterThan(
+    interior - 18,
+  );
+  expect(
+    bottomEdge,
+    `dark bottom divider: edge=${bottomEdge.toFixed(1)} interior=${interior.toFixed(1)}`,
+  ).toBeGreaterThan(interior - 18);
 }
 
 async function jpegFile(): Promise<File> {

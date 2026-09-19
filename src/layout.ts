@@ -251,9 +251,6 @@ const NO_FX = {
  */
 export const BLUR_COVER_SCALE = 1;
 
-/** 参考は本編上端の 1px 暗線。 */
-export const PANEL_DIVIDER_PX = 1;
-
 /** 上下帯の暗転。参考 Short の帯は本編の約 0.33–0.40 輝度。 */
 export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
 

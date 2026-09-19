@@ -13,7 +13,6 @@ import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
   BLUR_DIM,
-  PANEL_DIVIDER_PX,
   ZOOM_BACKDROP_BLUR_FRAC,
   characterDest,
   characterOutlinePx,
@@ -635,10 +634,6 @@ function paintOutput(
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(main, panelX, panelY, panelW, panelH);
   ctx.imageSmoothingEnabled = true;
-
-  ctx.fillStyle = "rgba(8, 6, 4, 0.85)";
-  ctx.fillRect(0, panelY, w, PANEL_DIVIDER_PX);
-  ctx.fillRect(0, panelY + panelH - PANEL_DIVIDER_PX, w, PANEL_DIVIDER_PX);
 }
 
 export const SONG_CREDIT = songCreditLine();
