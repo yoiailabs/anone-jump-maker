@@ -1,16 +1,35 @@
 /** 「みんなの #あのねジャンプ」に載せる X の動画投稿。差し替えはこの配列だけ。 */
+
+/** カードの予約高さ。widgets.js が伸びても masonry が暴れないようにする。 */
+export type CommunityJumpMedia = "video" | "text";
+
+/** CURATED_JUMPS に足す行。href 必須、ほかは省略可。 */
+export type CommunityJumpInput = {
+  readonly href: string;
+  readonly likes?: number;
+  /** 省略時は video（ジャンプ動画）。 */
+  readonly media?: CommunityJumpMedia;
+};
+
 export type CommunityJumpPost = {
   readonly id: string;
   readonly href: string;
   readonly handle?: string;
   readonly likes?: number;
+  readonly media: CommunityJumpMedia;
 };
+
+/** 一覧の目安上限。これ以上は別ページや「もっと見る」に任せる。 */
+export const COMMUNITY_JUMP_CAPACITY = 30;
 
 const X_STATUS =
   /^https:\/\/x\.com\/([A-Za-z0-9_]+)\/status\/(\d+)\/?$/;
 
-/** いいね降順の curated 10。href を足す／入れ替えるだけで一覧に出る。 */
-const CURATED_JUMPS: readonly { href: string; likes: number }[] = [
+/**
+ * いいね降順の curated。行を足す／入れ替えるだけで一覧に出る。
+ * media を省略した行は video。容量の目安は COMMUNITY_JUMP_CAPACITY。
+ */
+const CURATED_JUMPS: readonly CommunityJumpInput[] = [
   { href: "https://x.com/02_ZERO_Ni/status/2100797924125049167", likes: 738 },
   { href: "https://x.com/_nakotanmaru/status/2100880092864122959", likes: 646 },
   { href: "https://x.com/aku11i/status/2100742211289989572", likes: 107 },
@@ -31,14 +50,23 @@ export function parseCommunityJumpHref(href: string): { id: string; handle: stri
   return { handle: match[1], id: match[2] };
 }
 
-export function communityJumpFromHref(href: string, likes?: number): CommunityJumpPost {
-  const { id, handle } = parseCommunityJumpHref(href);
-  if (likes == null) {
-    return { id, href, handle };
+export function communityJumpFromInput(input: CommunityJumpInput): CommunityJumpPost {
+  const { id, handle } = parseCommunityJumpHref(input.href);
+  const media = input.media ?? "video";
+  if (input.likes == null) {
+    return { id, href: input.href, handle, media };
   }
-  return { id, href, handle, likes };
+  return { id, href: input.href, handle, likes: input.likes, media };
+}
+
+export function communityJumpFromHref(
+  href: string,
+  likes?: number,
+  media?: CommunityJumpMedia,
+): CommunityJumpPost {
+  return communityJumpFromInput({ href, likes, media });
 }
 
 export const COMMUNITY_JUMP_POSTS: readonly CommunityJumpPost[] = CURATED_JUMPS.map((row) =>
-  communityJumpFromHref(row.href, row.likes),
+  communityJumpFromInput(row),
 );

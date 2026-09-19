@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  COMMUNITY_JUMP_CAPACITY,
   COMMUNITY_JUMP_POSTS,
   communityJumpFromHref,
+  communityJumpFromInput,
   parseCommunityJumpHref,
 } from "./community-jumps.ts";
 
@@ -23,8 +25,11 @@ const CURATED_LIKES = [738, 646, 107, 44, 36, 33, 26, 26, 23, 17] as const;
 describe("community jump posts", () => {
   it("keeps the curated 10 in likes-desc order with ids from the URLs", () => {
     expect(COMMUNITY_JUMP_POSTS).toHaveLength(10);
+    expect(COMMUNITY_JUMP_POSTS.length).toBeLessThanOrEqual(COMMUNITY_JUMP_CAPACITY);
+    expect(COMMUNITY_JUMP_CAPACITY).toBe(30);
     expect(COMMUNITY_JUMP_POSTS.map((post) => post.href)).toEqual([...CURATED_HREFS]);
     expect(COMMUNITY_JUMP_POSTS.map((post) => post.likes)).toEqual([...CURATED_LIKES]);
+    expect(COMMUNITY_JUMP_POSTS.map((post) => post.media)).toEqual(Array(10).fill("video"));
     expect(COMMUNITY_JUMP_POSTS.map((post) => post.id)).toEqual([
       "2100797924125049167",
       "2100880092864122959",
@@ -61,6 +66,14 @@ describe("community jump posts", () => {
       href: CURATED_HREFS[0],
       handle: "02_ZERO_Ni",
       likes: 738,
+      media: "video",
+    });
+    expect(communityJumpFromInput({ href: CURATED_HREFS[2], likes: 107, media: "text" })).toEqual({
+      id: "2100742211289989572",
+      href: CURATED_HREFS[2],
+      handle: "aku11i",
+      likes: 107,
+      media: "text",
     });
   });
 

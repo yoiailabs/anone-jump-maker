@@ -349,9 +349,20 @@ test("opens community jumps from the disclaimer link and returns via the back li
     `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
   );
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
+  await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
+  await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(10);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
   await expect(page.locator("#playBtn")).toBeHidden();
+
+  const masonryCols = await page.locator("#communityJumpsList").evaluate((el) => {
+    const n = Number(getComputedStyle(el).getPropertyValue("--community-masonry-cols"));
+    return n === 2 || n === 3 ? n : 1;
+  });
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const expectedCols = viewportWidth >= 1024 ? 3 : viewportWidth >= 640 ? 2 : 1;
+  expect(masonryCols).toBe(expectedCols);
+  await expect(page.locator("#communityJumpsList")).toHaveAttribute("data-masonry-cols", String(expectedCols));
 
   const first = page.locator("#communityJumps .community-jumps-item").nth(0);
   const second = page.locator("#communityJumps .community-jumps-item").nth(1);
@@ -359,8 +370,20 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const firstBox = await first.boundingBox();
   const secondBox = await second.boundingBox();
   const lastBox = await last.boundingBox();
-  expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
-  expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
+  expect(firstBox && secondBox && lastBox).toBeTruthy();
+  if (expectedCols === 1) {
+    expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
+    expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
+  } else {
+    expect(firstBox && secondBox && secondBox.x > firstBox.x + 40).toBe(true);
+    expect(firstBox && secondBox && Math.abs(firstBox.y - secondBox.y) < 48).toBe(true);
+    expect(firstBox && lastBox && lastBox.y > firstBox.y + 40).toBe(true);
+  }
+
+  if (viewportWidth >= 640) {
+    const communityAppWidth = await page.locator(".app").evaluate((el) => el.getBoundingClientRect().width);
+    expect(communityAppWidth).toBeGreaterThan(28 * 16);
+  }
 
   const bottomBack = page.locator("#toMakerBottom");
   const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(9);
@@ -403,6 +426,10 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(new URL(page.url()).pathname).toBe("/");
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#playBtn")).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) >= 640) {
+    const makerAppWidth = await page.locator(".app").evaluate((el) => el.getBoundingClientRect().width);
+    expect(makerAppWidth).toBeLessThanOrEqual(28 * 16 + 2);
+  }
   await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
@@ -421,6 +448,7 @@ test("hydrates every community card after scrolling the list", async ({ page }) 
   await waitForAppReady(page);
   const items = page.locator("#communityJumps .community-jumps-item");
   await expect(items).toHaveCount(10);
+  await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
   for (let index = 0; index < 10; index += 1) {
     await items.nth(index).scrollIntoViewIfNeeded();
     await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");

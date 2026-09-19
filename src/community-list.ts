@@ -13,6 +13,65 @@ import {
 import { toMakerLinkHtml } from "./nav.ts";
 import { hydrateReactionEmbed, isEmbedHostVisible } from "./reactions.ts";
 
+/** 1 col < 40rem、2 col ≥ 40rem、3 col ≥ 64rem（.app のコミュニティ幅と揃える）。 */
+export const COMMUNITY_MASONRY_BREAKPOINTS = {
+  tablet: 640,
+  desktop: 1024,
+} as const;
+
+/** grid-auto-rows と gap。span 計算と CSS を一致させる。 */
+export const COMMUNITY_MASONRY_ROW_PX = 8;
+export const COMMUNITY_MASONRY_GAP_PX = 18;
+
+export function communityMasonryColumns(widthPx: number): 1 | 2 | 3 {
+  if (!Number.isFinite(widthPx) || widthPx < COMMUNITY_MASONRY_BREAKPOINTS.tablet) return 1;
+  if (widthPx < COMMUNITY_MASONRY_BREAKPOINTS.desktop) return 2;
+  return 3;
+}
+
+/** 交差中のカードに加え、同じ段の左右も載せる。 */
+export function hydratePadForColumns(columns: number): number {
+  if (!Number.isInteger(columns) || columns < 1) return 1;
+  return columns;
+}
+
+export function communityMasonryRowSpan(
+  heightPx: number,
+  rowPx = COMMUNITY_MASONRY_ROW_PX,
+  gapPx = COMMUNITY_MASONRY_GAP_PX,
+): number {
+  if (!Number.isFinite(heightPx) || heightPx <= 0) return 1;
+  const unit = rowPx + gapPx;
+  if (unit <= 0) return 1;
+  return Math.max(1, Math.ceil((heightPx + gapPx) / unit));
+}
+
+export function applyCommunityMasonryItem(
+  item: HTMLElement,
+  columns: number,
+): void {
+  if (columns <= 1) {
+    item.style.gridRowEnd = "";
+    return;
+  }
+  const card = item.querySelector<HTMLElement>(".community-jumps-card");
+  const height = card?.offsetHeight ?? item.offsetHeight;
+  item.style.gridRowEnd = `span ${communityMasonryRowSpan(height)}`;
+}
+
+export function applyCommunityMasonryLayout(
+  list: HTMLElement,
+  items: readonly HTMLElement[],
+  columns: number,
+): void {
+  const cols = columns === 2 || columns === 3 ? columns : 1;
+  list.dataset.masonryCols = String(cols);
+  list.style.setProperty("--community-masonry-cols", String(cols));
+  for (const item of items) {
+    applyCommunityMasonryItem(item, cols);
+  }
+}
+
 export const COMMUNITY_JUMPS_TITLE = t("ja", "communityTitle");
 export const COMMUNITY_JUMPS_LEDE = t("ja", "communityLede");
 export const COMMUNITY_JUMPS_EMPTY = t("ja", "communityEmpty");
@@ -109,7 +168,7 @@ export function communityJumpsSectionHtml(
       ${
         posts.length === 0
           ? `<p class="community-jumps-empty">${t(locale, "communityEmpty")}</p>`
-          : `<ol class="community-jumps-list" id="communityJumpsList">${itemsHtml(posts, locale)}</ol>`
+          : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(posts, locale)}</ol>`
       }
       <footer class="community-jumps-end">
         ${moreJumpsLinkHtml(locale)}
@@ -138,6 +197,13 @@ export function mountCommunityJumps(
 
   const itemsNow = () => [...list.querySelectorAll<HTMLElement>(".community-jumps-item")];
 
+  const columnCount = () =>
+    typeof window === "undefined" ? 1 : communityMasonryColumns(window.innerWidth);
+
+  const layoutMasonry = () => {
+    applyCommunityMasonryLayout(list, itemsNow(), columnCount());
+  };
+
   const incomingIndexes = () => {
     const items = itemsNow();
     if (typeof window !== "undefined" && shouldHydrateRemaining(list.getBoundingClientRect(), window.innerHeight)) {
@@ -151,7 +217,7 @@ export function mountCommunityJumps(
     if (!isEmbedHostVisible(section)) return;
     const incoming = incomingIndexes();
     const kickstart = remembered.size === 0 && incoming.length === 0 ? [0] : incoming;
-    const want = rememberHydrateIndexes(remembered, kickstart, posts.length);
+    const want = rememberHydrateIndexes(remembered, kickstart, posts.length, hydratePadForColumns(columnCount()));
     for (const index of want) remembered.add(index);
 
     const freshCards: HTMLElement[] = [];
@@ -167,6 +233,7 @@ export function mountCommunityJumps(
     for (const card of freshCards) {
       hydrateReactionEmbed(card);
     }
+    layoutMasonry();
   };
 
   const remountHydratedCards = () => {
@@ -179,6 +246,7 @@ export function mountCommunityJumps(
       card.innerHTML = embedHtml(post, localeOf(section));
       hydrateReactionEmbed(card);
     }
+    layoutMasonry();
   };
 
   const refresh = () => {
@@ -186,6 +254,8 @@ export function mountCommunityJumps(
     hydrateWanted();
   };
   communityRefreshers.set(section, refresh);
+
+  layoutMasonry();
 
   if (typeof IntersectionObserver === "undefined") {
     for (let index = 0; index < posts.length; index += 1) remembered.add(index);
@@ -209,9 +279,23 @@ export function mountCommunityJumps(
     observer.observe(item);
   }
 
-  const onScrollOrResize = () => hydrateWanted();
+  const onScrollOrResize = () => {
+    layoutMasonry();
+    hydrateWanted();
+  };
   window.addEventListener("scroll", onScrollOrResize, { passive: true });
   window.addEventListener("resize", onScrollOrResize);
+
+  if (typeof ResizeObserver !== "undefined") {
+    const resizeObserver = new ResizeObserver(() => {
+      layoutMasonry();
+    });
+    for (const item of itemsNow()) {
+      const card = item.querySelector(".community-jumps-card");
+      resizeObserver.observe(card ?? item);
+    }
+  }
+
   requestAnimationFrame(hydrateWanted);
 }
 
@@ -228,7 +312,7 @@ function itemsHtml(posts: readonly CommunityJumpPost[], locale: Locale): string 
           data-logical="${logical}"
           data-post-id="${escapeHtml(post.id)}"
         >
-          <article class="community-jumps-card">${fallbackHtml(post, locale)}</article>
+          <article class="community-jumps-card" data-media="${escapeHtml(post.media)}">${fallbackHtml(post, locale)}</article>
         </li>
       `,
     )
