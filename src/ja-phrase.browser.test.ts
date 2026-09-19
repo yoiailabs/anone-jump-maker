@@ -55,22 +55,24 @@ describe("JaLede phrase wrapping", () => {
     const el = await mountLede("ja");
     const expected =
       t("ja", "makerLede1") + t("ja", "makerLede2") + t("ja", "makerLede3");
-    await vi.waitFor(() => {
-      const text = el.textContent ?? "";
-      expect(visibleJaText(text)).toBe(expected);
-      const wordBreak = getComputedStyle(el).wordBreak;
-      const hasZwsp = text.includes(JA_PHRASE_ZWSP);
-      const autoPhrase = wordBreak === "auto-phrase";
-      expect(hasZwsp || autoPhrase).toBe(true);
-      if (autoPhrase) {
-        expect(hasZwsp).toBe(false);
-        expect(el.dataset.phraseBreak).toBe("css");
-      } else {
-        expect(hasZwsp).toBe(true);
-        expect(el.classList.contains("lede-phrased")).toBe(true);
-        expect(el.dataset.phraseBreak).toBe("zwsp");
-        expect(wordBreak).toBe("keep-all");
-      }
+    await act(async () => {
+      await vi.waitFor(() => {
+        const text = el.textContent ?? "";
+        expect(visibleJaText(text)).toBe(expected);
+        const wordBreak = getComputedStyle(el).wordBreak;
+        const hasZwsp = text.includes(JA_PHRASE_ZWSP);
+        const autoPhrase = wordBreak === "auto-phrase";
+        expect(hasZwsp || autoPhrase).toBe(true);
+        if (autoPhrase) {
+          expect(hasZwsp).toBe(false);
+          expect(el.dataset.phraseBreak).toBe("css");
+        } else {
+          expect(hasZwsp).toBe(true);
+          expect(el.classList.contains("lede-phrased")).toBe(true);
+          expect(el.dataset.phraseBreak).toBe("zwsp");
+          expect(wordBreak).toBe("keep-all");
+        }
+      });
     });
   });
 
