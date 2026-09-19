@@ -6,7 +6,9 @@ describe("googleFontsHref", () => {
     for (const locale of ["ja", "en"] as const) {
       const href = googleFontsHref(locale);
       expect(href).toContain("Zen+Maru+Gothic");
+      expect(href).toContain("wght@400;700");
       expect(href).toContain("display=swap");
+      expect(href).not.toContain("500");
       expect(href).not.toContain("Noto+Sans+KR");
       expect(href).not.toContain("Noto+Sans+SC");
     }
@@ -16,6 +18,8 @@ describe("googleFontsHref", () => {
     const href = googleFontsHref("ko");
     expect(href).toContain("Zen+Maru+Gothic");
     expect(href).toContain("Noto+Sans+KR");
+    expect(href).toContain("wght@400;700");
+    expect(href).not.toContain("500");
     expect(href).not.toContain("Noto+Sans+SC");
   });
 
@@ -23,6 +27,8 @@ describe("googleFontsHref", () => {
     const href = googleFontsHref("zh");
     expect(href).toContain("Zen+Maru+Gothic");
     expect(href).toContain("Noto+Sans+SC");
+    expect(href).toContain("wght@400;700");
+    expect(href).not.toContain("500");
     expect(href).not.toContain("Noto+Sans+KR");
   });
 });

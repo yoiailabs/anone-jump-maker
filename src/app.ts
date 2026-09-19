@@ -1,6 +1,6 @@
 import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
-import { createCompositor, type CharacterFrame } from "./compositor.ts";
+import type { CharacterFrame, Compositor } from "./compositor.ts";
 import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
 import { EXPORT_FPS, exportJumpVideo, exportProgressPercent, isAbortError, seekVideo, throwIfAborted } from "./export.ts";
 import {
@@ -14,7 +14,6 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import { persistLocale, syncLanguageNav } from "./i18n-client.ts";
-import { mountCommunityJumps, refreshCommunityJumps } from "./community-list.ts";
 import {
   DEFAULT_LOCALE,
   localeFromLanguageTags,
@@ -94,11 +93,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const benchFlags = readPreviewBenchFlags(typeof location === "undefined" ? "" : location.search);
-  const compositor = createCompositor({
-    locale,
-    resolutionScale: PREVIEW_RESOLUTION_SCALE,
-    createKeyer: benchFlags.forceCpuKeying ? () => null : undefined,
-  });
+  let compositor: Compositor | null = null;
+  let compositorPromise: Promise<Compositor> | null = null;
   let photos: LoadedPhoto[] = [];
   let photosBusy = false;
   let playing = false;
@@ -160,12 +156,34 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let imageFilter: ImageFilter = filterValue && isImageFilter(filterValue) ? filterValue : "none";
   const video = createTemplateVideo(mode);
   stage.dataset.aspect = mode;
-  if (mode !== DEFAULT_ASPECT) compositor.setAspect(mode);
-
-  stage.prepend(compositor.canvas);
-  compositor.canvas.setAttribute("aria-hidden", "true");
-  compositor.canvas.removeAttribute("aria-label");
   document.body.append(video);
+
+  const attachCompositorCanvas = (created: Compositor) => {
+    if (created.canvas.isConnected) return;
+    stage.prepend(created.canvas);
+    created.canvas.setAttribute("aria-hidden", "true");
+    created.canvas.removeAttribute("aria-label");
+  };
+
+  const ensureCompositor = (): Promise<Compositor> => {
+    compositorPromise ??= import("./compositor.ts")
+      .then(({ createCompositor }) => {
+        const created = createCompositor({
+          locale,
+          resolutionScale: PREVIEW_RESOLUTION_SCALE,
+          createKeyer: benchFlags.forceCpuKeying ? () => null : undefined,
+        });
+        if (mode !== DEFAULT_ASPECT) created.setAspect(mode);
+        attachCompositorCanvas(created);
+        compositor = created;
+        return created;
+      })
+      .catch((error: unknown) => {
+        compositorPromise = null;
+        throw error;
+      });
+    return compositorPromise;
+  };
 
   const timeline = () => {
     if (!timelines) throw new Error(msg("statusCutsMissing"));
@@ -262,7 +280,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let paintClockStart = 0;
 
   const paint = (time?: number, character?: CharacterFrame) => {
-    if (!timelines) return;
+    if (!compositor || !timelines) return;
     const started = benchFlags.bench ? performance.now() : 0;
     const cuts = timeline();
     const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character);
@@ -310,11 +328,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const benchSnapshot = () => {
     const elapsed = paintClockStart === 0 ? 0 : performance.now() - paintClockStart;
     const paints = summarizePaintSamples(paintSamples, elapsed, PREVIEW_FPS);
-    const debug = compositor.keyingDebug();
+    const debug = compositor?.keyingDebug() ?? {
+      backend: "cpu" as const,
+      context: "none" as const,
+      renderer: "",
+      vendor: "",
+      software: false,
+    };
     return {
-      keying: compositor.keying,
+      keying: compositor?.keying ?? "cpu",
       forcedCpu: benchFlags.forceCpuKeying,
-      resolutionScale: compositor.resolutionScale(),
+      resolutionScale: compositor?.resolutionScale() ?? PREVIEW_RESOLUTION_SCALE,
       aspect: mode,
       ...debug,
       paints,
@@ -490,6 +514,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (recording || !canUse() || previewDialog.open || openingPreview) return;
     openingPreview = true;
     try {
+      await ensureCompositor();
       await ensureTimelines();
       if (recording || previewDialog.open) return;
       previewDialog.showModal();
@@ -509,7 +534,18 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let makerReactionsArmed = false;
   let activeView: AppView | null = null;
   let embedPaintGen = 0;
-  const applyView = (view: AppView) => {
+  const focusViewHeading = (view: AppView) => {
+    const heading =
+      view === "community"
+        ? root.querySelector<HTMLElement>("#communityJumpsTitle")
+        : root.querySelector<HTMLElement>("#makerTitle");
+    heading?.setAttribute("tabindex", "-1");
+    heading?.focus({
+      preventScroll: true,
+      focusVisible: false,
+    } as FocusOptions & { focusVisible?: boolean });
+  };
+  const applyView = async (view: AppView) => {
     const makerView = must(root, "#makerView");
     const communityView = must(root, "#communityView");
     makerView.hidden = view !== "maker";
@@ -521,37 +557,42 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       cancelExport();
       closeExportDialog();
     }
+    const firstPaint = activeView === null;
     if (activeView !== view) {
-      const firstPaint = activeView === null;
       activeView = view;
       window.scrollTo(0, 0);
-      if (!firstPaint) {
-        const heading =
-          view === "community"
-            ? root.querySelector<HTMLElement>("#communityJumpsTitle")
-            : root.querySelector<HTMLElement>("#makerTitle");
-        heading?.setAttribute("tabindex", "-1");
-        heading?.focus({
-          preventScroll: true,
-          focusVisible: false,
-        } as FocusOptions & { focusVisible?: boolean });
+      if (!firstPaint && view === "maker") {
+        focusViewHeading("maker");
       }
     }
     const paintGen = ++embedPaintGen;
-    const host = view === "community" ? communityView : makerView;
-    whenEmbedHostVisible(host, () => {
+    if (view === "community") {
+      const { communityJumpsSectionHtml, mountCommunityJumps, refreshCommunityJumps } = await import(
+        "./community-list.ts"
+      );
       if (paintGen !== embedPaintGen) return;
-      if (view === "community") {
-        const section = must(root, "#communityJumps");
+      if (!communityView.querySelector("#communityJumps")) {
+        communityView.innerHTML = communityJumpsSectionHtml(undefined, locale);
+        syncLanguageNav(root, locale, view);
+      }
+      if (!firstPaint) {
+        focusViewHeading("community");
+      }
+      const section = must(root, "#communityJumps");
+      whenEmbedHostVisible(communityView, () => {
+        if (paintGen !== embedPaintGen) return;
         if (!communityMounted) {
           mountCommunityJumps(section);
           communityMounted = true;
         } else {
           refreshCommunityJumps(section);
         }
-        return;
-      }
-      const embed = must(root, "#reactionsEmbed");
+      });
+      return;
+    }
+    const embed = must(root, "#reactionsEmbed");
+    whenEmbedHostVisible(makerView, () => {
+      if (paintGen !== embedPaintGen) return;
       const paintReactions = () => remountReactionEmbed(embed, reactionEmbedHtml());
       if (!makerReactionsArmed) {
         makerReactionsArmed = true;
@@ -580,7 +621,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       previewTracked = false;
     }
     mode = next;
-    compositor.setAspect(mode);
+    compositor?.setAspect(mode);
     stage.dataset.aspect = mode;
     lastSlot = -1;
     refreshSlotMeter();
@@ -684,6 +725,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     refreshButtons();
     setStatus(msg("statusPhotosLoading"), "busy");
     try {
+      const compositorReady = ensureCompositor();
       const added = await loadPhotos(files, {
         onProgress: (current, total) => {
           setStatus(msg("statusPhotosLoadingProgress", { current, total }), "busy");
@@ -691,6 +733,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       });
       photos = appendAll(photos, added);
       renderThumbs();
+      await compositorReady;
       await ensureTimelines();
       paint();
       setStatus(
@@ -828,10 +871,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       const duration =
         Number.isFinite(video.duration) && video.duration > 0 ? video.duration : cuts.duration;
       const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
-      compositor.setResolutionScale(1);
+      const comp = await ensureCompositor();
+      throwIfAborted(controller.signal);
+      comp.setResolutionScale(1);
       const result = await exportJumpVideo({
         video,
-        canvas: compositor.canvas,
+        canvas: comp.canvas,
         draw: paint,
         duration,
         fps,
@@ -859,7 +904,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       }
     } finally {
       exportAbort = null;
-      compositor.setResolutionScale(PREVIEW_RESOLUTION_SCALE);
+      compositor?.setResolutionScale(PREVIEW_RESOLUTION_SCALE);
       recording = false;
       playing = false;
       previewTracked = false;
@@ -911,13 +956,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (`${location.pathname}${location.search}` !== next) {
       history.pushState({ view, locale }, "", next);
     }
-    applyView(view);
+    void applyView(view);
   };
 
   const syncViewFromLocation = () => {
     const next = canonicalAppUrl(location);
     if (next) history.replaceState(history.state, "", next);
-    applyView(parseAppLocation(location).view);
+    return applyView(parseAppLocation(location).view);
   };
 
   root.addEventListener("click", (event) => {
@@ -938,12 +983,15 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   window.addEventListener("popstate", () => {
-    applyView(parseAppView(location));
+    void applyView(parseAppView(location));
   });
-  window.addEventListener("hashchange", syncViewFromLocation);
-  syncViewFromLocation();
+  window.addEventListener("hashchange", () => {
+    void syncViewFromLocation();
+  });
+  await syncViewFromLocation();
   await ensureTimelines();
   refreshSlotMeter();
+  if (benchFlags.bench) await ensureCompositor();
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
     paint();
     refreshButtons();

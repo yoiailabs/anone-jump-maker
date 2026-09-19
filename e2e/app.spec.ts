@@ -35,17 +35,22 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   const html = await page.request.get("/").then((response) => response.text());
   expect(html).not.toMatch(/<script[^>]+src="https:\/\/www\.googletagmanager\.com/);
   expect(html).toContain("Zen+Maru+Gothic");
+  expect(html).toContain("wght@400;700");
+  expect(html).not.toContain("400;500;700");
   expect(html).not.toContain("Noto+Sans+KR");
   expect(html).not.toContain("Noto+Sans+SC");
+  expect(html).not.toContain("communityJumpsTitle");
   const firstLoad = await page.evaluate(() => {
     const resources = performance.getEntriesByType("resource").map((entry) => entry.name);
     return {
       templateVideo: resources.some((name) => /\/template\/(landscape|vertical)\.mp4/.test(name)),
+      jumpLoopVideo: resources.some((name) => name.includes("jump-loop.mp4")),
       widgets: Boolean(document.getElementById("twitter-wjs")),
       gtagScript: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
     };
   });
   expect(firstLoad.templateVideo).toBe(false);
+  expect(firstLoad.jumpLoopVideo).toBe(false);
   expect(firstLoad.widgets).toBe(false);
 });
 

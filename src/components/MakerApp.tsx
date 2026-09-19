@@ -1,7 +1,5 @@
-import { useEffect, useRef } from "react";
-import { boot } from "../app.ts";
+import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
-import { communityJumpsSectionHtml } from "../community-list.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
@@ -15,18 +13,37 @@ import {
   PREVIEW_MUTED_DEFAULT,
   restartButtonHtml,
 } from "../preview.ts";
-import { PhotoThumbs } from "@/components/PhotoThumbs.tsx";
+import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+
+const PhotoThumbs = lazy(async () => {
+  const { PhotoThumbs: Thumbs } = await import("@/components/PhotoThumbs.tsx");
+  return { default: Thumbs };
+});
+
+function PhotoThumbsSlot({ locale }: { locale: Locale }) {
+  const { photos } = useSyncExternalStore(
+    subscribePhotoThumbs,
+    getPhotoThumbsState,
+    getPhotoThumbsState,
+  );
+  if (photos.length === 0) return null;
+  return (
+    <Suspense fallback={null}>
+      <PhotoThumbs locale={locale} />
+    </Suspense>
+  );
+}
 
 type MakerAppProps = {
   initialView: AppView;
   locale: Locale;
+  communityHtml?: string;
 };
 
-export default function MakerApp({ initialView, locale }: MakerAppProps) {
+export default function MakerApp({ initialView, locale, communityHtml = "" }: MakerAppProps) {
   const started = useRef(false);
-  const communityHtml = communityJumpsSectionHtml(undefined, locale);
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
@@ -44,10 +61,12 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
     window.addEventListener("error", onFirstGesture, { once: true });
     window.addEventListener("unhandledrejection", onFirstGesture, { once: true });
     const sentryTimer = window.setTimeout(startSentry, 20000);
-    void boot(root, { locale }).catch((error: unknown) => {
-      reportError(error);
-      root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
-    });
+    void import("../app.ts")
+      .then(({ boot }) => boot(root, { locale }))
+      .catch((error: unknown) => {
+        reportError(error);
+        root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
+      });
     return () => {
       window.clearTimeout(sentryTimer);
     };
@@ -104,7 +123,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
               />
               <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
             </Label>
-            <PhotoThumbs locale={locale} />
+            <PhotoThumbsSlot locale={locale} />
             <fieldset className="aspect-field">
               <legend>{t(locale, "makerAspectLegend")}</legend>
               <RadioPills
@@ -227,7 +246,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           className="app-view"
           id="communityView"
           hidden={communityHidden}
-          dangerouslySetInnerHTML={{ __html: communityHtml }}
+          {...(communityHtml ? { dangerouslySetInnerHTML: { __html: communityHtml } } : {})}
         />
       </div>
       <dialog className="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">

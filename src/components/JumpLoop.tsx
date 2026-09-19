@@ -8,7 +8,7 @@ type JumpLoopProps = {
   ariaLabel: string;
 };
 
-/** 初回 LCP は静止画。動きはアイドル後の小さな MP4 に任せる。 */
+/** 初回 LCP は静止画。ループ動画は操作か 20 秒後まで取らない。 */
 export function JumpLoop({ href, ariaLabel }: JumpLoopProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -19,11 +19,13 @@ export function JumpLoop({ href, ariaLabel }: JumpLoopProps) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let cancelled = false;
+    let started = false;
     const show = () => {
       if (!cancelled) video.classList.add("is-ready");
     };
     const start = () => {
-      if (cancelled) return;
+      if (cancelled || started) return;
+      started = true;
       video.preload = "auto";
       video.src = JUMP_LOOP_VIDEO_SRC;
       video.addEventListener("playing", show, { once: true });
@@ -32,19 +34,19 @@ export function JumpLoop({ href, ariaLabel }: JumpLoopProps) {
       });
     };
 
-    let idleId = 0;
-    let timeoutId = 0;
-    if (typeof requestIdleCallback === "function") {
-      idleId = requestIdleCallback(start, { timeout: 1200 });
-    } else {
-      timeoutId = window.setTimeout(start, 400);
-    }
+    const onGesture = () => start();
+    window.addEventListener("pointerdown", onGesture, { once: true, passive: true });
+    window.addEventListener("keydown", onGesture, { once: true });
+    window.addEventListener("scroll", onGesture, { once: true, passive: true });
+    const timeoutId = window.setTimeout(start, 20000);
 
     return () => {
       cancelled = true;
       video.removeEventListener("playing", show);
-      if (idleId && typeof cancelIdleCallback === "function") cancelIdleCallback(idleId);
-      if (timeoutId) window.clearTimeout(timeoutId);
+      window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("keydown", onGesture);
+      window.removeEventListener("scroll", onGesture);
+      window.clearTimeout(timeoutId);
     };
   }, []);
 

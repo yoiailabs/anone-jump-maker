@@ -117,6 +117,8 @@ test.describe("localized OGP and SEO", () => {
     await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute("content", t("en", "makerTitle"));
     const fontHref = await page.locator('link[href*="fonts.googleapis.com/css2"]').first().getAttribute("href");
     expect(fontHref).toContain("Zen+Maru+Gothic");
+    expect(fontHref).toContain("wght@400;700");
+    expect(fontHref).not.toContain("500");
     expect(fontHref).not.toContain("Noto+Sans+KR");
     expect(fontHref).not.toContain("Noto+Sans+SC");
   });
