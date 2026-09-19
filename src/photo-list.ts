@@ -1,5 +1,17 @@
 /** 選んだ写真の順番・追加・削除。UI と boot から共有する。 */
 
+/** テンプレは 32 カット。それ以上の写真はフレームに出ないので選ばせない。 */
+export const PHOTO_MAX_COUNT = 32;
+
+export function takeUpToPhotoCap<T>(
+  currentCount: number,
+  incoming: readonly T[],
+  max = PHOTO_MAX_COUNT,
+): T[] {
+  if (incoming.length === 0 || currentCount >= max) return [];
+  return incoming.slice(0, max - currentCount);
+}
+
 export function moveItem<T>(items: readonly T[], from: number, to: number): T[] {
   if (!Number.isInteger(from) || !Number.isInteger(to) || from === to) return [...items];
   if (from < 0 || from >= items.length || to < 0 || to >= items.length) return [...items];

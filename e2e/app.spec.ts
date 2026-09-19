@@ -99,6 +99,17 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#playBtn")).toBeDisabled();
 });
 
+test("keeps at most 32 photos and disables adding at the cap", async ({ page }) => {
+  const files = await Promise.all(Array.from({ length: 33 }, (_, i) => jpegInput(`p${i}.jpg`)));
+  await page.locator("#picker").setInputFiles(files);
+  await expect(page.locator("#status")).toContainText("32 枚を読み込みました", { timeout: 45_000 });
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(32);
+  await expect(page.locator(".thumb-add")).toBeDisabled();
+  await expect(page.locator("#pickerLabel")).toHaveText("32枚まで");
+  await expect(page.locator("#thumbsHint")).toContainText("32枚が上限");
+  await expect(page.locator("#status")).not.toContainText("失敗");
+});
+
 test("reorders photos by drag and drop", async ({ page }) => {
   await uploadPhoto(page);
   await page.locator("#picker").setInputFiles(await jpegInput("extra.jpg"));

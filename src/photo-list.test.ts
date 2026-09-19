@@ -7,8 +7,10 @@ import {
   nearestIndexByClientX,
   nearestIndexByPoint,
   orderByIds,
+  PHOTO_MAX_COUNT,
   removeById,
   sameIdOrder,
+  takeUpToPhotoCap,
 } from "./photo-list.ts";
 
 describe("moveItem", () => {
@@ -48,6 +50,16 @@ describe("removeById / appendAll / orderByIds", () => {
   it("appends without dropping the existing list", () => {
     expect(appendAll(["a"], ["b", "c"])).toEqual(["a", "b", "c"]);
     expect(appendAll(["a"], [])).toEqual(["a"]);
+  });
+
+  it("keeps at most PHOTO_MAX_COUNT photos and drops the rest silently", () => {
+    expect(PHOTO_MAX_COUNT).toBe(32);
+    expect(takeUpToPhotoCap(0, ["a", "b"])).toEqual(["a", "b"]);
+    expect(takeUpToPhotoCap(30, ["a", "b", "c", "d"])).toEqual(["a", "b"]);
+    expect(takeUpToPhotoCap(32, ["a", "b"])).toEqual([]);
+    expect(takeUpToPhotoCap(0, Array.from({ length: 40 }, (_, i) => i))).toEqual(
+      Array.from({ length: 32 }, (_, i) => i),
+    );
   });
 
   it("reorders by id list and appends anything missing", () => {

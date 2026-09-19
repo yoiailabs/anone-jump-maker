@@ -36,7 +36,7 @@ import {
 import { pageUrl } from "./page-meta.ts";
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
-import { appendAll, orderByIds, removeById, sameIdOrder } from "./photo-list.ts";
+import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
@@ -198,7 +198,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const photosLocked = () => recording || photosBusy;
 
   const syncPickerLabel = () => {
-    pickerLabel.textContent = photos.length === 0 ? msg("makerPickPhotos") : msg("makerAddPhotos");
+    if (photos.length === 0) {
+      pickerLabel.textContent = msg("makerPickPhotos");
+      return;
+    }
+    pickerLabel.textContent =
+      photos.length >= PHOTO_MAX_COUNT
+        ? msg("makerPhotosFull", { n: PHOTO_MAX_COUNT })
+        : msg("makerAddPhotos");
   };
 
   const renderThumbs = () => {
@@ -221,7 +228,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
-    picker.disabled = locked;
+    picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
     modalPlayBtn.innerHTML = playPauseButtonHtml(active, locale);
@@ -592,7 +599,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   }
 
   picker.addEventListener("change", async () => {
-    const files = [...(picker.files ?? [])];
+    const files = takeUpToPhotoCap(photos.length, [...(picker.files ?? [])]);
     picker.value = "";
     if (files.length === 0 || photosLocked()) return;
     const hadPhotos = photos.length > 0;
