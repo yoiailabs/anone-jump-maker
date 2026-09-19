@@ -79,9 +79,24 @@ export function applyCommunityMasonryLayout(
 export const COMMUNITY_JUMPS_TITLE = t("ja", "communityTitle");
 export const COMMUNITY_JUMPS_LEDE = t("ja", "communityLede");
 export const COMMUNITY_JUMPS_EMPTY = t("ja", "communityEmpty");
-export const MORE_JUMPS_LABEL = t("ja", "communityMore");
 export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
+
+/** 見出しの「#あのねジャンプ」を X 検索へ。ライムの「もっと見る」ボタンは置かない。 */
+export function communityHashtagLinkHtml(id?: string): string {
+  const idAttr = id ? ` id="${escapeHtml(id)}"` : "";
+  return `<a${idAttr} class="community-hashtag-link" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${escapeHtml(MORE_JUMPS_QUERY)}</a>`;
+}
+
+export function communityTitleHtml(locale: Locale = DEFAULT_LOCALE, linkId = "communityHashtag"): string {
+  return wrapCommunityHashtag(t(locale, "communityTitle"), linkId);
+}
+
+export function wrapCommunityHashtag(text: string, linkId?: string): string {
+  const index = text.indexOf(MORE_JUMPS_QUERY);
+  if (index < 0) return escapeHtml(text);
+  return `${escapeHtml(text.slice(0, index))}${communityHashtagLinkHtml(linkId)}${escapeHtml(text.slice(index + MORE_JUMPS_QUERY.length))}`;
+}
 
 /** 画面の少し外まで先読みする余白。埋め込みが伸びても後続を取りこぼさない。 */
 export const HYDRATE_ROOT_MARGIN_PX = 640;
@@ -163,8 +178,8 @@ export function communityJumpsSectionHtml(
       <header class="hero community-jumps-hero">
         ${languageNavHtml(locale, "community")}
         ${toMakerLinkHtml("toMaker", locale)}
-        <p class="eyebrow">#あのねジャンプ</p>
-        <h1 id="communityJumpsTitle">${t(locale, "communityTitle")}</h1>
+        <p class="eyebrow">${communityHashtagLinkHtml()}</p>
+        <h1 id="communityJumpsTitle">${communityTitleHtml(locale)}</h1>
         ${
           posts.length === 0
             ? ""
@@ -178,7 +193,6 @@ export function communityJumpsSectionHtml(
           : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(ordered, locale)}</ol>`
       }
       <footer class="community-jumps-end">
-        ${moreJumpsLinkHtml(locale)}
         ${toMakerLinkHtml("toMakerBottom", locale)}
         ${languageNavHtml(locale, "community")}
       </footer>
@@ -330,10 +344,6 @@ export function mountCommunityJumps(
   window.addEventListener("resize", onScrollOrResize);
 
   requestAnimationFrame(hydrateWanted);
-}
-
-export function moreJumpsLinkHtml(locale: Locale = DEFAULT_LOCALE): string {
-  return `<p class="community-more-wrap"><a id="moreJumps" class="btn community-more-btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${t(locale, "communityMore")}</a></p>`;
 }
 
 export function communitySortHtml(

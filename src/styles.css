@@ -246,9 +246,7 @@ body {
   text-align: left;
 }
 
-.hero-more .btn,
-.community-more-wrap .btn,
-#moreJumps.btn {
+.hero-more .btn {
   display: flex;
   width: 100%;
   box-sizing: border-box;
@@ -256,6 +254,23 @@ body {
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
+}
+
+.community-hashtag-link {
+  color: #2a7f82;
+  font: inherit;
+  letter-spacing: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.community-hashtag-link:hover {
+  color: var(--ink);
+}
+
+.community-hashtag-link:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 .community-back-wrap {
@@ -1248,26 +1263,8 @@ a.btn:focus-visible {
   gap: 0.85rem;
 }
 
-.community-jumps-end .community-more-wrap,
 .community-jumps-end .community-back-wrap {
   margin: 0;
-}
-
-.community-jumps-end .community-more-wrap {
-  display: flex;
-}
-
-.community-jumps-end #moreJumps.btn.community-more-btn {
-  display: flex;
-  width: 100%;
-  min-height: 2.95rem;
-  padding: 0.7rem 1rem;
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  background: var(--lime);
-  color: var(--ink);
-  font-weight: 700;
-  text-decoration: none;
 }
 
 .community-jumps-card .twitter-tweet {
