@@ -263,6 +263,22 @@ export function selectImageFiles(files: readonly File[]): File[] {
   return files.filter((file) => isLikelyImageFile(file));
 }
 
+/**
+ * LINE の in-app など非セキュア / WebView では crypto.randomUUID が無い。
+ * 写真 ID 用。デコードには使わない。
+ */
+export function newPhotoId(): string {
+  const webCrypto = globalThis.crypto;
+  if (typeof webCrypto?.randomUUID === "function") {
+    return webCrypto.randomUUID();
+  }
+  if (typeof webCrypto?.getRandomValues === "function") {
+    const bytes = webCrypto.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  return `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+}
+
 export async function loadPhotos(
   files: File[],
   options: {
@@ -319,7 +335,7 @@ async function loadPhoto(file: File, convertHeic?: HeicConverter): Promise<Loade
   try {
     const thumbUrl = await makeThumbUrl(working);
     return {
-      id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+      id: `${file.name}-${file.size}-${file.lastModified}-${newPhotoId()}`,
       name: file.name,
       bitmap: working,
       thumbUrl,
