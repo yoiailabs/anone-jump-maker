@@ -117,7 +117,11 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
             ))}
           </div>
         </SortableContext>
-        <DragOverlay dropAnimation={dropAnimation}>
+        <DragOverlay
+          className="thumb-drag-overlay"
+          adjustScale={false}
+          dropAnimation={dropAnimation}
+        >
           {activePhoto ? (
             <ThumbFace
               photo={activePhoto}

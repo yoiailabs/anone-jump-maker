@@ -787,16 +787,19 @@ a.btn:focus-visible {
   visibility: hidden;
 }
 
+.thumb-drag-overlay {
+  overflow: visible;
+}
+
 .thumb.thumb-float,
 .thumb-float {
+  width: 100%;
+  height: 100%;
   cursor: grabbing;
   touch-action: none;
   overflow: visible;
   border-radius: var(--thumb-radius);
-  box-shadow: none;
-}
-
-.thumb-float img {
+  /* img の box-shadow は角丸とずれることがあるので、測った枠と同じ箱に付ける */
   box-shadow: 5px 6px 0 var(--ink);
 }
 
