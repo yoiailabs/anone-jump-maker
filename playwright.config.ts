@@ -30,19 +30,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], locale: "ja-JP" },
     },
     {
       name: "android-chrome",
-      use: { ...devices["Pixel 7"] },
+      use: { ...devices["Pixel 7"], locale: "ja-JP" },
     },
     {
       name: "webkit",
-      use: { ...devices["Desktop Safari"] },
+      use: { ...devices["Desktop Safari"], locale: "ja-JP" },
     },
     {
       name: "ios-safari",
-      use: { ...devices["iPhone 13"] },
+      use: { ...devices["iPhone 13"], locale: "ja-JP" },
     },
   ],
 });

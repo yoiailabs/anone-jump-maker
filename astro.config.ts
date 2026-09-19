@@ -7,8 +7,16 @@ import tailwindcss from "@tailwindcss/vite";
 const src = path.join(path.dirname(fileURLToPath(import.meta.url)), "src");
 
 export default defineConfig({
+  site: "https://anone.yoiailabs.com",
   output: "static",
   trailingSlash: "ignore",
+  i18n: {
+    defaultLocale: "ja",
+    locales: ["ja", "en", "ko", "zh"],
+    routing: {
+      prefixDefaultLocale: false,
+    },
+  },
   integrations: [react()],
   server: ({ command }) => ({
     host: true,

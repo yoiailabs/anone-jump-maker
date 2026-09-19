@@ -9,8 +9,9 @@
   --peach: #f4c49a;
   --card: #fff8ee;
   --line: #1a1a1a;
-  font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic",
-    system-ui, sans-serif;
+  font-family: "Zen Maru Gothic", "Noto Sans KR", "Noto Sans SC",
+    "Hiragino Maru Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --page-pad-top: 1.85rem;
   --page-pad-x: 1.15rem;
   --page-pad-bottom: 3.8rem;
@@ -145,10 +146,46 @@ body {
   text-align: center;
 }
 
+.lang-switch-wrap {
+  display: contents;
+}
+
+.lang-switch {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.85rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.notes .lang-switch,
+.community-jumps-end .lang-switch {
+  margin: 0.35rem 0 0;
+}
+
+.lang-switch a {
+  color: #2a7f82;
+  text-decoration: none;
+}
+
+.lang-switch a[aria-current="page"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.lang-switch a:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
 .hero h1 {
   margin: 0.3rem 0 0.7rem;
-  font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic",
-    system-ui, sans-serif;
+  font-family: "Zen Maru Gothic", "Noto Sans KR", "Noto Sans SC",
+    "Hiragino Maru Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   font-size: 1.58rem;
   font-weight: 400;
   letter-spacing: 0.04em;

@@ -2,15 +2,21 @@ import {
   COMMUNITY_JUMP_POSTS,
   type CommunityJumpPost,
 } from "./community-jumps.ts";
+import {
+  DEFAULT_LOCALE,
+  TWITTER_DATA_LANG,
+  isLocale,
+  languageNavHtml,
+  t,
+  type Locale,
+} from "./i18n.ts";
 import { toMakerLinkHtml } from "./nav.ts";
-import { COMMUNITY_DESCRIPTION, COMMUNITY_DOCUMENT_TITLE } from "./page-meta.ts";
 import { hydrateReactionEmbed, isEmbedHostVisible } from "./reactions.ts";
 
-export const COMMUNITY_JUMPS_TITLE = COMMUNITY_DOCUMENT_TITLE;
-export const COMMUNITY_JUMPS_LEDE = COMMUNITY_DESCRIPTION;
-export const COMMUNITY_JUMPS_EMPTY =
-  "まだ公開できるジャンプがありません。#あのねジャンプ を付けて投稿してみてね。";
-export const MORE_JUMPS_LABEL = "もっと見る";
+export const COMMUNITY_JUMPS_TITLE = t("ja", "communityTitle");
+export const COMMUNITY_JUMPS_LEDE = t("ja", "communityLede");
+export const COMMUNITY_JUMPS_EMPTY = t("ja", "communityEmpty");
+export const MORE_JUMPS_LABEL = t("ja", "communityMore");
 export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
 
@@ -85,27 +91,30 @@ export function shouldHydrateRemaining(
 
 export function communityJumpsSectionHtml(
   posts: readonly CommunityJumpPost[] = COMMUNITY_JUMP_POSTS,
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   return `
-    <section class="community-jumps" id="communityJumps" aria-labelledby="communityJumpsTitle">
+    <section class="community-jumps" id="communityJumps" data-locale="${locale}" aria-labelledby="communityJumpsTitle">
       <header class="hero community-jumps-hero">
-        ${toMakerLinkHtml()}
+        ${languageNavHtml(locale, "community")}
+        ${toMakerLinkHtml("toMaker", locale)}
         <p class="eyebrow">#あのねジャンプ</p>
-        <h1 id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h1>
+        <h1 id="communityJumpsTitle">${t(locale, "communityTitle")}</h1>
         ${
           posts.length === 0
             ? ""
-            : `<p class="lede">${COMMUNITY_JUMPS_LEDE}</p>`
+            : `<p class="lede">${t(locale, "communityLede")}</p>`
         }
       </header>
       ${
         posts.length === 0
-          ? `<p class="community-jumps-empty">${COMMUNITY_JUMPS_EMPTY}</p>`
-          : `<ol class="community-jumps-list" id="communityJumpsList">${itemsHtml(posts)}</ol>`
+          ? `<p class="community-jumps-empty">${t(locale, "communityEmpty")}</p>`
+          : `<ol class="community-jumps-list" id="communityJumpsList">${itemsHtml(posts, locale)}</ol>`
       }
       <footer class="community-jumps-end">
-        ${moreJumpsLinkHtml()}
-        ${toMakerLinkHtml("toMakerBottom")}
+        ${moreJumpsLinkHtml(locale)}
+        ${toMakerLinkHtml("toMakerBottom", locale)}
+        ${languageNavHtml(locale, "community")}
       </footer>
     </section>
   `;
@@ -151,7 +160,7 @@ export function mountCommunityJumps(
       const card = item.querySelector<HTMLElement>(".community-jumps-card");
       const post = posts[logical];
       if (!card || !post || !want.includes(logical) || card.dataset.hydrated === "1") continue;
-      card.innerHTML = embedHtml(post);
+      card.innerHTML = embedHtml(post, localeOf(section));
       card.dataset.hydrated = "1";
       freshCards.push(card);
     }
@@ -167,7 +176,7 @@ export function mountCommunityJumps(
       const card = item.querySelector<HTMLElement>(".community-jumps-card");
       const post = posts[logical];
       if (!card || !post || card.dataset.hydrated !== "1") continue;
-      card.innerHTML = embedHtml(post);
+      card.innerHTML = embedHtml(post, localeOf(section));
       hydrateReactionEmbed(card);
     }
   };
@@ -206,11 +215,11 @@ export function mountCommunityJumps(
   requestAnimationFrame(hydrateWanted);
 }
 
-export function moreJumpsLinkHtml(): string {
-  return `<p class="community-more-wrap"><a id="moreJumps" class="btn community-more-btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${MORE_JUMPS_LABEL}</a></p>`;
+export function moreJumpsLinkHtml(locale: Locale = DEFAULT_LOCALE): string {
+  return `<p class="community-more-wrap"><a id="moreJumps" class="btn community-more-btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${t(locale, "communityMore")}</a></p>`;
 }
 
-function itemsHtml(posts: readonly CommunityJumpPost[]): string {
+function itemsHtml(posts: readonly CommunityJumpPost[], locale: Locale): string {
   return posts
     .map(
       (post, logical) => `
@@ -219,36 +228,41 @@ function itemsHtml(posts: readonly CommunityJumpPost[]): string {
           data-logical="${logical}"
           data-post-id="${escapeHtml(post.id)}"
         >
-          <article class="community-jumps-card">${fallbackHtml(post)}</article>
+          <article class="community-jumps-card">${fallbackHtml(post, locale)}</article>
         </li>
       `,
     )
     .join("");
 }
 
-function fallbackHtml(post: CommunityJumpPost): string {
-  const handle = post.handle ? `@${escapeHtml(post.handle)}` : "Xの投稿";
+function fallbackHtml(post: CommunityJumpPost, locale: Locale): string {
+  const handle = post.handle ? `@${escapeHtml(post.handle)}` : t(locale, "communityXPost");
   const likes =
-    post.likes == null ? "" : `<p class="community-jumps-likes">${post.likes} いいね</p>`;
+    post.likes == null ? "" : `<p class="community-jumps-likes">${t(locale, "communityLikes", { n: post.likes })}</p>`;
   return `
     <div class="community-jumps-fallback">
       <p class="community-jumps-handle">${handle}</p>
       ${likes}
-      <a href="${escapeHtml(post.href)}" target="_blank" rel="noopener noreferrer">Xで見る</a>
+      <a href="${escapeHtml(post.href)}" target="_blank" rel="noopener noreferrer">${t(locale, "communityViewOnX")}</a>
     </div>
   `;
 }
 
-function embedHtml(post: CommunityJumpPost): string {
-  const handle = post.handle ? `@${escapeHtml(post.handle)}` : "Xの投稿";
-  const likes = post.likes == null ? "" : ` · ${post.likes} いいね`;
+function embedHtml(post: CommunityJumpPost, locale: Locale): string {
+  const handle = post.handle ? `@${escapeHtml(post.handle)}` : t(locale, "communityXPost");
+  const likes = post.likes == null ? "" : ` · ${t(locale, "communityLikes", { n: post.likes })}`;
+  const tweetLang = TWITTER_DATA_LANG[locale];
   return `
-    <blockquote class="twitter-tweet" data-lang="ja" data-dnt="true" data-align="center">
+    <blockquote class="twitter-tweet" data-lang="${tweetLang}" data-dnt="true" data-align="center">
       <p lang="ja" dir="ltr">${handle}${likes}</p>
       &mdash; ${handle}
       <a href="${escapeHtml(post.href)}">${handle}</a>
     </blockquote>
   `;
+}
+
+function localeOf(section: HTMLElement): Locale {
+  return isLocale(section.dataset.locale) ? section.dataset.locale : DEFAULT_LOCALE;
 }
 
 function escapeHtml(value: string): string {

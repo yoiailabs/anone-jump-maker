@@ -1,14 +1,16 @@
 ---
 import "../styles/global.css";
 import type { PageMeta } from "../page-meta.ts";
+import { LOCALES, OG_LOCALE } from "../i18n.ts";
+import { pageUrl } from "../page-meta.ts";
 
 type Props = PageMeta;
 
-const { title, description, url, image } = Astro.props;
+const { title, description, url, image, lang, ogLocale, view } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="ja">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -24,6 +26,7 @@ const { title, description, url, image } = Astro.props;
     </script>
     <meta name="theme-color" content="#F6EFE2" />
     <meta name="description" content={description} />
+    <link rel="canonical" href={url} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={url} />
@@ -31,13 +34,21 @@ const { title, description, url, image } = Astro.props;
     <meta property="og:image:width" content="2400" />
     <meta property="og:image:height" content="1260" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content={ogLocale} />
+    {LOCALES.filter((item) => item !== lang).map((item) => (
+      <meta property="og:locale:alternate" content={OG_LOCALE[item]} />
+    ))}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={image} />
+    {LOCALES.map((item) => (
+      <link rel="alternate" hreflang={item} href={pageUrl(item, view)} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={pageUrl("ja", view)} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>

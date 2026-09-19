@@ -1,11 +1,5 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import MakerApp from "../components/MakerApp.tsx";
-import { COMMUNITY_PAGE_META } from "../page-meta.ts";
+import AppPage from "../components/AppPage.astro";
 ---
 
-<Layout {...COMMUNITY_PAGE_META}>
-  <div id="app">
-    <MakerApp client:load initialView="community" />
-  </div>
-</Layout>
+<AppPage locale="ja" view="community" />

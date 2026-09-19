@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, t, type Locale } from "./i18n.ts";
+
 /** 画面最下部に置くナナツカゼさんの公式リンク。ファン制作なので出典として並べる。 */
 export type OfficialLink = {
   /** CSS のアクセント色とアイコンの引き当てに使う。 */
@@ -32,7 +34,10 @@ const ICONS: Record<OfficialLink["id"], string> = {
     '<path d="M9.6 16.4V6.6l7-1.5v9.3" /><circle cx="7" cy="16.7" r="2.6" /><circle cx="14.2" cy="14.8" r="2.6" />',
 };
 
-export function linkBannersHtml(links: readonly OfficialLink[] = OFFICIAL_LINKS): string {
+export function linkBannersHtml(
+  links: readonly OfficialLink[] = OFFICIAL_LINKS,
+  locale: Locale = DEFAULT_LOCALE,
+): string {
   return links
     .map(
       (link) => `
@@ -43,7 +48,7 @@ export function linkBannersHtml(links: readonly OfficialLink[] = OFFICIAL_LINKS)
             href="${link.href}"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="ナナツカゼさんの${link.label}を開く（新しいタブ）"
+            aria-label="${t(locale, "makerLinkAria", { label: link.label })}"
           >
             <svg class="link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[link.id]}</svg>
             <span>${link.label}</span>

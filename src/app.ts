@@ -13,15 +13,27 @@ import {
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
-import { COMMUNITY_JUMPS_TITLE, mountCommunityJumps, refreshCommunityJumps } from "./community-list.ts";
+import { persistLocale, syncLanguageNav } from "./i18n-client.ts";
+import { mountCommunityJumps, refreshCommunityJumps } from "./community-list.ts";
 import {
-  appViewFromClick,
+  DEFAULT_LOCALE,
+  localeFromLanguageTags,
+  localeRedirectLocation,
+  messageFromError,
+  parseAppPath,
+  pathForApp,
+  t,
+  type Locale,
+} from "./i18n.ts";
+import {
+  appPathFromClick,
   canonicalAppUrl,
   documentTitleForView,
+  parseAppLocation,
   parseAppView,
-  pathForView,
   type AppView,
 } from "./nav.ts";
+import { pageUrl } from "./page-meta.ts";
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
@@ -44,7 +56,28 @@ function checkedNamedValue(inputs: readonly HTMLInputElement[], name: string): s
   return inputs.find((input) => input.name === name && input.checked)?.value;
 }
 
-export async function boot(root: HTMLElement): Promise<void> {
+export type BootOptions = {
+  locale?: Locale;
+};
+
+export async function boot(root: HTMLElement, options: BootOptions = {}): Promise<void> {
+  const cookie = typeof document === "undefined" ? "" : document.cookie;
+  const languages =
+    typeof navigator === "undefined"
+      ? []
+      : navigator.languages.length > 0
+        ? [...navigator.languages]
+        : [navigator.language];
+  const dest = localeRedirectLocation(location.pathname, location.search, cookie, languages.join(","));
+  if (dest) {
+    location.replace(dest);
+    return;
+  }
+
+  const locale =
+    options.locale ?? parseAppPath(location.pathname)?.locale ?? localeFromLanguageTags(languages) ?? DEFAULT_LOCALE;
+  const msg = (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) => t(locale, key, vars);
+
   const timelinesPromise = loadTimelines();
   let timelines: Record<AspectMode, CutTimeline> | null = null;
   const ensureTimelines = async () => {
@@ -113,14 +146,14 @@ export async function boot(root: HTMLElement): Promise<void> {
   document.body.append(video);
 
   const timeline = () => {
-    if (!timelines) throw new Error("カット表がまだありません");
+    if (!timelines) throw new Error(msg("statusCutsMissing"));
     return timelines[mode];
   };
 
   const refreshSlotMeter = () => {
     slotMeter.textContent = timelines
-      ? `スロット — / ${timelines[mode].slots.length}`
-      : "スロット — / —";
+      ? msg("previewSlotEmpty", { total: timelines[mode].slots.length })
+      : msg("previewSlotPending");
   };
   refreshSlotMeter();
 
@@ -129,9 +162,9 @@ export async function boot(root: HTMLElement): Promise<void> {
     statusEl.dataset.kind = kind;
   };
 
-  const setErrorStatus = (error: unknown, fallback: string) => {
+  const setErrorStatus = (error: unknown, fallback: Parameters<typeof t>[1]) => {
     reportError(error);
-    setStatus(error instanceof Error ? error.message : fallback, "error");
+    setStatus(messageFromError(locale, error, fallback), "error");
   };
 
   const syncAspectRadios = (value: AspectMode) => {
@@ -158,7 +191,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       ...photos.map((photo, index) => {
         const img = document.createElement("img");
         img.src = photo.thumbUrl;
-        img.alt = photo.name || `写真 ${index + 1}`;
+        img.alt = photo.name || msg("makerPhotoAlt", { n: index + 1 });
         return img;
       }),
     );
@@ -176,10 +209,10 @@ export async function boot(root: HTMLElement): Promise<void> {
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     const active = isPreviewPlaying();
-    modalPlayBtn.innerHTML = playPauseButtonHtml(active);
+    modalPlayBtn.innerHTML = playPauseButtonHtml(active, locale);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
     stage.setAttribute("aria-pressed", active ? "true" : "false");
-    previewState.textContent = active ? "再生中" : "停止中";
+    previewState.textContent = active ? msg("previewPlaying") : msg("previewStopped");
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -205,7 +238,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
     if (slot !== lastSlot) {
       lastSlot = slot;
-      slotMeter.textContent = `スロット ${slot + 1} / ${cuts.slots.length}`;
+      slotMeter.textContent = msg("previewSlot", { n: slot + 1, total: cuts.slots.length });
     }
     refreshBenchFlag();
   };
@@ -257,7 +290,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const applyPreviewMute = () => {
     video.muted = previewMuted;
     video.volume = 1;
-    muteBtn.innerHTML = muteButtonHtml(previewMuted);
+    muteBtn.innerHTML = muteButtonHtml(previewMuted, locale);
     muteBtn.setAttribute("aria-pressed", previewMuted ? "false" : "true");
   };
 
@@ -290,7 +323,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     video.pause();
     paint();
     refreshButtons();
-    setStatus("一時停止しました");
+    setStatus(msg("statusPaused"));
   };
 
   const startPlayback = async (fromStart: boolean) => {
@@ -316,7 +349,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       if (gen !== playGen) return;
       playing = true;
       refreshButtons();
-      setStatus("プレビュー中");
+      setStatus(msg("statusPreviewing"));
       await startLoop();
       if (gen !== playGen) return;
       await video.play();
@@ -329,7 +362,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       previewTracked = false;
       haltLoop();
       refreshButtons();
-      setErrorStatus(error, "再生できませんでした");
+      setErrorStatus(error, "statusPlayFailed");
     } finally {
       if (gen === playGen) playbackBusy = false;
     }
@@ -353,7 +386,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       paint();
     } catch (error) {
       closePreview();
-      setErrorStatus(error, "プレビューを開けませんでした");
+      setErrorStatus(error, "statusPreviewOpenFailed");
       return;
     } finally {
       openingPreview = false;
@@ -369,7 +402,8 @@ export async function boot(root: HTMLElement): Promise<void> {
     const communityView = must(root, "#communityView");
     makerView.hidden = view !== "maker";
     communityView.hidden = view !== "community";
-    document.title = documentTitleForView(view, COMMUNITY_JUMPS_TITLE);
+    document.title = documentTitleForView(view, locale);
+    syncLanguageNav(root, locale, view);
     if (view !== "maker") {
       closePreview();
     }
@@ -452,7 +486,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       paint();
       refreshButtons();
       if (!recording) {
-        setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
+        setStatus(msg("statusTemplateReady", { n: timeline().slots.length }));
       }
       const resume = aspectResume;
       aspectResume = null;
@@ -470,7 +504,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       } catch (error) {
         paint();
         refreshButtons();
-        setErrorStatus(error, "プレビューの再開に失敗しました");
+        setErrorStatus(error, "statusPreviewResumeFailed");
       }
     })();
   });
@@ -478,15 +512,15 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (!recording) {
       stopPlayback();
       paint();
-      setStatus("プレビューが終わりました");
+      setStatus(msg("statusPreviewEnded"));
     }
   });
   video.addEventListener("error", () => {
     if (recording) return;
     const code = video.error?.code;
     setErrorStatus(
-      new Error(code != null ? `テンプレ動画を読み込めませんでした (${code})` : "テンプレ動画を読み込めませんでした"),
-      "テンプレ動画を読み込めませんでした",
+      new Error(code != null ? msg("statusTemplateLoadFailedCode", { code }) : msg("statusTemplateLoadFailed")),
+      "statusTemplateLoadFailed",
     );
     refreshButtons();
   });
@@ -516,14 +550,14 @@ export async function boot(root: HTMLElement): Promise<void> {
     const files = [...(picker.files ?? [])];
     picker.value = "";
     if (files.length === 0) return;
-    setStatus("写真を読み込み中…", "busy");
+    setStatus(msg("statusPhotosLoading"), "busy");
     try {
       revokePhotos(photos);
       photos = [];
       renderThumbs();
       photos = await loadPhotos(files, {
         onProgress: (current, total) => {
-          setStatus(`写真を読み込み中… ${current} / ${total}`, "busy");
+          setStatus(msg("statusPhotosLoadingProgress", { current, total }), "busy");
         },
       });
       renderThumbs();
@@ -532,14 +566,14 @@ export async function boot(root: HTMLElement): Promise<void> {
       refreshButtons();
       setStatus(
         photos.length === 0
-          ? "画像ファイルを選んでください"
-          : `${photos.length} 枚を読み込みました`,
+          ? msg("statusPickImages")
+          : msg("statusPhotosLoaded", { n: photos.length }),
       );
     } catch (error) {
       renderThumbs();
       paint();
       refreshButtons();
-      setErrorStatus(error, "読み込みに失敗しました");
+      setErrorStatus(error, "statusLoadFailed");
     }
   });
 
@@ -621,7 +655,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     previewTracked = false;
     video.pause();
     refreshButtons();
-    setStatus("書き出しを準備しています…", "busy");
+    setStatus(msg("statusExportPreparing"), "busy");
     compositor.setResolutionScale(1);
     try {
       const cuts = (await ensureTimelines())[mode];
@@ -635,15 +669,15 @@ export async function boot(root: HTMLElement): Promise<void> {
         duration,
         fps,
         onProgress: (progress) => {
-          setStatus(`生成中… ${progress.current} / ${progress.total}`, "busy");
+          setStatus(msg("statusGenerating", { current: progress.current, total: progress.total }), "busy");
         },
       });
       const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
       downloadBlob(result.blob, filename);
-      setStatus(`保存しました（${result.extension.toUpperCase()}・生成）。ハッシュタグをコピーして X に投稿できます。`);
+      setStatus(msg("statusSaved", { ext: result.extension.toUpperCase() }));
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
-      setErrorStatus(error, "保存に失敗しました");
+      setErrorStatus(error, "statusSaveFailed");
     } finally {
       compositor.setResolutionScale(PREVIEW_RESOLUTION_SCALE);
       recording = false;
@@ -663,13 +697,14 @@ export async function boot(root: HTMLElement): Promise<void> {
       typeof navigator === "undefined" ? undefined : navigator.clipboard,
     );
     if (copied) {
-      setStatus("ハッシュタグをコピーしました");
+      setStatus(msg("statusHashtagsCopied"));
     } else {
-      setStatus(`このブラウザではコピーできません。${SHARE_TEXT} を手でコピーしてください。`, "error");
+      setStatus(msg("statusCopyUnsupported", { text: SHARE_TEXT }), "error");
     }
   });
 
   shareAppBtn.addEventListener("click", async () => {
+    const shareUrl = pageUrl(locale, "maker");
     const outcome = await shareAppUrl({
       navigator: typeof navigator === "undefined" ? undefined : navigator,
       copyText: (text) =>
@@ -677,24 +712,25 @@ export async function boot(root: HTMLElement): Promise<void> {
           text,
           typeof navigator === "undefined" ? undefined : navigator.clipboard,
         ),
+      url: shareUrl,
     });
     if (outcome === "shared") {
-      setStatus("このアプリのリンクを共有先に渡しました");
+      setStatus(msg("statusShared"));
     } else if (outcome === "copied") {
-      setStatus("このアプリの URL をコピーしました");
+      setStatus(msg("statusUrlCopied"));
     } else if (outcome === "cancelled") {
-      setStatus("共有をやめました");
+      setStatus(msg("statusShareCancelled"));
     } else {
-      setStatus("このブラウザでは共有できません。https://anone.yoiailabs.com をコピーしてください。", "error");
+      setStatus(msg("statusShareUnsupported", { url: shareUrl }), "error");
     }
   });
 
   void video.load();
 
   const goToView = (view: AppView) => {
-    const next = `${pathForView(view)}${location.search}`;
+    const next = `${pathForApp(locale, view)}${location.search}`;
     if (`${location.pathname}${location.search}` !== next) {
-      history.pushState({ view }, "", next);
+      history.pushState({ view, locale }, "", next);
     }
     applyView(view);
   };
@@ -702,7 +738,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const syncViewFromLocation = () => {
     const next = canonicalAppUrl(location);
     if (next) history.replaceState(history.state, "", next);
-    applyView(parseAppView(location));
+    applyView(parseAppLocation(location).view);
   };
 
   root.addEventListener("click", (event) => {
@@ -712,10 +748,14 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (!(target instanceof Element)) return;
     const anchor = target.closest("a");
     if (!anchor) return;
-    const view = appViewFromClick(anchor, location.origin);
-    if (!view) return;
+    const clicked = appPathFromClick(anchor, location.origin);
+    if (!clicked) return;
+    if (clicked.locale !== locale) {
+      persistLocale(clicked.locale);
+      return;
+    }
     event.preventDefault();
-    goToView(view);
+    goToView(clicked.view);
   });
 
   window.addEventListener("popstate", () => {
@@ -743,7 +783,7 @@ export async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> 
 export async function loadTimeline(url: string): Promise<CutTimeline> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("カット表を読み込めませんでした");
+    throw new Error(t(DEFAULT_LOCALE, "statusCutsFailed"));
   }
   return (await response.json()) as CutTimeline;
 }

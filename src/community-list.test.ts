@@ -82,6 +82,9 @@ describe("community list markup", () => {
     expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("moreJumps"));
     expect(html.indexOf("moreJumps")).toBeLessThan(html.indexOf("toMakerBottom"));
+    expect(html).toContain('class="lang-switch"');
+    expect(html).toContain('lang="en"');
+    expect(html).toContain('href="/en/community"');
     expect(html).not.toContain("app-tab");
     expect(html).not.toContain("communityJumpsPrev");
     expect(html).not.toContain("communityJumpsNext");

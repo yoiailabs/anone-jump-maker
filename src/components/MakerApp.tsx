@@ -2,9 +2,10 @@ import { useEffect, useRef } from "react";
 import { boot } from "../app.ts";
 import { initSentry, reportError } from "../sentry.ts";
 import { communityJumpsSectionHtml } from "../community-list.ts";
-import { linkBannersHtml } from "../links.ts";
-import { COMMUNITY_PATH, TO_COMMUNITY_LABEL, type AppView } from "../nav.ts";
+import { LanguageNav } from "@/components/LanguageNav.tsx";
+import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
+import { linkBannersHtml } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
 import {
@@ -18,14 +19,14 @@ import { Label } from "@/components/ui/label";
 
 type MakerAppProps = {
   initialView: AppView;
+  locale: Locale;
 };
 
-const COMMUNITY_HTML = communityJumpsSectionHtml();
-const LINKS_HTML = linkBannersHtml();
-const REACTIONS_HTML = reactionEmbedHtml();
-
-export default function MakerApp({ initialView }: MakerAppProps) {
+export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const started = useRef(false);
+  const communityHtml = communityJumpsSectionHtml(undefined, locale);
+  const linksHtml = linkBannersHtml(undefined, locale);
+  const reactionsHtml = reactionEmbedHtml();
 
   useEffect(() => {
     if (started.current) return;
@@ -33,11 +34,11 @@ export default function MakerApp({ initialView }: MakerAppProps) {
     const root = document.querySelector<HTMLElement>("#app");
     if (!root) return;
     initSentry();
-    void boot(root).catch((error: unknown) => {
+    void boot(root, { locale }).catch((error: unknown) => {
       reportError(error);
-      root.textContent = error instanceof Error ? error.message : "起動に失敗しました";
+      root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
     });
-  }, []);
+  }, [locale]);
 
   const makerHidden = initialView !== "maker";
   const communityHidden = initialView !== "community";
@@ -52,22 +53,23 @@ export default function MakerApp({ initialView }: MakerAppProps) {
       <div className="app">
         <div className="app-view" id="makerView" hidden={makerHidden}>
           <header className="hero">
+            <LanguageNav locale={locale} view="maker" />
             <p className="eyebrow">#あのねジャンプ</p>
-            <h1 id="makerTitle">あのねジャンプメーカー</h1>
+            <h1 id="makerTitle">{t(locale, "makerTitle")}</h1>
             <p className="lede">
-              写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。
+              {t(locale, "makerLede1")}
               <br />
-              動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。
+              {t(locale, "makerLede2")}
               <br />
-              ※ファン制作の非公式アプリです。
+              {t(locale, "makerLede3")}
             </p>
             <p className="hero-more">
               <Button
                 variant="site"
                 nativeButton={false}
-                render={<a id="toCommunity" className="btn" href={COMMUNITY_PATH} />}
+                render={<a id="toCommunity" className="btn" href={pathForApp(locale, "community")} />}
               >
-                {TO_COMMUNITY_LABEL}
+                {t(locale, "communityToCommunity")}
               </Button>
             </p>
           </header>
@@ -78,7 +80,7 @@ export default function MakerApp({ initialView }: MakerAppProps) {
               href="https://www.youtube.com/watch?v=M-IayQIR0XA"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="あのねのPVをYouTubeで開く（新しいタブ）"
+              aria-label={t(locale, "makerPvAria")}
             >
               <picture>
                 <source media="(prefers-reduced-motion: reduce)" srcSet="/jump-loop-still.png" />
@@ -95,54 +97,54 @@ export default function MakerApp({ initialView }: MakerAppProps) {
                 accept="image/jpeg,image/png,image/webp,image/gif,image/*"
                 multiple
               />
-              写真を選ぶ
+              {t(locale, "makerPickPhotos")}
             </Label>
             <div className="thumbs" id="thumbs" hidden />
             <fieldset className="aspect-field">
-              <legend>動画の向き</legend>
+              <legend>{t(locale, "makerAspectLegend")}</legend>
               <RadioPills
                 name="aspect"
-                ariaLabel="動画の向き"
+                ariaLabel={t(locale, "makerAspectLegend")}
                 options={[
-                  { value: "landscape", label: "横", defaultChecked: true },
-                  { value: "portrait", label: "縦" },
+                  { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+                  { value: "portrait", label: t(locale, "makerPortrait") },
                 ]}
               />
             </fieldset>
             <fieldset className="aspect-field" id="swapField">
-              <legend>エフェクト</legend>
+              <legend>{t(locale, "makerEffectLegend")}</legend>
               <RadioPills
                 name="swap"
-                ariaLabel="エフェクト"
+                ariaLabel={t(locale, "makerEffectLegend")}
                 options={[
-                  { value: "jump", label: "ジャンプ", defaultChecked: true },
-                  { value: "zoom", label: "ズーム" },
+                  { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
+                  { value: "zoom", label: t(locale, "makerZoom") },
                 ]}
               />
             </fieldset>
             <fieldset className="aspect-field" id="filterField">
-              <legend>フィルター</legend>
+              <legend>{t(locale, "makerFilterLegend")}</legend>
               <RadioPills
                 name="filter"
-                ariaLabel="フィルター"
+                ariaLabel={t(locale, "makerFilterLegend")}
                 className="aspect-toggle cols-3"
                 options={[
-                  { value: "none", label: "なし", defaultChecked: true },
-                  { value: "blur-weak", label: "ブラー(弱)" },
-                  { value: "blur-strong", label: "ブラー(強)" },
+                  { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+                  { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
+                  { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
                 ]}
               />
             </fieldset>
             <div className="actions">
               <Button variant="site" type="button" id="playBtn" className="btn ghost" disabled>
-                プレビュー
+                {t(locale, "makerPreview")}
               </Button>
               <Button variant="site" type="button" id="saveBtn" className="btn" disabled>
-                動画を保存
+                {t(locale, "makerSave")}
               </Button>
             </div>
             <p className="status" id="status" data-kind="idle">
-              何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。
+              {t(locale, "makerStatusIdle")}
             </p>
           </section>
 
@@ -158,7 +160,7 @@ export default function MakerApp({ initialView }: MakerAppProps) {
                   strokeLinejoin="round"
                 />
               </svg>
-              共有する
+              {t(locale, "makerShare")}
             </Button>
             <div className="hashtag-copy">
               <Button
@@ -188,7 +190,7 @@ export default function MakerApp({ initialView }: MakerAppProps) {
                     strokeLinejoin="round"
                   />
                 </svg>
-                ハッシュタグをコピー
+                {t(locale, "makerCopyHashtags")}
               </Button>
               <p className="hashtag-copy-hint" id="hashtagCopyHint">
                 {SHARE_TEXT}
@@ -199,72 +201,79 @@ export default function MakerApp({ initialView }: MakerAppProps) {
           <footer className="notes">
             <nav className="links" aria-labelledby="linksTitle">
               <p className="links-title" id="linksTitle">
-                ナナツカゼさん公式
+                {t(locale, "makerOfficial")}
               </p>
-              <ul className="link-banners" dangerouslySetInnerHTML={{ __html: LINKS_HTML }} />
+              <ul className="link-banners" dangerouslySetInnerHTML={{ __html: linksHtml }} />
             </nav>
             <section className="reactions" aria-labelledby="reactionsTitle">
               <h2 className="reactions-title" id="reactionsTitle">
-                反応
+                {t(locale, "makerReactions")}
               </h2>
               <div
                 className="reactions-embed"
                 id="reactionsEmbed"
-                dangerouslySetInnerHTML={{ __html: REACTIONS_HTML }}
+                dangerouslySetInnerHTML={{ __html: reactionsHtml }}
               />
             </section>
+            <LanguageNav locale={locale} view="maker" />
           </footer>
         </div>
         <div
           className="app-view"
           id="communityView"
           hidden={communityHidden}
-          dangerouslySetInnerHTML={{ __html: COMMUNITY_HTML }}
+          dangerouslySetInnerHTML={{ __html: communityHtml }}
         />
       </div>
       <dialog className="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
         <div className="preview-sheet">
           <header className="preview-head">
-            <h2 id="previewTitle">プレビュー</h2>
-            <Button variant="site" type="button" id="closePreviewBtn" className="preview-close" aria-label="閉じる">
+            <h2 id="previewTitle">{t(locale, "previewTitle")}</h2>
+            <Button
+              variant="site"
+              type="button"
+              id="closePreviewBtn"
+              className="preview-close"
+              aria-label={t(locale, "previewClose")}
+            >
               ×
             </Button>
           </header>
           <div className="preview-options">
             <fieldset className="aspect-field preview-field">
-              <legend>向き</legend>
+              <legend>{t(locale, "previewOrientation")}</legend>
               <RadioPills
                 name="preview-aspect"
-                ariaLabel="プレビューの向き"
+                ariaLabel={t(locale, "previewOrientationAria")}
                 className="aspect-toggle preview-toggle"
                 options={[
-                  { value: "landscape", label: "横", defaultChecked: true },
-                  { value: "portrait", label: "縦" },
+                  { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+                  { value: "portrait", label: t(locale, "makerPortrait") },
                 ]}
               />
             </fieldset>
             <fieldset className="aspect-field preview-field">
-              <legend>エフェクト</legend>
+              <legend>{t(locale, "makerEffectLegend")}</legend>
               <RadioPills
                 name="preview-swap"
-                ariaLabel="プレビューのエフェクト"
+                ariaLabel={t(locale, "previewEffectAria")}
                 className="aspect-toggle preview-toggle"
                 options={[
-                  { value: "jump", label: "ジャンプ", defaultChecked: true },
-                  { value: "zoom", label: "ズーム" },
+                  { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
+                  { value: "zoom", label: t(locale, "makerZoom") },
                 ]}
               />
             </fieldset>
             <fieldset className="aspect-field preview-field preview-field-span">
-              <legend>フィルター</legend>
+              <legend>{t(locale, "makerFilterLegend")}</legend>
               <RadioPills
                 name="preview-filter"
-                ariaLabel="プレビューのフィルター"
+                ariaLabel={t(locale, "previewFilterAria")}
                 className="aspect-toggle preview-toggle cols-3"
                 options={[
-                  { value: "none", label: "なし", defaultChecked: true },
-                  { value: "blur-weak", label: "ブラー(弱)" },
-                  { value: "blur-strong", label: "ブラー(強)" },
+                  { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+                  { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
+                  { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
                 ]}
               />
             </fieldset>
@@ -276,16 +285,16 @@ export default function MakerApp({ initialView }: MakerAppProps) {
               id="stage"
               data-aspect={DEFAULT_ASPECT}
               aria-pressed="false"
-              aria-label="プレビュー。クリックで再生と一時停止"
+              aria-label={t(locale, "previewStageAria")}
             >
               <span className="stage-play-hint" aria-hidden="true" />
             </button>
           </div>
           <p className="slot-meter" id="slotMeter">
-            スロット — / —
+            {t(locale, "previewSlotPending")}
           </p>
           <p className="preview-state" id="previewState" aria-live="polite">
-            停止中
+            {t(locale, "previewStopped")}
           </p>
           <div className="preview-actions">
             <Button
@@ -293,14 +302,14 @@ export default function MakerApp({ initialView }: MakerAppProps) {
               type="button"
               id="modalPlayBtn"
               className="btn"
-              dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false) }}
+              dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
             />
             <Button
               variant="site"
               type="button"
               id="restartBtn"
               className="btn ghost"
-              dangerouslySetInnerHTML={{ __html: restartButtonHtml() }}
+              dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
             />
             <Button
               variant="site"
@@ -308,7 +317,7 @@ export default function MakerApp({ initialView }: MakerAppProps) {
               id="muteBtn"
               className="btn ghost"
               aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
-              dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT) }}
+              dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
             />
           </div>
         </div>

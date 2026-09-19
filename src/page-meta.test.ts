@@ -34,7 +34,9 @@ describe("community path", () => {
     expect(isCommunityPath("/community?from=x")).toBe(true);
     expect(isCommunityPath("/")).toBe(false);
     expect(isCommunityPath("/community-jumps")).toBe(false);
-    expect(isCommunityPath("/minna")).toBe(false);
+    expect(isCommunityPath("/en/community")).toBe(true);
+    expect(isCommunityPath("/ko/community/")).toBe(true);
+    expect(isCommunityPath("/en")).toBe(false);
   });
 });
 

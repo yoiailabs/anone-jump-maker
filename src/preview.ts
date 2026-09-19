@@ -1,9 +1,11 @@
-export const PREVIEW_PLAY_LABEL = "再生";
-export const PREVIEW_PAUSE_LABEL = "一時停止";
-export const PREVIEW_RESTART_LABEL = "最初から";
-export const PREVIEW_SOUND_OFF_LABEL = "音声オフ";
-export const PREVIEW_SOUND_ON_LABEL = "音声オン";
-export const PREVIEW_MUTE_HINT = "プレビュー再生中の音声をミュートできます";
+import { DEFAULT_LOCALE, t, type Locale } from "./i18n.ts";
+
+export const PREVIEW_PLAY_LABEL = t("ja", "previewPlay");
+export const PREVIEW_PAUSE_LABEL = t("ja", "previewPause");
+export const PREVIEW_RESTART_LABEL = t("ja", "previewRestart");
+export const PREVIEW_SOUND_OFF_LABEL = t("ja", "previewSoundOff");
+export const PREVIEW_SOUND_ON_LABEL = t("ja", "previewSoundOn");
+export const PREVIEW_MUTE_HINT = t("ja", "previewMuteHint");
 /** プレビュー再生の初期値。書き出し動画の音声には使わない。 */
 export const PREVIEW_MUTED_DEFAULT = false;
 
@@ -18,24 +20,24 @@ const ICON_SOUND_ON =
 const ICON_SOUND_OFF =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.8 9.2h3.1L12.4 6v12l-4.5-3.2H4.8Z" fill="currentColor"/><path d="M15.2 9.2 20 14.8M20 9.2l-4.8 5.6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>';
 
-export function playPauseLabel(playing: boolean): string {
-  return playing ? PREVIEW_PAUSE_LABEL : PREVIEW_PLAY_LABEL;
+export function playPauseLabel(playing: boolean, locale: Locale = DEFAULT_LOCALE): string {
+  return t(locale, playing ? "previewPause" : "previewPlay");
 }
 
-export function previewSoundLabel(muted: boolean): string {
-  return muted ? PREVIEW_SOUND_OFF_LABEL : PREVIEW_SOUND_ON_LABEL;
+export function previewSoundLabel(muted: boolean, locale: Locale = DEFAULT_LOCALE): string {
+  return t(locale, muted ? "previewSoundOff" : "previewSoundOn");
 }
 
-export function playPauseButtonHtml(playing: boolean): string {
-  return `${playing ? ICON_PAUSE : ICON_PLAY}<span class="preview-ctrl-label">${playPauseLabel(playing)}</span>`;
+export function playPauseButtonHtml(playing: boolean, locale: Locale = DEFAULT_LOCALE): string {
+  return `${playing ? ICON_PAUSE : ICON_PLAY}<span class="preview-ctrl-label">${playPauseLabel(playing, locale)}</span>`;
 }
 
-export function restartButtonHtml(): string {
-  return `${ICON_RESTART}<span class="preview-ctrl-label">${PREVIEW_RESTART_LABEL}</span>`;
+export function restartButtonHtml(locale: Locale = DEFAULT_LOCALE): string {
+  return `${ICON_RESTART}<span class="preview-ctrl-label">${t(locale, "previewRestart")}</span>`;
 }
 
-export function muteButtonHtml(muted: boolean): string {
-  return `<span class="preview-ctrl-row">${muted ? ICON_SOUND_OFF : ICON_SOUND_ON}<span class="preview-ctrl-label">${previewSoundLabel(muted)}</span></span><small class="preview-mute-hint">${PREVIEW_MUTE_HINT}</small>`;
+export function muteButtonHtml(muted: boolean, locale: Locale = DEFAULT_LOCALE): string {
+  return `<span class="preview-ctrl-row">${muted ? ICON_SOUND_OFF : ICON_SOUND_ON}<span class="preview-ctrl-label">${previewSoundLabel(muted, locale)}</span></span><small class="preview-mute-hint">${t(locale, "previewMuteHint")}</small>`;
 }
 
 /** 最初から再生、またはクリップ末尾では 0 へシークする。一時停止からの再開は現在位置のまま。 */

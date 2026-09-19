@@ -1,40 +1,54 @@
+import { parseAppPath, pathForApp, t, type AppView, type Locale } from "./i18n.ts";
+
 /** 本番の正規オリジン。プレビュー URL ではなく OGP に載せる。 */
 export const APP_ORIGIN = "https://anone.yoiailabs.com";
 export const COMMUNITY_PATH = "/community";
 export const OG_IMAGE_URL = `${APP_ORIGIN}/og.png`;
 
-export const MAKER_DOCUMENT_TITLE = "あのねジャンプメーカー";
-export const MAKER_DESCRIPTION =
-  "写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。※ファン制作の非公式アプリです。";
-export const COMMUNITY_DOCUMENT_TITLE = "みんなの #あのねジャンプ";
-export const COMMUNITY_DESCRIPTION =
-  "ファンが投稿したジャンプ動画です。下にスクロールして見てね。";
+export const MAKER_DOCUMENT_TITLE = t("ja", "makerTitle");
+export const MAKER_DESCRIPTION = t("ja", "metaMakerDescription");
+export const COMMUNITY_DOCUMENT_TITLE = t("ja", "communityTitle");
+export const COMMUNITY_DESCRIPTION = t("ja", "metaCommunityDescription");
 
 export type PageMeta = {
   title: string;
   description: string;
   url: string;
   image: string;
+  lang: Locale;
+  ogLocale: string;
+  view: AppView;
 };
 
-export const MAKER_PAGE_META: PageMeta = {
-  title: MAKER_DOCUMENT_TITLE,
-  description: MAKER_DESCRIPTION,
-  url: `${APP_ORIGIN}/`,
-  image: OG_IMAGE_URL,
+const OG_LOCALE: Record<Locale, string> = {
+  ja: "ja_JP",
+  en: "en_US",
+  ko: "ko_KR",
+  zh: "zh_CN",
 };
 
-export const COMMUNITY_PAGE_META: PageMeta = {
-  title: COMMUNITY_DOCUMENT_TITLE,
-  description: COMMUNITY_DESCRIPTION,
-  url: `${APP_ORIGIN}${COMMUNITY_PATH}`,
-  image: OG_IMAGE_URL,
-};
+export function pageUrl(locale: Locale, view: AppView): string {
+  const path = pathForApp(locale, view);
+  return path === "/" ? `${APP_ORIGIN}/` : `${APP_ORIGIN}${path}`;
+}
+
+export function pageMeta(locale: Locale, view: AppView): PageMeta {
+  return {
+    title: view === "community" ? t(locale, "communityTitle") : t(locale, "makerTitle"),
+    description: t(locale, view === "community" ? "metaCommunityDescription" : "metaMakerDescription"),
+    url: pageUrl(locale, view),
+    image: OG_IMAGE_URL,
+    lang: locale,
+    ogLocale: OG_LOCALE[locale],
+    view,
+  };
+}
+
+export const MAKER_PAGE_META: PageMeta = pageMeta("ja", "maker");
+export const COMMUNITY_PAGE_META: PageMeta = pageMeta("ja", "community");
 
 export function isCommunityPath(pathname: string): boolean {
-  const path = pathname.split(/[?#]/, 1)[0] ?? pathname;
-  const trimmed = path.replace(/\/+$/, "") || "/";
-  return trimmed === COMMUNITY_PATH;
+  return parseAppPath(pathname)?.view === "community";
 }
 
 /** メーカー HTML の title / description / OGP をコミュニティ用に差し替える。 */
@@ -43,7 +57,8 @@ export function rewriteHtmlPageMeta(html: string, meta: PageMeta = COMMUNITY_PAG
   const description = escapeAttr(meta.description);
   const url = escapeAttr(meta.url);
   const image = escapeAttr(meta.image);
-  let out = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
+  let out = html.replace(/<html\b([^>]*)\blang="[^"]*"/, `<html$1lang="${meta.lang}"`);
+  out = out.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
   out = replaceMeta(out, "name", "description", description);
   out = replaceMeta(out, "property", "og:title", title);
   out = replaceMeta(out, "property", "og:description", description);
