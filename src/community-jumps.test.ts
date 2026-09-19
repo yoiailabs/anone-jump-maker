@@ -9,23 +9,32 @@ import {
   sortCommunityJumpPosts,
 } from "./community-jumps.ts";
 
-const NEWEST_ID = "2101288627989057912";
+const NEWEST_ID = "2101336573879239085";
 const OLDEST_ID = "2009475998488961327";
-const MOST_LIKED_ID = "2010196958527533380";
+const MOST_LIKED_ID = "2084205622862725181";
+const OFFICIAL_IDS = [
+  "2100840133016912147",
+  "2100137115950653708",
+  "2084205622862725181",
+  "2010200476005048711",
+] as const;
 
 describe("community jump posts", () => {
-  it("keeps 309 unique curated posts with likes and dates", () => {
-    expect(COMMUNITY_JUMP_POSTS).toHaveLength(309);
+  it("keeps 493 unique curated posts with likes and dates", () => {
+    expect(COMMUNITY_JUMP_POSTS).toHaveLength(493);
     expect(COMMUNITY_JUMP_POSTS.length).toBeLessThanOrEqual(COMMUNITY_JUMP_CAPACITY);
-    expect(COMMUNITY_JUMP_CAPACITY).toBe(320);
-    expect(new Set(COMMUNITY_JUMP_POSTS.map((post) => post.id)).size).toBe(309);
+    expect(COMMUNITY_JUMP_CAPACITY).toBe(512);
+    expect(new Set(COMMUNITY_JUMP_POSTS.map((post) => post.id)).size).toBe(493);
     expect(COMMUNITY_JUMP_POSTS.every((post) => post.media === "video")).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.every((post) => post.createdAt && post.likes != null)).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === "2100797924125049167")).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === NEWEST_ID)).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === OLDEST_ID)).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === OLDEST_ID)?.createdAt).toBe("2026-01-09");
-    expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === MOST_LIKED_ID)?.likes).toBe(6213);
+    expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === MOST_LIKED_ID)?.likes).toBe(37005);
+    expect(COMMUNITY_JUMP_POSTS.filter((post) => post.handle === "Nanatsukaze_ofc").map((post) => post.id).sort()).toEqual(
+      [...OFFICIAL_IDS].sort(),
+    );
   });
 
   it("defaults to newest and can sort by likes", () => {
@@ -41,8 +50,8 @@ describe("community jump posts", () => {
     );
     const popular = sortCommunityJumpPosts(COMMUNITY_JUMP_POSTS, "popular");
     expect(popular[0]?.id).toBe(MOST_LIKED_ID);
-    expect(popular[0]?.likes).toBe(6213);
-    expect(popular[1]?.likes ?? 0).toBeLessThanOrEqual(6213);
+    expect(popular[0]?.likes).toBe(37005);
+    expect(popular[1]?.likes ?? 0).toBeLessThanOrEqual(37005);
   });
 
   it("parses handle and status id from an https x.com status URL", () => {
