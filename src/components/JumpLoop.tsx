@@ -8,7 +8,11 @@ type JumpLoopProps = {
   ariaLabel: string;
 };
 
-/** 初回 LCP は静止画。ループ動画は操作か 20 秒後まで取らない。 */
+/**
+ * 初回 LCP は静止画。動きは 153KB のミュート MP4。
+ * タップ待ちはしない（muted + playsinline ならモバイルでも自動再生できる）。
+ * 低電力モードなどで play() が拒否されたときだけ、次の操作で再試行する。
+ */
 export function JumpLoop({ href, ariaLabel }: JumpLoopProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -19,34 +23,30 @@ export function JumpLoop({ href, ariaLabel }: JumpLoopProps) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let cancelled = false;
-    let started = false;
+    let srcAssigned = false;
     const show = () => {
       if (!cancelled) video.classList.add("is-ready");
     };
     const start = () => {
-      if (cancelled || started) return;
-      started = true;
-      video.preload = "auto";
-      video.src = JUMP_LOOP_VIDEO_SRC;
-      video.addEventListener("playing", show, { once: true });
+      if (cancelled) return;
+      if (!srcAssigned) {
+        srcAssigned = true;
+        video.preload = "auto";
+        video.src = JUMP_LOOP_VIDEO_SRC;
+        video.addEventListener("playing", show, { once: true });
+      }
       void video.play().catch(() => {
-        /* 自動再生が拒否されても静止画のままにする */
+        /* 自動再生が拒否されても静止画のまま。操作で再試行する */
       });
     };
 
-    const onGesture = () => start();
-    window.addEventListener("pointerdown", onGesture, { once: true, passive: true });
-    window.addEventListener("keydown", onGesture, { once: true });
-    window.addEventListener("scroll", onGesture, { once: true, passive: true });
-    const timeoutId = window.setTimeout(start, 20000);
+    start();
+    window.addEventListener("pointerdown", start, { once: true, passive: true });
 
     return () => {
       cancelled = true;
       video.removeEventListener("playing", show);
-      window.removeEventListener("pointerdown", onGesture);
-      window.removeEventListener("keydown", onGesture);
-      window.removeEventListener("scroll", onGesture);
-      window.clearTimeout(timeoutId);
+      window.removeEventListener("pointerdown", start);
     };
   }, []);
 
@@ -67,6 +67,7 @@ export function JumpLoop({ href, ariaLabel }: JumpLoopProps) {
           className="loop loop-video"
           muted
           loop
+          autoPlay
           playsInline
           preload="none"
           width={448}
