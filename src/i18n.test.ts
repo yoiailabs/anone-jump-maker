@@ -110,6 +110,7 @@ describe("messages", () => {
     expect(t("zh", "makerTitle")).toBe("あのね跳跃制作器");
     expect(t("en", "statusPhotosLoaded", { n: 3 })).toBe("Loaded 3 photos");
     expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
+    expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
     expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");
     expect(t("ja", "statusPhotoRemoved", { n: 2 })).toBe("写真を外しました（残り 2 枚）");
   });

@@ -14,6 +14,7 @@ import {
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { t, type Locale } from "../i18n.ts";
+import { PHOTO_MAX_COUNT } from "../photo-list.ts";
 import {
   getPhotoThumbsHandlers,
   getPhotoThumbsState,
@@ -56,6 +57,7 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
   const activePhoto = items.find((photo) => photo.id === activeId);
   const activeIndex = activePhoto ? items.findIndex((photo) => photo.id === activeId) : -1;
   const empty = items.length === 0;
+  const atCap = items.length >= PHOTO_MAX_COUNT;
 
   const moveBy = (from: number, to: number) => {
     if (to < 0 || to >= items.length || from === to) return;
@@ -115,6 +117,7 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
                 onMove={(delta) => moveBy(index, index + delta)}
               />
             ))}
+            <AddThumbButton locale={locale} locked={locked} atCap={atCap} />
           </div>
         </SortableContext>
         <DragOverlay
@@ -133,9 +136,62 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
         </DragOverlay>
       </DndContext>
       <p className="thumbs-hint" id="thumbsHint" hidden={empty}>
-        {t(locale, "makerThumbsHint")}
+        {atCap ? t(locale, "makerThumbsHintFull", { n: PHOTO_MAX_COUNT }) : t(locale, "makerThumbsHint")}
       </p>
     </>
+  );
+}
+
+function openPhotoPicker(): void {
+  const picker = document.querySelector<HTMLInputElement>("#picker");
+  if (!picker || picker.disabled) return;
+  picker.click();
+}
+
+function AddThumbButton({
+  locale,
+  locked,
+  atCap,
+}: {
+  locale: Locale;
+  locked: boolean;
+  atCap: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={atCap ? "thumb-add is-cap" : "thumb-add"}
+      disabled={locked || atCap}
+      aria-label={atCap ? t(locale, "makerPhotosAtCap", { n: PHOTO_MAX_COUNT }) : t(locale, "makerAddPhotos")}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onTouchStart={(event) => event.stopPropagation()}
+      onClick={() => {
+        if (!locked && !atCap) openPhotoPicker();
+      }}
+    >
+      {atCap ? (
+        <span className="thumb-add-cap" aria-hidden="true">
+          {PHOTO_MAX_COUNT}
+        </span>
+      ) : (
+        <PlusIcon />
+      )}
+    </button>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M12 5v14M5 12h14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
