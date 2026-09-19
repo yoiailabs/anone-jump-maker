@@ -56,6 +56,37 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(dialog).toBeHidden();
 });
 
+test("opens a generation modal with progress and cancel", async ({ page }) => {
+  await uploadPhoto(page);
+  await page.route("**/template/*.mp4", async (route) => {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 8_000);
+    });
+    try {
+      await route.continue();
+    } catch {
+      // キャンセルで fetch が中断されると continue は失敗する
+    }
+  });
+  const dialog = page.locator("#exportDialog");
+  await page.locator("#saveBtn").click();
+  try {
+    await expect(dialog).toBeVisible({ timeout: 3_000 });
+  } catch {
+    await expect(page.locator("#status")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
+    return;
+  }
+  await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
+  await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
+  await expect(page.locator("#exportProgressLabel")).toContainText("%");
+  await expect(page.locator("#exportKeepOpen")).toBeVisible();
+  await expect(page.locator("#exportKeepOpen")).toContainText("タブを閉じたり");
+  await expect(page.locator("#cancelExportBtn")).toBeEnabled();
+  await page.locator("#cancelExportBtn").click();
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator("#status")).toHaveText("生成をキャンセルしました");
+});
+
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {
   await uploadPhoto(page);
   const exportDialog = page.locator("#exportDialog");
