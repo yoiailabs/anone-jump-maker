@@ -1264,6 +1264,21 @@ a.btn:focus-visible {
   font-weight: 700;
 }
 
+.community-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.15rem 0 0;
+}
+
+.community-pager .btn {
+  min-height: 2.85rem;
+  min-width: 5.5rem;
+  padding: 0.35rem 1.1rem;
+}
+
 .community-jumps-end {
   display: flex;
   flex-direction: column;

@@ -348,16 +348,20 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const titleBox = await page.locator("#communityJumpsTitle").boundingBox();
   const listBox = await page.locator("#communityJumpsList").boundingBox();
   expect(titleBox && listBox && titleBox.y < listBox.y).toBe(true);
-  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(51);
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(50);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
   await expect(page.locator("#communitySortNewest")).toBeChecked();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2101252511386710099",
+    "2101336573879239085",
   );
-  await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(51);
+  await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(50);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
-  await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
+  await expect(page.locator("#communityPager")).toBeVisible();
+  await expect(page.locator("#communityPagePrev")).toBeDisabled();
+  await expect(page.locator("#communityPageNext")).toBeEnabled();
+  await expect(page.locator(".community-page-num")).toHaveCount(0);
+  await expect(page.locator("#communityPager [aria-current='page']")).toHaveCount(0);
   await expect(page.locator("#playBtn")).toBeHidden();
 
   const masonryCols = await page.locator("#communityJumpsList").evaluate((el) => {
@@ -371,7 +375,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
 
   const first = page.locator("#communityJumps .community-jumps-item").nth(0);
   const second = page.locator("#communityJumps .community-jumps-item").nth(1);
-  const last = page.locator("#communityJumps .community-jumps-item").nth(50);
+  const last = page.locator("#communityJumps .community-jumps-item").nth(49);
   const firstBox = await first.boundingBox();
   const secondBox = await second.boundingBox();
   const lastBox = await last.boundingBox();
@@ -391,12 +395,14 @@ test("opens community jumps from the disclaimer link and returns via the back li
   }
 
   const bottomBack = page.locator("#toMakerBottom");
-  const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(50);
+  const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(49);
   await lastAfter.scrollIntoViewIfNeeded();
   const lastAfterBox = await lastAfter.boundingBox();
+  const pagerBox = await page.locator("#communityPager").boundingBox();
   const bottomBox = await bottomBack.boundingBox();
-  expect(lastAfterBox && bottomBox && lastAfterBox.y < bottomBox.y).toBe(true);
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
+  expect(lastAfterBox && pagerBox && lastAfterBox.y < pagerBox.y).toBe(true);
+  expect(pagerBox && bottomBox && pagerBox.y < bottomBox.y).toBe(true);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(50);
   await expect(bottomBack).toHaveAttribute("href", "/");
 
   // widgets.js が display:none 中に測ると iframe が潰れる。戻ったら blockquote から載せ直す。
@@ -428,23 +434,63 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await page.locator("#toCommunity").click();
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page.locator("#communityView")).toBeVisible();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(51);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(50);
   await expect(page.locator(".community-jumps-card iframe.twitter-tweet-rendered")).toHaveCount(0);
 });
 
-test("hydrates every community card after scrolling the list", async ({ page }) => {
+test("hydrates community cards on the visible page after scrolling", async ({ page }) => {
   await page.goto("/community");
   await waitForAppReady(page);
   const items = page.locator("#communityJumps .community-jumps-item");
-  await expect(items).toHaveCount(51);
+  await expect(items).toHaveCount(50);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
-  for (const index of [0, 1, 2, 25, 50]) {
+  for (const index of [0, 1, 2, 25, 49]) {
     await items.nth(index).scrollIntoViewIfNeeded();
     await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
     await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
   }
   await page.locator("#toMakerBottom").scrollIntoViewIfNeeded();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(50);
+});
+
+test("pages 50 community posts with prev/next only and resets to page 1 when sorting", async ({ page }) => {
+  await page.goto("/community");
+  await waitForAppReady(page);
+  const items = page.locator("#communityJumps .community-jumps-item");
+  await expect(items).toHaveCount(50);
+  await expect(page.locator("#communityPagePrev")).toBeDisabled();
+  await expect(page.locator("#communityPageNext")).toBeEnabled();
+  await expect(page.locator(".community-page-num")).toHaveCount(0);
+  await expect(page.locator("#communityPager [aria-current='page']")).toHaveCount(0);
+  await expect(items.first()).toHaveAttribute("data-post-id", "2101336573879239085");
+
+  await page.locator("#communityPageNext").click();
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "2");
+  await expect(items).toHaveCount(50);
+  await expect(items.first()).not.toHaveAttribute("data-post-id", "2101336573879239085");
+  await expect(page.locator("#communityPagePrev")).toBeEnabled();
+  await expect(page.locator("#communityPageNext")).toBeEnabled();
+  await expect(page.locator(".community-page-num")).toHaveCount(0);
+
+  while (await page.locator("#communityPageNext").isEnabled()) {
+    await page.locator("#communityPageNext").click();
+  }
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "10");
+  await expect(items).toHaveCount(43);
+  await expect(items.last()).toHaveAttribute("data-post-id", "2009475998488961327");
+  await expect(page.locator("#communityPageNext")).toBeDisabled();
+  await expect(page.locator("#communityPagePrev")).toBeEnabled();
+  await page.locator("#toMakerBottom").scrollIntoViewIfNeeded();
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(43);
+
+  await page.locator("#communitySort").scrollIntoViewIfNeeded();
+  await page.locator("label:has(#communitySortPopular)").click();
+  await expect(page.locator("#communitySortPopular")).toBeChecked();
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
+  await expect(page.locator("#communityPagePrev")).toBeDisabled();
+  await expect(page.locator("#communityPageNext")).toBeEnabled();
+  await expect(items).toHaveCount(50);
+  await expect(items.first()).toHaveAttribute("data-post-id", "2084205622862725181");
 });
 
 test("uses three masonry columns on iPad-sized viewports and can sort by popularity", async ({ page }) => {
@@ -459,20 +505,24 @@ test("uses three masonry columns on iPad-sized viewports and can sort by popular
   expect(firstBox && secondBox && secondBox.x > firstBox.x + 40).toBe(true);
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2101252511386710099",
+    "2101336573879239085",
   );
+  await page.locator("#communityPageNext").click();
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "2");
   await page.locator("#communitySort").scrollIntoViewIfNeeded();
   await page.locator("label:has(#communitySortPopular)").click();
   await expect(page.locator("#communitySortPopular")).toBeChecked();
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2100570924915548571",
+    "2084205622862725181",
   );
   await page.locator("label:has(#communitySortNewest)").click();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2101252511386710099",
+    "2101336573879239085",
   );
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
 });
 
 test("opens /community directly and moves leftover hashes onto the path", async ({ page }) => {
