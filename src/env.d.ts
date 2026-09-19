@@ -8,4 +8,5 @@ interface ImportMetaEnv {
 
 interface Window {
   gtag?: (command: string, ...args: unknown[]) => void;
+  __gtagRequested?: boolean;
 }

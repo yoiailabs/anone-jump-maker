@@ -86,6 +86,9 @@ export function isEmbedHostVisible(host: HTMLElement): boolean {
   return box.width > 0 && box.height > 0;
 }
 
+/** メーカー下部の反応は画面に入るまで widgets.js を載せない。 */
+export const REACTIONS_HYDRATE_ROOT_MARGIN = "0px";
+
 /** hidden を外したあとのレイアウトが乗るまで待ってから埋め込む。 */
 export function whenEmbedHostVisible(host: HTMLElement, run: () => void): void {
   const kick = () => {
@@ -98,6 +101,28 @@ export function whenEmbedHostVisible(host: HTMLElement, run: () => void): void {
   requestAnimationFrame(() => {
     requestAnimationFrame(kick);
   });
+}
+
+/** 交差したら一度だけ run。IO が無い環境ではすぐ実行する。 */
+export function whenNearViewport(
+  target: Element,
+  run: () => void,
+  rootMargin = REACTIONS_HYDRATE_ROOT_MARGIN,
+): () => void {
+  if (typeof IntersectionObserver !== "function") {
+    run();
+    return () => {};
+  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      io.disconnect();
+      run();
+    },
+    { root: null, rootMargin, threshold: 0 },
+  );
+  io.observe(target);
+  return () => io.disconnect();
 }
 
 /** innerHTML のあとで呼び、公式ウィジェットに差し替える（複数 blockquote も一度で load）。 */

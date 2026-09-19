@@ -6,6 +6,7 @@ import {
   remountReactionEmbed,
   REACTION_POSTS,
   whenEmbedHostVisible,
+  whenNearViewport,
 } from "./reactions.ts";
 
 afterEach(() => {
@@ -163,5 +164,48 @@ describe("reaction embeds", () => {
       run,
     );
     expect(run).not.toHaveBeenCalled();
+  });
+
+  it("runs whenNearViewport immediately without IntersectionObserver", () => {
+    vi.stubGlobal("IntersectionObserver", undefined);
+    const run = vi.fn();
+    const stop = whenNearViewport({} as Element, run);
+    expect(run).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it("observes the target and runs on the first intersection", () => {
+    const observers: Array<{
+      cb: IntersectionObserverCallback;
+      observe: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+    }> = [];
+    class FakeIO implements IntersectionObserver {
+      readonly root = null;
+      readonly rootMargin = "0px";
+      readonly thresholds = [0];
+      takeRecords = () => [];
+      unobserve = vi.fn();
+      observe = vi.fn();
+      disconnect = vi.fn();
+      constructor(cb: IntersectionObserverCallback) {
+        this.observe = vi.fn();
+        this.disconnect = vi.fn();
+        observers.push({ cb, observe: this.observe, disconnect: this.disconnect });
+      }
+    }
+    vi.stubGlobal("IntersectionObserver", FakeIO);
+    const target = { id: "reactionsEmbed" } as unknown as Element;
+    const run = vi.fn();
+    whenNearViewport(target, run);
+    expect(run).not.toHaveBeenCalled();
+    expect(observers).toHaveLength(1);
+    expect(observers[0]?.observe).toHaveBeenCalledWith(target);
+    observers[0]?.cb(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      observers[0] as unknown as IntersectionObserver,
+    );
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(observers[0]?.disconnect).toHaveBeenCalled();
   });
 });

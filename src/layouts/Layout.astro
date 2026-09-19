@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import type { PageMeta } from "../page-meta.ts";
+import { googleFontsHref } from "../fonts.ts";
 import { LOCALES, OG_LOCALE, t } from "../i18n.ts";
 import { pageUrl } from "../page-meta.ts";
 import {
@@ -13,6 +14,8 @@ type Props = PageMeta;
 
 const { title, description, url, image, imageAlt, siteName, lang, ogLocale, view } = Astro.props;
 const shortName = t(lang, "pwaShortName");
+const fontHref = googleFontsHref(lang);
+const activateStylesheet = "this.media='all'";
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -31,15 +34,33 @@ const jsonLd = JSON.stringify({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <!-- Google Analytics 4 measurement ID: G-L8WKQQFBZC -->
-    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-L8WKQQFBZC"></script>
+    <!-- Google Analytics 4 measurement ID: G-L8WKQQFBZC。初回描画を奪わないようアイドル／操作後に載せる。 -->
     <script is:inline>
       window.dataLayer = window.dataLayer || [];
       function gtag() {
         dataLayer.push(arguments);
       }
-      gtag("js", new Date());
-      gtag("config", "G-L8WKQQFBZC");
+      window.gtag = gtag;
+      function loadGtag() {
+        if (window.__gtagRequested) return;
+        window.__gtagRequested = true;
+        var script = document.createElement("script");
+        script.src = "https://www.googletagmanager.com/gtag/js?id=G-L8WKQQFBZC";
+        script.async = true;
+        script.onload = function () {
+          gtag("js", new Date());
+          gtag("config", "G-L8WKQQFBZC");
+        };
+        document.head.appendChild(script);
+      }
+      ["pointerdown", "keydown", "scroll"].forEach(function (name) {
+        window.addEventListener(name, loadGtag, { once: true, passive: true });
+      });
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(loadGtag, { timeout: 4000 });
+      } else {
+        setTimeout(loadGtag, 4000);
+      }
     </script>
     <meta name="theme-color" content={PWA_THEME_COLOR} />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -74,12 +95,13 @@ const jsonLd = JSON.stringify({
     <link rel="alternate" hreflang="x-default" href={pageUrl("ja", view)} />
     <script type="application/ld+json" set:html={jsonLd} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {view === "maker" ? <link rel="preload" as="image" href="/jump-loop-still.png" /> : null}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href={fontHref} media="print" onload={activateStylesheet} />
+    <noscript>
+      <link rel="stylesheet" href={fontHref} />
+    </noscript>
     <title>{title}</title>
   </head>
   <body>

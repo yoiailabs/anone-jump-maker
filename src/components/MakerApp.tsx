@@ -3,6 +3,7 @@ import { boot } from "../app.ts";
 import { initSentry, reportError } from "../sentry.ts";
 import { communityJumpsSectionHtml } from "../community-list.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
+import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml } from "../links.ts";
@@ -34,7 +35,14 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
     started.current = true;
     const root = document.querySelector<HTMLElement>("#app");
     if (!root) return;
-    initSentry();
+    const startSentry = () => {
+      initSentry();
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(startSentry, { timeout: 4000 });
+    } else {
+      window.setTimeout(startSentry, 2000);
+    }
     void boot(root, { locale }).catch((error: unknown) => {
       reportError(error);
       root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
@@ -76,18 +84,10 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           </header>
 
           <div className="loop-wrap">
-            <a
-              className="loop-link"
+            <JumpLoop
               href="https://www.youtube.com/watch?v=M-IayQIR0XA"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
-            >
-              <picture>
-                <source media="(prefers-reduced-motion: reduce)" srcSet="/jump-loop-still.png" />
-                <img className="loop" src="/jump-loop.png" alt="" width={448} height={252} decoding="async" />
-              </picture>
-            </a>
+              ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
+            />
           </div>
 
           <section className="panel">

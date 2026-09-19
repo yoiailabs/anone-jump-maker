@@ -34,7 +34,7 @@ import {
   type AppView,
 } from "./nav.ts";
 import { pageUrl } from "./page-meta.ts";
-import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from "./reactions.ts";
+import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNearViewport } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
@@ -506,6 +506,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   let communityMounted = false;
+  let makerReactionsArmed = false;
   let activeView: AppView | null = null;
   let embedPaintGen = 0;
   const applyView = (view: AppView) => {
@@ -550,7 +551,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         }
         return;
       }
-      remountReactionEmbed(must(root, "#reactionsEmbed"), reactionEmbedHtml());
+      const embed = must(root, "#reactionsEmbed");
+      const paintReactions = () => remountReactionEmbed(embed, reactionEmbedHtml());
+      if (!makerReactionsArmed) {
+        makerReactionsArmed = true;
+        whenNearViewport(embed, () => {
+          if (paintGen !== embedPaintGen) return;
+          paintReactions();
+        });
+        return;
+      }
+      paintReactions();
     });
   };
 
@@ -574,8 +585,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     lastSlot = -1;
     refreshSlotMeter();
     syncAspectRadios(mode);
-    video.src = TEMPLATES[mode].video;
-    video.load();
+    video.dataset.templateSrc = TEMPLATES[mode].video;
+    video.removeAttribute("src");
+    video.preload = "none";
+    if (photos.length > 0 || previewDialog.open || recording) {
+      beginTemplateVideoLoad(video);
+    }
     refreshButtons();
   };
 
@@ -663,6 +678,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const files = takeUpToPhotoCap(photos.length, [...(picker.files ?? [])]);
     picker.value = "";
     if (files.length === 0 || photosLocked()) return;
+    beginTemplateVideoLoad(video);
     const hadPhotos = photos.length > 0;
     photosBusy = true;
     refreshButtons();
@@ -890,8 +906,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   });
 
-  void video.load();
-
   const goToView = (view: AppView) => {
     const next = `${pathForApp(locale, view)}${location.search}`;
     if (`${location.pathname}${location.search}` !== next) {
@@ -956,17 +970,28 @@ export async function loadTimeline(url: string): Promise<CutTimeline> {
 /** iOS Safari は playsinline が無いとフルスクリーンに逃げる。 */
 export function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   const video = document.createElement("video");
-  video.src = TEMPLATES[mode].video;
+  video.dataset.templateSrc = TEMPLATES[mode].video;
   video.playsInline = true;
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");
-  video.preload = "auto";
+  video.preload = "none";
   video.controls = false;
   video.crossOrigin = "anonymous";
   video.muted = true;
   video.tabIndex = -1;
   video.className = "offscreen-video";
   return video;
+}
+
+/** 写真選択やプレビューまでテンプレ本体を取りに行かない。 */
+export function beginTemplateVideoLoad(video: HTMLVideoElement): void {
+  const src = video.dataset.templateSrc;
+  if (!src) return;
+  const current = video.getAttribute("src");
+  if (video.preload === "auto" && current === src) return;
+  video.preload = "auto";
+  video.src = src;
+  video.load();
 }
 
 function must(root: ParentNode, selector: string): HTMLElement {

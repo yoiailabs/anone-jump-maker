@@ -115,6 +115,10 @@ test.describe("localized OGP and SEO", () => {
     const jsonLd = await page.locator('script[type="application/ld+json"]').evaluate((el) => el.textContent ?? "");
     expect(jsonLd).toContain('"inLanguage":"en"');
     await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute("content", t("en", "makerTitle"));
+    const fontHref = await page.locator('link[href*="fonts.googleapis.com/css2"]').first().getAttribute("href");
+    expect(fontHref).toContain("Zen+Maru+Gothic");
+    expect(fontHref).not.toContain("Noto+Sans+KR");
+    expect(fontHref).not.toContain("Noto+Sans+SC");
   });
 
   test("exposes a hreflang sitemap and robots.txt", async ({ request }) => {
@@ -187,6 +191,10 @@ test.describe("song and artist names", () => {
     await expect(page.locator(".loop-link")).toHaveAttribute(
       "aria-label",
       t("ko", "makerPvAria", { song: t("ko", "songTitle") }),
+    );
+    await expect(page.locator('link[href*="fonts.googleapis.com/css2"]').first()).toHaveAttribute(
+      "href",
+      /Noto\+Sans\+KR/,
     );
 
     await page.goto("/zh");

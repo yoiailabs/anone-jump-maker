@@ -1,5 +1,3 @@
-import * as Sentry from "@sentry/browser";
-
 /** Preview/prod でも env 無しで動く公開 DSN。上書きは VITE_SENTRY_DSN。 */
 export const DEFAULT_SENTRY_DSN =
   "https://619cccd108a2ff20f1ea48c71161b61c@o4511562294427648.ingest.us.sentry.io/4512104396947456";
@@ -48,23 +46,41 @@ export function scrubSentryEvent<T extends ScrubEvent>(event: T): T {
   return event;
 }
 
-export function initSentry(): void {
-  Sentry.init({
-    dsn: resolveSentryDsn(import.meta.env.VITE_SENTRY_DSN),
-    environment: sentryEnvironment(window.location.hostname),
-    tracesSampleRate: 0.1,
-    sendDefaultPii: false,
-    beforeSend(event) {
-      return scrubSentryEvent(event);
-    },
+type SentryBrowser = typeof import("@sentry/browser");
+
+let sentryPromise: Promise<SentryBrowser> | null = null;
+
+function loadSentry(): Promise<SentryBrowser> {
+  sentryPromise ??= import("@sentry/browser").then((Sentry) => {
+    if (typeof window === "undefined") return Sentry;
+    Sentry.init({
+      dsn: resolveSentryDsn(import.meta.env.VITE_SENTRY_DSN),
+      environment: sentryEnvironment(window.location.hostname),
+      tracesSampleRate: 0.1,
+      sendDefaultPii: false,
+      beforeSend(event) {
+        return scrubSentryEvent(event);
+      },
+    });
+    return Sentry;
   });
+  return sentryPromise;
+}
+
+/** SDK は別チャンク。初回描画のあとで呼ぶ。 */
+export function initSentry(): void {
+  void loadSentry();
 }
 
 export function reportError(
   error: unknown,
-  capture: (error: unknown) => void = (value) => {
-    Sentry.captureException(value);
-  },
+  capture?: (error: unknown) => void,
 ): void {
-  capture(error);
+  if (capture) {
+    capture(error);
+    return;
+  }
+  void loadSentry().then((Sentry) => {
+    Sentry.captureException(error);
+  });
 }
