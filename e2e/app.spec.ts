@@ -22,6 +22,11 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect(page.locator("#copyHashtagsBtn")).toBeEnabled();
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
   await expect(page.getByRole("radio", { name: "横" }).first()).toBeChecked();
+  await expect(page.locator("#makerTitle")).toBeVisible();
+  expect(await page.evaluate(() => document.activeElement?.id ?? "")).not.toBe("makerTitle");
+  await expect
+    .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))
+    .toBe("none");
 });
 
 test("loads a photo then previews, mutes, and switches aspect in Chromium and WebKit", async ({ page }) => {
@@ -104,6 +109,11 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#makerView")).toBeHidden();
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
   await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
+  await expect
+    .poll(async () =>
+      page.locator("#communityJumpsTitle").evaluate((el) => getComputedStyle(el).outlineStyle),
+    )
+    .toBe("none");
   await expect(page.locator("#toMaker")).toBeVisible();
   await expect(page.locator("#toMaker")).toHaveClass(/\bpage-link\b/);
   await expect(page.locator("#toMaker")).not.toHaveClass(/\bbtn\b/);
@@ -207,6 +217,12 @@ test("opens /community directly and moves leftover hashes onto the path", async 
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page.locator("#communityView")).toBeVisible();
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
+  expect(await page.evaluate(() => document.activeElement?.id ?? "")).not.toBe("communityJumpsTitle");
+  await expect
+    .poll(async () =>
+      page.locator("#communityJumpsTitle").evaluate((el) => getComputedStyle(el).outlineStyle),
+    )
+    .toBe("none");
   await expect(page).toHaveTitle("みんなの #あのねジャンプ");
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     "content",

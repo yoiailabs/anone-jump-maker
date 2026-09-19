@@ -571,14 +571,20 @@ export async function boot(root: HTMLElement): Promise<void> {
       closePreview();
     }
     if (activeView !== view) {
+      const firstPaint = activeView === null;
       activeView = view;
       window.scrollTo(0, 0);
-      const heading =
-        view === "community"
-          ? root.querySelector<HTMLElement>("#communityJumpsTitle")
-          : root.querySelector<HTMLElement>("#makerTitle");
-      heading?.setAttribute("tabindex", "-1");
-      heading?.focus({ preventScroll: true });
+      if (!firstPaint) {
+        const heading =
+          view === "community"
+            ? root.querySelector<HTMLElement>("#communityJumpsTitle")
+            : root.querySelector<HTMLElement>("#makerTitle");
+        heading?.setAttribute("tabindex", "-1");
+        heading?.focus({
+          preventScroll: true,
+          focusVisible: false,
+        } as FocusOptions & { focusVisible?: boolean });
+      }
     }
     const paintGen = ++embedPaintGen;
     const host = view === "community" ? communityView : makerView;
