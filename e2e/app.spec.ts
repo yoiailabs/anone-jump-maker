@@ -95,6 +95,12 @@ test("keeps community jumps off the maker and opens a stacked list from the tab"
   expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
   expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
 
+  const mid = page.locator("#communityJumps .community-jumps-item").nth(3);
+  await mid.evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
+  const tabsBox = await page.locator(".app-tabs").boundingBox();
+  const midBox = await mid.boundingBox();
+  expect(tabsBox && midBox && midBox.y + 1 >= tabsBox.y + tabsBox.height).toBe(true);
+
   await page.locator("#communityJumps .community-jumps-item").nth(9).scrollIntoViewIfNeeded();
   await page.locator("#tabMaker").click();
   await expect(page).toHaveURL(/#maker/);

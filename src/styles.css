@@ -15,6 +15,8 @@
   --page-pad-x: 1.15rem;
   --page-pad-bottom: 3.8rem;
   --section-gap: 2.35rem;
+  /* sticky タブの高さ＋下の空き。カード先頭がタブに隠れないようにする。 */
+  --app-tabs-offset: 4.35rem;
 }
 
 * {
@@ -27,6 +29,10 @@ body {
   min-height: 100%;
   color: var(--ink);
   background-color: var(--paper);
+}
+
+html {
+  scroll-padding-top: var(--app-tabs-offset);
 }
 
 body {
@@ -58,8 +64,8 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
-  padding: 0.2rem 0 0.35rem;
-  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  padding: calc(0.25rem + env(safe-area-inset-top, 0px)) 0 1rem;
+  background: var(--paper);
 }
 
 .app-tab {
@@ -834,6 +840,10 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.community-jumps-item {
+  scroll-margin-top: var(--app-tabs-offset);
 }
 
 .community-jumps-card {
