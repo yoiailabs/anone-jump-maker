@@ -111,6 +111,52 @@ test("reorders photos by drag and drop", async ({ page }) => {
   await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
   await expect(page.locator(".thumb-index").nth(0)).toHaveText("1");
   await expect(page.locator(".thumb-index").nth(1)).toHaveText("2");
+
+  const thumbsStyle = await page.locator("#thumbs").evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { wrap: style.flexWrap, overflowX: style.overflowX };
+  });
+  expect(thumbsStyle.wrap).toBe("wrap");
+  expect(thumbsStyle.overflowX).not.toBe("auto");
+  await expect
+    .poll(async () => page.locator(".thumb").first().evaluate((el) => getComputedStyle(el).touchAction))
+    .toBe("pan-y");
+});
+
+test("a touch swipe does not reorder photos without a long press", async ({ page }) => {
+  await uploadPhoto(page);
+  await page.locator("#picker").setInputFiles(await jpegInput("extra.jpg"));
+  await expect(page.locator("#status")).toContainText("1 枚を追加しました（合計 2 枚）", { timeout: 20_000 });
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
+
+  await page.evaluate(() => {
+    const first = document.querySelector<HTMLElement>(".thumb[data-photo-id]");
+    const thumbs = document.querySelector("#thumbs");
+    if (!first || !thumbs) throw new Error("missing thumbs");
+    const start = first.getBoundingClientRect();
+    const fire = (type: string, x: number, buttons: number) => {
+      const target = type === "pointermove" ? thumbs : first;
+      target.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 1,
+          pointerType: "touch",
+          button: 0,
+          buttons,
+          clientX: x,
+          clientY: start.top + 10,
+        }),
+      );
+    };
+    fire("pointerdown", start.left + 8, 1);
+    fire("pointermove", start.left + 90, 1);
+    fire("pointerup", start.left + 90, 0);
+  });
+
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
 });
 
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {

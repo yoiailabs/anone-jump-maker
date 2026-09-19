@@ -44,24 +44,61 @@ export function sameIdOrder<T extends { id: string }>(a: readonly T[], b: readon
   return a.length === b.length && a.every((item, index) => item.id === b[index]?.id);
 }
 
-/** 横並びサムネの中で、ポインタ X に一番近い項目の添字。 */
-export function nearestIndexByClientX(
+type PointRect = Pick<DOMRectReadOnly, "left" | "top" | "width" | "height">;
+
+/** 折り返しグリッドで、ポインタに一番近い項目の添字。 */
+export function nearestIndexByPoint(
   clientX: number,
-  rects: readonly Pick<DOMRectReadOnly, "left" | "width">[],
+  clientY: number,
+  rects: readonly PointRect[],
 ): number {
   if (rects.length === 0) return 0;
   let best = 0;
   let bestDist = Number.POSITIVE_INFINITY;
   for (let i = 0; i < rects.length; i += 1) {
     const rect = rects[i]!;
-    const mid = rect.left + rect.width / 2;
-    const dist = Math.abs(clientX - mid);
+    const midX = rect.left + rect.width / 2;
+    const midY = rect.top + rect.height / 2;
+    const dist = Math.hypot(clientX - midX, clientY - midY);
     if (dist < bestDist) {
       bestDist = dist;
       best = i;
     }
   }
   return best;
+}
+
+/** 横並びサムネの中で、ポインタ X に一番近い項目の添字。 */
+export function nearestIndexByClientX(
+  clientX: number,
+  rects: readonly Pick<DOMRectReadOnly, "left" | "width">[],
+): number {
+  return nearestIndexByPoint(
+    clientX,
+    0,
+    rects.map((rect) => ({ left: rect.left, top: 0, width: rect.width, height: 0 })),
+  );
+}
+
+/** ドロップ位置。同じ行なら中心より左でその前、行末より右なら次行の先頭。 */
+export function insertionIndexByPoint(
+  clientX: number,
+  clientY: number,
+  rects: readonly PointRect[],
+): number {
+  if (rects.length === 0) return 0;
+  for (let i = 0; i < rects.length; i += 1) {
+    const rect = rects[i]!;
+    const next = rects[i + 1];
+    const midX = rect.left + rect.width / 2;
+    const endsRow = next === undefined || next.top >= rect.top + rect.height / 2;
+    if (clientY < rect.top) return i;
+    if (clientY <= rect.top + rect.height) {
+      if (clientX < midX) return i;
+      if (endsRow) return i + 1;
+    }
+  }
+  return rects.length;
 }
 
 /** ドロップ位置。各項目の中心より左ならその前、全部より右なら末尾。 */

@@ -1,4 +1,4 @@
-import { insertionIndexByClientX, nearestIndexByClientX } from "./photo-list.ts";
+import { insertionIndexByPoint, nearestIndexByPoint } from "./photo-list.ts";
 
 export type ThumbPhoto = {
   id: string;
@@ -20,7 +20,9 @@ export type ThumbEvents = {
   onRemove: (id: string) => void;
 };
 
-const DRAG_MOVE_PX = 8;
+/** タッチは長押ししてから並べ替え。スクロールとフリックがぶつからないようにする。 */
+export const THUMB_LONG_PRESS_MS = 400;
+const PRESS_CANCEL_PX = 12;
 const EDGE_SCROLL_PX = 48;
 const PHOTO_DRAG_TYPE = "text/plain";
 
@@ -30,11 +32,13 @@ type PointerDrag = {
   startX: number;
   startY: number;
   started: boolean;
+  pressTimer: ReturnType<typeof setTimeout> | null;
 };
 
 type Html5Drag = {
   item: HTMLElement;
   lastX: number;
+  lastY: number;
 };
 
 export function renderPhotoThumbs(
@@ -64,16 +68,27 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
     events.onReorder(idsFromDom());
   };
 
-  const autoScroll = (clientX: number) => {
-    const box = container.getBoundingClientRect();
-    if (clientX < box.left + EDGE_SCROLL_PX) container.scrollLeft -= 20;
-    else if (clientX > box.right - EDGE_SCROLL_PX) container.scrollLeft += 20;
+  const autoScroll = (clientY: number) => {
+    if (clientY < EDGE_SCROLL_PX) window.scrollBy(0, -20);
+    else if (clientY > window.innerHeight - EDGE_SCROLL_PX) window.scrollBy(0, 20);
+  };
+
+  const clearPressTimer = (state: PointerDrag | null) => {
+    if (!state?.pressTimer) return;
+    clearTimeout(state.pressTimer);
+    state.pressTimer = null;
   };
 
   const startPointerDrag = (state: PointerDrag) => {
     if (state.started || events.isLocked()) return;
     state.started = true;
+    clearPressTimer(state);
     state.item.classList.add("is-dragging");
+    try {
+      navigator.vibrate?.(15);
+    } catch {
+      // vibrate が拒否されても並べ替えは続ける
+    }
     try {
       state.item.setPointerCapture(state.pointerId);
     } catch {
@@ -84,6 +99,7 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
   const endPointerDrag = (pointerId: number) => {
     if (!pointerDrag || pointerDrag.pointerId !== pointerId) return;
     const { item, started } = pointerDrag;
+    clearPressTimer(pointerDrag);
     item.classList.remove("is-dragging");
     try {
       item.releasePointerCapture(pointerId);
@@ -94,13 +110,14 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
     if (started && !events.isLocked()) commitReorder();
   };
 
-  const movePointerItem = (clientX: number) => {
+  const movePointerItem = (clientX: number, clientY: number) => {
     if (!pointerDrag?.started) return;
     const items = thumbItems();
     const from = items.indexOf(pointerDrag.item);
     if (from < 0) return;
-    const to = nearestIndexByClientX(
+    const to = nearestIndexByPoint(
       clientX,
+      clientY,
       items.map((el) => el.getBoundingClientRect()),
     );
     if (to !== from) {
@@ -110,7 +127,7 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
         else container.insertBefore(pointerDrag.item, target.nextSibling);
       }
     }
-    autoScroll(clientX);
+    autoScroll(clientY);
   };
 
   const clearDropMarks = () => {
@@ -119,34 +136,36 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
     }
   };
 
-  const markDropIndex = (item: HTMLElement, clientX: number) => {
+  const markDropIndex = (item: HTMLElement, clientX: number, clientY: number) => {
     const others = thumbItems().filter((el) => el !== item);
     clearDropMarks();
     if (others.length === 0) return;
-    const index = insertionIndexByClientX(
+    const index = insertionIndexByPoint(
       clientX,
+      clientY,
       others.map((el) => el.getBoundingClientRect()),
     );
     if (index >= others.length) others[others.length - 1]?.classList.add("drop-after");
     else others[index]?.classList.add("drop-before");
   };
 
-  const insertAtPointer = (item: HTMLElement, clientX: number) => {
+  const insertAtPointer = (item: HTMLElement, clientX: number, clientY: number) => {
     const others = thumbItems().filter((el) => el !== item);
-    const index = insertionIndexByClientX(
+    const index = insertionIndexByPoint(
       clientX,
+      clientY,
       others.map((el) => el.getBoundingClientRect()),
     );
     if (index >= others.length) container.append(item);
     else container.insertBefore(item, others[index]!);
   };
 
-  const finishHtml5Drag = (clientX?: number) => {
+  const finishHtml5Drag = (clientX?: number, clientY?: number) => {
     if (!html5Drag) return;
-    const { item, lastX } = html5Drag;
+    const { item, lastX, lastY } = html5Drag;
     html5Drag = null;
     clearDropMarks();
-    insertAtPointer(item, clientX ?? lastX);
+    insertAtPointer(item, clientX ?? lastX, clientY ?? lastY);
     item.classList.remove("is-dragging");
     if (!events.isLocked()) commitReorder();
   };
@@ -176,7 +195,7 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
     } catch {
       // setDragImage が無い環境でもネイティブのドラッグ画像で進める
     }
-    html5Drag = { item, lastX: event.clientX };
+    html5Drag = { item, lastX: event.clientX, lastY: event.clientY };
     item.classList.add("is-dragging");
   });
 
@@ -190,14 +209,15 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
     html5Drag.lastX = event.clientX;
-    markDropIndex(html5Drag.item, event.clientX);
-    autoScroll(event.clientX);
+    html5Drag.lastY = event.clientY;
+    markDropIndex(html5Drag.item, event.clientX, event.clientY);
+    autoScroll(event.clientY);
   });
 
   container.addEventListener("drop", (event) => {
     if (!html5Drag) return;
     event.preventDefault();
-    finishHtml5Drag(event.clientX);
+    finishHtml5Drag(event.clientX, event.clientY);
   });
 
   container.addEventListener("dragend", () => {
@@ -212,28 +232,37 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
     if (target.closest(".thumb-remove")) return;
     const item = target.closest<HTMLElement>(".thumb");
     if (!item?.dataset.photoId || !container.contains(item)) return;
-    pointerDrag = {
+    const state: PointerDrag = {
       pointerId: event.pointerId,
       item,
       startX: event.clientX,
       startY: event.clientY,
       started: false,
+      pressTimer: null,
     };
+    state.pressTimer = setTimeout(() => {
+      if (pointerDrag === state) startPointerDrag(state);
+    }, THUMB_LONG_PRESS_MS);
+    pointerDrag = state;
   });
 
-  container.addEventListener("pointermove", (event) => {
-    if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) return;
-    const dx = event.clientX - pointerDrag.startX;
-    const dy = event.clientY - pointerDrag.startY;
-    if (!pointerDrag.started) {
-      if (Math.hypot(dx, dy) < DRAG_MOVE_PX) return;
-      startPointerDrag(pointerDrag);
-    }
-    if (pointerDrag?.started) {
+  container.addEventListener(
+    "pointermove",
+    (event) => {
+      if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) return;
+      const dx = event.clientX - pointerDrag.startX;
+      const dy = event.clientY - pointerDrag.startY;
+      if (!pointerDrag.started) {
+        if (Math.hypot(dx, dy) < PRESS_CANCEL_PX) return;
+        clearPressTimer(pointerDrag);
+        pointerDrag = null;
+        return;
+      }
       event.preventDefault();
-      movePointerItem(event.clientX);
-    }
-  });
+      movePointerItem(event.clientX, event.clientY);
+    },
+    { passive: false },
+  );
 
   container.addEventListener("pointerup", (event) => endPointerDrag(event.pointerId));
   container.addEventListener("pointercancel", (event) => endPointerDrag(event.pointerId));
@@ -241,6 +270,12 @@ export function bindPhotoThumbs(container: HTMLElement, events: ThumbEvents): vo
     if (pointerDrag && event.pointerId === pointerDrag.pointerId && pointerDrag.started) {
       endPointerDrag(event.pointerId);
     }
+  });
+
+  container.addEventListener("contextmenu", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest(".thumb")) return;
+    event.preventDefault();
   });
 
   container.addEventListener("click", (event) => {

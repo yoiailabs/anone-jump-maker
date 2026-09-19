@@ -748,11 +748,10 @@ a.btn:focus-visible {
   --thumb-size: 6rem;
   --thumb-radius: 0.9rem;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.7rem;
-  overflow-x: auto;
-  padding: 0.55rem 0.55rem 0.45rem;
-  margin: 0 -0.1rem;
-  overscroll-behavior-x: contain;
+  padding: 0.55rem 0.15rem 0.45rem;
+  margin: 0;
 }
 
 .thumbs[hidden],
@@ -765,9 +764,11 @@ a.btn:focus-visible {
   flex: 0 0 auto;
   width: var(--thumb-size);
   height: var(--thumb-size);
-  touch-action: none;
+  touch-action: pan-y;
   cursor: grab;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .thumb:focus-visible,
@@ -780,6 +781,8 @@ a.btn:focus-visible {
   cursor: grabbing;
   z-index: 2;
   opacity: 0.55;
+  touch-action: none;
+  transform: scale(1.06);
 }
 
 .thumb.drop-before::before,

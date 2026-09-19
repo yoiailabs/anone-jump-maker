@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   appendAll,
   insertionIndexByClientX,
+  insertionIndexByPoint,
   moveItem,
   nearestIndexByClientX,
+  nearestIndexByPoint,
   orderByIds,
   removeById,
   sameIdOrder,
@@ -82,5 +84,34 @@ describe("nearestIndexByClientX / insertionIndexByClientX", () => {
     expect(insertionIndexByClientX(40, rects)).toBe(1);
     expect(insertionIndexByClientX(90, rects)).toBe(2);
     expect(insertionIndexByClientX(0, [])).toBe(0);
+  });
+});
+
+describe("nearestIndexByPoint / insertionIndexByPoint", () => {
+  const grid = [
+    { left: 0, top: 0, width: 40, height: 40 },
+    { left: 50, top: 0, width: 40, height: 40 },
+    { left: 100, top: 0, width: 40, height: 40 },
+    { left: 0, top: 50, width: 40, height: 40 },
+    { left: 50, top: 50, width: 40, height: 40 },
+  ];
+
+  it("picks the closest center in two dimensions", () => {
+    expect(nearestIndexByPoint(10, 10, grid)).toBe(0);
+    expect(nearestIndexByPoint(70, 10, grid)).toBe(1);
+    expect(nearestIndexByPoint(20, 70, grid)).toBe(3);
+    expect(nearestIndexByPoint(70, 70, grid)).toBe(4);
+    expect(nearestIndexByPoint(0, 0, [])).toBe(0);
+  });
+
+  it("inserts by reading order across wrapped rows", () => {
+    expect(insertionIndexByPoint(10, 20, grid)).toBe(0);
+    expect(insertionIndexByPoint(70, 20, grid)).toBe(2);
+    expect(insertionIndexByPoint(130, 20, grid)).toBe(3);
+    expect(insertionIndexByPoint(10, 70, grid)).toBe(3);
+    expect(insertionIndexByPoint(80, 70, grid)).toBe(5);
+    expect(insertionIndexByPoint(10, -8, grid)).toBe(0);
+    expect(insertionIndexByPoint(200, 200, grid)).toBe(5);
+    expect(insertionIndexByPoint(0, 0, [])).toBe(0);
   });
 });
