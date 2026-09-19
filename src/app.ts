@@ -15,7 +15,15 @@ import {
 } from "./layout.ts";
 import { COMMUNITY_JUMPS_TITLE, communityJumpsSectionHtml, mountCommunityJumps } from "./community-list.ts";
 import { linkBannersHtml } from "./links.ts";
-import { documentTitleForView, parseAppView, toCommunityLinkHtml, type AppView } from "./nav.ts";
+import {
+  appViewFromClick,
+  canonicalAppUrl,
+  documentTitleForView,
+  parseAppView,
+  pathForView,
+  toCommunityLinkHtml,
+  type AppView,
+} from "./nav.ts";
 import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
@@ -848,10 +856,39 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   void video.load();
   hydrateReactionEmbed(must(root, "#reactionsEmbed"));
-  applyView(parseAppView(location.hash));
-  window.addEventListener("hashchange", () => {
-    applyView(parseAppView(location.hash));
+
+  const goToView = (view: AppView) => {
+    const next = `${pathForView(view)}${location.search}`;
+    if (`${location.pathname}${location.search}` !== next) {
+      history.pushState({ view }, "", next);
+    }
+    applyView(view);
+  };
+
+  const syncViewFromLocation = () => {
+    const next = canonicalAppUrl(location);
+    if (next) history.replaceState(history.state, "", next);
+    applyView(parseAppView(location));
+  };
+
+  root.addEventListener("click", (event) => {
+    if (!(event instanceof MouseEvent) || event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const anchor = target.closest("a");
+    if (!anchor) return;
+    const view = appViewFromClick(anchor, location.origin);
+    if (!view) return;
+    event.preventDefault();
+    goToView(view);
   });
+
+  window.addEventListener("popstate", () => {
+    applyView(parseAppView(location));
+  });
+  window.addEventListener("hashchange", syncViewFromLocation);
+  syncViewFromLocation();
 }
 
 export async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {

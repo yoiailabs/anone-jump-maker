@@ -3,10 +3,11 @@ import {
   type CommunityJumpPost,
 } from "./community-jumps.ts";
 import { toMakerLinkHtml } from "./nav.ts";
+import { COMMUNITY_DESCRIPTION, COMMUNITY_DOCUMENT_TITLE } from "./page-meta.ts";
 import { hydrateReactionEmbed } from "./reactions.ts";
 
-export const COMMUNITY_JUMPS_TITLE = "みんなの #あのねジャンプ";
-export const COMMUNITY_JUMPS_LEDE = "ファンが投稿したジャンプ動画です。下にスクロールして見てね。";
+export const COMMUNITY_JUMPS_TITLE = COMMUNITY_DOCUMENT_TITLE;
+export const COMMUNITY_JUMPS_LEDE = COMMUNITY_DESCRIPTION;
 export const COMMUNITY_JUMPS_EMPTY =
   "まだ公開できるジャンプがありません。#あのねジャンプ を付けて投稿してみてね。";
 export const MORE_JUMPS_LABEL = "もっと見る";

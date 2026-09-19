@@ -11,6 +11,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("boots the maker with preview and save disabled until a photo is chosen", async ({ page }) => {
+  await expect(page).toHaveTitle("あのねジャンプメーカー");
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    "https://anone.yoiailabs.com/",
+  );
   await expect(page.locator("#playBtn")).toBeDisabled();
   await expect(page.locator("#saveBtn")).toBeDisabled();
   await expect(page.locator("#shareAppBtn")).toBeEnabled();
@@ -82,8 +87,11 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const linkBox = await toCommunity.boundingBox();
   expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
 
+  await expect(toCommunity).toHaveAttribute("href", "/community");
   await toCommunity.click();
-  await expect(page).toHaveURL(/#community/);
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page).not.toHaveURL(/#community/);
+  await expect(page).toHaveTitle("みんなの #あのねジャンプ");
   await expect(page.locator("#communityView")).toBeVisible();
   await expect(page.locator("#makerView")).toBeHidden();
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
@@ -124,13 +132,42 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const bottomBox = await bottomBack.boundingBox();
   expect(lastAfterBox && moreBox && lastAfterBox.y < moreBox.y).toBe(true);
   expect(moreBox && bottomBox && moreBox.y < bottomBox.y).toBe(true);
+  await expect(bottomBack).toHaveAttribute("href", "/");
   await bottomBack.click();
-  await expect(page).toHaveURL(/#maker/);
+  await expect(page).not.toHaveURL(/\/community/);
+  expect(new URL(page.url()).pathname).toBe("/");
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#playBtn")).toBeVisible();
   await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
+});
+
+test("opens /community directly and moves leftover hashes onto the path", async ({ page }) => {
+  await page.goto("/community");
+  await waitForAppReady(page);
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page.locator("#communityView")).toBeVisible();
+  await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
+  await expect(page).toHaveTitle("みんなの #あのねジャンプ");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "ファンが投稿したジャンプ動画です。下にスクロールして見てね。",
+  );
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    "https://anone.yoiailabs.com/community",
+  );
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    "https://anone.yoiailabs.com/og.png",
+  );
+
+  await page.goto("/#community");
+  await waitForAppReady(page);
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page).not.toHaveURL(/#community/);
+  await expect(page.locator("#communityView")).toBeVisible();
 });
 
 test("copies hashtags from the panel", async ({ page, context, browserName }) => {
