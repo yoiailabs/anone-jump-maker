@@ -9,6 +9,9 @@ export const COMMUNITY_JUMPS_TITLE = "みんなの #あのねジャンプ";
 export const COMMUNITY_JUMPS_LEDE = "ファンが投稿したジャンプ動画です。下にスクロールして見てね。";
 export const COMMUNITY_JUMPS_EMPTY =
   "まだ公開できるジャンプがありません。#あのねジャンプ を付けて投稿してみてね。";
+export const MORE_JUMPS_LABEL = "もっと見る";
+export const MORE_JUMPS_QUERY = "#あのねジャンプ";
+export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
 
 /** 画面の少し外まで先読みする余白。 */
 export const HYDRATE_ROOT_MARGIN_PX = 160;
@@ -49,7 +52,10 @@ export function communityJumpsSectionHtml(
           ? `<p class="community-jumps-empty">${COMMUNITY_JUMPS_EMPTY}</p>`
           : `<ol class="community-jumps-list" id="communityJumpsList">${itemsHtml(posts)}</ol>`
       }
-      ${toMakerLinkHtml("toMakerBottom")}
+      <footer class="community-jumps-end">
+        ${moreJumpsLinkHtml()}
+        ${toMakerLinkHtml("toMakerBottom")}
+      </footer>
     </section>
   `;
 }
@@ -105,6 +111,10 @@ export function mountCommunityJumps(
   for (const item of items) {
     observer.observe(item);
   }
+}
+
+export function moreJumpsLinkHtml(): string {
+  return `<p class="community-more-wrap"><a id="moreJumps" class="btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${MORE_JUMPS_LABEL}</a></p>`;
 }
 
 function itemsHtml(posts: readonly CommunityJumpPost[]): string {

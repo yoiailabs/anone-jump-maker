@@ -89,10 +89,19 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
   await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
   await expect(page.locator("#toMaker")).toBeVisible();
-  await expect(page.locator("#toMaker")).toHaveClass(/\bbtn\b/);
-  await expect(page.locator("#toMaker")).toHaveClass(/\bghost\b/);
-  await expect(page.locator("#toMakerBottom")).toHaveClass(/\bbtn\b/);
-  await expect(page.locator("#toMakerBottom")).toHaveClass(/\bghost\b/);
+  await expect(page.locator("#toMaker")).toHaveClass(/\bpage-link\b/);
+  await expect(page.locator("#toMaker")).not.toHaveClass(/\bbtn\b/);
+  await expect(page.locator("#toMakerBottom")).toHaveClass(/\bpage-link\b/);
+  await expect(page.locator("#toMakerBottom")).not.toHaveClass(/\bbtn\b/);
+  const moreJumps = page.locator("#moreJumps");
+  await expect(moreJumps).toHaveText("もっと見る");
+  await expect(moreJumps).toHaveClass(/\bbtn\b/);
+  await expect(moreJumps).toHaveAttribute("target", "_blank");
+  await expect(moreJumps).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(moreJumps).toHaveAttribute(
+    "href",
+    `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
+  );
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
@@ -111,8 +120,10 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(9);
   await lastAfter.scrollIntoViewIfNeeded();
   const lastAfterBox = await lastAfter.boundingBox();
+  const moreBox = await moreJumps.boundingBox();
   const bottomBox = await bottomBack.boundingBox();
-  expect(lastAfterBox && bottomBox && lastAfterBox.y < bottomBox.y).toBe(true);
+  expect(lastAfterBox && moreBox && lastAfterBox.y < moreBox.y).toBe(true);
+  expect(moreBox && bottomBox && moreBox.y < bottomBox.y).toBe(true);
   await bottomBack.click();
   await expect(page).toHaveURL(/#maker/);
   await expect(page.locator("#makerView")).toBeVisible();

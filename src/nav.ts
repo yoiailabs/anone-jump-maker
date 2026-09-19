@@ -24,5 +24,5 @@ export function toCommunityLinkHtml(): string {
 }
 
 export function toMakerLinkHtml(id = "toMaker"): string {
-  return `<p class="community-back-wrap"><a id="${id}" class="btn ghost" href="#maker">${TO_MAKER_LABEL}</a></p>`;
+  return `<p class="community-back-wrap"><a id="${id}" class="page-link" href="#maker">${TO_MAKER_LABEL}</a></p>`;
 }

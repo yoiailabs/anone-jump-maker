@@ -3,6 +3,8 @@ import {
   COMMUNITY_JUMPS_EMPTY,
   COMMUNITY_JUMPS_LEDE,
   COMMUNITY_JUMPS_TITLE,
+  MORE_JUMPS_HREF,
+  MORE_JUMPS_LABEL,
   communityJumpsSectionHtml,
   hydrateIndexes,
 } from "./community-list.ts";
@@ -30,12 +32,21 @@ describe("community list markup", () => {
     expect(html).toContain('id="toMaker"');
     expect(html).toContain('id="toMakerBottom"');
     expect(html).toContain('href="#maker"');
-    expect(html).toContain('class="btn ghost"');
+    expect(html).toContain('class="page-link"');
+    expect(html).not.toContain("btn ghost");
     expect(html).toContain("メーカーに戻る");
+    expect(html).toContain(MORE_JUMPS_LABEL);
+    expect(html).toContain('id="moreJumps"');
+    expect(html).toContain(`href="${MORE_JUMPS_HREF}"`);
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(MORE_JUMPS_HREF).toBe(`https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`);
     expect(html.match(/id="toMaker"/g)).toHaveLength(1);
     expect(html.match(/メーカーに戻る/g)).toHaveLength(2);
+    expect(html.match(/id="moreJumps"/g)).toHaveLength(1);
     expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
-    expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("toMakerBottom"));
+    expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("moreJumps"));
+    expect(html.indexOf("moreJumps")).toBeLessThan(html.indexOf("toMakerBottom"));
     expect(html).not.toContain("app-tab");
     expect(html).not.toContain("communityJumpsPrev");
     expect(html).not.toContain("communityJumpsNext");
@@ -58,6 +69,7 @@ describe("community list markup", () => {
     expect(html).toContain(COMMUNITY_JUMPS_EMPTY);
     expect(html).toContain(COMMUNITY_JUMPS_TITLE);
     expect(html).toContain('id="toMakerBottom"');
+    expect(html).toContain('id="moreJumps"');
     expect(html).not.toContain("community-jumps-list");
     expect(html).not.toContain(COMMUNITY_JUMPS_LEDE);
   });
