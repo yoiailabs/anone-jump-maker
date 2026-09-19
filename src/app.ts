@@ -546,6 +546,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   let communityMounted = false;
+  let activeView: AppView | null = null;
   const applyView = (view: AppView) => {
     const makerView = must(root, "#makerView");
     const communityView = must(root, "#communityView");
@@ -555,6 +556,10 @@ export async function boot(root: HTMLElement): Promise<void> {
     document.title = documentTitleForView(view, COMMUNITY_JUMPS_TITLE);
     if (view !== "maker") {
       closePreview();
+    }
+    if (activeView !== view) {
+      activeView = view;
+      window.scrollTo(0, 0);
     }
     if (view === "community" && !communityMounted) {
       mountCommunityJumps(must(root, "#communityJumps"));

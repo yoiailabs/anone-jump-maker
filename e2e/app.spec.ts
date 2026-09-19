@@ -73,12 +73,14 @@ test("keeps community jumps off the maker and opens a stacked list from the tab"
   await expect(page.locator("#playBtn")).toBeVisible();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
 
+  await page.locator("#reactionsTitle").scrollIntoViewIfNeeded();
   await page.locator("#tabCommunity").click();
   await expect(page).toHaveURL(/#community/);
   await expect(page.locator("#tabCommunity")).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#communityView")).toBeVisible();
   await expect(page.locator("#makerView")).toBeHidden();
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
+  await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
@@ -93,10 +95,12 @@ test("keeps community jumps off the maker and opens a stacked list from the tab"
   expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
   expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
 
+  await page.locator("#communityJumps .community-jumps-item").nth(9).scrollIntoViewIfNeeded();
   await page.locator("#tabMaker").click();
   await expect(page).toHaveURL(/#maker/);
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#playBtn")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
 });
