@@ -36,7 +36,9 @@ import {
 import { pageUrl } from "./page-meta.ts";
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
+import { appendAll, orderByIds, removeById, sameIdOrder } from "./photo-list.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
   muteButtonHtml,
@@ -98,6 +100,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     createKeyer: benchFlags.forceCpuKeying ? () => null : undefined,
   });
   let photos: LoadedPhoto[] = [];
+  let photosBusy = false;
   let playing = false;
   let recording = false;
   let previewTracked = false;
@@ -110,7 +113,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   const stage = must(root, "#stage");
-  const thumbs = must(root, "#thumbs");
+  const pickerLabel = must(root, "#pickerLabel");
   const slotMeter = must(root, "#slotMeter");
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
@@ -192,16 +195,18 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
+  const photosLocked = () => recording || photosBusy;
+
+  const syncPickerLabel = () => {
+    pickerLabel.textContent = photos.length === 0 ? msg("makerPickPhotos") : msg("makerAddPhotos");
+  };
+
   const renderThumbs = () => {
-    thumbs.hidden = photos.length === 0;
-    thumbs.replaceChildren(
-      ...photos.map((photo, index) => {
-        const img = document.createElement("img");
-        img.src = photo.thumbUrl;
-        img.alt = photo.name || msg("makerPhotoAlt", { n: index + 1 });
-        return img;
-      }),
-    );
+    setPhotoThumbsState({
+      photos: photos.map((photo) => ({ id: photo.id, name: photo.name, thumbUrl: photo.thumbUrl })),
+      locked: photosLocked(),
+    });
+    syncPickerLabel();
   };
 
   const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
@@ -210,11 +215,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const refreshButtons = () => {
     const ready = canUse();
+    const locked = photosLocked();
     playBtn.disabled = recording || !ready;
     saveBtn.disabled = recording || !ready;
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
+    picker.disabled = locked;
+    renderThumbs();
     const active = isPreviewPlaying();
     modalPlayBtn.innerHTML = playPauseButtonHtml(active, locale);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
@@ -249,6 +257,36 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
     refreshBenchFlag();
   };
+
+  const applyPhotoOrder = (ids: readonly string[]) => {
+    const next = orderByIds(photos, ids);
+    if (sameIdOrder(photos, next)) return;
+    photos = next;
+    renderThumbs();
+    paint();
+  };
+
+  const removePhoto = (id: string) => {
+    if (photosLocked()) return;
+    const { removed, rest } = removeById(photos, id);
+    if (!removed) return;
+    photos = rest;
+    revokePhotos([removed]);
+    renderThumbs();
+    paint();
+    refreshButtons();
+    if (photos.length === 0) {
+      setStatus(msg("statusPhotosCleared"));
+      return;
+    }
+    setStatus(msg("statusPhotoRemoved", { n: photos.length }));
+  };
+
+  setPhotoThumbsHandlers({
+    onReorder: applyPhotoOrder,
+    onRemove: removePhoto,
+  });
+  renderThumbs();
 
   const benchSnapshot = () => {
     const elapsed = paintClockStart === 0 ? 0 : performance.now() - paintClockStart;
@@ -556,31 +594,35 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   picker.addEventListener("change", async () => {
     const files = [...(picker.files ?? [])];
     picker.value = "";
-    if (files.length === 0) return;
+    if (files.length === 0 || photosLocked()) return;
+    const hadPhotos = photos.length > 0;
+    photosBusy = true;
+    refreshButtons();
     setStatus(msg("statusPhotosLoading"), "busy");
     try {
-      revokePhotos(photos);
-      photos = [];
-      renderThumbs();
-      photos = await loadPhotos(files, {
+      const added = await loadPhotos(files, {
         onProgress: (current, total) => {
           setStatus(msg("statusPhotosLoadingProgress", { current, total }), "busy");
         },
       });
+      photos = appendAll(photos, added);
       renderThumbs();
       await ensureTimelines();
       paint();
-      refreshButtons();
       setStatus(
         photos.length === 0
           ? msg("statusPickImages")
-          : msg("statusPhotosLoaded", { n: photos.length }),
+          : hadPhotos
+            ? msg("statusPhotosAdded", { n: added.length, total: photos.length })
+            : msg("statusPhotosLoaded", { n: photos.length }),
       );
     } catch (error) {
       renderThumbs();
       paint();
-      refreshButtons();
       setErrorStatus(error, "statusLoadFailed");
+    } finally {
+      photosBusy = false;
+      refreshButtons();
     }
   });
 

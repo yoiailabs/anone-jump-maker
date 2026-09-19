@@ -16,8 +16,8 @@ export type LoadedPhoto = {
  */
 export const PHOTO_MAX_EDGE = 1920;
 
-/** サムネは CSS 3.2rem 程度。2x でも足りる小さい辺。 */
-export const PHOTO_THUMB_EDGE = 160;
+/** サムネは CSS 6rem 程度。3x でも足りる小さい辺。 */
+export const PHOTO_THUMB_EDGE = 240;
 
 /** 同時 decode を抑えて、フル解像度のピークを重ねない。 */
 export const PHOTO_DECODE_CONCURRENCY = 2;

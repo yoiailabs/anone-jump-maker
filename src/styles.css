@@ -16,6 +16,8 @@
   --page-pad-x: 1.15rem;
   --page-pad-bottom: 3.8rem;
   --section-gap: 2.35rem;
+  --thumb-size: 6rem;
+  --thumb-radius: 0.9rem;
 }
 
 * {
@@ -745,20 +747,124 @@ a.btn:focus-visible {
 }
 
 .thumbs {
+  --thumb-size: 6rem;
+  --thumb-radius: 0.9rem;
   display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.1rem;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  padding: 0.55rem 0.15rem 0.45rem;
+  margin: 0;
 }
 
+.thumbs[hidden],
+.thumbs-hint[hidden] {
+  display: none;
+}
+
+.thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.thumb:focus-visible,
+.thumb-remove:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.thumb.is-placeholder {
+  opacity: 1;
+}
+
+.thumb.is-placeholder > * {
+  visibility: hidden;
+}
+
+.thumb-drag-overlay {
+  overflow: visible;
+}
+
+.thumb.thumb-float,
+.thumb-float {
+  width: 100%;
+  height: 100%;
+  cursor: grabbing;
+  touch-action: none;
+  overflow: visible;
+  border-radius: var(--thumb-radius);
+  /* img の box-shadow は角丸とずれることがあるので、測った枠と同じ箱に付ける */
+  box-shadow: 5px 6px 0 var(--ink);
+}
+
+.thumb img,
 .thumbs img {
-  width: 3.2rem;
-  height: 3.2rem;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
   object-fit: cover;
-  border-radius: 999px;
+  border-radius: var(--thumb-radius);
   border: 3px solid var(--ink);
   flex: 0 0 auto;
   background: var(--peach);
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.thumb-index {
+  position: absolute;
+  left: 0.32rem;
+  bottom: 0.32rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.28rem;
+  border-radius: 0.4rem;
+  border: 2px solid var(--ink);
+  background: var(--lime);
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
+.thumb-remove {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border-radius: 0.45rem;
+  border: 2px solid var(--ink);
+  background: var(--coral);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.thumb-remove:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.thumbs-hint {
+  margin: -0.35rem 0 0;
+  color: var(--mute);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
 }
 
 .status[data-kind="busy"] {

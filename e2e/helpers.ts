@@ -11,6 +11,14 @@ export const PHOTO_FILE = {
   path: path.join(fixturesDir, "photo.jpg"),
 } as const;
 
+export async function jpegInput(name: string): Promise<{ name: string; mimeType: string; buffer: Buffer }> {
+  return {
+    name,
+    mimeType: "image/jpeg",
+    buffer: await readFile(PHOTO_FILE.path),
+  };
+}
+
 const SHORT_CUTS = {
   duration: 0.5,
   fps: 30,
