@@ -477,13 +477,14 @@ test("uses three masonry columns on iPad-sized viewports and can sort by popular
     "data-post-id",
     "2101252511386710099",
   );
-  await page.locator("#communitySortPopular").click();
+  await page.locator("#communitySort").scrollIntoViewIfNeeded();
+  await page.locator("label:has(#communitySortPopular)").click();
   await expect(page.locator("#communitySortPopular")).toBeChecked();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
     "2100570924915548571",
   );
-  await page.locator("#communitySortNewest").click();
+  await page.locator("label:has(#communitySortNewest)").click();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
     "2101252511386710099",
