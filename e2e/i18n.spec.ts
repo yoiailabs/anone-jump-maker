@@ -67,16 +67,9 @@ test.describe("language switcher", () => {
 });
 
 test.describe("localized OGP and SEO", () => {
-  test.use({ locale: "en-US" });
-
-  test.beforeEach(async ({ page }) => {
-    await blockAnalytics(page);
-    await stubShortTemplate(page);
-  });
-
   test("emits English Open Graph, Twitter, and hreflang on /en", async ({ page }) => {
     await page.goto("/en");
-    await waitForAppReady(page);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "en_US");
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", t("en", "makerTitle"));
     await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", t("en", "makerTitle"));
@@ -96,7 +89,8 @@ test.describe("localized OGP and SEO", () => {
       "href",
       "https://anone.yoiailabs.com/",
     );
-    await expect(page.locator('script[type="application/ld+json"]')).toContainText('"inLanguage":"en"');
+    const jsonLd = await page.locator('script[type="application/ld+json"]').evaluate((el) => el.textContent ?? "");
+    expect(jsonLd).toContain('"inLanguage":"en"');
     await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute("content", t("en", "makerTitle"));
   });
 
