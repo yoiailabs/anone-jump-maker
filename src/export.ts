@@ -91,6 +91,15 @@ export function hasWebCodecsVideoEncoder(): boolean {
  */
 export const SEEK_PRESENT_TIMEOUT_MS = 400;
 
+/**
+ * 1回のシーク待ち。モバイル Chrome / アプリ内 WebView ではタブが裏に回ると
+ * seeked が遅れたり欠けるので、2500ms より長く待つ。
+ */
+export const SEEK_TIMEOUT_MS = 10_000;
+
+/** タイムアウト後に currentTime を再設定する回数。 */
+export const SEEK_TIMEOUT_RETRIES = 2;
+
 /** RGBA プローブ全体の上限。WebKit の software デコードがここで止まらないようにする。 */
 export const EXPORT_PROBE_TIMEOUT_MS = 1200;
 
@@ -119,6 +128,8 @@ export async function seekVideo(
     ? waitForPresentedFrame(video, SEEK_PRESENT_TIMEOUT_MS, { mediaTime: target })
     : null;
   const seeked = new Promise<void>((resolve, reject) => {
+    let retriesLeft = SEEK_TIMEOUT_RETRIES;
+    let timer = 0;
     const finish = () => {
       window.clearTimeout(timer);
       video.removeEventListener("seeked", onSeeked);
@@ -132,18 +143,31 @@ export async function seekVideo(
       video.removeEventListener("error", onError);
       reject(new Error("シークに失敗しました"));
     };
-    const timer = window.setTimeout(() => {
-      video.removeEventListener("seeked", onSeeked);
-      video.removeEventListener("error", onError);
-      if (Math.abs(video.currentTime - target) < 0.05) {
-        resolve();
-        return;
-      }
-      reject(new Error("シークがタイムアウトしました"));
-    }, 2500);
+    const armTimer = () => {
+      timer = window.setTimeout(() => {
+        if (Math.abs(video.currentTime - target) < 0.05) {
+          finish();
+          return;
+        }
+        if (retriesLeft > 0) {
+          retriesLeft -= 1;
+          try {
+            video.currentTime = target;
+          } catch {
+            /* 再設定できなくても次の待ちに進む */
+          }
+          armTimer();
+          return;
+        }
+        video.removeEventListener("seeked", onSeeked);
+        video.removeEventListener("error", onError);
+        reject(new Error("シークがタイムアウトしました"));
+      }, SEEK_TIMEOUT_MS);
+    };
     video.addEventListener("seeked", onSeeked);
     video.addEventListener("error", onError);
     video.currentTime = target;
+    armTimer();
   });
   if (presented) {
     await Promise.all([seeked, presented]);

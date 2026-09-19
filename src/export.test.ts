@@ -15,6 +15,8 @@ import {
   EXPORT_PATH,
   EXPORT_PROBE_TIMEOUT_MS,
   SEEK_PRESENT_TIMEOUT_MS,
+  SEEK_TIMEOUT_MS,
+  SEEK_TIMEOUT_RETRIES,
   TEMPLATE_FRAME_FROZEN_MESSAGE,
   TEMPLATE_FRAME_MISSING_MESSAGE,
   UNSUPPORTED_EXPORT_MESSAGE,
@@ -227,6 +229,24 @@ function asVideo(video: VideoStub): HTMLVideoElement {
   return video as unknown as HTMLVideoElement;
 }
 
+type StuckVideoStub = VideoStub & { assigns: () => number };
+
+function createStuckVideo(): StuckVideoStub {
+  const video = createVideo({ currentTime: 0, readyState: 2 });
+  let assigns = 0;
+  Object.defineProperty(video, "currentTime", {
+    configurable: true,
+    get() {
+      return 0;
+    },
+    set() {
+      assigns += 1;
+      video.events.push("seek");
+    },
+  });
+  return Object.assign(video, { assigns: () => assigns });
+}
+
 describe("decoded export frames", () => {
   it("accepts a sample at or just before the export timestamp", () => {
     expect(templateFrameMatchesTime(0, 0)).toBe(true);
@@ -355,6 +375,11 @@ describe("seekVideo", () => {
     await pending;
   });
 
+  it("waits longer than the old 2500ms budget and retries on timeout", () => {
+    expect(SEEK_TIMEOUT_MS).toBeGreaterThan(2500);
+    expect(SEEK_TIMEOUT_RETRIES).toBeGreaterThan(0);
+  });
+
   it("returns immediately when the frame is already current", async () => {
     const video = createVideo({ currentTime: 1.2, readyState: 2 });
     video.events.length = 0;
@@ -370,6 +395,76 @@ describe("seekVideo", () => {
       video.dispatch("seeked");
       await vi.advanceTimersByTimeAsync(SEEK_PRESENT_TIMEOUT_MS);
       await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects when the video errors without retrying", async () => {
+    const video = createVideo();
+    const pending = seekVideo(asVideo(video), 1.2);
+    video.dispatch("error");
+    await expect(pending).rejects.toThrow("シークに失敗しました");
+    expect(video.events.filter((event) => event === "seek")).toHaveLength(1);
+  });
+
+  it("resolves on a near-match after the longer wait", async () => {
+    vi.useFakeTimers();
+    try {
+      const video = createVideo();
+      Object.defineProperty(video, "currentTime", {
+        configurable: true,
+        get() {
+          return 1.19;
+        },
+        set() {
+          video.events.push("seek");
+        },
+      });
+      const pending = seekVideo(asVideo(video), 1.2);
+      await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS);
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("retries currentTime after a timeout, then succeeds on seeked", async () => {
+    vi.useFakeTimers();
+    try {
+      const video = createStuckVideo();
+      const pending = seekVideo(asVideo(video), 1.2);
+      expect(video.assigns()).toBe(1);
+      await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS - 1);
+      expect(video.assigns()).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(video.assigns()).toBe(2);
+      video.dispatch("seeked");
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects only after the timeout retries are exhausted", async () => {
+    vi.useFakeTimers();
+    try {
+      const video = createStuckVideo();
+      const pending = seekVideo(asVideo(video), 1.2);
+      let settled = false;
+      void pending.then(
+        () => {
+          settled = true;
+        },
+        () => {
+          settled = true;
+        },
+      );
+      await vi.advanceTimersByTimeAsync(2500);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(SEEK_TIMEOUT_MS * (SEEK_TIMEOUT_RETRIES + 1) - 2500);
+      expect(video.assigns()).toBe(1 + SEEK_TIMEOUT_RETRIES);
+      await expect(pending).rejects.toThrow("シークがタイムアウトしました");
     } finally {
       vi.useRealTimers();
     }
