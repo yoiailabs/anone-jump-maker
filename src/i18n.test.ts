@@ -6,6 +6,7 @@ import {
   parseAppPath,
   pathForApp,
   preferredLocale,
+  songCreditLine,
   t,
 } from "./i18n.ts";
 
@@ -82,5 +83,16 @@ describe("messages", () => {
     expect(t("ko", "makerTitle")).toBe("아노네 점프 메이커");
     expect(t("zh", "makerTitle")).toBe("あのね跳跃制作器");
     expect(t("en", "statusPhotosLoaded", { n: 3 })).toBe("Loaded 3 photos");
+  });
+
+  it("uses the English store title in non-Japanese credits", () => {
+    expect(t("ja", "songTitle")).toBe("あのね");
+    expect(t("ja", "artistName")).toBe("ナナツカゼ");
+    expect(songCreditLine("ja")).toBe("♪ あのね - ナナツカゼ");
+    expect(t("en", "songTitle")).toBe("Anone(Connect the World)");
+    expect(t("en", "artistName")).toBe("Nanatsukaze");
+    expect(songCreditLine("en")).toBe("♪ Anone(Connect the World) - Nanatsukaze");
+    expect(songCreditLine("ko")).toBe(songCreditLine("en"));
+    expect(songCreditLine("zh")).toBe(songCreditLine("en"));
   });
 });

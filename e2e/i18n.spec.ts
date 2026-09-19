@@ -18,6 +18,11 @@ test.describe("language routing", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#makerTitle")).toHaveText(t("en", "makerTitle"));
     await expect(page.locator("#playBtn")).toHaveText(t("en", "makerPreview"));
+    await expect(page.locator("#linksTitle")).toHaveText(t("en", "makerOfficial"));
+    await expect(page.locator(".loop-link")).toHaveAttribute(
+      "aria-label",
+      t("en", "makerPvAria", { song: t("en", "songTitle") }),
+    );
     await expect(page.locator("#toCommunity")).toHaveAttribute("href", "/en/community");
     await expect(page.locator(".lang-switch").first()).toBeVisible();
     await expect(page.locator('.lang-switch a[lang="en"]').first()).toHaveAttribute("aria-current", "page");
@@ -58,5 +63,38 @@ test.describe("language switcher", () => {
     await waitForAppReady(page);
     await expect(page.locator("#communityJumpsTitle")).toHaveText(t("ja", "communityTitle"));
     await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+  });
+});
+
+test.describe("song and artist names", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("keeps Japanese titles on / and English store titles on /ko and /zh", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await expect(page.locator("#linksTitle")).toHaveText(t("ja", "makerOfficial"));
+    await expect(page.locator(".loop-link")).toHaveAttribute(
+      "aria-label",
+      t("ja", "makerPvAria", { song: t("ja", "songTitle") }),
+    );
+
+    await page.goto("/ko");
+    await waitForAppReady(page);
+    await expect(page.locator("#linksTitle")).toHaveText(t("ko", "makerOfficial"));
+    await expect(page.locator(".loop-link")).toHaveAttribute(
+      "aria-label",
+      t("ko", "makerPvAria", { song: t("ko", "songTitle") }),
+    );
+
+    await page.goto("/zh");
+    await waitForAppReady(page);
+    await expect(page.locator("#linksTitle")).toHaveText(t("zh", "makerOfficial"));
+    await expect(page.locator(".loop-link")).toHaveAttribute(
+      "aria-label",
+      t("zh", "makerPvAria", { song: t("zh", "songTitle") }),
+    );
   });
 });

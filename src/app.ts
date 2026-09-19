@@ -87,6 +87,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const benchFlags = readPreviewBenchFlags(typeof location === "undefined" ? "" : location.search);
   const compositor = createCompositor({
+    locale,
     resolutionScale: PREVIEW_RESOLUTION_SCALE,
     createKeyer: benchFlags.forceCpuKeying ? () => null : undefined,
   });

@@ -76,6 +76,11 @@ export function t(locale: Locale, key: MessageKey, vars?: Record<string, string 
   return text;
 }
 
+/** 動画内クレジット。日本語は配信タイトル、それ以外は英語圏の公式メタデータ。 */
+export function songCreditLine(locale: Locale = DEFAULT_LOCALE): string {
+  return `♪ ${t(locale, "songTitle")} - ${t(locale, "artistName")}`;
+}
+
 export function localeCookieHeader(locale: Locale, secure: boolean): string {
   const parts = [
     `${LOCALE_COOKIE}=${locale}`,

@@ -80,7 +80,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
               href="https://www.youtube.com/watch?v=M-IayQIR0XA"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={t(locale, "makerPvAria")}
+              aria-label={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
             >
               <picture>
                 <source media="(prefers-reduced-motion: reduce)" srcSet="/jump-loop-still.png" />

@@ -27,5 +27,7 @@ describe("official link banners", () => {
     expect(html.match(/rel="noopener noreferrer"/g)).toHaveLength(OFFICIAL_LINKS.length);
     expect(html).toContain(`aria-label="ナナツカゼさんのXを開く（新しいタブ）"`);
     expect(linkBannersHtml(undefined, "en")).toContain("Open Nanatsukaze");
+    expect(linkBannersHtml(undefined, "ko")).toContain("Nanatsukaze의 X 열기");
+    expect(linkBannersHtml(undefined, "zh")).toContain("打开 Nanatsukaze 的X");
   });
 });
