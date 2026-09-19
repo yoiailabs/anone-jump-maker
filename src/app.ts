@@ -318,17 +318,9 @@ export async function boot(root: HTMLElement): Promise<void> {
       refreshButtons();
       setStatus("プレビュー中");
       await startLoop();
-      if (gen !== playGen) {
-        video.pause();
-        haltLoop();
-        return;
-      }
+      if (gen !== playGen) return;
       await video.play();
-      if (gen !== playGen) {
-        video.pause();
-        haltLoop();
-        return;
-      }
+      if (gen !== playGen) return;
       video.blur();
       modalPlayBtn.focus();
     } catch (error) {
@@ -359,13 +351,14 @@ export async function boot(root: HTMLElement): Promise<void> {
       previewDialog.showModal();
       lastSlot = -1;
       paint();
-      await startPlayback(true);
     } catch (error) {
       closePreview();
       setErrorStatus(error, "プレビューを開けませんでした");
+      return;
     } finally {
       openingPreview = false;
     }
+    await startPlayback(true);
   };
 
   let communityMounted = false;
