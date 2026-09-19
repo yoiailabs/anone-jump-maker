@@ -347,43 +347,25 @@ describe("tryInOrder / decode fallback order", () => {
 describe("newPhotoId", () => {
   it("uses crypto.randomUUID when it is a function", () => {
     const randomUUID = vi.fn(() => "11111111-2222-3333-4444-555555555555");
-    const getRandomValues = vi.fn();
-    vi.stubGlobal("crypto", { randomUUID, getRandomValues });
+    vi.stubGlobal("crypto", { randomUUID });
     try {
       expect(newPhotoId()).toBe("11111111-2222-3333-4444-555555555555");
       expect(randomUUID).toHaveBeenCalledOnce();
-      expect(getRandomValues).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  it("falls back to crypto.getRandomValues when randomUUID is missing", () => {
+  it("falls back to uuid v4 when randomUUID is missing", () => {
     vi.stubGlobal("crypto", {
       getRandomValues: (bytes: Uint8Array) => {
-        bytes.set([
-          0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
-        ]);
+        bytes.fill(0xab);
         return bytes;
       },
     });
     try {
-      expect(newPhotoId()).toBe("0123456789abcdeffedcba9876543210");
+      expect(newPhotoId()).toBe("abababab-abab-4bab-abab-abababababab");
     } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("falls back to Math.random when crypto has neither API", () => {
-    const random = vi.spyOn(Math, "random").mockReturnValueOnce(0.5).mockReturnValueOnce(0.25);
-    vi.stubGlobal("crypto", {});
-    try {
-      const id = newPhotoId();
-      expect(id.length).toBeGreaterThan(0);
-      expect(id).not.toContain("-");
-      expect(random).toHaveBeenCalledTimes(2);
-    } finally {
-      random.mockRestore();
       vi.unstubAllGlobals();
     }
   });
@@ -416,7 +398,9 @@ describe("loadPhotos", () => {
       const file = jpegFile("IMG_0001.jpg", "");
       const photos = await loadPhotos([file]);
       expect(photos).toHaveLength(1);
-      expect(photos[0]?.id).toBe(`${file.name}-${file.size}-${file.lastModified}-abababababababababababababababab`);
+      expect(photos[0]?.id).toBe(
+        `${file.name}-${file.size}-${file.lastModified}-abababab-abab-4bab-abab-abababababab`,
+      );
     } finally {
       vi.unstubAllGlobals();
     }

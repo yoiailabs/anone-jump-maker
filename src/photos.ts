@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { OUTPUTS } from "./layout.ts";
 import { reportError } from "./sentry.ts";
 
@@ -265,18 +266,14 @@ export function selectImageFiles(files: readonly File[]): File[] {
 
 /**
  * LINE の in-app など非セキュア / WebView では crypto.randomUUID が無い。
- * 写真 ID 用。デコードには使わない。
+ * 無いときは uuid の v4 にフォールバックする。写真 ID 用。デコードには使わない。
  */
 export function newPhotoId(): string {
   const webCrypto = globalThis.crypto;
   if (typeof webCrypto?.randomUUID === "function") {
     return webCrypto.randomUUID();
   }
-  if (typeof webCrypto?.getRandomValues === "function") {
-    const bytes = webCrypto.getRandomValues(new Uint8Array(16));
-    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  }
-  return `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+  return uuidv4();
 }
 
 export async function loadPhotos(
