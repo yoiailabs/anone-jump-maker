@@ -343,23 +343,28 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   };
 
+  const closePreview = () => {
+    if (previewDialog.open) {
+      previewDialog.close();
+    }
+  };
+
+  let openingPreview = false;
   const openPreview = async () => {
-    if (recording || !canUse() || previewDialog.open) return;
+    if (recording || !canUse() || previewDialog.open || openingPreview) return;
+    openingPreview = true;
     try {
-      previewDialog.showModal();
       await ensureTimelines();
-      if (!previewDialog.open || recording) return;
+      if (recording || previewDialog.open) return;
+      previewDialog.showModal();
       lastSlot = -1;
       paint();
       await startPlayback(true);
     } catch (error) {
+      closePreview();
       setErrorStatus(error, "プレビューを開けませんでした");
-    }
-  };
-
-  const closePreview = () => {
-    if (previewDialog.open) {
-      previewDialog.close();
+    } finally {
+      openingPreview = false;
     }
   };
 
