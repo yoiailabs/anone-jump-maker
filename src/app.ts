@@ -296,10 +296,11 @@ export async function boot(root: HTMLElement): Promise<void> {
   const startPlayback = async (fromStart: boolean) => {
     if (recording || playbackBusy || !canUse()) return;
     if (!fromStart && Date.now() < suppressPlayUntil) return;
-    await ensureTimelines();
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
+      await ensureTimelines();
+      if (gen !== playGen) return;
       trackPreviewStart();
       applyPreviewMute();
       if (
@@ -345,8 +346,9 @@ export async function boot(root: HTMLElement): Promise<void> {
   const openPreview = async () => {
     if (recording || !canUse() || previewDialog.open) return;
     try {
-      await ensureTimelines();
       previewDialog.showModal();
+      await ensureTimelines();
+      if (!previewDialog.open || recording) return;
       lastSlot = -1;
       paint();
       await startPlayback(true);
