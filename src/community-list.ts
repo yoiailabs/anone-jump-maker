@@ -79,7 +79,6 @@ export function applyCommunityMasonryLayout(
 export const COMMUNITY_JUMPS_TITLE = t("ja", "communityTitle");
 export const COMMUNITY_JUMPS_LEDE = t("ja", "communityLede");
 export const COMMUNITY_JUMPS_EMPTY = t("ja", "communityEmpty");
-export const COMMUNITY_JUMPS_END = t("ja", "communityEnd");
 export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
 
@@ -168,51 +167,12 @@ export function shouldHydrateRemaining(
   return box.bottom <= viewportHeight + marginPx;
 }
 
-/** 1 / 2 / 3 列で端数が残らない初回バッチ。viewport 1〜2 画面ぶん。 */
-export const COMMUNITY_PAGE_SIZE = 18;
-
-export function communityWindowCount(
-  total: number,
-  shown: number,
-  pageSize = COMMUNITY_PAGE_SIZE,
-): number {
-  const size = Number.isInteger(pageSize) && pageSize > 0 ? pageSize : COMMUNITY_PAGE_SIZE;
-  if (!Number.isInteger(total) || total <= 0) return 0;
-  if (!Number.isInteger(shown) || shown <= 0) return Math.min(size, total);
-  return Math.min(total, shown);
-}
-
-export function nextCommunityWindowCount(
-  total: number,
-  shown: number,
-  pageSize = COMMUNITY_PAGE_SIZE,
-): number {
-  const size = Number.isInteger(pageSize) && pageSize > 0 ? pageSize : COMMUNITY_PAGE_SIZE;
-  if (!Number.isInteger(total) || total <= 0) return 0;
-  const current = Number.isInteger(shown) && shown > 0 ? Math.min(total, shown) : 0;
-  return Math.min(total, current + size);
-}
-
-export function shouldLoadMoreCommunity(
-  shown: number,
-  total: number,
-  box: Pick<DOMRect, "bottom" | "height" | "width">,
-  viewportHeight: number,
-  marginPx = HYDRATE_ROOT_MARGIN_PX,
-): boolean {
-  if (!Number.isInteger(shown) || !Number.isInteger(total) || shown >= total) return false;
-  return shouldHydrateRemaining(box, viewportHeight, marginPx);
-}
-
 export function communityJumpsSectionHtml(
   posts: readonly CommunityJumpPost[] = COMMUNITY_JUMP_POSTS,
   locale: Locale = DEFAULT_LOCALE,
   sort: CommunityJumpSort = DEFAULT_COMMUNITY_JUMP_SORT,
 ): string {
   const ordered = sortCommunityJumpPosts(posts, sort);
-  const shown = communityWindowCount(ordered.length, 0);
-  const slice = ordered.slice(0, shown);
-  const allShown = ordered.length > 0 && shown >= ordered.length;
   return `
     <section class="community-jumps" id="communityJumps" data-locale="${locale}" data-sort="${sort}" aria-labelledby="communityJumpsTitle">
       <header class="hero community-jumps-hero">
@@ -230,15 +190,9 @@ export function communityJumpsSectionHtml(
       ${
         posts.length === 0
           ? `<p class="community-jumps-empty">${t(locale, "communityEmpty")}</p>`
-          : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList" data-visible-count="${shown}">${itemsHtml(slice, locale)}</ol>
-      <div id="communityJumpsSentinel" class="community-jumps-sentinel"${allShown ? " hidden" : ""} aria-hidden="true"></div>`
+          : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(ordered, locale)}</ol>`
       }
       <footer class="community-jumps-end">
-        ${
-          posts.length === 0
-            ? ""
-            : `<p id="communityJumpsEndNote" class="community-jumps-end-note"${allShown ? "" : " hidden"}>${t(locale, "communityEnd")}</p>`
-        }
         ${toMakerLinkHtml("toMakerBottom", locale)}
         ${languageNavHtml(locale, "community")}
       </footer>
@@ -260,14 +214,11 @@ export function mountCommunityJumps(
   const list = section.querySelector<HTMLElement>("#communityJumpsList");
   if (!list || posts.length === 0) return;
 
-  const sentinel = section.querySelector<HTMLElement>("#communityJumpsSentinel");
-  const endNote = section.querySelector<HTMLElement>("#communityJumpsEndNote");
   const remembered = new Set<number>();
   let ordered = sortCommunityJumpPosts(
     posts,
     isCommunityJumpSort(section.dataset.sort) ? section.dataset.sort : DEFAULT_COMMUNITY_JUMP_SORT,
   );
-  let visibleCount = communityWindowCount(ordered.length, list.querySelectorAll(".community-jumps-item").length);
 
   const itemsNow = () => [...list.querySelectorAll<HTMLElement>(".community-jumps-item")];
 
@@ -278,15 +229,11 @@ export function mountCommunityJumps(
     applyCommunityMasonryLayout(list, itemsNow(), columnCount());
   };
 
-  const syncWindowChrome = () => {
-    const all = visibleCount >= ordered.length;
-    if (sentinel) sentinel.hidden = all;
-    if (endNote) endNote.hidden = !all;
-    list.dataset.visibleCount = String(visibleCount);
-  };
-
   const incomingIndexes = () => {
     const items = itemsNow();
+    if (typeof window !== "undefined" && shouldHydrateRemaining(list.getBoundingClientRect(), window.innerHeight)) {
+      return ordered.map((_, index) => index);
+    }
     if (typeof window === "undefined") return remembered.size > 0 ? [] : [0];
     return visibleLogicalIndexes(items, window.innerHeight);
   };
@@ -295,12 +242,7 @@ export function mountCommunityJumps(
     if (!isEmbedHostVisible(section)) return;
     const incoming = incomingIndexes();
     const kickstart = remembered.size === 0 && incoming.length === 0 ? [0] : incoming;
-    const want = rememberHydrateIndexes(
-      remembered,
-      kickstart,
-      visibleCount,
-      hydratePadForColumns(columnCount()),
-    );
+    const want = rememberHydrateIndexes(remembered, kickstart, ordered.length, hydratePadForColumns(columnCount()));
     for (const index of want) remembered.add(index);
 
     const freshCards: HTMLElement[] = [];
@@ -332,7 +274,11 @@ export function mountCommunityJumps(
     layoutMasonry();
   };
 
-  let loadMoreIfNeeded = (): void => {};
+  const refresh = () => {
+    remountHydratedCards();
+    hydrateWanted();
+  };
+  communityRefreshers.set(section, refresh);
 
   let observer: IntersectionObserver | undefined;
   let resizeObserver: ResizeObserver | undefined;
@@ -345,10 +291,6 @@ export function mountCommunityJumps(
         (entries) => {
           for (const entry of entries) {
             if (!entry.isIntersecting || !(entry.target instanceof HTMLElement)) continue;
-            if (entry.target === sentinel) {
-              loadMoreIfNeeded();
-              continue;
-            }
             const logical = Number(entry.target.dataset.logical);
             if (Number.isInteger(logical)) remembered.add(logical);
           }
@@ -357,7 +299,6 @@ export function mountCommunityJumps(
         { root: null, rootMargin: `${HYDRATE_ROOT_MARGIN_PX}px 0px`, threshold: 0 },
       );
       for (const item of itemsNow()) observer.observe(item);
-      if (sentinel && !sentinel.hidden) observer.observe(sentinel);
     }
     if (typeof ResizeObserver !== "undefined") {
       resizeObserver = new ResizeObserver(() => {
@@ -369,55 +310,14 @@ export function mountCommunityJumps(
     }
   };
 
-  const appendWindow = (): boolean => {
-    const next = nextCommunityWindowCount(ordered.length, visibleCount);
-    if (next <= visibleCount) {
-      syncWindowChrome();
-      return false;
-    }
-    const added = ordered.slice(visibleCount, next);
-    list.insertAdjacentHTML("beforeend", itemsHtml(added, localeOf(section), visibleCount));
-    visibleCount = next;
-    syncWindowChrome();
-    return true;
-  };
-
-  loadMoreIfNeeded = () => {
-    if (typeof window === "undefined") return;
-    let added = false;
-    let guard = 0;
-    while (visibleCount < ordered.length && guard < 8) {
-      guard += 1;
-      const box = sentinel && !sentinel.hidden ? sentinel.getBoundingClientRect() : list.getBoundingClientRect();
-      if (!shouldLoadMoreCommunity(visibleCount, ordered.length, box, window.innerHeight)) break;
-      if (!appendWindow()) break;
-      added = true;
-    }
-    if (added) {
-      watchItems();
-      layoutMasonry();
-    }
-  };
-
-  const refresh = () => {
-    remountHydratedCards();
-    loadMoreIfNeeded();
-    hydrateWanted();
-  };
-  communityRefreshers.set(section, refresh);
-
   const applySort = (sort: CommunityJumpSort) => {
     ordered = sortCommunityJumpPosts(posts, sort);
     remembered.clear();
-    visibleCount = communityWindowCount(ordered.length, 0);
     section.dataset.sort = sort;
-    list.innerHTML = itemsHtml(ordered.slice(0, visibleCount), localeOf(section));
-    syncWindowChrome();
+    list.innerHTML = itemsHtml(ordered, localeOf(section));
     watchItems();
     layoutMasonry();
-    if (typeof window !== "undefined") window.scrollTo(0, 0);
     hydrateWanted();
-    loadMoreIfNeeded();
   };
 
   const sortRoot = section.querySelector<HTMLElement>("#communitySort");
@@ -427,32 +327,23 @@ export function mountCommunityJumps(
     applySort(target.value);
   });
 
-  syncWindowChrome();
   layoutMasonry();
   watchItems();
 
   if (typeof IntersectionObserver === "undefined") {
-    visibleCount = ordered.length;
-    list.innerHTML = itemsHtml(ordered, localeOf(section));
-    for (let index = 0; index < visibleCount; index += 1) remembered.add(index);
-    syncWindowChrome();
-    watchItems();
+    for (let index = 0; index < ordered.length; index += 1) remembered.add(index);
     hydrateWanted();
     return;
   }
 
   const onScrollOrResize = () => {
     layoutMasonry();
-    loadMoreIfNeeded();
     hydrateWanted();
   };
   window.addEventListener("scroll", onScrollOrResize, { passive: true });
   window.addEventListener("resize", onScrollOrResize);
 
-  requestAnimationFrame(() => {
-    loadMoreIfNeeded();
-    hydrateWanted();
-  });
+  requestAnimationFrame(hydrateWanted);
 }
 
 export function communitySortHtml(
@@ -477,13 +368,13 @@ export function communitySortHtml(
   `;
 }
 
-function itemsHtml(posts: readonly CommunityJumpPost[], locale: Locale, startLogical = 0): string {
+function itemsHtml(posts: readonly CommunityJumpPost[], locale: Locale): string {
   return posts
     .map(
-      (post, index) => `
+      (post, logical) => `
         <li
           class="community-jumps-item"
-          data-logical="${startLogical + index}"
+          data-logical="${logical}"
           data-post-id="${escapeHtml(post.id)}"
         >
           <article class="community-jumps-card" data-media="${escapeHtml(post.media)}">${fallbackHtml(post, locale)}</article>

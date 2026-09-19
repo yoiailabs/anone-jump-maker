@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   COMMUNITY_JUMPS_EMPTY,
-  COMMUNITY_JUMPS_END,
   COMMUNITY_JUMPS_LEDE,
   COMMUNITY_JUMPS_TITLE,
   COMMUNITY_MASONRY_BREAKPOINTS,
   COMMUNITY_MASONRY_GAP_PX,
   COMMUNITY_MASONRY_ROW_PX,
-  COMMUNITY_PAGE_SIZE,
   MORE_JUMPS_HREF,
   MORE_JUMPS_QUERY,
   applyCommunityMasonryItem,
@@ -17,14 +15,11 @@ import {
   communityMasonryColumns,
   communityMasonryRowSpan,
   communityTitleHtml,
-  communityWindowCount,
   hydrateIndexes,
   hydratePadForColumns,
-  nextCommunityWindowCount,
   refreshCommunityJumps,
   rememberHydrateIndexes,
   shouldHydrateRemaining,
-  shouldLoadMoreCommunity,
   visibleLogicalIndexes,
 } from "./community-list.ts";
 import {
@@ -73,24 +68,6 @@ describe("community list hydrate window", () => {
 
   it("no-ops refresh when the list was never mounted", () => {
     expect(() => refreshCommunityJumps({} as HTMLElement)).not.toThrow();
-  });
-});
-
-describe("community infinite scroll window", () => {
-  it("opens an 18-item first batch that divides 1 / 2 / 3 columns", () => {
-    expect(COMMUNITY_PAGE_SIZE).toBe(18);
-    expect(communityWindowCount(51, 0)).toBe(18);
-    expect(communityWindowCount(10, 0)).toBe(10);
-    expect(communityWindowCount(0, 0)).toBe(0);
-    expect(communityWindowCount(51, 18)).toBe(18);
-    expect(communityWindowCount(51, 40)).toBe(40);
-    expect(nextCommunityWindowCount(51, 0)).toBe(18);
-    expect(nextCommunityWindowCount(51, 18)).toBe(36);
-    expect(nextCommunityWindowCount(51, 36)).toBe(51);
-    expect(nextCommunityWindowCount(51, 51)).toBe(51);
-    expect(shouldLoadMoreCommunity(18, 51, { bottom: 900, height: 20, width: 320 }, 800, 160)).toBe(true);
-    expect(shouldLoadMoreCommunity(51, 51, { bottom: 900, height: 20, width: 320 }, 800, 160)).toBe(false);
-    expect(shouldLoadMoreCommunity(18, 51, { bottom: 2000, height: 20, width: 320 }, 800, 160)).toBe(false);
   });
 });
 
@@ -193,20 +170,19 @@ describe("community list markup", () => {
     expect(html).not.toContain("communityJumpsMeter");
     expect(html).not.toContain("community-jumps-track");
     expect(html).not.toContain("community-jumps-viewport");
-    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(COMMUNITY_PAGE_SIZE);
-    expect(html.match(/data-media="video"/g)).toHaveLength(COMMUNITY_PAGE_SIZE);
-    expect(html).toContain('data-visible-count="18"');
-    expect(html).toContain('id="communityJumpsSentinel"');
-    expect(html).toContain(COMMUNITY_JUMPS_END);
-    expect(html).toContain("communityJumpsEndNote");
+    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(51);
+    expect(html.match(/data-media="video"/g)).toHaveLength(51);
     expect(html.match(/data-post-id="2101252511386710099"/g)).toHaveLength(1);
-    expect(html).not.toContain('data-post-id="2100164507607949586"');
+    expect(html.match(/data-post-id="2100164507607949586"/g)).toHaveLength(1);
     expect(html).toContain("@qmapon");
-    expect(html.indexOf("2101252511386710099")).toBeLessThan(html.indexOf("communityJumpsSentinel"));
+    expect(html).toContain("@02_ZERO_Ni");
+    expect(html).toContain("738 いいね");
+    expect(html).toContain("@_nakotanmaru");
+    expect(html).toContain('href="https://x.com/_nakotanmaru/status/2100880092864122959"');
+    expect(html.indexOf("2101252511386710099")).toBeLessThan(html.indexOf("2100164507607949586"));
     const popular = communityJumpsSectionHtml(undefined, "ja", "popular");
     expect(popular.indexOf("2100570924915548571")).toBeLessThan(popular.indexOf("2100797924125049167"));
     expect(popular).toContain('data-sort="popular"');
-    expect(popular.match(/class="community-jumps-item"/g)).toHaveLength(COMMUNITY_PAGE_SIZE);
   });
 
   it("keeps a long curated list in the same masonry markup so new rows are drop-in", () => {
@@ -214,7 +190,7 @@ describe("community list markup", () => {
       communityJumpFromHref(`https://x.com/user${index}/status/${2_100_000_000_000_000 + index}`, index + 1),
     );
     const html = communityJumpsSectionHtml(posts);
-    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(COMMUNITY_PAGE_SIZE);
+    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(30);
     expect(COMMUNITY_JUMP_CAPACITY).toBeGreaterThanOrEqual(51);
     expect(html).toContain("community-jumps-masonry");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
@@ -232,8 +208,6 @@ describe("community list markup", () => {
     expect(html).toContain('id="communityHashtag"');
     expect(html).not.toContain('id="moreJumps"');
     expect(html).not.toContain("community-jumps-list");
-    expect(html).not.toContain("communityJumpsSentinel");
-    expect(html).not.toContain("communityJumpsEndNote");
     expect(html).not.toContain("communitySort");
     expect(html).not.toContain(COMMUNITY_JUMPS_LEDE);
   });
@@ -245,9 +219,6 @@ describe("community list markup", () => {
     expect(html).not.toContain("communitySort");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain(communityTitleHtml());
-    expect(html).toContain(COMMUNITY_JUMPS_END);
-    expect(html).toContain('id="communityJumpsEndNote"');
-    expect(html).toMatch(/id="communityJumpsSentinel"[^>]* hidden/);
   });
 });
 
