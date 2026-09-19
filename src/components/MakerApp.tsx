@@ -38,15 +38,19 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
     const startSentry = () => {
       initSentry();
     };
-    if (typeof requestIdleCallback === "function") {
-      requestIdleCallback(startSentry, { timeout: 4000 });
-    } else {
-      window.setTimeout(startSentry, 2000);
-    }
+    const onFirstGesture = () => startSentry();
+    window.addEventListener("pointerdown", onFirstGesture, { once: true, passive: true });
+    window.addEventListener("keydown", onFirstGesture, { once: true });
+    window.addEventListener("error", onFirstGesture, { once: true });
+    window.addEventListener("unhandledrejection", onFirstGesture, { once: true });
+    const sentryTimer = window.setTimeout(startSentry, 20000);
     void boot(root, { locale }).catch((error: unknown) => {
       reportError(error);
       root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
     });
+    return () => {
+      window.clearTimeout(sentryTimer);
+    };
   }, [locale]);
 
   const makerHidden = initialView !== "maker";

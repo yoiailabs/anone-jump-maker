@@ -56,11 +56,10 @@ const jsonLd = JSON.stringify({
       ["pointerdown", "keydown", "scroll"].forEach(function (name) {
         window.addEventListener(name, loadGtag, { once: true, passive: true });
       });
-      if ("requestIdleCallback" in window) {
-        requestIdleCallback(loadGtag, { timeout: 4000 });
-      } else {
-        setTimeout(loadGtag, 4000);
-      }
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") loadGtag();
+      });
+      setTimeout(loadGtag, 20000);
     </script>
     <meta name="theme-color" content={PWA_THEME_COLOR} />
     <meta name="mobile-web-app-capable" content="yes" />
