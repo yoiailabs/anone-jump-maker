@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Plus } from "lucide-react";
 import { t, type Locale } from "../i18n.ts";
 import {
   getPhotoThumbsHandlers,
@@ -115,6 +116,7 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
                 onMove={(delta) => moveBy(index, index + delta)}
               />
             ))}
+            <AddThumbButton locale={locale} locked={locked} />
           </div>
         </SortableContext>
         <DragOverlay
@@ -136,6 +138,31 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
         {t(locale, "makerThumbsHint")}
       </p>
     </>
+  );
+}
+
+function openPhotoPicker(): void {
+  const picker = document.querySelector<HTMLInputElement>("#picker");
+  if (!picker || picker.disabled) return;
+  picker.click();
+}
+
+function AddThumbButton({ locale, locked }: { locale: Locale; locked: boolean }) {
+  return (
+    <button
+      type="button"
+      className="thumb-add"
+      disabled={locked}
+      aria-label={t(locale, "makerAddPhotos")}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onTouchStart={(event) => event.stopPropagation()}
+      onClick={() => {
+        if (!locked) openPhotoPicker();
+      }}
+    >
+      <Plus aria-hidden="true" strokeWidth={3} />
+    </button>
   );
 }
 

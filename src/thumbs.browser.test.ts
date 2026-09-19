@@ -74,6 +74,29 @@ describe("PhotoThumbs", () => {
     expect(onRemove).toHaveBeenCalledWith("b");
   });
 
+  it("shows an add tile that opens the photo picker", async () => {
+    await mount();
+    const picker = document.createElement("input");
+    picker.id = "picker";
+    picker.type = "file";
+    const click = vi.spyOn(picker, "click");
+    document.body.append(picker);
+
+    const add = document.querySelector<HTMLButtonElement>(".thumb-add");
+    expect(add).toBeTruthy();
+    expect(add?.getAttribute("aria-label")).toBe("写真を追加");
+    expect(add?.disabled).toBe(false);
+    act(() => {
+      add!.click();
+    });
+    expect(click).toHaveBeenCalledOnce();
+
+    act(() => {
+      setPhotoThumbsState({ photos, locked: true });
+    });
+    expect(document.querySelector<HTMLButtonElement>(".thumb-add")?.disabled).toBe(true);
+  });
+
   it("does not reorder on a quick touch swipe", async () => {
     const { onReorder } = await mount();
     const first = document.querySelector<HTMLElement>(".thumb[data-photo-id]")!;

@@ -779,6 +779,46 @@ a.btn:focus-visible {
   outline-offset: 2px;
 }
 
+.thumb-add:focus-visible {
+  outline: 3px solid var(--lime);
+  outline-offset: 2px;
+}
+
+.thumb-add {
+  flex: 0 0 auto;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: var(--thumb-radius);
+  border: 3px solid var(--ink);
+  background: var(--teal);
+  color: var(--ink);
+  box-shadow: 4px 5px 0 var(--ink);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.16s ease;
+}
+
+.thumb-add svg {
+  width: 2.15rem;
+  height: 2.15rem;
+}
+
+.thumb-add:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.thumb-add:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .thumb.is-placeholder {
   opacity: 1;
 }
