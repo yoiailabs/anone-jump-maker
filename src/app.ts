@@ -13,6 +13,7 @@ import {
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
+import { communityJumpsSectionHtml, mountCommunityJumps } from "./community-carousel.ts";
 import { linkBannersHtml } from "./links.ts";
 import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
@@ -188,6 +189,7 @@ export async function boot(root: HTMLElement): Promise<void> {
           <p class="links-title" id="linksTitle">ナナツカゼさん公式</p>
           <ul class="link-banners">${linkBannersHtml()}</ul>
         </nav>
+        ${communityJumpsSectionHtml()}
         <section class="reactions" aria-labelledby="reactionsTitle">
           <h2 class="reactions-title" id="reactionsTitle">反応</h2>
           <div class="reactions-embed" id="reactionsEmbed">${reactionEmbedHtml()}</div>
@@ -818,6 +820,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   void video.load();
+  mountCommunityJumps(must(root, "#communityJumps"));
   hydrateReactionEmbed(must(root, "#reactionsEmbed"));
 }
 

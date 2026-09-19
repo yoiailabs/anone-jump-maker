@@ -756,6 +756,194 @@ body {
   stroke-linejoin: round;
 }
 
+/* 画面最下部のコミュニティ動画。左右送りの無限カルーセル。 */
+.community-jumps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.community-jumps-title {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.74rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+.community-jumps-lede,
+.community-jumps-empty,
+.community-jumps-meter {
+  margin: 0;
+  color: var(--mute);
+  line-height: 1.7;
+}
+
+.community-jumps-lede {
+  font-size: 0.82rem;
+}
+
+.community-jumps-empty {
+  padding: 0.9rem 1rem;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 1.4rem;
+  box-shadow: 5px 6px 0 var(--coral);
+  font-size: 0.88rem;
+}
+
+.community-jumps-viewport {
+  overflow: hidden;
+  width: 100%;
+  border-radius: 1.4rem;
+  touch-action: pan-y;
+}
+
+.community-jumps-viewport:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.community-jumps-track {
+  display: flex;
+  align-items: stretch;
+  transition: transform 0.36s ease;
+  will-change: transform;
+}
+
+.community-jumps-track[data-instant="true"] {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .community-jumps-track {
+    transition: none;
+  }
+}
+
+.community-jumps-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+}
+
+.community-jumps-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 22rem;
+  padding: 0.35rem 0.15rem;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 1.4rem;
+  box-shadow: 5px 6px 0 var(--teal);
+}
+
+.community-jumps-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.2rem 1rem;
+  text-align: center;
+}
+
+.community-jumps-handle {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.community-jumps-likes {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.community-jumps-fallback a {
+  color: #2a7f82;
+  font-weight: 700;
+}
+
+.community-jumps-card .twitter-tweet {
+  width: 100%;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.community-jumps-card .twitter-tweet a {
+  color: #2a7f82;
+}
+
+.community-jumps-card .twitter-tweet-rendered,
+.community-jumps-card iframe.twitter-tweet-rendered {
+  width: 100% !important;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.community-jumps-controls {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr 2.6rem;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.community-jumps-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--lime);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.community-jumps-nav[data-dir="next"] {
+  background: var(--coral);
+}
+
+.community-jumps-nav:hover {
+  transform: translateY(-2px);
+}
+
+.community-jumps-nav:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.community-jumps-nav[hidden] {
+  visibility: hidden;
+}
+
+.community-jumps-nav svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.community-jumps-meter {
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* 画面最下部の反応。公式ウィジェットが来るまでのblockquoteも同じ枠に収める。 */
 .reactions {
   display: flex;

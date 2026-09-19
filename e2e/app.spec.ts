@@ -65,6 +65,25 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
 });
 
+test("shows the community jumps carousel above reactions and wraps the loop", async ({ page }) => {
+  const community = page.locator("#communityJumpsTitle");
+  const reactions = page.locator("#reactionsTitle");
+  await expect(community).toHaveText("みんなの #あのねジャンプ");
+  await expect(page.locator("#communityJumpsMeter")).toHaveText("1 / 10");
+  await expect(page.locator("#communityJumps .community-jumps-slide")).toHaveCount(12);
+
+  const communityBox = await community.boundingBox();
+  const reactionsBox = await reactions.boundingBox();
+  expect(communityBox && reactionsBox && communityBox.y < reactionsBox.y).toBe(true);
+
+  await page.locator("#communityJumpsPrev").click();
+  await expect(page.locator("#communityJumpsMeter")).toHaveText("10 / 10");
+  await page.locator("#communityJumpsNext").click();
+  await expect(page.locator("#communityJumpsMeter")).toHaveText("1 / 10");
+  await page.locator("#communityJumpsNext").click();
+  await expect(page.locator("#communityJumpsMeter")).toHaveText("2 / 10");
+});
+
 test("copies hashtags from the panel", async ({ page, context, browserName }) => {
   if (browserName === "chromium") {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
