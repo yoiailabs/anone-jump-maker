@@ -91,6 +91,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#toMaker")).toBeVisible();
   await expect(page.locator("#toMaker")).toHaveClass(/\bbtn\b/);
   await expect(page.locator("#toMaker")).toHaveClass(/\bghost\b/);
+  await expect(page.locator("#toMakerBottom")).toHaveClass(/\bbtn\b/);
+  await expect(page.locator("#toMakerBottom")).toHaveClass(/\bghost\b/);
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
@@ -105,8 +107,13 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
   expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
 
-  await page.locator("#communityJumps .community-jumps-item").nth(9).scrollIntoViewIfNeeded();
-  await page.locator("#toMaker").click();
+  const bottomBack = page.locator("#toMakerBottom");
+  const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(9);
+  await lastAfter.scrollIntoViewIfNeeded();
+  const lastAfterBox = await lastAfter.boundingBox();
+  const bottomBox = await bottomBack.boundingBox();
+  expect(lastAfterBox && bottomBox && lastAfterBox.y < bottomBox.y).toBe(true);
+  await bottomBack.click();
   await expect(page).toHaveURL(/#maker/);
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#playBtn")).toBeVisible();

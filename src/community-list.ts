@@ -49,6 +49,7 @@ export function communityJumpsSectionHtml(
           ? `<p class="community-jumps-empty">${COMMUNITY_JUMPS_EMPTY}</p>`
           : `<ol class="community-jumps-list" id="communityJumpsList">${itemsHtml(posts)}</ol>`
       }
+      ${toMakerLinkHtml("toMakerBottom")}
     </section>
   `;
 }

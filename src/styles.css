@@ -174,13 +174,16 @@ body {
   text-wrap: pretty;
 }
 
-.hero-more,
-.community-back-wrap {
+.hero-more {
   margin: 0.85rem 0 0;
 }
 
-.community-back-wrap {
+.community-jumps-hero .community-back-wrap {
   margin: 0 0 0.85rem;
+}
+
+.community-jumps > .community-back-wrap {
+  margin: 0;
 }
 
 .hero-more .btn,

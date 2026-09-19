@@ -28,9 +28,14 @@ describe("community list markup", () => {
     expect(html).toContain('id="communityJumps"');
     expect(html).toContain('id="communityJumpsList"');
     expect(html).toContain('id="toMaker"');
+    expect(html).toContain('id="toMakerBottom"');
     expect(html).toContain('href="#maker"');
     expect(html).toContain('class="btn ghost"');
     expect(html).toContain("メーカーに戻る");
+    expect(html.match(/id="toMaker"/g)).toHaveLength(1);
+    expect(html.match(/メーカーに戻る/g)).toHaveLength(2);
+    expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
+    expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("toMakerBottom"));
     expect(html).not.toContain("app-tab");
     expect(html).not.toContain("communityJumpsPrev");
     expect(html).not.toContain("communityJumpsNext");
@@ -52,6 +57,7 @@ describe("community list markup", () => {
     const html = communityJumpsSectionHtml(empty);
     expect(html).toContain(COMMUNITY_JUMPS_EMPTY);
     expect(html).toContain(COMMUNITY_JUMPS_TITLE);
+    expect(html).toContain('id="toMakerBottom"');
     expect(html).not.toContain("community-jumps-list");
     expect(html).not.toContain(COMMUNITY_JUMPS_LEDE);
   });

@@ -41,5 +41,6 @@ describe("app view hash", () => {
     expect(toMaker).toContain('id="toMaker"');
     expect(toMaker).toContain('class="btn ghost"');
     expect(toMaker).not.toContain("app-tab");
+    expect(toMakerLinkHtml("toMakerBottom")).toContain('id="toMakerBottom"');
   });
 });
