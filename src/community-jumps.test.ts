@@ -9,20 +9,22 @@ import {
   sortCommunityJumpPosts,
 } from "./community-jumps.ts";
 
-const NEWEST_ID = "2101252511386710099";
-const OLDEST_ID = "2100164507607949586";
+const NEWEST_ID = "2101288627989057912";
+const OLDEST_ID = "2011056367419998636";
 const MOST_LIKED_ID = "2100570924915548571";
 
 describe("community jump posts", () => {
-  it("keeps 51 unique curated posts with likes and dates", () => {
-    expect(COMMUNITY_JUMP_POSTS).toHaveLength(51);
+  it("keeps 152 unique curated posts with likes and dates", () => {
+    expect(COMMUNITY_JUMP_POSTS).toHaveLength(152);
     expect(COMMUNITY_JUMP_POSTS.length).toBeLessThanOrEqual(COMMUNITY_JUMP_CAPACITY);
-    expect(COMMUNITY_JUMP_CAPACITY).toBe(80);
-    expect(new Set(COMMUNITY_JUMP_POSTS.map((post) => post.id)).size).toBe(51);
+    expect(COMMUNITY_JUMP_CAPACITY).toBe(160);
+    expect(new Set(COMMUNITY_JUMP_POSTS.map((post) => post.id)).size).toBe(152);
     expect(COMMUNITY_JUMP_POSTS.every((post) => post.media === "video")).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.every((post) => post.createdAt && post.likes != null)).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === "2100797924125049167")).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === NEWEST_ID)).toBe(true);
+    expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === OLDEST_ID)).toBe(true);
+    expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === OLDEST_ID)?.createdAt).toBe("2026-01-13");
     expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === MOST_LIKED_ID)?.likes).toBe(4003);
   });
 
