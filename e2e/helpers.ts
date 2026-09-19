@@ -52,6 +52,10 @@ export async function blockAnalytics(page: Page): Promise<void> {
   await page.route("https://platform.twitter.com/**", (route) => route.abort());
 }
 
+export function stripZwsp(text: string): string {
+  return text.replaceAll("\u200b", "");
+}
+
 export async function waitForAppReady(page: Page): Promise<void> {
   await page.locator("#toCommunity").waitFor({ state: "attached" });
   await page.locator("#playBtn").waitFor({ state: "attached" });

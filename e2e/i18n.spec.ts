@@ -208,3 +208,39 @@ test.describe("song and artist names", () => {
     );
   });
 });
+
+test.describe("maker lede phrase wrapping", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("wraps Japanese lede at phrase boundaries and leaves English unchanged", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    const jaExpected = `${t("ja", "makerLede1")}${t("ja", "makerLede2")}${t("ja", "makerLede3")}`;
+    await expect
+      .poll(async () =>
+        page.locator("#makerView .lede").evaluate((el) => {
+          const text = el.textContent ?? "";
+          const wordBreak = getComputedStyle(el).wordBreak;
+          return {
+            visible: text.replaceAll("\u200b", ""),
+            hasBreaks: text.includes("\u200b") || wordBreak === "auto-phrase",
+          };
+        }),
+      )
+      .toEqual({ visible: jaExpected, hasBreaks: true });
+
+    await page.goto("/en");
+    await waitForAppReady(page);
+    const enExpected = `${t("en", "makerLede1")}${t("en", "makerLede2")}${t("en", "makerLede3")}`;
+    const en = await page.locator("#makerView .lede").evaluate((el) => ({
+      text: el.textContent ?? "",
+      wordBreak: getComputedStyle(el).wordBreak,
+    }));
+    expect(en.text).toBe(enExpected);
+    expect(en.text).not.toContain("\u200b");
+    expect(en.wordBreak).not.toBe("auto-phrase");
+  });
+});
