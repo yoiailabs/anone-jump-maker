@@ -53,6 +53,11 @@ test.describe("language switcher", () => {
     await page.locator("#toCommunity").click();
     await expect(page).toHaveURL(/\/en\/community\/?$/);
     await expect(page.locator("#communityJumpsTitle")).toHaveText(t("en", "communityTitle"));
+    await expect(page.locator("#communityJumpsTitle a")).toHaveCount(0);
+    await expect(page.locator('#communityHashtagSearch a[data-service="x"]')).toHaveAttribute(
+      "aria-label",
+      t("en", "communityHashtagSearchAria", { label: "X" }),
+    );
     await expect(page.locator("#communityView .hero .lang-switch a[lang='ko']")).toHaveAttribute(
       "href",
       "/ko/community",

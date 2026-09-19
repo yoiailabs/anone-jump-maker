@@ -14,6 +14,7 @@ import {
   t,
   type Locale,
 } from "./i18n.ts";
+import { linkBannersHtml, type OfficialLink } from "./links.ts";
 import { toMakerLinkHtml } from "./nav.ts";
 import { hydrateReactionEmbed, isEmbedHostVisible } from "./reactions.ts";
 
@@ -81,6 +82,37 @@ export const COMMUNITY_JUMPS_LEDE = t("ja", "communityLede");
 export const COMMUNITY_JUMPS_EMPTY = t("ja", "communityEmpty");
 export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
+const HASHTAG_SLUG = MORE_JUMPS_QUERY.slice(1);
+
+/** 見出し下の SNS。公式アカウントではなく #あのねジャンプ の検索・タグへ。 */
+export const COMMUNITY_HASHTAG_SEARCH_LINKS: readonly OfficialLink[] = [
+  { id: "x", label: "X", href: MORE_JUMPS_HREF },
+  {
+    id: "instagram",
+    label: "Instagram",
+    href: `https://www.instagram.com/explore/tags/${encodeURIComponent(HASHTAG_SLUG)}/`,
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    href: `https://www.youtube.com/results?search_query=${encodeURIComponent(MORE_JUMPS_QUERY)}`,
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    href: `https://www.tiktok.com/tag/${encodeURIComponent(HASHTAG_SLUG)}`,
+  },
+];
+
+export function communityHashtagSearchHtml(locale: Locale = DEFAULT_LOCALE): string {
+  return `
+    <nav class="community-hashtag-search" aria-label="${t(locale, "communityHashtagSearchNav")}">
+      <ul class="link-banners" id="communityHashtagSearch">
+        ${linkBannersHtml(COMMUNITY_HASHTAG_SEARCH_LINKS, locale, "communityHashtagSearchAria")}
+      </ul>
+    </nav>
+  `;
+}
 
 /** 1ページの件数。無限スクロールにはしない。 */
 export const COMMUNITY_JUMP_PAGE_SIZE = 50;
@@ -114,22 +146,6 @@ export function communityJumpPagePosts<T>(
   const current = clampCommunityJumpPage(page, posts.length, pageSize);
   const start = (current - 1) * pageSize;
   return posts.slice(start, start + pageSize);
-}
-
-/** 見出しの「#あのねジャンプ」を X 検索へ。ライムの「もっと見る」ボタンは置かない。 */
-export function communityHashtagLinkHtml(id?: string): string {
-  const idAttr = id ? ` id="${escapeHtml(id)}"` : "";
-  return `<a${idAttr} class="community-hashtag-link" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${escapeHtml(MORE_JUMPS_QUERY)}</a>`;
-}
-
-export function communityTitleHtml(locale: Locale = DEFAULT_LOCALE, linkId = "communityHashtag"): string {
-  return wrapCommunityHashtag(t(locale, "communityTitle"), linkId);
-}
-
-export function wrapCommunityHashtag(text: string, linkId?: string): string {
-  const index = text.indexOf(MORE_JUMPS_QUERY);
-  if (index < 0) return escapeHtml(text);
-  return `${escapeHtml(text.slice(0, index))}${communityHashtagLinkHtml(linkId)}${escapeHtml(text.slice(index + MORE_JUMPS_QUERY.length))}`;
 }
 
 /** 画面の少し外まで先読みする余白。埋め込みが伸びても後続を取りこぼさない。 */
@@ -216,12 +232,13 @@ export function communityJumpsSectionHtml(
         ${languageNavHtml(locale, "community")}
         ${toMakerLinkHtml("toMaker", locale)}
         <p class="eyebrow">#あのねジャンプ</p>
-        <h1 id="communityJumpsTitle">${communityTitleHtml(locale)}</h1>
+        <h1 id="communityJumpsTitle">${t(locale, "communityTitle")}</h1>
         ${
           posts.length === 0
             ? ""
             : `<p class="lede">${t(locale, "communityLede")}</p>`
         }
+        ${communityHashtagSearchHtml(locale)}
         ${posts.length < 2 ? "" : communitySortHtml(locale, sort)}
       </header>
       ${

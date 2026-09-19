@@ -241,8 +241,13 @@ body {
   margin: 0 0 0.85rem;
 }
 
+.community-jumps-hero .community-hashtag-search {
+  margin: 0.9rem 0 0;
+  text-align: left;
+}
+
 .community-jumps-hero .community-sort {
-  margin: 1rem 0 0;
+  margin: 1.15rem 0 0;
   text-align: left;
 }
 
@@ -254,23 +259,6 @@ body {
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
-}
-
-.community-hashtag-link {
-  color: #2a7f82;
-  font: inherit;
-  letter-spacing: inherit;
-  text-decoration: underline;
-  text-underline-offset: 0.14em;
-}
-
-.community-hashtag-link:hover {
-  color: var(--ink);
-}
-
-.community-hashtag-link:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
 }
 
 .community-back-wrap {

@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, t, type Locale } from "./i18n.ts";
+import { DEFAULT_LOCALE, t, type Locale, type MessageKey } from "./i18n.ts";
 
 /** 画面最下部に置くナナツカゼさんの公式リンク。ファン制作なので出典として並べる。 */
 export type OfficialLink = {
@@ -43,6 +43,7 @@ const ICONS: Record<OfficialLink["id"], string> = {
 export function linkBannersHtml(
   links: readonly OfficialLink[] = OFFICIAL_LINKS,
   locale: Locale = DEFAULT_LOCALE,
+  ariaKey: MessageKey = "makerLinkAria",
 ): string {
   return links
     .map(
@@ -54,7 +55,7 @@ export function linkBannersHtml(
             href="${link.href}"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="${t(locale, "makerLinkAria", { label: link.label })}"
+            aria-label="${t(locale, ariaKey, { label: link.label })}"
           >
             <svg class="link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[link.id]}</svg>
             <span>${link.label}</span>

@@ -68,6 +68,8 @@ const ja = {
 
   communityTitle: "みんなの #あのねジャンプ",
   communityLede: "ファンが投稿したジャンプ動画です。下にスクロールして見てね。",
+  communityHashtagSearchNav: "#あのねジャンプを探す",
+  communityHashtagSearchAria: "{label}で #あのねジャンプ を検索する（新しいタブ）",
   communityEmpty: "まだ公開できるジャンプがありません。#あのねジャンプ を付けて投稿してみてね。",
   communityBack: "メーカーに戻る",
   communityToCommunity: "みんなの #あのねジャンプ を見る",
@@ -200,6 +202,8 @@ const en: Record<MessageKey, string> = {
 
   communityTitle: "Everyone’s #あのねジャンプ",
   communityLede: "Fan-made jump videos. Scroll down to watch.",
+  communityHashtagSearchNav: "Search #あのねジャンプ",
+  communityHashtagSearchAria: "Search #あのねジャンプ on {label} (new tab)",
   communityEmpty: "No public jumps yet. Try posting with #あのねジャンプ.",
   communityBack: "Back to the maker",
   communityToCommunity: "See everyone’s #あのねジャンプ",
@@ -330,6 +334,8 @@ const ko: Record<MessageKey, string> = {
 
   communityTitle: "모두의 #あのねジャンプ",
   communityLede: "팬이 올린 점프 영상입니다. 아래로 스크롤해서 봐 주세요.",
+  communityHashtagSearchNav: "#あのねジャンプ 검색",
+  communityHashtagSearchAria: "{label}에서 #あのねジャンプ 검색(새 탭)",
   communityEmpty: "아직 공개할 점프가 없어요. #あのねジャンプ 를 붙여 올려 보세요.",
   communityBack: "메이커로 돌아가기",
   communityToCommunity: "모두의 #あのねジャンプ 보기",
@@ -460,6 +466,8 @@ const zh: Record<MessageKey, string> = {
 
   communityTitle: "大家的 #あのねジャンプ",
   communityLede: "粉丝投稿的跳跃视频。往下滑动就能看。",
+  communityHashtagSearchNav: "搜索 #あのねジャンプ",
+  communityHashtagSearchAria: "在{label}搜索 #あのねジャンプ（新标签页）",
   communityEmpty: "还没有可公开的跳跃。不妨带上 #あのねジャンプ 发一条。",
   communityBack: "返回制作器",
   communityToCommunity: "看看大家的 #あのねジャンプ",
