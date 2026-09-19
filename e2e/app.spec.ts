@@ -56,6 +56,37 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(dialog).toBeHidden();
 });
 
+test("opens a generation modal with progress and cancel", async ({ page }) => {
+  await uploadPhoto(page);
+  await page.route("**/template/*.mp4", async (route) => {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 8_000);
+    });
+    try {
+      await route.continue();
+    } catch {
+      // キャンセルで fetch が中断されると continue は失敗する
+    }
+  });
+  const dialog = page.locator("#exportDialog");
+  await page.locator("#saveBtn").click();
+  try {
+    await expect(dialog).toBeVisible({ timeout: 3_000 });
+  } catch {
+    await expect(page.locator("#status")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
+    return;
+  }
+  await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
+  await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
+  await expect(page.locator("#exportProgressLabel")).toContainText("%");
+  await expect(page.locator("#exportKeepOpen")).toBeVisible();
+  await expect(page.locator("#exportKeepOpen")).toContainText("タブを閉じたり");
+  await expect(page.locator("#cancelExportBtn")).toBeEnabled();
+  await page.locator("#cancelExportBtn").click();
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator("#status")).toHaveText("生成をキャンセルしました");
+});
+
 test("adds, reorders, and removes photos after the first pick", async ({ page }) => {
   await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
   await expect(page.locator("#thumbs")).toBeHidden();
@@ -182,20 +213,45 @@ test("a touch swipe does not reorder photos without a long press", async ({ page
 
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {
   await uploadPhoto(page);
+  const exportDialog = page.locator("#exportDialog");
+  await expect(exportDialog).toBeHidden();
+  await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
+  await expect(page.locator("#cancelExportBtn")).toHaveText("キャンセル");
+  await expect(page.locator("#exportKeepOpen")).toContainText("タブを閉じたり");
+  await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
+  await expect(page.locator("#exportProgressLabel")).toHaveText("0%");
+
   // VideoEncoder があっても pickOfflinePlan が null なら未対応（WebKit でよくある）。
   const downloadPromise = page.waitForEvent("download", { timeout: 45_000 });
   void downloadPromise.catch(() => undefined);
   await page.locator("#saveBtn").click();
+  await expect(exportDialog)
+    .toBeVisible({ timeout: 2_000 })
+    .catch(() => undefined);
+  if (await exportDialog.isVisible()) {
+    await expect(page.locator("#exportProgressLabel")).toContainText("%");
+  }
   await expect(page.locator("#status")).toContainText(
     new RegExp(`保存しました|${UNSUPPORTED_EXPORT_MESSAGE}`),
     { timeout: 45_000 },
   );
   const statusText = (await page.locator("#status").textContent()) ?? "";
   if (statusText.includes("保存しました")) {
+    await expect(exportDialog).toBeVisible();
+    await expect(page.locator("#exportDownloadHint")).toHaveText("ダウンロードが開始されませんか？");
+    await expect(page.locator("#downloadExportBtn")).toBeVisible();
+    await expect(page.locator("#cancelExportBtn")).toBeHidden();
+    const retryDownload = page.waitForEvent("download", { timeout: 10_000 });
+    await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
+    const retry = await retryDownload;
+    expect(retry.suggestedFilename()).toBe(download.suggestedFilename());
+    await page.locator("#closeExportBtn").click();
+    await expect(exportDialog).toBeHidden();
     return;
   }
+  await expect(exportDialog).toBeHidden();
   expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
 });
 

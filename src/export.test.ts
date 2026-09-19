@@ -5,6 +5,7 @@ import { PREVIEW_FPS } from "./playback.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
+  EXPORT_ABORTED_MESSAGE,
   EXPORT_AUDIO_SOURCE,
   EXPORT_CHARACTER_FALLBACK,
   EXPORT_CHARACTER_PIXELS,
@@ -22,14 +23,17 @@ import {
   chooseExportCharacterPath,
   copySampleRgba,
   exportJumpVideo,
+  exportProgressPercent,
   fingerprintRgba,
   firstResolved,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  isAbortError,
   packedRgba,
   paintDecodedExportFrame,
   seekVideo,
   templateFrameMatchesTime,
+  throwIfAborted,
 } from "./export.ts";
 
 describe("offline export plan", () => {
@@ -115,6 +119,47 @@ describe("offline capability", () => {
         fps: 30,
       }),
     ).rejects.toThrow(UNSUPPORTED_EXPORT_MESSAGE);
+  });
+
+  it("rejects with AbortError when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      exportJumpVideo({
+        video: { currentSrc: "", src: "", duration: 1 } as HTMLVideoElement,
+        canvas: { width: 608, height: 1080 } as HTMLCanvasElement,
+        draw: () => undefined,
+        duration: 1,
+        fps: 30,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError", message: EXPORT_ABORTED_MESSAGE });
+  });
+});
+
+describe("export progress and cancel", () => {
+  it("maps frame counts onto 0–100%", () => {
+    expect(exportProgressPercent(0, 466)).toBe(0);
+    expect(exportProgressPercent(0, 0)).toBe(0);
+    expect(exportProgressPercent(-1, 10)).toBe(0);
+    expect(exportProgressPercent(1, 466)).toBe(0);
+    expect(exportProgressPercent(233, 466)).toBe(50);
+    expect(exportProgressPercent(465, 466)).toBe(99);
+    expect(exportProgressPercent(466, 466)).toBe(100);
+    expect(exportProgressPercent(500, 466)).toBe(100);
+  });
+
+  it("throws AbortError only when the signal is aborted", () => {
+    expect(() => throwIfAborted()).not.toThrow();
+    expect(() => throwIfAborted(new AbortController().signal)).not.toThrow();
+    const controller = new AbortController();
+    controller.abort();
+    expect(() => throwIfAborted(controller.signal)).toThrow(EXPORT_ABORTED_MESSAGE);
+    try {
+      throwIfAborted(controller.signal);
+    } catch (error) {
+      expect(isAbortError(error)).toBe(true);
+    }
   });
 });
 

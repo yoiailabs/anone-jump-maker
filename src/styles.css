@@ -326,6 +326,82 @@ body {
   background: rgba(26, 26, 26, 0.48);
 }
 
+.export-dialog {
+  width: min(22rem, calc(100vw - 1.25rem));
+}
+
+.export-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 1rem 1.05rem 1.1rem;
+}
+
+.export-status {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.export-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.export-progress-bar {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 0.9rem;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--paper);
+  appearance: none;
+}
+
+.export-progress-bar::-webkit-progress-bar {
+  background: var(--paper);
+  border-radius: 999px;
+}
+
+.export-progress-bar::-webkit-progress-value {
+  background: var(--teal);
+  border-radius: 999px;
+}
+
+.export-progress-bar::-moz-progress-bar {
+  background: var(--teal);
+  border-radius: 999px;
+}
+
+.export-progress-label {
+  flex: 0 0 auto;
+  min-width: 3.25em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.export-keep-open,
+.export-download-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--mute);
+}
+
+.export-sheet .btn {
+  width: 100%;
+}
+
+.export-sheet [hidden] {
+  display: none !important;
+}
+
 .preview-sheet {
   display: flex;
   flex-direction: column;

@@ -2,7 +2,7 @@ import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } f
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
 import { createCompositor, type CharacterFrame } from "./compositor.ts";
 import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
-import { EXPORT_FPS, exportJumpVideo, seekVideo } from "./export.ts";
+import { EXPORT_FPS, exportJumpVideo, exportProgressPercent, isAbortError, seekVideo, throwIfAborted } from "./export.ts";
 import {
   DEFAULT_ASPECT,
   isAspectMode,
@@ -103,6 +103,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let photosBusy = false;
   let playing = false;
   let recording = false;
+  let exportAbort: AbortController | null = null;
+  let pendingExport: { blob: Blob; filename: string } | null = null;
   let previewTracked = false;
   let previewMuted = PREVIEW_MUTED_DEFAULT;
   let playbackBusy = false;
@@ -122,6 +124,16 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
+  const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
+  const exportTitle = must(root, "#exportTitle");
+  const exportStatus = must(root, "#exportStatus");
+  const exportProgress = must(root, "#exportProgress") as HTMLProgressElement;
+  const exportProgressLabel = must(root, "#exportProgressLabel");
+  const exportKeepOpen = must(root, "#exportKeepOpen");
+  const exportDownloadHint = must(root, "#exportDownloadHint");
+  const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
+  const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
+  const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
@@ -426,6 +438,53 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
+  const setExportProgress = (percent: number, statusText: string) => {
+    const value = Math.min(100, Math.max(0, percent));
+    exportProgress.value = value;
+    exportProgressLabel.textContent = msg("exportPercent", { percent: value });
+    exportStatus.textContent = statusText;
+    setStatus(statusText, "busy");
+  };
+
+  const setExportPhase = (phase: "busy" | "done") => {
+    exportDialog.dataset.exportPhase = phase;
+    exportTitle.textContent = phase === "done" ? msg("exportDoneTitle") : msg("exportTitle");
+    exportKeepOpen.hidden = phase !== "busy";
+    exportDownloadHint.hidden = phase !== "done";
+    cancelExportBtn.hidden = phase !== "busy";
+    downloadExportBtn.hidden = phase !== "done";
+    closeExportBtn.hidden = phase !== "done";
+    exportDialog.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
+  };
+
+  const openExportDialog = () => {
+    pendingExport = null;
+    cancelExportBtn.disabled = false;
+    setExportPhase("busy");
+    setExportProgress(0, msg("statusExportPreparing"));
+    if (!exportDialog.open) {
+      exportDialog.showModal();
+    }
+  };
+
+  const closeExportDialog = () => {
+    pendingExport = null;
+    if (exportDialog.open) {
+      exportDialog.close();
+    }
+  };
+
+  const cancelExport = () => {
+    if (!exportAbort) return;
+    exportAbort.abort();
+    cancelExportBtn.disabled = true;
+  };
+
+  const savePendingExport = () => {
+    if (!pendingExport) return;
+    downloadBlob(pendingExport.blob, pendingExport.filename);
+  };
+
   let openingPreview = false;
   const openPreview = async () => {
     if (recording || !canUse() || previewDialog.open || openingPreview) return;
@@ -458,6 +517,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     syncLanguageNav(root, locale, view);
     if (view !== "maker") {
       closePreview();
+      cancelExport();
+      closeExportDialog();
     }
     if (activeView !== view) {
       const firstPaint = activeView === null;
@@ -690,6 +751,37 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     closePreview();
   });
 
+  cancelExportBtn.addEventListener("click", () => {
+    cancelExport();
+  });
+
+  downloadExportBtn.addEventListener("click", () => {
+    savePendingExport();
+  });
+
+  closeExportBtn.addEventListener("click", () => {
+    closeExportDialog();
+  });
+
+  exportDialog.addEventListener("cancel", (event) => {
+    if (exportAbort) {
+      cancelExport();
+      return;
+    }
+    if (pendingExport) return;
+    event.preventDefault();
+  });
+
+  exportDialog.addEventListener("close", () => {
+    pendingExport = null;
+  });
+
+  window.addEventListener("beforeunload", (event) => {
+    if (!recording) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
   previewDialog.addEventListener("click", (event) => {
     if (event.target !== previewDialog) return;
     const rect = previewDialog.getBoundingClientRect();
@@ -711,30 +803,46 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     previewTracked = false;
     video.pause();
     refreshButtons();
-    setStatus(msg("statusExportPreparing"), "busy");
-    compositor.setResolutionScale(1);
+    const controller = new AbortController();
+    exportAbort = controller;
+    openExportDialog();
     try {
       const cuts = (await ensureTimelines())[mode];
+      throwIfAborted(controller.signal);
       const duration =
         Number.isFinite(video.duration) && video.duration > 0 ? video.duration : cuts.duration;
       const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
+      compositor.setResolutionScale(1);
       const result = await exportJumpVideo({
         video,
         canvas: compositor.canvas,
         draw: paint,
         duration,
         fps,
+        signal: controller.signal,
         onProgress: (progress) => {
-          setStatus(msg("statusGenerating", { current: progress.current, total: progress.total }), "busy");
+          setExportProgress(
+            exportProgressPercent(progress.current, progress.total),
+            msg("statusGenerating", { current: progress.current, total: progress.total }),
+          );
         },
       });
       const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
+      pendingExport = { blob: result.blob, filename };
       downloadBlob(result.blob, filename);
+      setExportProgress(100, msg("statusSaved", { ext: result.extension.toUpperCase() }));
       setStatus(msg("statusSaved", { ext: result.extension.toUpperCase() }));
+      setExportPhase("done");
+      downloadExportBtn.focus();
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
-      setErrorStatus(error, "statusSaveFailed");
+      if (isAbortError(error) || controller.signal.aborted) {
+        setStatus(msg("statusExportCancelled"));
+      } else {
+        setErrorStatus(error, "statusSaveFailed");
+      }
     } finally {
+      exportAbort = null;
       compositor.setResolutionScale(PREVIEW_RESOLUTION_SCALE);
       recording = false;
       playing = false;
@@ -742,6 +850,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       haltLoop();
       video.pause();
       video.muted = true;
+      if (!pendingExport) closeExportDialog();
       refreshButtons();
       paint();
     }
