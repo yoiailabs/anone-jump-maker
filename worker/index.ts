@@ -1,4 +1,4 @@
-import { localeRedirectLocation, parseAppPath, pathForApp } from "../src/i18n.ts";
+import { localeRedirectLocation, parseAppPath } from "../src/i18n.ts";
 
 type AssetsEnv = {
   ASSETS?: { fetch(input: Request | URL, init?: RequestInit): Promise<Response> };
@@ -42,9 +42,9 @@ export default {
     if (!env.ASSETS) {
       return new Response("Not found", { status: 404 });
     }
-    const assetPath = pathForApp(parsed.locale, parsed.view);
-    const assetUrl = new URL(assetPath === "/" ? "/index.html" : `${assetPath}/index.html`, url);
-    const asset = await env.ASSETS.fetch(new Request(assetUrl, request));
+    // html_handling = auto-trailing-slash は /index.html を / へ 307 する。
+    // Worker が / を先に受けるため、それをそのまま返すと無限リダイレクトになる。
+    const asset = await env.ASSETS.fetch(request);
     const headers = new Headers(asset.headers);
     headers.set("vary", "Accept-Language, Cookie");
     return new Response(asset.body, { status: asset.status, headers });

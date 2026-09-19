@@ -33,6 +33,27 @@ describe("worker fetch", () => {
     expect(response.headers.get("vary")).toMatch(/Accept-Language/);
   });
 
+  it("asks ASSETS for the original URL so auto-trailing-slash cannot loop", async () => {
+    let fetched = "";
+    const env = {
+      ASSETS: {
+        async fetch(input: Request | URL) {
+          const href = input instanceof Request ? input.url : String(input);
+          fetched = new URL(href, "https://anone.yoiailabs.com").pathname;
+          return new Response("<html lang=\"ja\">maker</html>", {
+            headers: { "content-type": "text/html; charset=utf-8" },
+          });
+        },
+      },
+    };
+    const response = await worker.fetch(
+      new Request("https://anone.yoiailabs.com/", { headers: { "accept-language": "ja" } }),
+      env,
+    );
+    expect(response.status).toBe(200);
+    expect(fetched).toBe("/");
+  });
+
   it("redirects / to /en when Accept-Language prefers English", async () => {
     const response = await worker.fetch(
       new Request("https://anone.yoiailabs.com/", { headers: { "accept-language": "en-US,en;q=0.9" } }),
