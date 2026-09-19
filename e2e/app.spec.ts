@@ -65,27 +65,40 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
 });
 
-test("shows the community jumps carousel above reactions and wraps the loop", async ({ page }) => {
-  const community = page.locator("#communityJumpsTitle");
-  const reactions = page.locator("#reactionsTitle");
-  await expect(community).toHaveText("みんなの #あのねジャンプ");
-  await expect(page.locator("#communityJumpsMeter")).toHaveText("1 / 10");
-  await expect(page.locator("#communityJumps .community-jumps-slide")).toHaveCount(12);
+test("keeps community jumps off the maker and opens a stacked list from the tab", async ({ page }) => {
+  await expect(page.locator("#tabMaker")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#makerView")).toBeVisible();
+  await expect(page.locator("#communityView")).toBeHidden();
+  await expect(page.locator("#communityJumpsTitle")).toBeHidden();
+  await expect(page.locator("#playBtn")).toBeVisible();
+  await expect(page.locator("#reactionsTitle")).toBeVisible();
 
-  const communityBox = await community.boundingBox();
-  const reactionsBox = await reactions.boundingBox();
-  expect(communityBox && reactionsBox && communityBox.y < reactionsBox.y).toBe(true);
+  await page.locator("#tabCommunity").click();
+  await expect(page).toHaveURL(/#community/);
+  await expect(page.locator("#tabCommunity")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#communityView")).toBeVisible();
+  await expect(page.locator("#makerView")).toBeHidden();
+  await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
+  await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
+  await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
+  await expect(page.locator("#playBtn")).toBeHidden();
 
-  const prevBox = await page.locator("#communityJumpsPrev").boundingBox();
-  const viewportBox = await page.locator("#communityJumpsViewport").boundingBox();
-  expect(prevBox && viewportBox && prevBox.y + prevBox.height <= viewportBox.y + 2).toBe(true);
+  const first = page.locator("#communityJumps .community-jumps-item").nth(0);
+  const second = page.locator("#communityJumps .community-jumps-item").nth(1);
+  const last = page.locator("#communityJumps .community-jumps-item").nth(9);
+  const firstBox = await first.boundingBox();
+  const secondBox = await second.boundingBox();
+  const lastBox = await last.boundingBox();
+  expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
+  expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
 
-  await page.locator("#communityJumpsPrev").click();
-  await expect(page.locator("#communityJumpsMeter")).toHaveText("10 / 10");
-  await page.locator("#communityJumpsNext").click();
-  await expect(page.locator("#communityJumpsMeter")).toHaveText("1 / 10");
-  await page.locator("#communityJumpsNext").click();
-  await expect(page.locator("#communityJumpsMeter")).toHaveText("2 / 10");
+  await page.locator("#tabMaker").click();
+  await expect(page).toHaveURL(/#maker/);
+  await expect(page.locator("#makerView")).toBeVisible();
+  await expect(page.locator("#playBtn")).toBeVisible();
+  await expect(page.locator("#communityView")).toBeHidden();
+  await expect(page.locator("#reactionsTitle")).toBeVisible();
 });
 
 test("copies hashtags from the panel", async ({ page, context, browserName }) => {

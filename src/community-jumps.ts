@@ -9,7 +9,7 @@ export type CommunityJumpPost = {
 const X_STATUS =
   /^https:\/\/x\.com\/([A-Za-z0-9_]+)\/status\/(\d+)\/?$/;
 
-/** いいね降順の curated 10。href を足す／入れ替えるだけでカルーセルに出る。 */
+/** いいね降順の curated 10。href を足す／入れ替えるだけで一覧に出る。 */
 const CURATED_JUMPS: readonly { href: string; likes: number }[] = [
   { href: "https://x.com/02_ZERO_Ni/status/2100797924125049167", likes: 738 },
   { href: "https://x.com/_nakotanmaru/status/2100880092864122959", likes: 646 },

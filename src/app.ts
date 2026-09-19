@@ -13,8 +13,9 @@ import {
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
-import { communityJumpsSectionHtml, mountCommunityJumps } from "./community-carousel.ts";
+import { COMMUNITY_JUMPS_TITLE, communityJumpsSectionHtml, mountCommunityJumps } from "./community-list.ts";
 import { linkBannersHtml } from "./links.ts";
+import { appTabsHtml, documentTitleForView, parseAppView, syncAppTabs, type AppView } from "./nav.ts";
 import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
@@ -65,6 +66,8 @@ export async function boot(root: HTMLElement): Promise<void> {
       <span class="blob blob-coral"></span>
     </div>
     <div class="app">
+      ${appTabsHtml()}
+      <div class="app-view" id="makerView">
       <header class="hero">
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
@@ -189,12 +192,15 @@ export async function boot(root: HTMLElement): Promise<void> {
           <p class="links-title" id="linksTitle">ナナツカゼさん公式</p>
           <ul class="link-banners">${linkBannersHtml()}</ul>
         </nav>
-        ${communityJumpsSectionHtml()}
         <section class="reactions" aria-labelledby="reactionsTitle">
           <h2 class="reactions-title" id="reactionsTitle">反応</h2>
           <div class="reactions-embed" id="reactionsEmbed">${reactionEmbedHtml()}</div>
         </section>
       </footer>
+      </div>
+      <div class="app-view" id="communityView" hidden>
+        ${communityJumpsSectionHtml()}
+      </div>
     </div>
     <dialog class="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
       <div class="preview-sheet">
@@ -539,6 +545,23 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   };
 
+  let communityMounted = false;
+  const applyView = (view: AppView) => {
+    const makerView = must(root, "#makerView");
+    const communityView = must(root, "#communityView");
+    makerView.hidden = view !== "maker";
+    communityView.hidden = view !== "community";
+    syncAppTabs(root, view);
+    document.title = documentTitleForView(view, COMMUNITY_JUMPS_TITLE);
+    if (view !== "maker") {
+      closePreview();
+    }
+    if (view === "community" && !communityMounted) {
+      mountCommunityJumps(must(root, "#communityJumps"));
+      communityMounted = true;
+    }
+  };
+
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
     const inPreview = previewDialog.open;
@@ -820,8 +843,11 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   void video.load();
-  mountCommunityJumps(must(root, "#communityJumps"));
   hydrateReactionEmbed(must(root, "#reactionsEmbed"));
+  applyView(parseAppView(location.hash));
+  window.addEventListener("hashchange", () => {
+    applyView(parseAppView(location.hash));
+  });
 }
 
 export async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {

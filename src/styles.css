@@ -46,9 +46,61 @@ body {
   padding: var(--page-pad-top) var(--page-pad-x) var(--page-pad-bottom);
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: 0.85rem;
   position: relative;
   z-index: 1;
+}
+
+.app-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.2rem 0 0.35rem;
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+}
+
+.app-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.35rem 0.55rem;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.86rem;
+  letter-spacing: 0.03em;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.app-tab:hover {
+  transform: translateY(-2px);
+}
+
+.app-tab:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.app-tab[aria-current="page"] {
+  background: var(--peach);
+  box-shadow: 3px 4px 0 var(--ink);
+}
+
+.app-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
+.app-view[hidden] {
+  display: none;
 }
 
 .sky {
@@ -756,82 +808,32 @@ body {
   stroke-linejoin: round;
 }
 
-/* 画面最下部のコミュニティ動画。左右送りの無限カルーセル。 */
+/* コミュニティ専用ページ。縦積みの投稿一覧。高さの違う埋め込みがメーカーを揺すらない。 */
 .community-jumps {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
-}
-
-.community-jumps-title {
-  margin: 0;
-  color: var(--mute);
-  font-size: 0.74rem;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-}
-
-.community-jumps-lede,
-.community-jumps-empty {
-  margin: 0;
-  color: var(--mute);
-  line-height: 1.7;
-}
-
-.community-jumps-lede {
-  font-size: 0.82rem;
+  gap: 1.35rem;
 }
 
 .community-jumps-empty {
+  margin: 0;
   padding: 0.9rem 1rem;
   background: var(--card);
   border: 3px solid var(--ink);
   border-radius: 1.4rem;
   box-shadow: 5px 6px 0 var(--coral);
+  color: var(--mute);
   font-size: 0.88rem;
+  line-height: 1.7;
 }
 
-.community-jumps-stage {
-  position: relative;
-  touch-action: pan-y;
-}
-
-.community-jumps-viewport {
-  overflow: hidden;
-  width: 100%;
-  border-radius: 1.4rem;
-  touch-action: pan-y;
-  transition: height 0.36s ease;
-}
-
-.community-jumps-viewport:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
-}
-
-.community-jumps-track {
+.community-jumps-list {
   display: flex;
-  align-items: flex-start;
-  transition: transform 0.36s ease;
-  will-change: transform;
-}
-
-.community-jumps-track[data-instant="true"] {
-  transition: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .community-jumps-track,
-  .community-jumps-viewport {
-    transition: none;
-  }
-}
-
-.community-jumps-slide {
-  flex: 0 0 100%;
-  min-width: 0;
-  display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 1.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .community-jumps-card {
@@ -897,76 +899,6 @@ body {
   border: none;
   border-radius: 0;
   box-shadow: none;
-}
-
-/* 埋め込みの外に置く sticky 帯。X のヘッダー（アバター／アイコン）に重ねない。 */
-.community-jumps-controls {
-  position: sticky;
-  top: 0.45rem;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: 2.6rem 1fr 2.6rem;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0 0 0.55rem;
-  padding: 0.2rem 0.1rem;
-  background: color-mix(in srgb, var(--paper) 86%, transparent);
-  touch-action: pan-y;
-}
-
-.community-jumps-nav {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  padding: 0;
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  background: var(--lime);
-  color: var(--ink);
-  cursor: pointer;
-  scroll-margin-top: 0.75rem;
-  transition: transform 0.16s ease;
-}
-
-.community-jumps-nav[data-dir="next"] {
-  background: var(--coral);
-}
-
-.community-jumps-nav:hover {
-  transform: translateY(-2px);
-}
-
-.community-jumps-nav:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
-}
-
-.community-jumps-nav[hidden] {
-  visibility: hidden;
-}
-
-.community-jumps-nav svg {
-  width: 1.15rem;
-  height: 1.15rem;
-}
-
-.community-jumps .community-jumps-meter {
-  justify-self: center;
-  width: max-content;
-  margin: 0;
-  padding: 0.12rem 0.7rem;
-  text-align: center;
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  line-height: 1.4;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  background: color-mix(in srgb, var(--card) 92%, white);
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  box-shadow: 2px 3px 0 var(--ink);
 }
 
 /* 画面最下部の反応。公式ウィジェットが来るまでのblockquoteも同じ枠に収める。 */
