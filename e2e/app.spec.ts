@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, jpegInput, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, jpegInput, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -304,7 +304,9 @@ test("opens community jumps from the disclaimer link and returns via the back li
 
   const disclaimer = page.locator("#makerView .lede");
   const toCommunity = page.locator("#toCommunity");
-  await expect(disclaimer).toContainText("※ファン制作の非公式アプリです。");
+  await expect
+    .poll(async () => stripZwsp((await disclaimer.textContent()) ?? ""))
+    .toContain("※ファン制作の非公式アプリです。");
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
   await expect(toCommunity).toHaveClass(/\bbtn\b/);
   const disclaimerBox = await disclaimer.boundingBox();

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
+import { JaLede } from "@/components/JaLede.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
@@ -88,13 +89,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <LanguageNav locale={locale} view="maker" />
             <p className="eyebrow">#あのねジャンプ</p>
             <h1 id="makerTitle">{t(locale, "makerTitle")}</h1>
-            <p className="lede">
-              {t(locale, "makerLede1")}
-              <br />
-              {t(locale, "makerLede2")}
-              <br />
-              {t(locale, "makerLede3")}
-            </p>
+            <JaLede locale={locale} />
             <p className="hero-more">
               <Button
                 variant="site"

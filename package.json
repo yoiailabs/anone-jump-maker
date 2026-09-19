@@ -52,6 +52,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@sentry/browser": "^10.75.0",
     "astro": "^7.3.3",
+    "budoux": "^0.9.2",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.0",
     "heic-to": "1.5.2",

@@ -233,6 +233,22 @@ body {
   text-wrap: pretty;
 }
 
+/* Chromium 119+: native BudouX-backed phrase wrapping. lang=ja is required. */
+html[lang="ja"] .lede {
+  word-break: auto-phrase;
+}
+
+/*
+ * Safari / Firefox still lack auto-phrase. keep-all is only applied after the
+ * ZWSP polyfill (.lede-phrased) so the first paint keeps normal CJK wrapping.
+ */
+@supports not (word-break: auto-phrase) {
+  html[lang="ja"] .lede.lede-phrased {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+}
+
 .hero-more {
   margin: 0.85rem 0 0;
 }

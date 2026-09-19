@@ -14,6 +14,7 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import { persistLocale, syncLanguageNav } from "./i18n-client.ts";
+import { applyJaPhrasePolyfill } from "./ja-phrase.ts";
 import {
   DEFAULT_LOCALE,
   localeFromLanguageTags,
@@ -589,6 +590,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         communityView.innerHTML = communityJumpsSectionHtml(undefined, locale);
         syncLanguageNav(root, locale, view);
       }
+      void applyJaPhrasePolyfill(communityView, locale);
       if (!firstPaint) {
         focusViewHeading("community");
       }
