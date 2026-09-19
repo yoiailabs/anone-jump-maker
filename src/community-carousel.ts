@@ -94,42 +94,44 @@ export function communityJumpsSectionHtml(
     >
       <h2 class="community-jumps-title" id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h2>
       <p class="community-jumps-lede">${COMMUNITY_JUMPS_LEDE}</p>
-      <div
-        class="community-jumps-viewport"
-        id="communityJumpsViewport"
-        tabindex="0"
-        aria-label="${COMMUNITY_JUMPS_TITLE}"
-      >
-        <div
-          class="community-jumps-track"
-          id="communityJumpsTrack"
-          data-instant="true"
-          style="transform: translate3d(${-visual * 100}%, 0, 0)"
-        >
-          ${slidesHtml(posts, looping)}
+      <div class="community-jumps-stage" id="communityJumpsStage">
+        <div class="community-jumps-controls">
+          <button
+            type="button"
+            class="community-jumps-nav"
+            id="communityJumpsPrev"
+            aria-label="前の動画"
+            ${looping ? "" : "hidden"}
+          >
+            ${chevronSvg("prev")}
+          </button>
+          <p class="community-jumps-meter" id="communityJumpsMeter" aria-live="polite">${meterLabel(logical, posts.length)}</p>
+          <button
+            type="button"
+            class="community-jumps-nav"
+            id="communityJumpsNext"
+            data-dir="next"
+            aria-label="次の動画"
+            ${looping ? "" : "hidden"}
+          >
+            ${chevronSvg("next")}
+          </button>
         </div>
-      </div>
-      <div class="community-jumps-controls">
-        <button
-          type="button"
-          class="community-jumps-nav"
-          id="communityJumpsPrev"
-          aria-label="前の動画"
-          ${looping ? "" : "hidden"}
+        <div
+          class="community-jumps-viewport"
+          id="communityJumpsViewport"
+          tabindex="0"
+          aria-label="${COMMUNITY_JUMPS_TITLE}"
         >
-          ${chevronSvg("prev")}
-        </button>
-        <p class="community-jumps-meter" id="communityJumpsMeter" aria-live="polite">${meterLabel(logical, posts.length)}</p>
-        <button
-          type="button"
-          class="community-jumps-nav"
-          id="communityJumpsNext"
-          data-dir="next"
-          aria-label="次の動画"
-          ${looping ? "" : "hidden"}
-        >
-          ${chevronSvg("next")}
-        </button>
+          <div
+            class="community-jumps-track"
+            id="communityJumpsTrack"
+            data-instant="true"
+            style="transform: translate3d(${-visual * 100}%, 0, 0)"
+          >
+            ${slidesHtml(posts, looping)}
+          </div>
+        </div>
       </div>
     </section>
   `;
@@ -147,6 +149,7 @@ export function mountCommunityJumps(
   if (!track || !viewport || !meter || posts.length === 0) return;
 
   const slides = [...track.querySelectorAll<HTMLElement>(".community-jumps-slide")];
+  const stage = section.querySelector<HTMLElement>("#communityJumpsStage");
   const looping = loopingCarousel(posts.length);
   let visual = startVisual(posts.length);
   let logical = looping ? logicalFromVisual(visual, posts.length) : 0;
@@ -175,6 +178,23 @@ export function mountCommunityJumps(
     meter.textContent = meterLabel(logical, posts.length);
   };
 
+  const currentSlide = () => slides.find((slide) => Number(slide.dataset.visual) === visual);
+
+  const syncViewportHeight = () => {
+    const slide = currentSlide();
+    if (!slide) return;
+    const height = slide.scrollHeight;
+    if (height <= 0) return;
+    viewport.style.height = `${height}px`;
+  };
+
+  /** 矢印操作のあと、動画の先頭が画面外ならステージを戻す。 */
+  const keepCarouselInView = () => {
+    const target = stage ?? section;
+    if (target.getBoundingClientRect().top >= 8) return;
+    target.scrollIntoView({ block: "start", behavior: "auto" });
+  };
+
   const syncHydration = () => {
     const want = new Set(neighborIndexes(logical, posts.length));
     let addedEmbed = false;
@@ -196,6 +216,7 @@ export function mountCommunityJumps(
     if (addedEmbed) {
       hydrateReactionEmbed(track);
     }
+    syncViewportHeight();
   };
 
   const finishMove = () => {
@@ -210,6 +231,7 @@ export function mountCommunityJumps(
     syncMeter();
     syncAria();
     syncHydration();
+    syncViewportHeight();
     if (pending !== 0) {
       const next = pending;
       pending = 0;
@@ -231,6 +253,8 @@ export function mountCommunityJumps(
     syncMeter();
     syncAria();
     syncHydration();
+    syncViewportHeight();
+    keepCarouselInView();
     if (instant) {
       finishMove();
       return;
@@ -246,11 +270,22 @@ export function mountCommunityJumps(
     finishMove();
   });
 
+  const silenceMouseFocus = (event: MouseEvent) => {
+    event.preventDefault();
+  };
+  prevBtn?.addEventListener("mousedown", silenceMouseFocus);
+  nextBtn?.addEventListener("mousedown", silenceMouseFocus);
   prevBtn?.addEventListener("click", () => {
     go(-1);
   });
   nextBtn?.addEventListener("click", () => {
     go(1);
+  });
+  prevBtn?.addEventListener("focus", () => {
+    keepCarouselInView();
+  });
+  nextBtn?.addEventListener("focus", () => {
+    keepCarouselInView();
   });
 
   viewport.addEventListener("keydown", (event) => {
@@ -283,8 +318,18 @@ export function mountCommunityJumps(
     swipe = null;
   });
 
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(() => {
+      syncViewportHeight();
+    });
+    for (const slide of slides) {
+      observer.observe(slide);
+    }
+  }
+
   syncAria();
   syncHydration();
+  syncViewportHeight();
 }
 
 function slidesHtml(posts: readonly CommunityJumpPost[], looping: boolean): string {

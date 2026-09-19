@@ -80,6 +80,8 @@ describe("community carousel markup", () => {
     expect(html).toContain("aria-label=\"前の動画\"");
     expect(html).toContain("aria-label=\"次の動画\"");
     expect(html).toContain("1 / 10");
+    expect(html.indexOf("communityJumpsPrev")).toBeLessThan(html.indexOf("communityJumpsTrack"));
+    expect(html).toContain('id="communityJumpsStage"');
     expect(html.match(/class="community-jumps-slide"/g)).toHaveLength(12);
     expect(html.match(/data-post-id="2100797924125049167"/g)).toHaveLength(2);
     expect(html.match(/data-post-id="2100886138257121546"/g)).toHaveLength(2);

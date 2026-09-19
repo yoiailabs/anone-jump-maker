@@ -772,8 +772,7 @@ body {
 }
 
 .community-jumps-lede,
-.community-jumps-empty,
-.community-jumps-meter {
+.community-jumps-empty {
   margin: 0;
   color: var(--mute);
   line-height: 1.7;
@@ -792,11 +791,16 @@ body {
   font-size: 0.88rem;
 }
 
+.community-jumps-stage {
+  position: relative;
+}
+
 .community-jumps-viewport {
   overflow: hidden;
   width: 100%;
   border-radius: 1.4rem;
   touch-action: pan-y;
+  transition: height 0.36s ease;
 }
 
 .community-jumps-viewport:focus-visible {
@@ -806,7 +810,7 @@ body {
 
 .community-jumps-track {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   transition: transform 0.36s ease;
   will-change: transform;
 }
@@ -816,7 +820,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .community-jumps-track {
+  .community-jumps-track,
+  .community-jumps-viewport {
     transition: none;
   }
 }
@@ -825,16 +830,16 @@ body {
   flex: 0 0 100%;
   min-width: 0;
   display: flex;
+  align-items: flex-start;
 }
 
 .community-jumps-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   width: 100%;
-  min-height: 22rem;
-  padding: 0.35rem 0.15rem;
+  min-height: 0;
+  padding: 0;
   background: var(--card);
   border: 3px solid var(--ink);
   border-radius: 1.4rem;
@@ -845,8 +850,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  padding: 1.2rem 1rem;
+  gap: 0.28rem;
+  padding: 0.75rem 0.85rem;
   text-align: center;
 }
 
@@ -893,11 +898,18 @@ body {
   box-shadow: none;
 }
 
+/* 高さ 0 の sticky 帯。矢印は埋め込みの上に浮き、フォーカスしても動画を押し出さない。 */
 .community-jumps-controls {
+  position: sticky;
+  top: 0.55rem;
+  z-index: 5;
   display: grid;
   grid-template-columns: 2.6rem 1fr 2.6rem;
-  align-items: center;
-  gap: 0.55rem;
+  align-items: start;
+  gap: 0.45rem;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
 }
 
 .community-jumps-nav {
@@ -912,6 +924,8 @@ body {
   background: var(--lime);
   color: var(--ink);
   cursor: pointer;
+  pointer-events: auto;
+  scroll-margin-top: 0.75rem;
   transition: transform 0.16s ease;
 }
 
@@ -937,11 +951,21 @@ body {
   height: 1.15rem;
 }
 
-.community-jumps-meter {
+.community-jumps .community-jumps-meter {
+  justify-self: center;
+  width: max-content;
+  margin: 0.2rem 0 0;
+  padding: 0.12rem 0.7rem;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   letter-spacing: 0.06em;
+  line-height: 1.4;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card) 92%, white);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 2px 3px 0 var(--ink);
 }
 
 /* 画面最下部の反応。公式ウィジェットが来るまでのblockquoteも同じ枠に収める。 */
