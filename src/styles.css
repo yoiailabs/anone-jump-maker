@@ -1267,6 +1267,18 @@ a.btn:focus-visible {
   margin: 0;
 }
 
+.community-jumps-sentinel {
+  height: 1px;
+  pointer-events: none;
+}
+
+.community-jumps-end-note {
+  margin: 0;
+  text-align: center;
+  color: var(--mute);
+  font-size: 0.82rem;
+}
+
 .community-jumps-card .twitter-tweet {
   width: 100%;
   margin: 0;

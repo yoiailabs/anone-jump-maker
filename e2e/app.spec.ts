@@ -1,7 +1,22 @@
 import { expect, test, type Page } from "@playwright/test";
+import { COMMUNITY_PAGE_SIZE } from "../src/community-list.ts";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { SHARE_TEXT } from "../src/share.ts";
 import { blockAnalytics, jpegInput, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+
+async function loadCommunityUntil(page: Page, count: number): Promise<void> {
+  const items = page.locator("#communityJumps .community-jumps-item");
+  await expect
+    .poll(async () => {
+      const n = await items.count();
+      if (n >= count) return n;
+      if (n > 0) await items.nth(n - 1).scrollIntoViewIfNeeded();
+      const sentinel = page.locator("#communityJumpsSentinel");
+      if (await sentinel.isVisible()) await sentinel.scrollIntoViewIfNeeded();
+      return items.count();
+    }, { timeout: 20_000 })
+    .toBeGreaterThanOrEqual(count);
+}
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -345,14 +360,14 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const titleBox = await page.locator("#communityJumpsTitle").boundingBox();
   const listBox = await page.locator("#communityJumpsList").boundingBox();
   expect(titleBox && listBox && titleBox.y < listBox.y).toBe(true);
-  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(51);
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(COMMUNITY_PAGE_SIZE);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
   await expect(page.locator("#communitySortNewest")).toBeChecked();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
     "2101252511386710099",
   );
-  await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(51);
+  await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(COMMUNITY_PAGE_SIZE);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
   await expect(page.locator("#playBtn")).toBeHidden();
@@ -368,7 +383,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
 
   const first = page.locator("#communityJumps .community-jumps-item").nth(0);
   const second = page.locator("#communityJumps .community-jumps-item").nth(1);
-  const last = page.locator("#communityJumps .community-jumps-item").nth(50);
+  const last = page.locator("#communityJumps .community-jumps-item").nth(COMMUNITY_PAGE_SIZE - 1);
   const firstBox = await first.boundingBox();
   const secondBox = await second.boundingBox();
   const lastBox = await last.boundingBox();
@@ -388,12 +403,18 @@ test("opens community jumps from the disclaimer link and returns via the back li
   }
 
   const bottomBack = page.locator("#toMakerBottom");
+  await loadCommunityUntil(page, 51);
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(51);
+  await expect(page.locator("#communityJumpsEndNote")).toBeVisible();
   const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(50);
   await lastAfter.scrollIntoViewIfNeeded();
   const lastAfterBox = await lastAfter.boundingBox();
   const bottomBox = await bottomBack.boundingBox();
   expect(lastAfterBox && bottomBox && lastAfterBox.y < bottomBox.y).toBe(true);
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
+  await expect(lastAfter.locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
+  const hydratedCount = await page.locator(".community-jumps-card[data-hydrated='1']").count();
+  expect(hydratedCount).toBeGreaterThan(0);
+  expect(hydratedCount).toBeLessThanOrEqual(51);
   await expect(bottomBack).toHaveAttribute("href", "/");
 
   // widgets.js が display:none 中に測ると iframe が潰れる。戻ったら blockquote から載せ直す。
@@ -425,23 +446,36 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await page.locator("#toCommunity").click();
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page.locator("#communityView")).toBeVisible();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(51);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(
+    hydratedCount,
+  );
   await expect(page.locator(".community-jumps-card iframe.twitter-tweet-rendered")).toHaveCount(0);
 });
 
-test("hydrates every community card after scrolling the list", async ({ page }) => {
+test("hydrates community cards near the viewport as infinite scroll appends", async ({ page }) => {
   await page.goto("/community");
   await waitForAppReady(page);
   const items = page.locator("#communityJumps .community-jumps-item");
-  await expect(items).toHaveCount(51);
+  await expect(items).toHaveCount(COMMUNITY_PAGE_SIZE);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
-  for (const index of [0, 1, 2, 25, 50]) {
+  await expect(page.locator("#communityJumpsEndNote")).toBeHidden();
+  for (const index of [0, 1, 2]) {
+    await items.nth(index).scrollIntoViewIfNeeded();
+    await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
+    await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
+  }
+  await loadCommunityUntil(page, 51);
+  await expect(items).toHaveCount(51);
+  await expect(page.locator("#communityJumpsEndNote")).toBeVisible();
+  for (const index of [25, 50]) {
     await items.nth(index).scrollIntoViewIfNeeded();
     await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
     await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
   }
   await page.locator("#toMakerBottom").scrollIntoViewIfNeeded();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
+  const hydrated = await page.locator(".community-jumps-card[data-hydrated='1']").count();
+  expect(hydrated).toBeGreaterThan(5);
+  expect(hydrated).toBeLessThanOrEqual(51);
 });
 
 test("uses three masonry columns on iPad-sized viewports and can sort by popularity", async ({ page }) => {
@@ -458,9 +492,11 @@ test("uses three masonry columns on iPad-sized viewports and can sort by popular
     "data-post-id",
     "2101252511386710099",
   );
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(COMMUNITY_PAGE_SIZE);
   await page.locator("#communitySort").scrollIntoViewIfNeeded();
   await page.locator("label:has(#communitySortPopular)").click();
   await expect(page.locator("#communitySortPopular")).toBeChecked();
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(COMMUNITY_PAGE_SIZE);
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
     "2100570924915548571",
@@ -470,6 +506,7 @@ test("uses three masonry columns on iPad-sized viewports and can sort by popular
     "data-post-id",
     "2101252511386710099",
   );
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(COMMUNITY_PAGE_SIZE);
 });
 
 test("opens /community directly and moves leftover hashes onto the path", async ({ page }) => {
