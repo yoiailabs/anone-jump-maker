@@ -13,7 +13,12 @@ import { keyImageData } from "./keying.ts";
 import {
   BLUR_COVER_SCALE,
   BLUR_DIM,
+  OUTPUT,
+  PANEL_SEAM_BLEED_BLUR_PX,
+  PANEL_SEAM_FADE_PX,
+  PANEL_SEAM_OVERLAP_PX,
   ZOOM_BACKDROP_BLUR_FRAC,
+  blurDimRgba,
   characterDest,
   characterOutlinePx,
   characterScale,
@@ -619,21 +624,71 @@ function paintOutput(
   const blurDest = coverDest(main.width, main.height, sw, sh, { scale: BLUR_COVER_SCALE });
   scratchCtx.drawImage(main, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
 
-  ctx.save();
-  ctx.filter = "blur(16px)";
-  ctx.drawImage(scratch, -24, -24, w + 48, h + 48);
-  ctx.filter = "none";
-  ctx.fillStyle = BLUR_DIM;
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
-
   const panelX = Math.round(panel.x);
   const panelY = Math.round(panel.y);
   const panelW = Math.round(panel.w);
   const panelH = Math.round(panel.h);
-  ctx.imageSmoothingEnabled = false;
+  const overlap = PANEL_SEAM_OVERLAP_PX;
+  const drawY = Math.max(0, panelY - overlap);
+  const drawBottom = Math.min(h, panelY + panelH + overlap);
+  const drawH = Math.max(0, drawBottom - drawY);
+  const fade = Math.max(6, Math.round(PANEL_SEAM_FADE_PX * (h / OUTPUT.height)));
+  const bleed = Math.max(4, Math.round(PANEL_SEAM_BLEED_BLUR_PX * (h / OUTPUT.height)));
+
+  ctx.save();
+  ctx.filter = "blur(16px)";
+  ctx.drawImage(scratch, -24, -24, w + 48, h + 48);
+  ctx.filter = "none";
+  fillLetterboxDim(ctx, w, h, drawY, drawH, fade);
+  ctx.restore();
+
+  ctx.save();
+  ctx.filter = `blur(${bleed}px)`;
   ctx.drawImage(main, panelX, panelY, panelW, panelH);
+  ctx.restore();
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(main, panelX, drawY, panelW, drawH);
   ctx.imageSmoothingEnabled = true;
+}
+
+/** 本編矩形の外側だけ暗転し、端では alpha を 0 まで落とす。 */
+function fillLetterboxDim(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  plateY: number,
+  plateH: number,
+  fadePx: number,
+): void {
+  const topEnd = Math.max(0, Math.min(h, plateY));
+  const botStart = Math.max(0, Math.min(h, plateY + plateH));
+  const fade = Math.max(0, Math.min(fadePx, topEnd, h - botStart));
+  const dim = BLUR_DIM;
+  const clear = blurDimRgba(0);
+
+  if (topEnd - fade > 0) {
+    ctx.fillStyle = dim;
+    ctx.fillRect(0, 0, w, topEnd - fade);
+  }
+  if (fade > 0 && topEnd > 0) {
+    const g = ctx.createLinearGradient(0, topEnd - fade, 0, topEnd);
+    g.addColorStop(0, dim);
+    g.addColorStop(1, clear);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, topEnd - fade, w, fade);
+  }
+  if (fade > 0 && botStart < h) {
+    const g = ctx.createLinearGradient(0, botStart, 0, botStart + fade);
+    g.addColorStop(0, clear);
+    g.addColorStop(1, dim);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, botStart, w, fade);
+  }
+  if (botStart + fade < h) {
+    ctx.fillStyle = dim;
+    ctx.fillRect(0, botStart + fade, w, h - (botStart + fade));
+  }
 }
 
 export const SONG_CREDIT = songCreditLine();

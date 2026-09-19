@@ -295,6 +295,7 @@ function assertNoPanelEdgeSeam(
   assertNoBrightSpike(ctx, canvas.height, top, x, width);
   assertNoBrightSpike(ctx, canvas.height, bottom, x, width);
   assertNoDarkDividerStripe(ctx, top, bottom, x, width);
+  assertNoHardLetterboxCliff(ctx, canvas.height, top, bottom, x, width);
 }
 
 function assertNoBrightSpike(
@@ -339,6 +340,40 @@ function assertNoDarkDividerStripe(
     bottomEdge,
     `dark bottom divider: edge=${bottomEdge.toFixed(1)} interior=${interior.toFixed(1)}`,
   ).toBeGreaterThan(interior - 18);
+}
+
+function assertNoHardLetterboxCliff(
+  ctx: CanvasRenderingContext2D,
+  canvasH: number,
+  top: number,
+  bottom: number,
+  x: number,
+  width: number,
+): void {
+  const maxStep = (edgeY: number) => {
+    const start = Math.max(0, edgeY - 4);
+    const end = Math.min(canvasH - 1, edgeY + 4);
+    let prev = rowMeanLuma(ctx, start, x, width);
+    let worst = 0;
+    const lumas = [prev];
+    for (let y = start + 1; y <= end; y += 1) {
+      const cur = rowMeanLuma(ctx, y, x, width);
+      lumas.push(cur);
+      worst = Math.max(worst, Math.abs(cur - prev));
+      prev = cur;
+    }
+    return { worst, lumas };
+  };
+  const topStep = maxStep(top);
+  const botStep = maxStep(bottom);
+  expect(
+    topStep.worst,
+    `top luma cliff ${topStep.worst.toFixed(1)} lumas=${topStep.lumas.map((v) => v.toFixed(1)).join(",")}`,
+  ).toBeLessThan(32);
+  expect(
+    botStep.worst,
+    `bottom luma cliff ${botStep.worst.toFixed(1)} lumas=${botStep.lumas.map((v) => v.toFixed(1)).join(",")}`,
+  ).toBeLessThan(32);
 }
 
 async function jpegFile(): Promise<File> {
