@@ -1,7 +1,14 @@
 /// <reference types="@vitest/browser/providers/playwright" />
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const src = path.join(path.dirname(fileURLToPath(import.meta.url)), "src");
+
 export default defineConfig({
+  resolve: {
+    alias: { "@": src },
+  },
   test: {
     name: "browser",
     include: ["src/**/*.browser.test.ts"],

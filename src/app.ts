@@ -13,20 +13,13 @@ import {
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
-import {
-  COMMUNITY_JUMPS_TITLE,
-  communityJumpsSectionHtml,
-  mountCommunityJumps,
-  refreshCommunityJumps,
-} from "./community-list.ts";
-import { linkBannersHtml } from "./links.ts";
+import { COMMUNITY_JUMPS_TITLE, mountCommunityJumps, refreshCommunityJumps } from "./community-list.ts";
 import {
   appViewFromClick,
   canonicalAppUrl,
   documentTitleForView,
   parseAppView,
   pathForView,
-  toCommunityLinkHtml,
   type AppView,
 } from "./nav.ts";
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from "./reactions.ts";
@@ -37,7 +30,6 @@ import {
   muteButtonHtml,
   playPauseButtonHtml,
   PREVIEW_MUTED_DEFAULT,
-  restartButtonHtml,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
 } from "./preview.ts";
@@ -72,226 +64,10 @@ export async function boot(root: HTMLElement): Promise<void> {
   let lastSlot = -1;
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
-  root.innerHTML = `
-    <div class="sky" aria-hidden="true">
-      <span class="blob blob-lime"></span>
-      <span class="blob blob-teal"></span>
-      <span class="blob blob-coral"></span>
-    </div>
-    <div class="app">
-      <div class="app-view" id="makerView">
-      <header class="hero">
-        <p class="eyebrow">#あのねジャンプ</p>
-        <h1 id="makerTitle">あのねジャンプメーカー</h1>
-        <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
-        ${toCommunityLinkHtml()}
-      </header>
-
-      <div class="loop-wrap">
-        <a
-          class="loop-link"
-          href="https://www.youtube.com/watch?v=M-IayQIR0XA"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="あのねのPVをYouTubeで開く（新しいタブ）"
-        >
-          <picture>
-            <source media="(prefers-reduced-motion: reduce)" srcset="/jump-loop-still.png" />
-            <img class="loop" src="/jump-loop.png" alt="" width="448" height="252" decoding="async" />
-          </picture>
-        </a>
-      </div>
-
-      <section class="panel">
-        <label class="file-btn">
-          <input id="picker" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/*" multiple />
-          写真を選ぶ
-        </label>
-        <div class="thumbs" id="thumbs" hidden></div>
-        <fieldset class="aspect-field">
-          <legend>動画の向き</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="動画の向き">
-            <label>
-              <input type="radio" name="aspect" value="landscape" checked />
-              <span>横</span>
-            </label>
-            <label>
-              <input type="radio" name="aspect" value="portrait" />
-              <span>縦</span>
-            </label>
-          </div>
-        </fieldset>
-        <fieldset class="aspect-field" id="swapField">
-          <legend>エフェクト</legend>
-          <div class="aspect-toggle" role="radiogroup" aria-label="エフェクト">
-            <label>
-              <input type="radio" name="swap" value="jump" checked />
-              <span>ジャンプ</span>
-            </label>
-            <label>
-              <input type="radio" name="swap" value="zoom" />
-              <span>ズーム</span>
-            </label>
-          </div>
-        </fieldset>
-        <fieldset class="aspect-field" id="filterField">
-          <legend>フィルター</legend>
-          <div class="aspect-toggle cols-3" role="radiogroup" aria-label="フィルター">
-            <label>
-              <input type="radio" name="filter" value="none" checked />
-              <span>なし</span>
-            </label>
-            <label>
-              <input type="radio" name="filter" value="blur-weak" />
-              <span>ブラー(弱)</span>
-            </label>
-            <label>
-              <input type="radio" name="filter" value="blur-strong" />
-              <span>ブラー(強)</span>
-            </label>
-          </div>
-        </fieldset>
-        <div class="actions">
-          <button type="button" id="playBtn" class="btn ghost" disabled>プレビュー</button>
-          <button type="button" id="saveBtn" class="btn" disabled>動画を保存</button>
-        </div>
-        <p class="status" id="status" data-kind="idle">何枚でも。テンプレは 10 枚を 32 カットに並べ直します。少なければ順にくり返します。</p>
-      </section>
-
-      <div class="share-wrap">
-        <button type="button" id="shareAppBtn" class="btn share-app">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path
-              d="M12 3v10M8.2 6.8 12 3l3.8 3.8M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.1"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-          共有する
-        </button>
-        <div class="hashtag-copy">
-          <button type="button" id="copyHashtagsBtn" class="btn copy-hashtags" aria-describedby="hashtagCopyHint">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <rect
-                x="8.2"
-                y="8.2"
-                width="11.5"
-                height="13"
-                rx="2"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.1"
-              />
-              <path
-                d="M15.8 8.2V6.4A1.8 1.8 0 0 0 14 4.6H6.4A1.8 1.8 0 0 0 4.6 6.4V18A1.8 1.8 0 0 0 6.4 19.8H8.2"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.1"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            ハッシュタグをコピー
-          </button>
-          <p class="hashtag-copy-hint" id="hashtagCopyHint">${SHARE_TEXT}</p>
-        </div>
-      </div>
-
-      <footer class="notes">
-        <nav class="links" aria-labelledby="linksTitle">
-          <p class="links-title" id="linksTitle">ナナツカゼさん公式</p>
-          <ul class="link-banners">${linkBannersHtml()}</ul>
-        </nav>
-        <section class="reactions" aria-labelledby="reactionsTitle">
-          <h2 class="reactions-title" id="reactionsTitle">反応</h2>
-          <div class="reactions-embed" id="reactionsEmbed">${reactionEmbedHtml()}</div>
-        </section>
-      </footer>
-      </div>
-      <div class="app-view" id="communityView" hidden>
-        ${communityJumpsSectionHtml()}
-      </div>
-    </div>
-    <dialog class="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
-      <div class="preview-sheet">
-        <header class="preview-head">
-          <h2 id="previewTitle">プレビュー</h2>
-          <button type="button" id="closePreviewBtn" class="preview-close" aria-label="閉じる">×</button>
-        </header>
-        <div class="preview-options">
-          <fieldset class="aspect-field preview-field">
-            <legend>向き</legend>
-            <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューの向き">
-              <label>
-                <input type="radio" name="preview-aspect" value="landscape" checked />
-                <span>横</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-aspect" value="portrait" />
-                <span>縦</span>
-              </label>
-            </div>
-          </fieldset>
-          <fieldset class="aspect-field preview-field">
-            <legend>エフェクト</legend>
-            <div class="aspect-toggle preview-toggle" role="radiogroup" aria-label="プレビューのエフェクト">
-              <label>
-                <input type="radio" name="preview-swap" value="jump" checked />
-                <span>ジャンプ</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-swap" value="zoom" />
-                <span>ズーム</span>
-              </label>
-            </div>
-          </fieldset>
-          <fieldset class="aspect-field preview-field preview-field-span">
-            <legend>フィルター</legend>
-            <div class="aspect-toggle preview-toggle cols-3" role="radiogroup" aria-label="プレビューのフィルター">
-              <label>
-                <input type="radio" name="preview-filter" value="none" checked />
-                <span>なし</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-filter" value="blur-weak" />
-                <span>ブラー(弱)</span>
-              </label>
-              <label>
-                <input type="radio" name="preview-filter" value="blur-strong" />
-                <span>ブラー(強)</span>
-              </label>
-            </div>
-          </fieldset>
-        </div>
-        <div class="stage-wrap">
-          <button
-            type="button"
-            class="stage"
-            id="stage"
-            data-aspect="${DEFAULT_ASPECT}"
-            aria-pressed="false"
-            aria-label="プレビュー。クリックで再生と一時停止"
-          >
-            <span class="stage-play-hint" aria-hidden="true"></span>
-          </button>
-        </div>
-        <p class="slot-meter" id="slotMeter">スロット — / ${timelines[DEFAULT_ASPECT].slots.length}</p>
-        <p class="preview-state" id="previewState" aria-live="polite">停止中</p>
-        <div class="preview-actions">
-          <button type="button" id="modalPlayBtn" class="btn">${playPauseButtonHtml(false)}</button>
-          <button type="button" id="restartBtn" class="btn ghost">${restartButtonHtml()}</button>
-          <button type="button" id="muteBtn" class="btn ghost" aria-pressed="${previewMuted ? "false" : "true"}">${muteButtonHtml(previewMuted)}</button>
-        </div>
-      </div>
-    </dialog>
-  `;
-
   const stage = must(root, "#stage");
   const thumbs = must(root, "#thumbs");
   const slotMeter = must(root, "#slotMeter");
+  slotMeter.textContent = `スロット — / ${timelines[DEFAULT_ASPECT].slots.length}`;
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
@@ -918,6 +694,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
   window.addEventListener("hashchange", syncViewFromLocation);
   syncViewFromLocation();
+  root.dataset.appReady = "1";
 }
 
 export async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {

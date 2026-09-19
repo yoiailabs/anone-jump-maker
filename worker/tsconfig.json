@@ -14,5 +14,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["./**/*.ts", "../src/page-meta.ts"]
+  "include": ["./**/*.ts"]
 }
