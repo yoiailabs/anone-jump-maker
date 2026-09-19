@@ -780,14 +780,24 @@ a.btn:focus-visible {
 }
 
 .thumb.is-placeholder {
-  opacity: 0.28;
+  opacity: 1;
+}
+
+.thumb.is-placeholder > * {
+  visibility: hidden;
 }
 
 .thumb.thumb-float,
 .thumb-float {
   cursor: grabbing;
   touch-action: none;
-  box-shadow: 8px 10px 0 var(--ink);
+  overflow: visible;
+  border-radius: var(--thumb-radius);
+  box-shadow: none;
+}
+
+.thumb-float img {
+  box-shadow: 5px 6px 0 var(--ink);
 }
 
 .thumb img,
