@@ -13,7 +13,6 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus } from "lucide-react";
 import { t, type Locale } from "../i18n.ts";
 import {
   getPhotoThumbsHandlers,
@@ -161,8 +160,22 @@ function AddThumbButton({ locale, locked }: { locale: Locale; locked: boolean })
         if (!locked) openPhotoPicker();
       }}
     >
-      <Plus aria-hidden="true" strokeWidth={3} />
+      <PlusIcon />
     </button>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M12 5v14M5 12h14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
