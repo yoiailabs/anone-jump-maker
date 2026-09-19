@@ -94,6 +94,9 @@ describe("messages", () => {
     expect(t("ko", "makerTitle")).toBe("아노네 점프 메이커");
     expect(t("zh", "makerTitle")).toBe("あのね跳跃制作器");
     expect(t("en", "statusPhotosLoaded", { n: 3 })).toBe("Loaded 3 photos");
+    expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
+    expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");
+    expect(t("ja", "statusPhotoRemoved", { n: 2 })).toBe("写真を外しました（残り 2 枚）");
   });
 
   it("uses the English store title in non-Japanese credits", () => {

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, jpegInput, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -54,6 +54,41 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
 
   await page.locator("#closePreviewBtn").click();
   await expect(dialog).toBeHidden();
+});
+
+test("adds, reorders, and removes photos after the first pick", async ({ page }) => {
+  await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
+  await expect(page.locator("#thumbs")).toBeHidden();
+  await expect(page.locator("#thumbsHint")).toBeHidden();
+
+  await uploadPhoto(page);
+  await expect(page.locator("#pickerLabel")).toHaveText("写真を追加");
+  await expect(page.locator("#thumbsHint")).toBeVisible();
+  await expect(page.locator(".thumb")).toHaveCount(1);
+
+  await page.locator("#picker").setInputFiles(await jpegInput("extra.jpg"));
+  await expect(page.locator("#status")).toContainText("1 枚を追加しました（合計 2 枚）", { timeout: 20_000 });
+  await expect(page.locator(".thumb")).toHaveCount(2);
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
+
+  await page.locator(".thumb").nth(0).press("ArrowRight");
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator(".thumb-index").nth(0)).toHaveText("1");
+  await expect(page.locator(".thumb-index").nth(1)).toHaveText("2");
+
+  await page.locator(".thumb-remove").nth(0).click();
+  await expect(page.locator("#status")).toContainText("写真を外しました（残り 1 枚）");
+  await expect(page.locator(".thumb")).toHaveCount(1);
+  await expect(page.locator("#thumbs img")).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#playBtn")).toBeEnabled();
+
+  await page.locator(".thumb-remove").click();
+  await expect(page.locator("#status")).toContainText("写真をすべて外しました");
+  await expect(page.locator("#thumbs")).toBeHidden();
+  await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
+  await expect(page.locator("#playBtn")).toBeDisabled();
 });
 
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {

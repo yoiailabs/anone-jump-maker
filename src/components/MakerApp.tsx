@@ -97,9 +97,12 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                 accept="image/jpeg,image/png,image/webp,image/gif,image/*"
                 multiple
               />
-              {t(locale, "makerPickPhotos")}
+              <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
             </Label>
-            <div className="thumbs" id="thumbs" hidden />
+            <div className="thumbs" id="thumbs" hidden aria-describedby="thumbsHint" />
+            <p className="thumbs-hint" id="thumbsHint" hidden>
+              {t(locale, "makerThumbsHint")}
+            </p>
             <fieldset className="aspect-field">
               <legend>{t(locale, "makerAspectLegend")}</legend>
               <RadioPills
