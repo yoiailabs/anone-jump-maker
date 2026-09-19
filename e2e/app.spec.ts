@@ -312,14 +312,6 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
 
   await expect(toCommunity).toHaveAttribute("href", "/community");
-  const communityBtn = await toCommunity.evaluate((el) => {
-    const style = getComputedStyle(el);
-    return {
-      background: style.backgroundColor,
-      height: el.getBoundingClientRect().height,
-      radius: style.borderRadius,
-    };
-  });
   await toCommunity.click();
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page).not.toHaveURL(/#community/);
@@ -338,16 +330,24 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#toMaker")).not.toHaveClass(/\bbtn\b/);
   await expect(page.locator("#toMakerBottom")).toHaveClass(/\bpage-link\b/);
   await expect(page.locator("#toMakerBottom")).not.toHaveClass(/\bbtn\b/);
-  const moreJumps = page.locator("#moreJumps");
-  await expect(moreJumps).toHaveText("もっと見る");
-  await expect(moreJumps).toHaveClass(/\bbtn\b/);
-  await expect(moreJumps).toHaveClass(/\bcommunity-more-btn\b/);
-  await expect(moreJumps).toHaveAttribute("target", "_blank");
-  await expect(moreJumps).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(moreJumps).toHaveAttribute(
+  const hashtag = page.locator("#communityHashtag");
+  await expect(hashtag).toHaveText("#あのねジャンプ");
+  await expect(hashtag).toHaveClass(/community-hashtag-link/);
+  await expect(hashtag).not.toHaveClass(/\bbtn\b/);
+  await expect(hashtag).toHaveAttribute("target", "_blank");
+  await expect(hashtag).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(hashtag).toHaveAttribute(
     "href",
     `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
   );
+  await expect(page.locator("#communityJumpsTitle a.community-hashtag-link")).toHaveCount(1);
+  await expect(page.locator("#communityJumps .eyebrow a")).toHaveCount(0);
+  await expect(page.locator("#communityJumps .eyebrow")).toHaveText("#あのねジャンプ");
+  await expect(page.locator("#moreJumps")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "もっと見る" })).toHaveCount(0);
+  const titleBox = await page.locator("#communityJumpsTitle").boundingBox();
+  const listBox = await page.locator("#communityJumpsList").boundingBox();
+  expect(titleBox && listBox && titleBox.y < listBox.y).toBe(true);
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(51);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
   await expect(page.locator("#communitySortNewest")).toBeChecked();
@@ -394,24 +394,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(50);
   await lastAfter.scrollIntoViewIfNeeded();
   const lastAfterBox = await lastAfter.boundingBox();
-  const moreBox = await moreJumps.boundingBox();
   const bottomBox = await bottomBack.boundingBox();
-  expect(lastAfterBox && moreBox && lastAfterBox.y < moreBox.y).toBe(true);
-  expect(moreBox && bottomBox && moreBox.y < bottomBox.y).toBe(true);
-  expect(moreBox && moreBox.height).toBeGreaterThan(40);
-  const moreStyle = await moreJumps.evaluate((el) => {
-    const style = getComputedStyle(el);
-    return {
-      background: style.backgroundColor,
-      height: el.getBoundingClientRect().height,
-      radius: style.borderRadius,
-      decoration: style.textDecorationLine,
-    };
-  });
-  expect(moreStyle.background).toBe(communityBtn.background);
-  expect(moreStyle.height).toBeGreaterThan(40);
-  expect(moreStyle.radius).toBe(communityBtn.radius);
-  expect(moreStyle.decoration).toBe("none");
+  expect(lastAfterBox && bottomBox && lastAfterBox.y < bottomBox.y).toBe(true);
   await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
   await expect(bottomBack).toHaveAttribute("href", "/");
 
@@ -459,7 +443,7 @@ test("hydrates every community card after scrolling the list", async ({ page }) 
     await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
     await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
   }
-  await page.locator("#moreJumps").scrollIntoViewIfNeeded();
+  await page.locator("#toMakerBottom").scrollIntoViewIfNeeded();
   await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
 });
 
