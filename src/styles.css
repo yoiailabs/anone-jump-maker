@@ -1112,8 +1112,16 @@ a.btn:focus-visible {
   --accent: var(--teal);
 }
 
+.link-banner[data-service="instagram"] {
+  --accent: var(--peach);
+}
+
 .link-banner[data-service="youtube"] {
   --accent: var(--coral);
+}
+
+.link-banner[data-service="tiktok"] {
+  --accent: var(--teal);
 }
 
 .link-banner[data-service="spotify"] {
