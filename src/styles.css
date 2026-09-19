@@ -793,6 +793,7 @@ body {
 
 .community-jumps-stage {
   position: relative;
+  touch-action: pan-y;
 }
 
 .community-jumps-viewport {
@@ -839,7 +840,7 @@ body {
   align-items: center;
   width: 100%;
   min-height: 0;
-  padding: 0;
+  padding: 0.4rem 0.4rem 0.45rem;
   background: var(--card);
   border: 3px solid var(--ink);
   border-radius: 1.4rem;
@@ -898,18 +899,19 @@ body {
   box-shadow: none;
 }
 
-/* 高さ 0 の sticky 帯。矢印は埋め込みの上に浮き、フォーカスしても動画を押し出さない。 */
+/* 埋め込みの外に置く sticky 帯。X のヘッダー（アバター／アイコン）に重ねない。 */
 .community-jumps-controls {
   position: sticky;
-  top: 0.55rem;
+  top: 0.45rem;
   z-index: 5;
   display: grid;
   grid-template-columns: 2.6rem 1fr 2.6rem;
-  align-items: start;
+  align-items: center;
   gap: 0.45rem;
-  height: 0;
-  margin: 0;
-  pointer-events: none;
+  margin: 0 0 0.55rem;
+  padding: 0.2rem 0.1rem;
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  touch-action: pan-y;
 }
 
 .community-jumps-nav {
@@ -924,7 +926,6 @@ body {
   background: var(--lime);
   color: var(--ink);
   cursor: pointer;
-  pointer-events: auto;
   scroll-margin-top: 0.75rem;
   transition: transform 0.16s ease;
 }
@@ -954,7 +955,7 @@ body {
 .community-jumps .community-jumps-meter {
   justify-self: center;
   width: max-content;
-  margin: 0.2rem 0 0;
+  margin: 0;
   padding: 0.12rem 0.7rem;
   text-align: center;
   font-size: 0.78rem;

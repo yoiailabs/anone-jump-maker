@@ -78,7 +78,7 @@ test("shows the community jumps carousel above reactions and wraps the loop", as
 
   const prevBox = await page.locator("#communityJumpsPrev").boundingBox();
   const viewportBox = await page.locator("#communityJumpsViewport").boundingBox();
-  expect(prevBox && viewportBox && prevBox.y <= viewportBox.y + 12).toBe(true);
+  expect(prevBox && viewportBox && prevBox.y + prevBox.height <= viewportBox.y + 2).toBe(true);
 
   await page.locator("#communityJumpsPrev").click();
   await expect(page.locator("#communityJumpsMeter")).toHaveText("10 / 10");

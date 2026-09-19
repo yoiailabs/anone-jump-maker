@@ -95,7 +95,7 @@ export function communityJumpsSectionHtml(
       <h2 class="community-jumps-title" id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h2>
       <p class="community-jumps-lede">${COMMUNITY_JUMPS_LEDE}</p>
       <div class="community-jumps-stage" id="communityJumpsStage">
-        <div class="community-jumps-controls">
+        <div class="community-jumps-controls" id="communityJumpsControls">
           <button
             type="button"
             class="community-jumps-nav"
@@ -288,7 +288,7 @@ export function mountCommunityJumps(
     keepCarouselInView();
   });
 
-  viewport.addEventListener("keydown", (event) => {
+  const onArrowKey = (event: KeyboardEvent) => {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       go(-1);
@@ -296,9 +296,12 @@ export function mountCommunityJumps(
       event.preventDefault();
       go(1);
     }
-  });
+  };
+  viewport.addEventListener("keydown", onArrowKey);
+  stage?.addEventListener("keydown", onArrowKey);
 
-  viewport.addEventListener("pointerdown", (event) => {
+  const swipeRoot = stage ?? viewport;
+  swipeRoot.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     if (event.target instanceof Element && event.target.closest("iframe, a, button")) return;
     swipe = { x: event.clientX, y: event.clientY };
@@ -313,8 +316,8 @@ export function mountCommunityJumps(
     go(dx < 0 ? 1 : -1);
   };
 
-  viewport.addEventListener("pointerup", endSwipe);
-  viewport.addEventListener("pointercancel", () => {
+  swipeRoot.addEventListener("pointerup", endSwipe);
+  swipeRoot.addEventListener("pointercancel", () => {
     swipe = null;
   });
 
