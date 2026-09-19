@@ -97,7 +97,8 @@ describe("messages", () => {
     expect(t("ja", "exportTitle")).toBe("動画を生成中");
     expect(t("ja", "exportCancel")).toBe("キャンセル");
     expect(t("ja", "exportKeepOpen")).toContain("タブを閉じたり");
-    expect(t("en", "exportPercent", { percent: 42 })).toBe("42%");
+    expect(t("ja", "exportDownloadHint")).toBe("ダウンロードが開始されませんか？");
+    expect(t("en", "exportDownload")).toBe("Download");
     expect(t("ko", "statusExportCancelled")).toBe("생성을 취소했습니다");
     expect(t("zh", "exportTitle")).toBe("正在生成视频");
   });

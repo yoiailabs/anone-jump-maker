@@ -101,6 +101,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let playing = false;
   let recording = false;
   let exportAbort: AbortController | null = null;
+  let pendingExport: { blob: Blob; filename: string } | null = null;
   let previewTracked = false;
   let previewMuted = PREVIEW_MUTED_DEFAULT;
   let playbackBusy = false;
@@ -121,10 +122,15 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const picker = must(root, "#picker") as HTMLInputElement;
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
   const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
+  const exportTitle = must(root, "#exportTitle");
   const exportStatus = must(root, "#exportStatus");
   const exportProgress = must(root, "#exportProgress") as HTMLProgressElement;
   const exportProgressLabel = must(root, "#exportProgressLabel");
+  const exportKeepOpen = must(root, "#exportKeepOpen");
+  const exportDownloadHint = must(root, "#exportDownloadHint");
   const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
+  const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
+  const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
@@ -395,8 +401,21 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     setStatus(statusText, "busy");
   };
 
+  const setExportPhase = (phase: "busy" | "done") => {
+    exportDialog.dataset.exportPhase = phase;
+    exportTitle.textContent = phase === "done" ? msg("exportDoneTitle") : msg("exportTitle");
+    exportKeepOpen.hidden = phase !== "busy";
+    exportDownloadHint.hidden = phase !== "done";
+    cancelExportBtn.hidden = phase !== "busy";
+    downloadExportBtn.hidden = phase !== "done";
+    closeExportBtn.hidden = phase !== "done";
+    exportDialog.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
+  };
+
   const openExportDialog = () => {
+    pendingExport = null;
     cancelExportBtn.disabled = false;
+    setExportPhase("busy");
     setExportProgress(0, msg("statusExportPreparing"));
     if (!exportDialog.open) {
       exportDialog.showModal();
@@ -404,6 +423,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const closeExportDialog = () => {
+    pendingExport = null;
     if (exportDialog.open) {
       exportDialog.close();
     }
@@ -413,6 +433,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (!exportAbort) return;
     exportAbort.abort();
     cancelExportBtn.disabled = true;
+  };
+
+  const savePendingExport = () => {
+    if (!pendingExport) return;
+    downloadBlob(pendingExport.blob, pendingExport.filename);
   };
 
   let openingPreview = false;
@@ -448,6 +473,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (view !== "maker") {
       closePreview();
       cancelExport();
+      closeExportDialog();
     }
     if (activeView !== view) {
       const firstPaint = activeView === null;
@@ -680,8 +706,25 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     cancelExport();
   });
 
-  exportDialog.addEventListener("cancel", () => {
-    cancelExport();
+  downloadExportBtn.addEventListener("click", () => {
+    savePendingExport();
+  });
+
+  closeExportBtn.addEventListener("click", () => {
+    closeExportDialog();
+  });
+
+  exportDialog.addEventListener("cancel", (event) => {
+    if (exportAbort) {
+      cancelExport();
+      return;
+    }
+    if (pendingExport) return;
+    event.preventDefault();
+  });
+
+  exportDialog.addEventListener("close", () => {
+    pendingExport = null;
   });
 
   window.addEventListener("beforeunload", (event) => {
@@ -736,8 +779,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         },
       });
       const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
+      pendingExport = { blob: result.blob, filename };
       downloadBlob(result.blob, filename);
+      setExportProgress(100, msg("statusSaved", { ext: result.extension.toUpperCase() }));
       setStatus(msg("statusSaved", { ext: result.extension.toUpperCase() }));
+      setExportPhase("done");
+      downloadExportBtn.focus();
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
@@ -754,7 +801,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       haltLoop();
       video.pause();
       video.muted = true;
-      closeExportDialog();
+      if (!pendingExport) closeExportDialog();
       refreshButtons();
       paint();
     }

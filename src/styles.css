@@ -384,7 +384,8 @@ body {
   text-align: right;
 }
 
-.export-keep-open {
+.export-keep-open,
+.export-download-hint {
   margin: 0;
   font-size: 0.72rem;
   line-height: 1.55;
@@ -393,6 +394,10 @@ body {
 
 .export-sheet .btn {
   width: 100%;
+}
+
+.export-sheet [hidden] {
+  display: none !important;
 }
 
 .preview-sheet {

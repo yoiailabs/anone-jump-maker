@@ -106,20 +106,28 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     .catch(() => undefined);
   if (await exportDialog.isVisible()) {
     await expect(page.locator("#exportProgressLabel")).toContainText("%");
-    await expect(page.locator("#exportKeepOpen")).toBeVisible();
-    await expect(page.locator("#cancelExportBtn")).toBeEnabled();
   }
   await expect(page.locator("#status")).toContainText(
     new RegExp(`保存しました|${UNSUPPORTED_EXPORT_MESSAGE}`),
     { timeout: 45_000 },
   );
-  await expect(exportDialog).toBeHidden();
   const statusText = (await page.locator("#status").textContent()) ?? "";
   if (statusText.includes("保存しました")) {
+    await expect(exportDialog).toBeVisible();
+    await expect(page.locator("#exportDownloadHint")).toHaveText("ダウンロードが開始されませんか？");
+    await expect(page.locator("#downloadExportBtn")).toBeVisible();
+    await expect(page.locator("#cancelExportBtn")).toBeHidden();
+    const retryDownload = page.waitForEvent("download", { timeout: 10_000 });
+    await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
+    const retry = await retryDownload;
+    expect(retry.suggestedFilename()).toBe(download.suggestedFilename());
+    await page.locator("#closeExportBtn").click();
+    await expect(exportDialog).toBeHidden();
     return;
   }
+  await expect(exportDialog).toBeHidden();
   expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
 });
 

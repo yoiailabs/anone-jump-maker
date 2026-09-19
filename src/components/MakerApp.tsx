@@ -325,6 +325,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
       <dialog
         className="preview-dialog export-dialog"
         id="exportDialog"
+        data-export-phase="busy"
         aria-labelledby="exportTitle"
         aria-describedby="exportKeepOpen"
       >
@@ -350,8 +351,17 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           <p className="export-keep-open" id="exportKeepOpen">
             {t(locale, "exportKeepOpen")}
           </p>
+          <p className="export-download-hint" id="exportDownloadHint" hidden>
+            {t(locale, "exportDownloadHint")}
+          </p>
           <Button variant="site" type="button" id="cancelExportBtn" className="btn ghost">
             {t(locale, "exportCancel")}
+          </Button>
+          <Button variant="site" type="button" id="downloadExportBtn" className="btn" hidden>
+            {t(locale, "exportDownload")}
+          </Button>
+          <Button variant="site" type="button" id="closeExportBtn" className="btn ghost" hidden>
+            {t(locale, "exportClose")}
           </Button>
         </div>
       </dialog>
