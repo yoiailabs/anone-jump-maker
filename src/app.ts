@@ -13,7 +13,12 @@ import {
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
-import { COMMUNITY_JUMPS_TITLE, communityJumpsSectionHtml, mountCommunityJumps } from "./community-list.ts";
+import {
+  COMMUNITY_JUMPS_TITLE,
+  communityJumpsSectionHtml,
+  mountCommunityJumps,
+  refreshCommunityJumps,
+} from "./community-list.ts";
 import { linkBannersHtml } from "./links.ts";
 import {
   appViewFromClick,
@@ -24,7 +29,7 @@ import {
   toCommunityLinkHtml,
   type AppView,
 } from "./nav.ts";
-import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
+import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
@@ -555,6 +560,7 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   let communityMounted = false;
   let activeView: AppView | null = null;
+  let embedPaintGen = 0;
   const applyView = (view: AppView) => {
     const makerView = must(root, "#makerView");
     const communityView = must(root, "#communityView");
@@ -574,16 +580,22 @@ export async function boot(root: HTMLElement): Promise<void> {
       heading?.setAttribute("tabindex", "-1");
       heading?.focus({ preventScroll: true });
     }
-    if (view === "community") {
-      if (!communityMounted) {
-        mountCommunityJumps(must(root, "#communityJumps"));
-        communityMounted = true;
-      } else {
-        requestAnimationFrame(() => hydrateReactionEmbed(must(root, "#communityJumps")));
+    const paintGen = ++embedPaintGen;
+    const host = view === "community" ? communityView : makerView;
+    whenEmbedHostVisible(host, () => {
+      if (paintGen !== embedPaintGen) return;
+      if (view === "community") {
+        const section = must(root, "#communityJumps");
+        if (!communityMounted) {
+          mountCommunityJumps(section);
+          communityMounted = true;
+        } else {
+          refreshCommunityJumps(section);
+        }
+        return;
       }
-    } else {
-      requestAnimationFrame(() => hydrateReactionEmbed(must(root, "#reactionsEmbed")));
-    }
+      remountReactionEmbed(must(root, "#reactionsEmbed"), reactionEmbedHtml());
+    });
   };
 
   const applyAspect = (next: AspectMode) => {

@@ -157,6 +157,18 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(moreStyle.decoration).toBe("none");
   await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(10);
   await expect(bottomBack).toHaveAttribute("href", "/");
+
+  // widgets.js が display:none 中に測ると iframe が潰れる。戻ったら blockquote から載せ直す。
+  await page.evaluate(() => {
+    const reactions = document.querySelector("#reactionsEmbed");
+    if (reactions) {
+      reactions.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`.repeat(3);
+    }
+    for (const card of document.querySelectorAll<HTMLElement>(".community-jumps-card[data-hydrated='1']")) {
+      card.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`;
+    }
+  });
+
   await bottomBack.click();
   await expect(page).not.toHaveURL(/\/community/);
   expect(new URL(page.url()).pathname).toBe("/");
@@ -165,6 +177,14 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
+  await expect(page.locator("#reactionsEmbed blockquote.twitter-tweet")).toHaveCount(3);
+  await expect(page.locator("#reactionsEmbed iframe.twitter-tweet-rendered")).toHaveCount(0);
+
+  await page.locator("#toCommunity").click();
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page.locator("#communityView")).toBeVisible();
+  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(10);
+  await expect(page.locator(".community-jumps-card iframe.twitter-tweet-rendered")).toHaveCount(0);
 });
 
 test("hydrates every community card after scrolling the list", async ({ page }) => {

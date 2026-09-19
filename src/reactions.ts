@@ -78,8 +78,31 @@ export function reactionEmbedHtml(): string {
   return REACTION_POSTS.map(embedBlockquote).join("");
 }
 
+/** display:none の親では widgets.js が高さ 0 で固まる。見える箱だけで載せる。 */
+export function isEmbedHostVisible(host: HTMLElement): boolean {
+  if (typeof host.closest === "function" && host.closest("[hidden]")) return false;
+  if (typeof host.getBoundingClientRect !== "function") return true;
+  const box = host.getBoundingClientRect();
+  return box.width > 0 && box.height > 0;
+}
+
+/** hidden を外したあとのレイアウトが乗るまで待ってから埋め込む。 */
+export function whenEmbedHostVisible(host: HTMLElement, run: () => void): void {
+  const kick = () => {
+    if (isEmbedHostVisible(host)) run();
+  };
+  if (typeof requestAnimationFrame !== "function") {
+    kick();
+    return;
+  }
+  requestAnimationFrame(() => {
+    requestAnimationFrame(kick);
+  });
+}
+
 /** innerHTML のあとで呼び、公式ウィジェットに差し替える（複数 blockquote も一度で load）。 */
 export function hydrateReactionEmbed(container: HTMLElement): void {
+  if (!isEmbedHostVisible(container)) return;
   const run = (twttr: TwitterWidgetsApi) => {
     void twttr.widgets.load(container);
   };
@@ -107,6 +130,16 @@ export function hydrateReactionEmbed(container: HTMLElement): void {
     },
   };
   ensureWidgetsScript();
+}
+
+/**
+ * iframe 済みの埋め込みは load だけでは伸びない。
+ * 見えているときだけ blockquote に戻して widgets.js を載せ直す。
+ */
+export function remountReactionEmbed(container: HTMLElement, html: string): void {
+  if (!isEmbedHostVisible(container)) return;
+  container.innerHTML = html;
+  hydrateReactionEmbed(container);
 }
 
 function ensureWidgetsScript(): void {

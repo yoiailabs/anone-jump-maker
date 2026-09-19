@@ -7,6 +7,7 @@ import {
   MORE_JUMPS_LABEL,
   communityJumpsSectionHtml,
   hydrateIndexes,
+  refreshCommunityJumps,
   rememberHydrateIndexes,
   shouldHydrateRemaining,
   visibleLogicalIndexes,
@@ -48,6 +49,10 @@ describe("community list hydrate window", () => {
     expect(shouldHydrateRemaining({ bottom: 900, height: 2000, width: 320 }, 800, 160)).toBe(true);
     expect(shouldHydrateRemaining({ bottom: 2000, height: 2000, width: 320 }, 800, 160)).toBe(false);
     expect(shouldHydrateRemaining({ bottom: 0, height: 0, width: 0 }, 800, 160)).toBe(false);
+  });
+
+  it("no-ops refresh when the list was never mounted", () => {
+    expect(() => refreshCommunityJumps({} as HTMLElement)).not.toThrow();
   });
 });
 

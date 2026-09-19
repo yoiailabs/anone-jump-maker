@@ -4,7 +4,7 @@ import {
 } from "./community-jumps.ts";
 import { toMakerLinkHtml } from "./nav.ts";
 import { COMMUNITY_DESCRIPTION, COMMUNITY_DOCUMENT_TITLE } from "./page-meta.ts";
-import { hydrateReactionEmbed } from "./reactions.ts";
+import { hydrateReactionEmbed, isEmbedHostVisible } from "./reactions.ts";
 
 export const COMMUNITY_JUMPS_TITLE = COMMUNITY_DOCUMENT_TITLE;
 export const COMMUNITY_JUMPS_LEDE = COMMUNITY_DESCRIPTION;
@@ -111,6 +111,13 @@ export function communityJumpsSectionHtml(
   `;
 }
 
+const communityRefreshers = new WeakMap<HTMLElement, () => void>();
+
+/** 表示に戻った一覧は、潰れた iframe を blockquote から載せ直す。 */
+export function refreshCommunityJumps(section: HTMLElement): void {
+  communityRefreshers.get(section)?.();
+}
+
 export function mountCommunityJumps(
   section: HTMLElement,
   posts: readonly CommunityJumpPost[] = COMMUNITY_JUMP_POSTS,
@@ -131,14 +138,8 @@ export function mountCommunityJumps(
     return visibleLogicalIndexes(items, window.innerHeight);
   };
 
-  const isSectionLaidOut = () => {
-    if (section.closest("[hidden]")) return false;
-    const box = section.getBoundingClientRect();
-    return box.width > 0 && box.height > 0;
-  };
-
   const hydrateWanted = () => {
-    if (typeof window !== "undefined" && !isSectionLaidOut()) return;
+    if (!isEmbedHostVisible(section)) return;
     const incoming = incomingIndexes();
     const kickstart = remembered.size === 0 && incoming.length === 0 ? [0] : incoming;
     const want = rememberHydrateIndexes(remembered, kickstart, posts.length);
@@ -158,6 +159,24 @@ export function mountCommunityJumps(
       hydrateReactionEmbed(card);
     }
   };
+
+  const remountHydratedCards = () => {
+    if (!isEmbedHostVisible(section)) return;
+    for (const item of itemsNow()) {
+      const logical = Number(item.dataset.logical);
+      const card = item.querySelector<HTMLElement>(".community-jumps-card");
+      const post = posts[logical];
+      if (!card || !post || card.dataset.hydrated !== "1") continue;
+      card.innerHTML = embedHtml(post);
+      hydrateReactionEmbed(card);
+    }
+  };
+
+  const refresh = () => {
+    remountHydratedCards();
+    hydrateWanted();
+  };
+  communityRefreshers.set(section, refresh);
 
   if (typeof IntersectionObserver === "undefined") {
     for (let index = 0; index < posts.length; index += 1) remembered.add(index);

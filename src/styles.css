@@ -57,6 +57,8 @@ body {
   gap: var(--section-gap);
 }
 
+/* 非表示ページは display:none のまま（コミュニティの高さがメーカーを押さない）。
+   widgets.js は見えない箱を高さ 0 で測るので、表示時に blockquote から載せ直す。 */
 .app-view[hidden] {
   display: none;
 }
