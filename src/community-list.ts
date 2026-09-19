@@ -83,6 +83,40 @@ export const MORE_JUMPS_LABEL = t("ja", "communityMore");
 export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
 
+/** 1ページの件数。無限スクロールにはしない。 */
+export const COMMUNITY_JUMP_PAGE_SIZE = 20;
+export const DEFAULT_COMMUNITY_JUMP_PAGE = 1;
+
+export function communityJumpPageCount(
+  total: number,
+  pageSize = COMMUNITY_JUMP_PAGE_SIZE,
+): number {
+  if (!Number.isInteger(total) || total <= 0) return 0;
+  if (!Number.isInteger(pageSize) || pageSize <= 0) return 0;
+  return Math.ceil(total / pageSize);
+}
+
+export function clampCommunityJumpPage(
+  page: number,
+  total: number,
+  pageSize = COMMUNITY_JUMP_PAGE_SIZE,
+): number {
+  const pages = communityJumpPageCount(total, pageSize);
+  if (pages <= 0) return DEFAULT_COMMUNITY_JUMP_PAGE;
+  if (!Number.isInteger(page) || page < 1) return DEFAULT_COMMUNITY_JUMP_PAGE;
+  return Math.min(page, pages);
+}
+
+export function communityJumpPagePosts<T>(
+  posts: readonly T[],
+  page: number,
+  pageSize = COMMUNITY_JUMP_PAGE_SIZE,
+): T[] {
+  const current = clampCommunityJumpPage(page, posts.length, pageSize);
+  const start = (current - 1) * pageSize;
+  return posts.slice(start, start + pageSize);
+}
+
 /** 画面の少し外まで先読みする余白。埋め込みが伸びても後続を取りこぼさない。 */
 export const HYDRATE_ROOT_MARGIN_PX = 640;
 
@@ -156,10 +190,13 @@ export function communityJumpsSectionHtml(
   posts: readonly CommunityJumpPost[] = COMMUNITY_JUMP_POSTS,
   locale: Locale = DEFAULT_LOCALE,
   sort: CommunityJumpSort = DEFAULT_COMMUNITY_JUMP_SORT,
+  page: number = DEFAULT_COMMUNITY_JUMP_PAGE,
 ): string {
   const ordered = sortCommunityJumpPosts(posts, sort);
+  const current = clampCommunityJumpPage(page, ordered.length);
+  const shown = communityJumpPagePosts(ordered, current);
   return `
-    <section class="community-jumps" id="communityJumps" data-locale="${locale}" data-sort="${sort}" aria-labelledby="communityJumpsTitle">
+    <section class="community-jumps" id="communityJumps" data-locale="${locale}" data-sort="${sort}" data-page="${current}" aria-labelledby="communityJumpsTitle">
       <header class="hero community-jumps-hero">
         ${languageNavHtml(locale, "community")}
         ${toMakerLinkHtml("toMaker", locale)}
@@ -175,8 +212,9 @@ export function communityJumpsSectionHtml(
       ${
         posts.length === 0
           ? `<p class="community-jumps-empty">${t(locale, "communityEmpty")}</p>`
-          : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(ordered, locale)}</ol>`
+          : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(shown, locale)}</ol>`
       }
+      ${communityPagerHtml(ordered.length, current, locale)}
       <footer class="community-jumps-end">
         ${moreJumpsLinkHtml(locale)}
         ${toMakerLinkHtml("toMakerBottom", locale)}
@@ -205,8 +243,10 @@ export function mountCommunityJumps(
     posts,
     isCommunityJumpSort(section.dataset.sort) ? section.dataset.sort : DEFAULT_COMMUNITY_JUMP_SORT,
   );
+  let page = clampCommunityJumpPage(Number(section.dataset.page), ordered.length);
 
   const itemsNow = () => [...list.querySelectorAll<HTMLElement>(".community-jumps-item")];
+  const shownPosts = () => communityJumpPagePosts(ordered, page);
 
   const columnCount = () =>
     typeof window === "undefined" ? 1 : communityMasonryColumns(window.innerWidth);
@@ -217,8 +257,9 @@ export function mountCommunityJumps(
 
   const incomingIndexes = () => {
     const items = itemsNow();
+    const shown = shownPosts();
     if (typeof window !== "undefined" && shouldHydrateRemaining(list.getBoundingClientRect(), window.innerHeight)) {
-      return ordered.map((_, index) => index);
+      return shown.map((_, index) => index);
     }
     if (typeof window === "undefined") return remembered.size > 0 ? [] : [0];
     return visibleLogicalIndexes(items, window.innerHeight);
@@ -226,16 +267,17 @@ export function mountCommunityJumps(
 
   const hydrateWanted = () => {
     if (!isEmbedHostVisible(section)) return;
+    const shown = shownPosts();
     const incoming = incomingIndexes();
     const kickstart = remembered.size === 0 && incoming.length === 0 ? [0] : incoming;
-    const want = rememberHydrateIndexes(remembered, kickstart, ordered.length, hydratePadForColumns(columnCount()));
+    const want = rememberHydrateIndexes(remembered, kickstart, shown.length, hydratePadForColumns(columnCount()));
     for (const index of want) remembered.add(index);
 
     const freshCards: HTMLElement[] = [];
     for (const item of itemsNow()) {
       const logical = Number(item.dataset.logical);
       const card = item.querySelector<HTMLElement>(".community-jumps-card");
-      const post = ordered[logical];
+      const post = shown[logical];
       if (!card || !post || !want.includes(logical) || card.dataset.hydrated === "1") continue;
       card.innerHTML = embedHtml(post, localeOf(section));
       card.dataset.hydrated = "1";
@@ -249,10 +291,11 @@ export function mountCommunityJumps(
 
   const remountHydratedCards = () => {
     if (!isEmbedHostVisible(section)) return;
+    const shown = shownPosts();
     for (const item of itemsNow()) {
       const logical = Number(item.dataset.logical);
       const card = item.querySelector<HTMLElement>(".community-jumps-card");
-      const post = ordered[logical];
+      const post = shown[logical];
       if (!card || !post || card.dataset.hydrated !== "1") continue;
       card.innerHTML = embedHtml(post, localeOf(section));
       hydrateReactionEmbed(card);
@@ -296,14 +339,40 @@ export function mountCommunityJumps(
     }
   };
 
-  const applySort = (sort: CommunityJumpSort) => {
-    ordered = sortCommunityJumpPosts(posts, sort);
+  const renderPage = (opts?: { scroll?: boolean }) => {
     remembered.clear();
-    section.dataset.sort = sort;
-    list.innerHTML = itemsHtml(ordered, localeOf(section));
+    page = clampCommunityJumpPage(page, ordered.length);
+    section.dataset.page = String(page);
+    const locale = localeOf(section);
+    list.innerHTML = itemsHtml(shownPosts(), locale);
+    const existingPager = section.querySelector("#communityPager");
+    const pagerHtml = communityPagerHtml(ordered.length, page, locale);
+    if (existingPager) {
+      if (pagerHtml) existingPager.outerHTML = pagerHtml;
+      else existingPager.remove();
+    } else if (pagerHtml) {
+      list.insertAdjacentHTML("afterend", pagerHtml);
+    }
     watchItems();
     layoutMasonry();
     hydrateWanted();
+    if (opts?.scroll) {
+      list.scrollIntoView({ block: "start" });
+    }
+  };
+
+  const applySort = (sort: CommunityJumpSort) => {
+    ordered = sortCommunityJumpPosts(posts, sort);
+    page = DEFAULT_COMMUNITY_JUMP_PAGE;
+    section.dataset.sort = sort;
+    renderPage({ scroll: true });
+  };
+
+  const applyPage = (next: number) => {
+    const clamped = clampCommunityJumpPage(next, ordered.length);
+    if (clamped === page) return;
+    page = clamped;
+    renderPage({ scroll: true });
   };
 
   const sortRoot = section.querySelector<HTMLElement>("#communitySort");
@@ -313,11 +382,20 @@ export function mountCommunityJumps(
     applySort(target.value);
   });
 
+  section.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest<HTMLButtonElement>("[data-community-page]");
+    if (!button || !section.contains(button) || button.disabled) return;
+    event.preventDefault();
+    applyPage(Number(button.dataset.communityPage));
+  });
+
   layoutMasonry();
   watchItems();
 
   if (typeof IntersectionObserver === "undefined") {
-    for (let index = 0; index < ordered.length; index += 1) remembered.add(index);
+    for (let index = 0; index < shownPosts().length; index += 1) remembered.add(index);
     hydrateWanted();
     return;
   }
@@ -334,6 +412,31 @@ export function mountCommunityJumps(
 
 export function moreJumpsLinkHtml(locale: Locale = DEFAULT_LOCALE): string {
   return `<p class="community-more-wrap"><a id="moreJumps" class="btn community-more-btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${t(locale, "communityMore")}</a></p>`;
+}
+
+export function communityPagerHtml(
+  total: number,
+  page: number,
+  locale: Locale = DEFAULT_LOCALE,
+  pageSize = COMMUNITY_JUMP_PAGE_SIZE,
+): string {
+  const pages = communityJumpPageCount(total, pageSize);
+  if (pages <= 1) return "";
+  const current = clampCommunityJumpPage(page, total, pageSize);
+  const prevDisabled = current <= 1 ? " disabled" : "";
+  const nextDisabled = current >= pages ? " disabled" : "";
+  const numbers = Array.from({ length: pages }, (_, index) => {
+    const n = index + 1;
+    const currentAttr = n === current ? ' aria-current="page"' : "";
+    return `<button type="button" class="btn ghost community-page-num" data-community-page="${n}"${currentAttr}>${n}</button>`;
+  }).join("");
+  return `
+    <nav class="community-pager" id="communityPager" aria-label="${t(locale, "communityPager")}">
+      <button type="button" class="btn ghost" id="communityPagePrev" data-community-page="${current - 1}"${prevDisabled}>${t(locale, "communityPagePrev")}</button>
+      <div class="community-pager-pages">${numbers}</div>
+      <button type="button" class="btn ghost" id="communityPageNext" data-community-page="${current + 1}"${nextDisabled}>${t(locale, "communityPageNext")}</button>
+    </nav>
+  `;
 }
 
 export function communitySortHtml(

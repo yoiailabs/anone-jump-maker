@@ -3,16 +3,22 @@ import {
   COMMUNITY_JUMPS_EMPTY,
   COMMUNITY_JUMPS_LEDE,
   COMMUNITY_JUMPS_TITLE,
+  COMMUNITY_JUMP_PAGE_SIZE,
   COMMUNITY_MASONRY_BREAKPOINTS,
   COMMUNITY_MASONRY_GAP_PX,
   COMMUNITY_MASONRY_ROW_PX,
+  DEFAULT_COMMUNITY_JUMP_PAGE,
   MORE_JUMPS_HREF,
   MORE_JUMPS_LABEL,
   applyCommunityMasonryItem,
   applyCommunityMasonryLayout,
+  clampCommunityJumpPage,
+  communityJumpPageCount,
+  communityJumpPagePosts,
   communityJumpsSectionHtml,
   communityMasonryColumns,
   communityMasonryRowSpan,
+  communityPagerHtml,
   hydrateIndexes,
   hydratePadForColumns,
   refreshCommunityJumps,
@@ -24,6 +30,7 @@ import {
   COMMUNITY_JUMP_CAPACITY,
   COMMUNITY_JUMP_POSTS,
   communityJumpFromHref,
+  sortCommunityJumpPosts,
   type CommunityJumpPost,
 } from "./community-jumps.ts";
 
@@ -123,14 +130,20 @@ describe("community masonry", () => {
 });
 
 describe("community list markup", () => {
-  it("lays out one masonry item per curated post with no carousel chrome", () => {
+  it("lays out one masonry page of 20 with pager chrome and no carousel", () => {
+    const newest = sortCommunityJumpPosts(COMMUNITY_JUMP_POSTS, "newest");
+    const page1 = communityJumpPagePosts(newest, 1);
     const html = communityJumpsSectionHtml();
+    expect(COMMUNITY_JUMP_PAGE_SIZE).toBe(20);
+    expect(DEFAULT_COMMUNITY_JUMP_PAGE).toBe(1);
+    expect(communityJumpPageCount(152)).toBe(8);
     expect(html).toContain(COMMUNITY_JUMPS_TITLE);
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain('id="communityJumps"');
     expect(html).toContain('id="communityJumpsList"');
     expect(html).toContain("community-jumps-masonry");
     expect(html).toContain('data-sort="newest"');
+    expect(html).toContain('data-page="1"');
     expect(html).toContain('id="communitySortNewest"');
     expect(html).toContain('id="communitySortPopular"');
     expect(html).toContain("新しい順");
@@ -140,7 +153,6 @@ describe("community list markup", () => {
     expect(html).toContain('id="toMakerBottom"');
     expect(html).toContain('href="/"');
     expect(html).toContain('class="page-link"');
-    expect(html).not.toContain("btn ghost");
     expect(html).toContain("メーカーに戻る");
     expect(html).toContain(MORE_JUMPS_LABEL);
     expect(html).toContain('id="moreJumps"');
@@ -153,7 +165,8 @@ describe("community list markup", () => {
     expect(html.match(/メーカーに戻る/g)).toHaveLength(2);
     expect(html.match(/id="moreJumps"/g)).toHaveLength(1);
     expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
-    expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("moreJumps"));
+    expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("communityPager"));
+    expect(html.indexOf("communityPager")).toBeLessThan(html.indexOf("moreJumps"));
     expect(html.indexOf("moreJumps")).toBeLessThan(html.indexOf("toMakerBottom"));
     expect(html).toContain('class="lang-switch"');
     expect(html).toContain('lang="en"');
@@ -164,33 +177,44 @@ describe("community list markup", () => {
     expect(html).not.toContain("communityJumpsMeter");
     expect(html).not.toContain("community-jumps-track");
     expect(html).not.toContain("community-jumps-viewport");
-    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(152);
-    expect(html.match(/data-media="video"/g)).toHaveLength(152);
+    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(20);
+    expect(html.match(/data-media="video"/g)).toHaveLength(20);
     expect(html.match(/data-post-id="2101288627989057912"/g)).toHaveLength(1);
-    expect(html.match(/data-post-id="2011056367419998636"/g)).toHaveLength(1);
+    expect(html).not.toContain('data-post-id="2011056367419998636"');
     expect(html).toContain("@wktkhnkc1852");
-    expect(html).toContain("@qmapon");
-    expect(html).toContain("@02_ZERO_Ni");
-    expect(html).toContain("738 いいね");
-    expect(html).toContain("@_nakotanmaru");
-    expect(html).toContain("@Midoh_013");
-    expect(html).toContain('href="https://x.com/_nakotanmaru/status/2100880092864122959"');
-    expect(html.indexOf("2101288627989057912")).toBeLessThan(html.indexOf("2011056367419998636"));
+    expect(html).toContain(`data-post-id="${page1[page1.length - 1]?.id}"`);
+    expect(html).toContain('id="communityPager"');
+    expect(html).toContain('id="communityPagePrev"');
+    expect(html).toContain('id="communityPageNext"');
+    expect(html).toContain("前へ");
+    expect(html).toContain("次へ");
+    expect(html.match(/data-community-page="/g)?.length).toBeGreaterThanOrEqual(8);
+    expect(html).toContain('aria-current="page"');
+    expect(html).toContain('id="communityPagePrev" data-community-page="0" disabled');
     const popular = communityJumpsSectionHtml(undefined, "ja", "popular");
     expect(popular.indexOf("2100570924915548571")).toBeLessThan(popular.indexOf("2100797924125049167"));
     expect(popular).toContain('data-sort="popular"');
+    expect(popular.match(/class="community-jumps-item"/g)).toHaveLength(20);
+    const lastPage = communityJumpsSectionHtml(undefined, "ja", "newest", 8);
+    expect(lastPage).toContain('data-page="8"');
+    expect(lastPage.match(/class="community-jumps-item"/g)).toHaveLength(12);
+    expect(lastPage).toContain('data-post-id="2011056367419998636"');
+    expect(lastPage).toContain("@Midoh_013");
+    expect(lastPage).toContain('id="communityPageNext" data-community-page="9" disabled');
   });
 
-  it("keeps a long curated list in the same masonry markup so new rows are drop-in", () => {
+  it("pages a long curated list 20 at a time so new rows are drop-in", () => {
     const posts = Array.from({ length: 30 }, (_, index) =>
       communityJumpFromHref(`https://x.com/user${index}/status/${2_100_000_000_000_000 + index}`, index + 1),
     );
     const html = communityJumpsSectionHtml(posts);
-    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(30);
+    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(20);
+    expect(communityJumpPageCount(30)).toBe(2);
     expect(COMMUNITY_JUMP_CAPACITY).toBeGreaterThanOrEqual(152);
     expect(html).toContain("community-jumps-masonry");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain("communitySort");
+    expect(html).toContain('id="communityPager"');
     expect(html).not.toContain("community-jumps-track");
   });
 
@@ -203,6 +227,7 @@ describe("community list markup", () => {
     expect(html).toContain('id="moreJumps"');
     expect(html).not.toContain("community-jumps-list");
     expect(html).not.toContain("communitySort");
+    expect(html).not.toContain("communityPager");
     expect(html).not.toContain(COMMUNITY_JUMPS_LEDE);
   });
 
@@ -211,6 +236,37 @@ describe("community list markup", () => {
     expect(html.match(/class="community-jumps-item"/g)).toHaveLength(1);
     expect(html).toContain("community-jumps-masonry");
     expect(html).not.toContain("communitySort");
+    expect(html).not.toContain("communityPager");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
+  });
+});
+
+describe("community pagination", () => {
+  it("slices 20 posts per page and clamps out-of-range pages", () => {
+    expect(communityJumpPageCount(0)).toBe(0);
+    expect(communityJumpPageCount(-1)).toBe(0);
+    expect(communityJumpPageCount(20)).toBe(1);
+    expect(communityJumpPageCount(21)).toBe(2);
+    expect(communityJumpPageCount(152)).toBe(8);
+    expect(clampCommunityJumpPage(0, 152)).toBe(1);
+    expect(clampCommunityJumpPage(1.5, 152)).toBe(1);
+    expect(clampCommunityJumpPage(9, 152)).toBe(8);
+    expect(clampCommunityJumpPage(3, 152)).toBe(3);
+    const newest = sortCommunityJumpPosts(COMMUNITY_JUMP_POSTS, "newest");
+    const page1 = communityJumpPagePosts(newest, 1);
+    const page8 = communityJumpPagePosts(newest, 8);
+    expect(page1).toHaveLength(20);
+    expect(page1[0]?.id).toBe("2101288627989057912");
+    expect(page8).toHaveLength(12);
+    expect(page8[page8.length - 1]?.id).toBe("2011056367419998636");
+    expect(communityJumpPagePosts(newest, 99).at(-1)?.id).toBe("2011056367419998636");
+  });
+
+  it("hides the pager when everything fits on one page", () => {
+    const posts = Array.from({ length: 20 }, (_, index) =>
+      communityJumpFromHref(`https://x.com/user${index}/status/${2_100_000_000_000_000 + index}`, index + 1),
+    );
+    expect(communityPagerHtml(20, 1)).toBe("");
+    expect(communityJumpsSectionHtml(posts)).not.toContain("communityPager");
   });
 });

@@ -1241,6 +1241,34 @@ a.btn:focus-visible {
   font-weight: 700;
 }
 
+.community-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.15rem 0 0;
+}
+
+.community-pager-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.community-pager .btn {
+  min-height: 2.85rem;
+  min-width: 2.85rem;
+  padding: 0.35rem 0.9rem;
+}
+
+.community-pager .community-page-num[aria-current="page"] {
+  background: var(--peach);
+  box-shadow: 3px 4px 0 var(--ink);
+}
+
 .community-jumps-end {
   display: flex;
   flex-direction: column;
