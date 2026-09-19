@@ -14,6 +14,7 @@ import {
   isLikelyImageFile,
   loadPhotos,
   mapLimit,
+  newPhotoId,
   mimeFromSignature,
   photoFitSize,
   revokePhotos,
@@ -343,6 +344,33 @@ describe("tryInOrder / decode fallback order", () => {
   });
 });
 
+describe("newPhotoId", () => {
+  it("uses crypto.randomUUID when it is a function", () => {
+    const randomUUID = vi.fn(() => "11111111-2222-3333-4444-555555555555");
+    vi.stubGlobal("crypto", { randomUUID });
+    try {
+      expect(newPhotoId()).toBe("11111111-2222-3333-4444-555555555555");
+      expect(randomUUID).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("falls back to uuid v4 when randomUUID is missing", () => {
+    vi.stubGlobal("crypto", {
+      getRandomValues: (bytes: Uint8Array) => {
+        bytes.fill(0xab);
+        return bytes;
+      },
+    });
+    try {
+      expect(newPhotoId()).toBe("abababab-abab-4bab-abab-abababababab");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe("loadPhotos", () => {
   it("loads an empty-MIME JPEG instead of dropping it", async () => {
     const bitmap = fakeBitmap(12, 8);
@@ -352,6 +380,27 @@ describe("loadPhotos", () => {
       expect(photos).toHaveLength(1);
       expect(photos[0]?.name).toBe("IMG_0001.jpg");
       expect(photos[0]?.thumbUrl).toBe("blob:thumb");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("still assigns a photo id when crypto.randomUUID is missing", async () => {
+    const bitmap = fakeBitmap(12, 8);
+    stubPhotoGlobals(bitmap);
+    vi.stubGlobal("crypto", {
+      getRandomValues: (bytes: Uint8Array) => {
+        bytes.fill(0xab);
+        return bytes;
+      },
+    });
+    try {
+      const file = jpegFile("IMG_0001.jpg", "");
+      const photos = await loadPhotos([file]);
+      expect(photos).toHaveLength(1);
+      expect(photos[0]?.id).toBe(
+        `${file.name}-${file.size}-${file.lastModified}-abababab-abab-4bab-abab-abababababab`,
+      );
     } finally {
       vi.unstubAllGlobals();
     }
