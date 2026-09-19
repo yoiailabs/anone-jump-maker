@@ -13,8 +13,23 @@ import {
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
+import {
+  COMMUNITY_JUMPS_TITLE,
+  communityJumpsSectionHtml,
+  mountCommunityJumps,
+  refreshCommunityJumps,
+} from "./community-list.ts";
 import { linkBannersHtml } from "./links.ts";
-import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
+import {
+  appViewFromClick,
+  canonicalAppUrl,
+  documentTitleForView,
+  parseAppView,
+  pathForView,
+  toCommunityLinkHtml,
+  type AppView,
+} from "./nav.ts";
+import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
@@ -64,10 +79,12 @@ export async function boot(root: HTMLElement): Promise<void> {
       <span class="blob blob-coral"></span>
     </div>
     <div class="app">
+      <div class="app-view" id="makerView">
       <header class="hero">
         <p class="eyebrow">#あのねジャンプ</p>
-        <h1>あのねジャンプメーカー</h1>
+        <h1 id="makerTitle">あのねジャンプメーカー</h1>
         <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
+        ${toCommunityLinkHtml()}
       </header>
 
       <div class="loop-wrap">
@@ -193,6 +210,10 @@ export async function boot(root: HTMLElement): Promise<void> {
           <div class="reactions-embed" id="reactionsEmbed">${reactionEmbedHtml()}</div>
         </section>
       </footer>
+      </div>
+      <div class="app-view" id="communityView" hidden>
+        ${communityJumpsSectionHtml()}
+      </div>
     </div>
     <dialog class="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
       <div class="preview-sheet">
@@ -537,6 +558,52 @@ export async function boot(root: HTMLElement): Promise<void> {
     }
   };
 
+  let communityMounted = false;
+  let activeView: AppView | null = null;
+  let embedPaintGen = 0;
+  const applyView = (view: AppView) => {
+    const makerView = must(root, "#makerView");
+    const communityView = must(root, "#communityView");
+    makerView.hidden = view !== "maker";
+    communityView.hidden = view !== "community";
+    document.title = documentTitleForView(view, COMMUNITY_JUMPS_TITLE);
+    if (view !== "maker") {
+      closePreview();
+    }
+    if (activeView !== view) {
+      const firstPaint = activeView === null;
+      activeView = view;
+      window.scrollTo(0, 0);
+      if (!firstPaint) {
+        const heading =
+          view === "community"
+            ? root.querySelector<HTMLElement>("#communityJumpsTitle")
+            : root.querySelector<HTMLElement>("#makerTitle");
+        heading?.setAttribute("tabindex", "-1");
+        heading?.focus({
+          preventScroll: true,
+          focusVisible: false,
+        } as FocusOptions & { focusVisible?: boolean });
+      }
+    }
+    const paintGen = ++embedPaintGen;
+    const host = view === "community" ? communityView : makerView;
+    whenEmbedHostVisible(host, () => {
+      if (paintGen !== embedPaintGen) return;
+      if (view === "community") {
+        const section = must(root, "#communityJumps");
+        if (!communityMounted) {
+          mountCommunityJumps(section);
+          communityMounted = true;
+        } else {
+          refreshCommunityJumps(section);
+        }
+        return;
+      }
+      remountReactionEmbed(must(root, "#reactionsEmbed"), reactionEmbedHtml());
+    });
+  };
+
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
     const inPreview = previewDialog.open;
@@ -818,7 +885,39 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   void video.load();
-  hydrateReactionEmbed(must(root, "#reactionsEmbed"));
+
+  const goToView = (view: AppView) => {
+    const next = `${pathForView(view)}${location.search}`;
+    if (`${location.pathname}${location.search}` !== next) {
+      history.pushState({ view }, "", next);
+    }
+    applyView(view);
+  };
+
+  const syncViewFromLocation = () => {
+    const next = canonicalAppUrl(location);
+    if (next) history.replaceState(history.state, "", next);
+    applyView(parseAppView(location));
+  };
+
+  root.addEventListener("click", (event) => {
+    if (!(event instanceof MouseEvent) || event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const anchor = target.closest("a");
+    if (!anchor) return;
+    const view = appViewFromClick(anchor, location.origin);
+    if (!view) return;
+    event.preventDefault();
+    goToView(view);
+  });
+
+  window.addEventListener("popstate", () => {
+    applyView(parseAppView(location));
+  });
+  window.addEventListener("hashchange", syncViewFromLocation);
+  syncViewFromLocation();
 }
 
 export async function loadTimelines(): Promise<Record<AspectMode, CutTimeline>> {

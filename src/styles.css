@@ -51,6 +51,18 @@ body {
   z-index: 1;
 }
 
+.app-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
+/* 非表示ページは display:none のまま（コミュニティの高さがメーカーを押さない）。
+   widgets.js は見えない箱を高さ 0 で測るので、表示時に blockquote から載せ直す。 */
+.app-view[hidden] {
+  display: none;
+}
+
 .sky {
   position: fixed;
   inset: 0;
@@ -143,6 +155,11 @@ body {
   line-height: 1.45;
 }
 
+/* applyView の heading.focus() は :focus だけ。Tab のときだけ輪郭を出す。 */
+.hero h1:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .eyebrow {
   margin: 0;
   color: var(--ink);
@@ -162,6 +179,41 @@ body {
 
 .lede {
   text-wrap: pretty;
+}
+
+.hero-more {
+  margin: 0.85rem 0 0;
+}
+
+.community-jumps-hero .community-back-wrap {
+  margin: 0 0 0.85rem;
+}
+
+.hero-more .btn,
+.community-more-wrap .btn,
+#moreJumps.btn {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.community-back-wrap {
+  margin: 0;
+  text-align: center;
+}
+
+.page-link {
+  color: #2a7f82;
+  font-weight: 700;
+}
+
+.page-link:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 /* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
@@ -588,6 +640,15 @@ body {
   font-weight: 700;
 }
 
+a.btn {
+  text-decoration: none;
+}
+
+a.btn:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
 .btn.ghost {
   background: var(--card);
   color: var(--ink);
@@ -754,6 +815,128 @@ body {
   stroke-width: 2.1;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* コミュニティ専用ページ。縦積みの投稿一覧。高さの違う埋め込みがメーカーを揺すらない。 */
+.community-jumps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.community-jumps-empty {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 1.4rem;
+  box-shadow: 5px 6px 0 var(--coral);
+  color: var(--mute);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.community-jumps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.community-jumps-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  padding: 0.4rem 0.4rem 0.45rem;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 1.4rem;
+  box-shadow: 5px 6px 0 var(--teal);
+}
+
+.community-jumps-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.75rem 0.85rem;
+  text-align: center;
+}
+
+.community-jumps-handle {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.community-jumps-likes {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.community-jumps-fallback a {
+  color: #2a7f82;
+  font-weight: 700;
+}
+
+.community-jumps-end {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.85rem;
+}
+
+.community-jumps-end .community-more-wrap,
+.community-jumps-end .community-back-wrap {
+  margin: 0;
+}
+
+.community-jumps-end .community-more-wrap {
+  display: flex;
+}
+
+.community-jumps-end #moreJumps.btn.community-more-btn {
+  display: flex;
+  width: 100%;
+  min-height: 2.95rem;
+  padding: 0.7rem 1rem;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.community-jumps-card .twitter-tweet {
+  width: 100%;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.community-jumps-card .twitter-tweet a {
+  color: #2a7f82;
+}
+
+.community-jumps-card .twitter-tweet-rendered,
+.community-jumps-card iframe.twitter-tweet-rendered {
+  width: 100% !important;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* 画面最下部の反応。公式ウィジェットが来るまでのblockquoteも同じ枠に収める。 */

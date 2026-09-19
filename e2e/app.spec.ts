@@ -11,12 +11,22 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("boots the maker with preview and save disabled until a photo is chosen", async ({ page }) => {
+  await expect(page).toHaveTitle("あのねジャンプメーカー");
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    "https://anone.yoiailabs.com/",
+  );
   await expect(page.locator("#playBtn")).toBeDisabled();
   await expect(page.locator("#saveBtn")).toBeDisabled();
   await expect(page.locator("#shareAppBtn")).toBeEnabled();
   await expect(page.locator("#copyHashtagsBtn")).toBeEnabled();
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
   await expect(page.getByRole("radio", { name: "横" }).first()).toBeChecked();
+  await expect(page.locator("#makerTitle")).toBeVisible();
+  expect(await page.evaluate(() => document.activeElement?.id ?? "")).not.toBe("makerTitle");
+  await expect
+    .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))
+    .toBe("none");
 });
 
 test("loads a photo then previews, mutes, and switches aspect in Chromium and WebKit", async ({ page }) => {
@@ -63,6 +73,175 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     return;
   }
   expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
+});
+
+test("opens community jumps from the disclaimer link and returns via the back link", async ({ page }) => {
+  await expect(page.locator(".app-tabs")).toHaveCount(0);
+  await expect(page.locator("#makerView")).toBeVisible();
+  await expect(page.locator("#communityView")).toBeHidden();
+  await expect(page.locator("#communityJumpsTitle")).toBeHidden();
+  await expect(page.locator("#playBtn")).toBeVisible();
+  await expect(page.locator("#reactionsTitle")).toBeVisible();
+
+  const disclaimer = page.locator("#makerView .lede");
+  const toCommunity = page.locator("#toCommunity");
+  await expect(disclaimer).toContainText("※ファン制作の非公式アプリです。");
+  await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
+  await expect(toCommunity).toHaveClass(/\bbtn\b/);
+  const disclaimerBox = await disclaimer.boundingBox();
+  const linkBox = await toCommunity.boundingBox();
+  expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
+
+  await expect(toCommunity).toHaveAttribute("href", "/community");
+  const communityBtn = await toCommunity.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      background: style.backgroundColor,
+      height: el.getBoundingClientRect().height,
+      radius: style.borderRadius,
+    };
+  });
+  await toCommunity.click();
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page).not.toHaveURL(/#community/);
+  await expect(page).toHaveTitle("みんなの #あのねジャンプ");
+  await expect(page.locator("#communityView")).toBeVisible();
+  await expect(page.locator("#makerView")).toBeHidden();
+  await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
+  await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
+  await expect
+    .poll(async () =>
+      page.locator("#communityJumpsTitle").evaluate((el) => getComputedStyle(el).outlineStyle),
+    )
+    .toBe("none");
+  await expect(page.locator("#toMaker")).toBeVisible();
+  await expect(page.locator("#toMaker")).toHaveClass(/\bpage-link\b/);
+  await expect(page.locator("#toMaker")).not.toHaveClass(/\bbtn\b/);
+  await expect(page.locator("#toMakerBottom")).toHaveClass(/\bpage-link\b/);
+  await expect(page.locator("#toMakerBottom")).not.toHaveClass(/\bbtn\b/);
+  const moreJumps = page.locator("#moreJumps");
+  await expect(moreJumps).toHaveText("もっと見る");
+  await expect(moreJumps).toHaveClass(/\bbtn\b/);
+  await expect(moreJumps).toHaveClass(/\bcommunity-more-btn\b/);
+  await expect(moreJumps).toHaveAttribute("target", "_blank");
+  await expect(moreJumps).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(moreJumps).toHaveAttribute(
+    "href",
+    `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
+  );
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
+  await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
+  await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
+  await expect(page.locator("#playBtn")).toBeHidden();
+
+  const first = page.locator("#communityJumps .community-jumps-item").nth(0);
+  const second = page.locator("#communityJumps .community-jumps-item").nth(1);
+  const last = page.locator("#communityJumps .community-jumps-item").nth(9);
+  const firstBox = await first.boundingBox();
+  const secondBox = await second.boundingBox();
+  const lastBox = await last.boundingBox();
+  expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
+  expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
+
+  const bottomBack = page.locator("#toMakerBottom");
+  const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(9);
+  await lastAfter.scrollIntoViewIfNeeded();
+  const lastAfterBox = await lastAfter.boundingBox();
+  const moreBox = await moreJumps.boundingBox();
+  const bottomBox = await bottomBack.boundingBox();
+  expect(lastAfterBox && moreBox && lastAfterBox.y < moreBox.y).toBe(true);
+  expect(moreBox && bottomBox && moreBox.y < bottomBox.y).toBe(true);
+  expect(moreBox && moreBox.height).toBeGreaterThan(40);
+  const moreStyle = await moreJumps.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      background: style.backgroundColor,
+      height: el.getBoundingClientRect().height,
+      radius: style.borderRadius,
+      decoration: style.textDecorationLine,
+    };
+  });
+  expect(moreStyle.background).toBe(communityBtn.background);
+  expect(moreStyle.height).toBeGreaterThan(40);
+  expect(moreStyle.radius).toBe(communityBtn.radius);
+  expect(moreStyle.decoration).toBe("none");
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(10);
+  await expect(bottomBack).toHaveAttribute("href", "/");
+
+  // widgets.js が display:none 中に測ると iframe が潰れる。戻ったら blockquote から載せ直す。
+  await page.evaluate(() => {
+    const reactions = document.querySelector("#reactionsEmbed");
+    if (reactions) {
+      reactions.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`.repeat(3);
+    }
+    for (const card of document.querySelectorAll<HTMLElement>(".community-jumps-card[data-hydrated='1']")) {
+      card.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`;
+    }
+  });
+
+  await bottomBack.click();
+  await expect(page).not.toHaveURL(/\/community/);
+  expect(new URL(page.url()).pathname).toBe("/");
+  await expect(page.locator("#makerView")).toBeVisible();
+  await expect(page.locator("#playBtn")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
+  await expect(page.locator("#communityView")).toBeHidden();
+  await expect(page.locator("#reactionsTitle")).toBeVisible();
+  await expect(page.locator("#reactionsEmbed blockquote.twitter-tweet")).toHaveCount(3);
+  await expect(page.locator("#reactionsEmbed iframe.twitter-tweet-rendered")).toHaveCount(0);
+
+  await page.locator("#toCommunity").click();
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page.locator("#communityView")).toBeVisible();
+  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(10);
+  await expect(page.locator(".community-jumps-card iframe.twitter-tweet-rendered")).toHaveCount(0);
+});
+
+test("hydrates every community card after scrolling the list", async ({ page }) => {
+  await page.goto("/community");
+  await waitForAppReady(page);
+  const items = page.locator("#communityJumps .community-jumps-item");
+  await expect(items).toHaveCount(10);
+  for (let index = 0; index < 10; index += 1) {
+    await items.nth(index).scrollIntoViewIfNeeded();
+    await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
+    await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
+  }
+  await page.locator("#moreJumps").scrollIntoViewIfNeeded();
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(10);
+});
+
+test("opens /community directly and moves leftover hashes onto the path", async ({ page }) => {
+  await page.goto("/community");
+  await waitForAppReady(page);
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page.locator("#communityView")).toBeVisible();
+  await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
+  expect(await page.evaluate(() => document.activeElement?.id ?? "")).not.toBe("communityJumpsTitle");
+  await expect
+    .poll(async () =>
+      page.locator("#communityJumpsTitle").evaluate((el) => getComputedStyle(el).outlineStyle),
+    )
+    .toBe("none");
+  await expect(page).toHaveTitle("みんなの #あのねジャンプ");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "ファンが投稿したジャンプ動画です。下にスクロールして見てね。",
+  );
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    "https://anone.yoiailabs.com/community",
+  );
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    "https://anone.yoiailabs.com/og.png",
+  );
+
+  await page.goto("/#community");
+  await waitForAppReady(page);
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page).not.toHaveURL(/#community/);
+  await expect(page.locator("#communityView")).toBeVisible();
 });
 
 test("copies hashtags from the panel", async ({ page, context, browserName }) => {

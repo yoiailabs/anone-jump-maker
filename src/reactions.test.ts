@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { hydrateReactionEmbed, reactionEmbedHtml, REACTION_POSTS } from "./reactions.ts";
+import {
+  hydrateReactionEmbed,
+  isEmbedHostVisible,
+  reactionEmbedHtml,
+  remountReactionEmbed,
+  REACTION_POSTS,
+  whenEmbedHostVisible,
+} from "./reactions.ts";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -76,5 +83,85 @@ describe("reaction embeds", () => {
     hydrateReactionEmbed(container);
     expect(load).toHaveBeenCalledTimes(1);
     expect(load).toHaveBeenCalledWith(container);
+  });
+
+  it("treats a missing layout API as visible so node tests can load widgets", () => {
+    expect(isEmbedHostVisible({ id: "reactionsEmbed" } as HTMLElement)).toBe(true);
+  });
+
+  it("hides hosts that sit in a [hidden] ancestor or have no box", () => {
+    expect(
+      isEmbedHostVisible({
+        closest: (sel: string) => (sel === "[hidden]" ? ({} as HTMLElement) : null),
+        getBoundingClientRect: () => ({ width: 320, height: 200 }),
+      } as HTMLElement),
+    ).toBe(false);
+    expect(
+      isEmbedHostVisible({
+        closest: () => null,
+        getBoundingClientRect: () => ({ width: 0, height: 0 }),
+      } as unknown as HTMLElement),
+    ).toBe(false);
+    expect(
+      isEmbedHostVisible({
+        closest: () => null,
+        getBoundingClientRect: () => ({ width: 320, height: 400 }),
+      } as unknown as HTMLElement),
+    ).toBe(true);
+  });
+
+  it("does not hydrate or remount while the parent is hidden", () => {
+    const load = vi.fn().mockResolvedValue(undefined);
+    const container = {
+      innerHTML: "<iframe class=\"twitter-tweet-rendered\"></iframe>",
+      closest: (sel: string) => (sel === "[hidden]" ? ({} as HTMLElement) : null),
+      getBoundingClientRect: () => ({ width: 0, height: 0 }),
+    } as HTMLElement;
+    vi.stubGlobal("window", { twttr: { widgets: { load } } });
+    hydrateReactionEmbed(container);
+    remountReactionEmbed(container, "<blockquote class=\"twitter-tweet\"></blockquote>");
+    expect(load).not.toHaveBeenCalled();
+    expect(container.innerHTML).toBe("<iframe class=\"twitter-tweet-rendered\"></iframe>");
+  });
+
+  it("remounts collapsed iframes as blockquotes then loads widgets", () => {
+    const load = vi.fn().mockResolvedValue(undefined);
+    const container = {
+      innerHTML: "<iframe class=\"twitter-tweet-rendered\" height=\"0\"></iframe>",
+      closest: () => null,
+      getBoundingClientRect: () => ({ width: 320, height: 400 }),
+    } as unknown as HTMLElement;
+    vi.stubGlobal("window", { twttr: { widgets: { load } } });
+    remountReactionEmbed(container, "<blockquote class=\"twitter-tweet\"></blockquote>");
+    expect(container.innerHTML).toContain("twitter-tweet");
+    expect(container.innerHTML).not.toContain("iframe");
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledWith(container);
+  });
+
+  it("runs whenEmbedHostVisible only after the host has a box", () => {
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+    const run = vi.fn();
+    whenEmbedHostVisible(
+      {
+        closest: () => null,
+        getBoundingClientRect: () => ({ width: 320, height: 200 }),
+      } as unknown as HTMLElement,
+      run,
+    );
+    expect(run).toHaveBeenCalledTimes(1);
+
+    run.mockClear();
+    whenEmbedHostVisible(
+      {
+        closest: (sel: string) => (sel === "[hidden]" ? ({} as HTMLElement) : null),
+        getBoundingClientRect: () => ({ width: 0, height: 0 }),
+      } as HTMLElement,
+      run,
+    );
+    expect(run).not.toHaveBeenCalled();
   });
 });
