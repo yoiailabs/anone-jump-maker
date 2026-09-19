@@ -40,18 +40,23 @@ import type { CutTimeline } from "./timeline.ts";
 
 type StatusKind = "idle" | "busy" | "error";
 
+function checkedNamedValue(inputs: readonly HTMLInputElement[], name: string): string | undefined {
+  return inputs.find((input) => input.name === name && input.checked)?.value;
+}
+
 export async function boot(root: HTMLElement): Promise<void> {
-  const timelines = await loadTimelines();
+  const timelinesPromise = loadTimelines();
+  let timelines: Record<AspectMode, CutTimeline> | null = null;
+  const ensureTimelines = async () => {
+    timelines ??= await timelinesPromise;
+    return timelines;
+  };
+
   const benchFlags = readPreviewBenchFlags(typeof location === "undefined" ? "" : location.search);
   const compositor = createCompositor({
     resolutionScale: PREVIEW_RESOLUTION_SCALE,
     createKeyer: benchFlags.forceCpuKeying ? () => null : undefined,
   });
-  const video = createTemplateVideo(DEFAULT_ASPECT);
-
-  let mode: AspectMode = DEFAULT_ASPECT;
-  let swapStyle: SwapStyle = "jump";
-  let imageFilter: ImageFilter = "none";
   let photos: LoadedPhoto[] = [];
   let playing = false;
   let recording = false;
@@ -67,7 +72,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   const stage = must(root, "#stage");
   const thumbs = must(root, "#thumbs");
   const slotMeter = must(root, "#slotMeter");
-  slotMeter.textContent = `スロット — / ${timelines[DEFAULT_ASPECT].slots.length}`;
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
@@ -93,12 +97,32 @@ export async function boot(root: HTMLElement): Promise<void> {
     ...root.querySelectorAll<HTMLInputElement>('input[name="filter"], input[name="preview-filter"]'),
   ];
 
+  const aspectValue = checkedNamedValue(aspectInputs, "aspect");
+  const swapValue = checkedNamedValue(swapInputs, "swap");
+  const filterValue = checkedNamedValue(filterInputs, "filter");
+  let mode: AspectMode = aspectValue && isAspectMode(aspectValue) ? aspectValue : DEFAULT_ASPECT;
+  let swapStyle: SwapStyle = swapValue && isSwapStyle(swapValue) ? swapValue : "jump";
+  let imageFilter: ImageFilter = filterValue && isImageFilter(filterValue) ? filterValue : "none";
+  const video = createTemplateVideo(mode);
+  stage.dataset.aspect = mode;
+  if (mode !== DEFAULT_ASPECT) compositor.setAspect(mode);
+
   stage.prepend(compositor.canvas);
   compositor.canvas.setAttribute("aria-hidden", "true");
   compositor.canvas.removeAttribute("aria-label");
   document.body.append(video);
 
-  const timeline = () => timelines[mode];
+  const timeline = () => {
+    if (!timelines) throw new Error("カット表がまだありません");
+    return timelines[mode];
+  };
+
+  const refreshSlotMeter = () => {
+    slotMeter.textContent = timelines
+      ? `スロット — / ${timelines[mode].slots.length}`
+      : "スロット — / —";
+  };
+  refreshSlotMeter();
 
   const setStatus = (text: string, kind: StatusKind = "idle") => {
     statusEl.textContent = text;
@@ -171,6 +195,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   let paintClockStart = 0;
 
   const paint = (time?: number, character?: CharacterFrame) => {
+    if (!timelines) return;
     const started = benchFlags.bench ? performance.now() : 0;
     const cuts = timeline();
     const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character);
@@ -271,6 +296,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const startPlayback = async (fromStart: boolean) => {
     if (recording || playbackBusy || !canUse()) return;
     if (!fromStart && Date.now() < suppressPlayUntil) return;
+    await ensureTimelines();
     playbackBusy = true;
     const gen = (playGen += 1);
     try {
@@ -319,6 +345,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const openPreview = async () => {
     if (recording || !canUse() || previewDialog.open) return;
     try {
+      await ensureTimelines();
       previewDialog.showModal();
       lastSlot = -1;
       paint();
@@ -398,7 +425,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     compositor.setAspect(mode);
     stage.dataset.aspect = mode;
     lastSlot = -1;
-    slotMeter.textContent = `スロット — / ${timeline().slots.length}`;
+    refreshSlotMeter();
     syncAspectRadios(mode);
     video.src = TEMPLATES[mode].video;
     video.load();
@@ -420,16 +447,17 @@ export async function boot(root: HTMLElement): Promise<void> {
   };
 
   video.addEventListener("loadeddata", () => {
-    paint();
-    refreshButtons();
-    if (!recording) {
-      setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
-    }
-    const resume = aspectResume;
-    aspectResume = null;
-    if (!resume || !previewDialog.open || recording) return;
-    previewTracked = resume.tracked;
     void (async () => {
+      await ensureTimelines();
+      paint();
+      refreshButtons();
+      if (!recording) {
+        setStatus(`テンプレ準備完了（${timeline().slots.length} カット）`);
+      }
+      const resume = aspectResume;
+      aspectResume = null;
+      if (!resume || !previewDialog.open || recording) return;
+      previewTracked = resume.tracked;
       try {
         await seekVideo(video, resume.time);
         lastSlot = -1;
@@ -499,6 +527,7 @@ export async function boot(root: HTMLElement): Promise<void> {
         },
       });
       renderThumbs();
+      await ensureTimelines();
       paint();
       refreshButtons();
       setStatus(
@@ -595,7 +624,7 @@ export async function boot(root: HTMLElement): Promise<void> {
     setStatus("書き出しを準備しています…", "busy");
     compositor.setResolutionScale(1);
     try {
-      const cuts = timeline();
+      const cuts = (await ensureTimelines())[mode];
       const duration =
         Number.isFinite(video.duration) && video.duration > 0 ? video.duration : cuts.duration;
       const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
@@ -694,6 +723,12 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
   window.addEventListener("hashchange", syncViewFromLocation);
   syncViewFromLocation();
+  await ensureTimelines();
+  refreshSlotMeter();
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    paint();
+    refreshButtons();
+  }
   root.dataset.appReady = "1";
 }
 
