@@ -58,6 +58,9 @@ test.describe("language switcher", () => {
       "aria-label",
       t("en", "communityHashtagSearchAria", { label: "X" }),
     );
+    await expect(page.locator("#communityHashtagSearchHeading")).toHaveText(
+      t("en", "communityHashtagSearchLede"),
+    );
     await expect(page.locator("#communityView .hero .lang-switch a[lang='ko']")).toHaveAttribute(
       "href",
       "/ko/community",

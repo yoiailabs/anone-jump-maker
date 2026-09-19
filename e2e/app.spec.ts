@@ -360,19 +360,25 @@ test("opens community jumps from the disclaimer link and returns via the back li
     await expect(link).toHaveAttribute("rel", "noopener noreferrer");
   }
   await expect(searchX).toHaveAttribute("aria-label", "Xで #あのねジャンプ を検索する（新しいタブ）");
+  await expect(page.locator("#communityHashtagSearchHeading")).toHaveText("こっちにもあるよ");
   await expect(page.locator("#communityJumps .eyebrow a")).toHaveCount(0);
   await expect(page.locator("#communityJumps .eyebrow")).toHaveText("#あのねジャンプ");
   await expect(page.locator("#moreJumps")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "もっと見る" })).toHaveCount(0);
   const titleBox = await page.locator("#communityJumpsTitle").boundingBox();
   const ledeBox = await page.locator("#communityJumps .lede").boundingBox();
-  const searchBox = await search.boundingBox();
   const sortBox = await page.locator("#communitySort").boundingBox();
   const listBox = await page.locator("#communityJumpsList").boundingBox();
   expect(titleBox && ledeBox && titleBox.y < ledeBox.y).toBe(true);
-  expect(ledeBox && searchBox && ledeBox.y < searchBox.y).toBe(true);
-  expect(searchBox && sortBox && searchBox.y + searchBox.height <= sortBox.y + 2).toBe(true);
+  expect(ledeBox && sortBox && ledeBox.y < sortBox.y).toBe(true);
+  expect(sortBox && listBox && sortBox.y < listBox.y).toBe(true);
   expect(titleBox && listBox && titleBox.y < listBox.y).toBe(true);
+  await search.scrollIntoViewIfNeeded();
+  const pagerBox = await page.locator("#communityPager").boundingBox();
+  const searchBox = await search.boundingBox();
+  const bottomBox = await page.locator("#toMakerBottom").boundingBox();
+  expect(pagerBox && searchBox && pagerBox.y < searchBox.y).toBe(true);
+  expect(searchBox && bottomBox && searchBox.y < bottomBox.y).toBe(true);
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(50);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
   await expect(page.locator("#communitySortNewest")).toBeChecked();

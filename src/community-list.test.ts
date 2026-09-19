@@ -173,10 +173,10 @@ describe("community list markup", () => {
     expect(html.match(/メーカーに戻る/g)).toHaveLength(2);
     expect(html).toContain('<p class="eyebrow">#あのねジャンプ</p>');
     expect(html).not.toContain('<p class="eyebrow"><a');
-    expect(html.indexOf("communityHashtagSearch")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("communityPager"));
-    expect(html.indexOf("communityPager")).toBeLessThan(html.indexOf("toMakerBottom"));
+    expect(html.indexOf("communityPager")).toBeLessThan(html.indexOf("communityHashtagSearch"));
+    expect(html.indexOf("communityHashtagSearch")).toBeLessThan(html.indexOf("toMakerBottom"));
     expect(html).toContain('class="lang-switch"');
     expect(html).toContain('lang="en"');
     expect(html).toContain('href="/en/community"');
@@ -245,6 +245,9 @@ describe("community list markup", () => {
     expect(html).not.toContain("communitySort");
     expect(html).not.toContain("communityPager");
     expect(html).not.toContain(COMMUNITY_JUMPS_LEDE);
+    expect(html).toContain("こっちにもあるよ");
+    expect(html.indexOf("community-jumps-empty")).toBeLessThan(html.indexOf("communityHashtagSearch"));
+    expect(html.indexOf("communityHashtagSearch")).toBeLessThan(html.indexOf("toMakerBottom"));
   });
 
   it("keeps a single masonry item when only one post remains", () => {
@@ -259,7 +262,7 @@ describe("community list markup", () => {
 });
 
 describe("community hashtag search links", () => {
-  it("keeps the title as plain text and puts SNS search banners under the lede", () => {
+  it("keeps the title as plain text and puts SNS search banners below the pager", () => {
     expect(COMMUNITY_JUMPS_TITLE).toBe("みんなの #あのねジャンプ");
     expect(COMMUNITY_HASHTAG_SEARCH_LINKS.map((link) => link.id)).toEqual([
       "x",
@@ -286,11 +289,19 @@ describe("community hashtag search links", () => {
     expect(html).not.toContain('<p class="eyebrow"><a');
 
     const ledeIdx = html.indexOf(`<p class="lede">${COMMUNITY_JUMPS_LEDE}</p>`);
-    const searchIdx = html.indexOf('id="communityHashtagSearch"');
     const sortIdx = html.indexOf('id="communitySort"');
+    const pagerIdx = html.indexOf('id="communityPager"');
+    const searchIdx = html.indexOf('id="communityHashtagSearch"');
+    const headingIdx = html.indexOf('id="communityHashtagSearchHeading"');
     expect(ledeIdx).toBeGreaterThan(-1);
-    expect(searchIdx).toBeGreaterThan(ledeIdx);
-    expect(sortIdx).toBeGreaterThan(searchIdx);
+    expect(sortIdx).toBeGreaterThan(ledeIdx);
+    expect(sortIdx).toBeLessThan(html.indexOf("communityJumpsList"));
+    expect(pagerIdx).toBeGreaterThan(html.indexOf("communityJumpsList"));
+    expect(searchIdx).toBeGreaterThan(pagerIdx);
+    expect(headingIdx).toBeGreaterThan(pagerIdx);
+    expect(headingIdx).toBeLessThan(searchIdx);
+    expect(html).toContain("こっちにもあるよ");
+    expect(html).toContain('id="communityHashtagSearchHeading"');
 
     for (const link of COMMUNITY_HASHTAG_SEARCH_LINKS) {
       expect(html).toContain(`href="${link.href}"`);
@@ -310,6 +321,9 @@ describe("community hashtag search links", () => {
     const en = communityJumpsSectionHtml(undefined, "en");
     expect(en).toContain(`<h1 id="communityJumpsTitle">${t("en", "communityTitle")}</h1>`);
     expect(en).toContain("Search #あのねジャンプ on X (new tab)");
+    expect(en).toContain("Also on these apps");
+    expect(communityHashtagSearchHtml("ko")).toContain("다른 앱에도 있어");
+    expect(communityHashtagSearchHtml("zh")).toContain("这些应用上也有哦");
     expect(communityHashtagSearchHtml("ko")).toContain("X에서 #あのねジャンプ 검색(새 탭)");
     expect(communityHashtagSearchHtml("zh")).toContain("在X搜索 #あのねジャンプ（新标签页）");
     for (const locale of ["ja", "en", "ko", "zh"] as const) {

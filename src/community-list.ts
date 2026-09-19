@@ -84,7 +84,7 @@ export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
 const HASHTAG_SLUG = MORE_JUMPS_QUERY.slice(1);
 
-/** 見出し下の SNS。公式アカウントではなく #あのねジャンプ の検索・タグへ。 */
+/** ページ送りの下の SNS。公式アカウントではなく #あのねジャンプ の検索・タグへ。 */
 export const COMMUNITY_HASHTAG_SEARCH_LINKS: readonly OfficialLink[] = [
   { id: "x", label: "X", href: MORE_JUMPS_HREF },
   {
@@ -107,6 +107,7 @@ export const COMMUNITY_HASHTAG_SEARCH_LINKS: readonly OfficialLink[] = [
 export function communityHashtagSearchHtml(locale: Locale = DEFAULT_LOCALE): string {
   return `
     <nav class="community-hashtag-search" aria-label="${t(locale, "communityHashtagSearchNav")}">
+      <p class="community-hashtag-search-lede" id="communityHashtagSearchHeading">${t(locale, "communityHashtagSearchLede")}</p>
       <ul class="link-banners" id="communityHashtagSearch">
         ${linkBannersHtml(COMMUNITY_HASHTAG_SEARCH_LINKS, locale, "communityHashtagSearchAria")}
       </ul>
@@ -238,7 +239,6 @@ export function communityJumpsSectionHtml(
             ? ""
             : `<p class="lede">${t(locale, "communityLede")}</p>`
         }
-        ${communityHashtagSearchHtml(locale)}
         ${posts.length < 2 ? "" : communitySortHtml(locale, sort)}
       </header>
       ${
@@ -247,6 +247,7 @@ export function communityJumpsSectionHtml(
           : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(shown, locale)}</ol>`
       }
       ${communityPagerHtml(ordered.length, current, locale)}
+      ${communityHashtagSearchHtml(locale)}
       <footer class="community-jumps-end">
         ${toMakerLinkHtml("toMakerBottom", locale)}
         ${languageNavHtml(locale, "community")}
