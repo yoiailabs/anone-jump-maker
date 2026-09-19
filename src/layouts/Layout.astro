@@ -6,7 +6,18 @@ import { pageUrl } from "../page-meta.ts";
 
 type Props = PageMeta;
 
-const { title, description, url, image, lang, ogLocale, view } = Astro.props;
+const { title, description, url, image, imageAlt, siteName, lang, ogLocale, view } = Astro.props;
+const jsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: siteName,
+  url,
+  description,
+  inLanguage: lang,
+  image,
+  applicationCategory: "MultimediaApplication",
+  operatingSystem: "Any",
+});
 ---
 
 <!doctype html>
@@ -30,7 +41,9 @@ const { title, description, url, image, lang, ogLocale, view } = Astro.props;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={url} />
+    <meta property="og:site_name" content={siteName} />
     <meta property="og:image" content={image} />
+    <meta property="og:image:alt" content={imageAlt} />
     <meta property="og:image:width" content="2400" />
     <meta property="og:image:height" content="1260" />
     <meta property="og:type" content="website" />
@@ -39,11 +52,15 @@ const { title, description, url, image, lang, ogLocale, view } = Astro.props;
       <meta property="og:locale:alternate" content={OG_LOCALE[item]} />
     ))}
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
+    <meta name="twitter:image:alt" content={imageAlt} />
     {LOCALES.map((item) => (
       <link rel="alternate" hreflang={item} href={pageUrl(item, view)} />
     ))}
     <link rel="alternate" hreflang="x-default" href={pageUrl("ja", view)} />
+    <script type="application/ld+json" set:html={jsonLd} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

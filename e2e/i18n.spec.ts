@@ -66,6 +66,73 @@ test.describe("language switcher", () => {
   });
 });
 
+test.describe("localized OGP and SEO", () => {
+  test.use({ locale: "en-US" });
+
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("emits English Open Graph, Twitter, and hreflang on /en", async ({ page }) => {
+    await page.goto("/en");
+    await waitForAppReady(page);
+    await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "en_US");
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", t("en", "makerTitle"));
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", t("en", "makerTitle"));
+    await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute(
+      "content",
+      t("en", "metaMakerDescription"),
+    );
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+      "content",
+      "https://anone.yoiailabs.com/og-en.png",
+    );
+    await expect(page.locator('link[rel="alternate"][hreflang="ja"]')).toHaveAttribute(
+      "href",
+      "https://anone.yoiailabs.com/",
+    );
+    await expect(page.locator('link[rel="alternate"][hreflang="x-default"]')).toHaveAttribute(
+      "href",
+      "https://anone.yoiailabs.com/",
+    );
+    await expect(page.locator('script[type="application/ld+json"]')).toContainText('"inLanguage":"en"');
+    await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute("content", t("en", "makerTitle"));
+  });
+
+  test("exposes a hreflang sitemap and robots.txt", async ({ request }) => {
+    const sitemap = await request.get("/sitemap.xml");
+    expect(sitemap.ok()).toBe(true);
+    const xml = await sitemap.text();
+    expect(xml).toContain("https://anone.yoiailabs.com/en");
+    expect(xml).toContain('hreflang="ko"');
+    expect(xml).toContain('hreflang="x-default"');
+    const robots = await request.get("/robots.txt");
+    expect(robots.ok()).toBe(true);
+    expect(await robots.text()).toContain("https://anone.yoiailabs.com/sitemap.xml");
+    const ogEn = await request.get("/og-en.png");
+    expect(ogEn.ok()).toBe(true);
+    expect(ogEn.headers()["content-type"]).toMatch(/image\/png/);
+  });
+});
+
+test.describe("crawlers keep the default Japanese URL", () => {
+  test.use({
+    locale: "en-US",
+    userAgent: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+  });
+
+  test("does not bounce / to /en", async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+    await page.goto("/");
+    await waitForAppReady(page);
+    await expect(page).not.toHaveURL(/\/en(\/|$)/);
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page).toHaveTitle(t("ja", "makerTitle"));
+  });
+});
+
 test.describe("song and artist names", () => {
   test.beforeEach(async ({ page }) => {
     await blockAnalytics(page);
