@@ -322,6 +322,39 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           </div>
         </div>
       </dialog>
+      <dialog
+        className="preview-dialog export-dialog"
+        id="exportDialog"
+        aria-labelledby="exportTitle"
+        aria-describedby="exportKeepOpen"
+      >
+        <div className="export-sheet">
+          <header className="preview-head">
+            <h2 id="exportTitle">{t(locale, "exportTitle")}</h2>
+          </header>
+          <p className="export-status" id="exportStatus" aria-live="polite">
+            {t(locale, "statusExportPreparing")}
+          </p>
+          <div className="export-progress">
+            <progress
+              id="exportProgress"
+              className="export-progress-bar"
+              max={100}
+              value={0}
+              aria-label={t(locale, "exportProgressAria")}
+            />
+            <span className="export-progress-label" id="exportProgressLabel">
+              {t(locale, "exportPercent", { percent: 0 })}
+            </span>
+          </div>
+          <p className="export-keep-open" id="exportKeepOpen">
+            {t(locale, "exportKeepOpen")}
+          </p>
+          <Button variant="site" type="button" id="cancelExportBtn" className="btn ghost">
+            {t(locale, "exportCancel")}
+          </Button>
+        </div>
+      </dialog>
     </>
   );
 }

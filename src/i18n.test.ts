@@ -94,6 +94,12 @@ describe("messages", () => {
     expect(t("ko", "makerTitle")).toBe("아노네 점프 메이커");
     expect(t("zh", "makerTitle")).toBe("あのね跳跃制作器");
     expect(t("en", "statusPhotosLoaded", { n: 3 })).toBe("Loaded 3 photos");
+    expect(t("ja", "exportTitle")).toBe("動画を生成中");
+    expect(t("ja", "exportCancel")).toBe("キャンセル");
+    expect(t("ja", "exportKeepOpen")).toContain("タブを閉じたり");
+    expect(t("en", "exportPercent", { percent: 42 })).toBe("42%");
+    expect(t("ko", "statusExportCancelled")).toBe("생성을 취소했습니다");
+    expect(t("zh", "exportTitle")).toBe("正在生成视频");
   });
 
   it("uses the English store title in non-Japanese credits", () => {

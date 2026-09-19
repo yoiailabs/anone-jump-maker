@@ -33,11 +33,34 @@ export const EXPORT_FALLBACK = "none" as const;
 export const UNSUPPORTED_EXPORT_MESSAGE =
   "このブラウザは動画の生成に未対応です。Chrome または Edge で開いてください。";
 
+export const EXPORT_ABORTED_MESSAGE = "生成をキャンセルしました";
+
 export type ExportProgress = {
   mode: "offline";
   current: number;
   total: number;
 };
+
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+export function abortError(message = EXPORT_ABORTED_MESSAGE): Error {
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+
+export function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortError();
+}
+
+/** 準備中は 0、完了時は 100。途中はフレーム比を四捨五入する。 */
+export function exportProgressPercent(current: number, total: number): number {
+  if (!(total > 0) || !(current > 0)) return 0;
+  if (current >= total) return 100;
+  return Math.min(99, Math.round((current / total) * 100));
+}
 
 export type ExportResult = {
   blob: Blob;
@@ -286,12 +309,16 @@ export async function exportJumpVideo(options: {
   duration: number;
   fps: number;
   onProgress?: (progress: ExportProgress) => void;
+  signal?: AbortSignal;
 }): Promise<ExportResult> {
+  throwIfAborted(options.signal);
   if (!hasWebCodecsVideoEncoder()) {
     throw new Error(UNSUPPORTED_EXPORT_MESSAGE);
   }
   const { pickOfflinePlan, encodeOffline } = await import("./offline-encode.ts");
+  throwIfAborted(options.signal);
   const plan = await pickOfflinePlan(options.canvas.width, options.canvas.height);
+  throwIfAborted(options.signal);
   if (!plan) {
     throw new Error(UNSUPPORTED_EXPORT_MESSAGE);
   }

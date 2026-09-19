@@ -58,14 +58,31 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
 
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {
   await uploadPhoto(page);
+  const exportDialog = page.locator("#exportDialog");
+  await expect(exportDialog).toBeHidden();
+  await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
+  await expect(page.locator("#cancelExportBtn")).toHaveText("キャンセル");
+  await expect(page.locator("#exportKeepOpen")).toContainText("タブを閉じたり");
+  await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
+  await expect(page.locator("#exportProgressLabel")).toHaveText("0%");
+
   // VideoEncoder があっても pickOfflinePlan が null なら未対応（WebKit でよくある）。
   const downloadPromise = page.waitForEvent("download", { timeout: 45_000 });
   void downloadPromise.catch(() => undefined);
   await page.locator("#saveBtn").click();
+  await expect(exportDialog)
+    .toBeVisible({ timeout: 2_000 })
+    .catch(() => undefined);
+  if (await exportDialog.isVisible()) {
+    await expect(page.locator("#exportProgressLabel")).toContainText("%");
+    await expect(page.locator("#exportKeepOpen")).toBeVisible();
+    await expect(page.locator("#cancelExportBtn")).toBeEnabled();
+  }
   await expect(page.locator("#status")).toContainText(
     new RegExp(`保存しました|${UNSUPPORTED_EXPORT_MESSAGE}`),
     { timeout: 45_000 },
   );
+  await expect(exportDialog).toBeHidden();
   const statusText = (await page.locator("#status").textContent()) ?? "";
   if (statusText.includes("保存しました")) {
     const download = await downloadPromise;

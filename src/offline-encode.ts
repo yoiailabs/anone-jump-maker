@@ -33,9 +33,12 @@ import {
   firstResolved,
   frameTimes,
   hasWebCodecsVideoEncoder,
+  isAbortError,
   putRgbaOnCanvas,
   seekVideo,
   templateFrameMatchesTime,
+  throwIfAborted,
+  abortError,
   type ExportCharacterPath,
   type ExportProgress,
   type ExportResult,
@@ -84,10 +87,13 @@ export async function encodeOffline(options: {
   fps: number;
   plan: OfflinePlan;
   onProgress?: (progress: ExportProgress) => void;
+  signal?: AbortSignal;
 }): Promise<ExportResult> {
-  const { video, canvas, draw, duration, fps, plan, onProgress } = options;
+  const { video, canvas, draw, duration, fps, plan, onProgress, signal } = options;
   const times = frameTimes(duration, fps);
   const frameDuration = 1 / (fps > 0 ? fps : EXPORT_FPS);
+  onProgress?.({ mode: "offline", current: 0, total: times.length });
+  throwIfAborted(signal);
   const target = new BufferTarget();
   const output = new Output({ format: plan.format, target });
   const videoSource = new CanvasSource(canvas, {
@@ -98,18 +104,21 @@ export async function encodeOffline(options: {
   });
   output.addVideoTrack(videoSource, { frameRate: fps > 0 ? fps : EXPORT_FPS });
 
-  const template = await openTemplateInput(video.currentSrc || video.src);
+  const template = await openTemplateInput(video.currentSrc || video.src, signal);
+  throwIfAborted(signal);
   video.pause();
   video.muted = true;
   try {
     const frameSink = template ? await openTemplateFrameSink(template) : null;
+    throwIfAborted(signal);
     const characterPath = frameSink
       ? await firstResolved([
-          probeExportCharacterPath(frameSink),
-          sleep(EXPORT_PROBE_TIMEOUT_MS).then(() => EXPORT_CHARACTER_FALLBACK),
+          probeExportCharacterPath(frameSink, signal),
+          sleep(EXPORT_PROBE_TIMEOUT_MS, signal).then(() => EXPORT_CHARACTER_FALLBACK),
         ])
       : EXPORT_CHARACTER_FALLBACK;
-    const pumpAudio = template ? await attachTemplateAudio(output, plan.format, template) : null;
+    throwIfAborted(signal);
+    const pumpAudio = template ? await attachTemplateAudio(output, plan.format, template, signal) : null;
     await output.start();
     if (pumpAudio) {
       await pumpAudio();
@@ -122,6 +131,7 @@ export async function encodeOffline(options: {
         draw,
         videoSource,
         onProgress,
+        signal,
       });
     } else {
       await encodeWithHtmlVideo({
@@ -131,8 +141,10 @@ export async function encodeOffline(options: {
         draw,
         videoSource,
         onProgress,
+        signal,
       });
     }
+    throwIfAborted(signal);
     await output.finalize();
   } catch (error) {
     if (output.state === "started" || output.state === "pending") {
@@ -157,7 +169,8 @@ export async function encodeOffline(options: {
   };
 }
 
-async function probeExportCharacterPath(sink: VideoSampleSink): Promise<ExportCharacterPath> {
+async function probeExportCharacterPath(sink: VideoSampleSink, signal?: AbortSignal): Promise<ExportCharacterPath> {
+  throwIfAborted(signal);
   const probe = {
     copiedFirst: false,
     copiedLater: false,
@@ -185,7 +198,8 @@ async function probeExportCharacterPath(sink: VideoSampleSink): Promise<ExportCh
     } finally {
       first.close();
     }
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     // copyTo / PTS / decoder が WebKit で落ちても HTML video に落とす
   }
   return chooseExportCharacterPath(probe);
@@ -198,8 +212,9 @@ async function encodeWithRgbaFrames(options: {
   draw: (time: number, character?: CharacterFrame) => void;
   videoSource: { add: (timestamp: number, duration: number) => Promise<unknown> };
   onProgress?: (progress: ExportProgress) => void;
+  signal?: AbortSignal;
 }): Promise<void> {
-  const { sink, times, frameDuration, draw, videoSource, onProgress } = options;
+  const { sink, times, frameDuration, draw, videoSource, onProgress, signal } = options;
   const frameCanvas = document.createElement("canvas");
   const frameCtx = frameCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
   if (!frameCtx) {
@@ -208,6 +223,10 @@ async function encodeWithRgbaFrames(options: {
   let i = 0;
   let firstFingerprint: number | undefined;
   for await (const sample of sink.samplesAtTimestamps(times)) {
+    if (signal?.aborted) {
+      sample?.close();
+      throwIfAborted(signal);
+    }
     const time = times[i];
     if (time === undefined) {
       sample?.close();
@@ -234,7 +253,7 @@ async function encodeWithRgbaFrames(options: {
     await videoSource.add(i * frameDuration, frameDuration);
     if (i === 0 || i === times.length - 1 || i % 8 === 0) {
       onProgress?.({ mode: "offline", current: i + 1, total: times.length });
-      await yieldToUi();
+      await yieldToUi(signal);
     }
     i += 1;
   }
@@ -250,9 +269,11 @@ async function encodeWithHtmlVideo(options: {
   draw: (time: number, character?: CharacterFrame) => void;
   videoSource: { add: (timestamp: number, duration: number) => Promise<unknown> };
   onProgress?: (progress: ExportProgress) => void;
+  signal?: AbortSignal;
 }): Promise<void> {
-  const { video, times, frameDuration, draw, videoSource, onProgress } = options;
+  const { video, times, frameDuration, draw, videoSource, onProgress, signal } = options;
   for (let i = 0; i < times.length; i += 1) {
+    throwIfAborted(signal);
     const time = times[i]!;
     // iOS フォールバックは #52 以前と同じ seeked のみ。毎フレーム rVFC すると 466×400ms になる。
     await seekVideo(video, time, { waitForPresented: false });
@@ -260,7 +281,7 @@ async function encodeWithHtmlVideo(options: {
     await videoSource.add(i * frameDuration, frameDuration);
     if (i === 0 || i === times.length - 1 || i % 8 === 0) {
       onProgress?.({ mode: "offline", current: i + 1, total: times.length });
-      await yieldToUi();
+      await yieldToUi(signal);
     }
   }
 }
@@ -269,8 +290,10 @@ async function attachTemplateAudio(
   output: Output,
   format: OutputFormat,
   input: Input,
+  signal?: AbortSignal,
 ): Promise<(() => Promise<void>) | null> {
   try {
+    throwIfAborted(signal);
     const track = await input.getPrimaryAudioTrack();
     if (!track) return null;
     const packetCodec = await track.getCodec();
@@ -282,6 +305,7 @@ async function attachTemplateAudio(
         const decoderConfig = await track.getDecoderConfig();
         let first = true;
         for await (const packet of sink.packets()) {
+          throwIfAborted(signal);
           await source.add(packet, first && decoderConfig ? { decoderConfig } : undefined);
           first = false;
         }
@@ -294,10 +318,12 @@ async function attachTemplateAudio(
     return async () => {
       const sink = new AudioBufferSink(track);
       for await (const wrapped of sink.buffers()) {
+        throwIfAborted(signal);
         await source.add(wrapped.buffer);
       }
     };
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     return null;
   }
 }
@@ -314,9 +340,21 @@ async function openTemplateFrameSink(input: Input): Promise<VideoSampleSink | nu
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortError());
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(abortError());
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -324,20 +362,21 @@ async function pickAudioCodec(format: OutputFormat): Promise<AudioCodec | null> 
   return getFirstEncodableAudioCodec(format.getSupportedAudioCodecs(), { quality: AUDIO_QUALITY });
 }
 
-async function openTemplateInput(src: string): Promise<Input | null> {
+async function openTemplateInput(src: string, signal?: AbortSignal): Promise<Input | null> {
   if (!src) return null;
   try {
-    const response = await fetch(src);
+    throwIfAborted(signal);
+    const response = await fetch(src, signal ? { signal } : undefined);
     if (!response.ok) return null;
     const blob = await response.blob();
+    throwIfAborted(signal);
     return new Input({ source: new BlobSource(blob), formats: [MP4] });
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     return null;
   }
 }
 
-function yieldToUi(): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, 0);
-  });
+function yieldToUi(signal?: AbortSignal): Promise<void> {
+  return sleep(0, signal);
 }

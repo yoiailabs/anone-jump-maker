@@ -156,6 +156,19 @@ describe("seekVideo / exportJumpVideo", () => {
     expect(result.mode).toBe("offline");
     expect(result.blob.size).toBeGreaterThan(32);
     expect(result.extension).toMatch(/^(mp4|webm)$/);
+
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      exportJumpVideo({
+        video,
+        canvas,
+        draw,
+        duration: 0.2,
+        fps: EXPORT_FPS,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("puts packed RGBA onto a canvas", () => {
