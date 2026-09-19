@@ -73,9 +73,14 @@ export function visibleLogicalIndexes(
   return found;
 }
 
-/** 一覧の下端が近いときは残り全部を載せる。末尾だけフォールバックのまま残さない。 */
-export function shouldHydrateRemaining(listBottom: number, viewportHeight: number, marginPx = HYDRATE_ROOT_MARGIN_PX): boolean {
-  return listBottom <= viewportHeight + marginPx;
+/** 一覧の下端が近いときは残り全部を載せる。hidden で潰れた箱は無視する。 */
+export function shouldHydrateRemaining(
+  box: Pick<DOMRect, "bottom" | "height" | "width">,
+  viewportHeight: number,
+  marginPx = HYDRATE_ROOT_MARGIN_PX,
+): boolean {
+  if (box.width <= 0 || box.height <= 0) return false;
+  return box.bottom <= viewportHeight + marginPx;
 }
 
 export function communityJumpsSectionHtml(
@@ -119,14 +124,21 @@ export function mountCommunityJumps(
 
   const incomingIndexes = () => {
     const items = itemsNow();
-    if (typeof window !== "undefined" && shouldHydrateRemaining(list.getBoundingClientRect().bottom, window.innerHeight)) {
+    if (typeof window !== "undefined" && shouldHydrateRemaining(list.getBoundingClientRect(), window.innerHeight)) {
       return posts.map((_, index) => index);
     }
     if (typeof window === "undefined") return remembered.size > 0 ? [] : [0];
     return visibleLogicalIndexes(items, window.innerHeight);
   };
 
+  const isSectionLaidOut = () => {
+    if (section.closest("[hidden]")) return false;
+    const box = section.getBoundingClientRect();
+    return box.width > 0 && box.height > 0;
+  };
+
   const hydrateWanted = () => {
+    if (typeof window !== "undefined" && !isSectionLaidOut()) return;
     const incoming = incomingIndexes();
     const kickstart = remembered.size === 0 && incoming.length === 0 ? [0] : incoming;
     const want = rememberHydrateIndexes(remembered, kickstart, posts.length);

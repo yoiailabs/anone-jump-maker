@@ -579,10 +579,10 @@ export async function boot(root: HTMLElement): Promise<void> {
         mountCommunityJumps(must(root, "#communityJumps"));
         communityMounted = true;
       } else {
-        hydrateReactionEmbed(must(root, "#communityJumps"));
+        requestAnimationFrame(() => hydrateReactionEmbed(must(root, "#communityJumps")));
       }
     } else {
-      hydrateReactionEmbed(must(root, "#reactionsEmbed"));
+      requestAnimationFrame(() => hydrateReactionEmbed(must(root, "#reactionsEmbed")));
     }
   };
 
@@ -867,7 +867,6 @@ export async function boot(root: HTMLElement): Promise<void> {
   });
 
   void video.load();
-  hydrateReactionEmbed(must(root, "#reactionsEmbed"));
 
   const goToView = (view: AppView) => {
     const next = `${pathForView(view)}${location.search}`;

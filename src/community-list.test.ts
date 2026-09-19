@@ -45,8 +45,9 @@ describe("community list hydrate window", () => {
   });
 
   it("hydrates the rest of the list once the bottom is near the viewport", () => {
-    expect(shouldHydrateRemaining(900, 800, 160)).toBe(true);
-    expect(shouldHydrateRemaining(2000, 800, 160)).toBe(false);
+    expect(shouldHydrateRemaining({ bottom: 900, height: 2000, width: 320 }, 800, 160)).toBe(true);
+    expect(shouldHydrateRemaining({ bottom: 2000, height: 2000, width: 320 }, 800, 160)).toBe(false);
+    expect(shouldHydrateRemaining({ bottom: 0, height: 0, width: 0 }, 800, 160)).toBe(false);
   });
 });
 
