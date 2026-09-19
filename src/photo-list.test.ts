@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appendAll,
+  insertionIndexByClientX,
   moveItem,
   nearestIndexByClientX,
   orderByIds,
@@ -59,7 +60,7 @@ describe("removeById / appendAll / orderByIds", () => {
   });
 });
 
-describe("nearestIndexByClientX", () => {
+describe("nearestIndexByClientX / insertionIndexByClientX", () => {
   it("picks the item whose center is closest to the pointer", () => {
     const rects = [
       { left: 0, width: 40 },
@@ -70,5 +71,16 @@ describe("nearestIndexByClientX", () => {
     expect(nearestIndexByClientX(70, rects)).toBe(1);
     expect(nearestIndexByClientX(130, rects)).toBe(2);
     expect(nearestIndexByClientX(0, [])).toBe(0);
+  });
+
+  it("inserts before the first center the pointer has not passed", () => {
+    const rects = [
+      { left: 0, width: 40 },
+      { left: 50, width: 40 },
+    ];
+    expect(insertionIndexByClientX(10, rects)).toBe(0);
+    expect(insertionIndexByClientX(40, rects)).toBe(1);
+    expect(insertionIndexByClientX(90, rects)).toBe(2);
+    expect(insertionIndexByClientX(0, [])).toBe(0);
   });
 });

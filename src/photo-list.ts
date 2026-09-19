@@ -63,3 +63,15 @@ export function nearestIndexByClientX(
   }
   return best;
 }
+
+/** ドロップ位置。各項目の中心より左ならその前、全部より右なら末尾。 */
+export function insertionIndexByClientX(
+  clientX: number,
+  rects: readonly Pick<DOMRectReadOnly, "left" | "width">[],
+): number {
+  for (let i = 0; i < rects.length; i += 1) {
+    const rect = rects[i]!;
+    if (clientX < rect.left + rect.width / 2) return i;
+  }
+  return rects.length;
+}

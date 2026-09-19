@@ -745,11 +745,13 @@ a.btn:focus-visible {
 }
 
 .thumbs {
+  --thumb-size: 6rem;
+  --thumb-radius: 0.9rem;
   display: flex;
-  gap: 0.75rem;
+  gap: 0.7rem;
   overflow-x: auto;
-  padding: 0.45rem 0.35rem 0.7rem;
-  margin: 0 -0.15rem;
+  padding: 0.55rem 0.55rem 0.45rem;
+  margin: 0 -0.1rem;
   overscroll-behavior-x: contain;
 }
 
@@ -761,9 +763,9 @@ a.btn:focus-visible {
 .thumb {
   position: relative;
   flex: 0 0 auto;
-  width: 3.2rem;
-  height: 3.2rem;
-  touch-action: pan-y;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  touch-action: none;
   cursor: grab;
   user-select: none;
 }
@@ -776,17 +778,36 @@ a.btn:focus-visible {
 
 .thumb.is-dragging {
   cursor: grabbing;
-  touch-action: none;
   z-index: 2;
-  opacity: 0.78;
-  transform: scale(1.06);
+  opacity: 0.55;
+}
+
+.thumb.drop-before::before,
+.thumb.drop-after::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  bottom: 0.15rem;
+  width: 0.38rem;
+  border-radius: 999px;
+  background: var(--teal);
+  box-shadow: 2px 2px 0 var(--ink);
+  pointer-events: none;
+}
+
+.thumb.drop-before::before {
+  left: -0.52rem;
+}
+
+.thumb.drop-after::after {
+  right: -0.52rem;
 }
 
 .thumbs img {
-  width: 3.2rem;
-  height: 3.2rem;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
   object-fit: cover;
-  border-radius: 999px;
+  border-radius: var(--thumb-radius);
   border: 3px solid var(--ink);
   flex: 0 0 auto;
   background: var(--peach);
@@ -796,38 +817,37 @@ a.btn:focus-visible {
 
 .thumb-index {
   position: absolute;
-  left: 50%;
-  bottom: -0.28rem;
-  transform: translateX(-50%);
-  min-width: 1.1rem;
-  height: 1.1rem;
-  padding: 0 0.22rem;
-  border-radius: 999px;
+  left: 0.32rem;
+  bottom: 0.32rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.28rem;
+  border-radius: 0.4rem;
   border: 2px solid var(--ink);
   background: var(--lime);
   color: var(--ink);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  line-height: 1.05rem;
+  line-height: 1.15rem;
   text-align: center;
 }
 
 .thumb-remove {
   position: absolute;
-  top: -0.38rem;
-  right: -0.38rem;
+  top: 0.28rem;
+  right: 0.28rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.45rem;
+  height: 1.45rem;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 0.45rem;
   border: 2px solid var(--ink);
   background: var(--coral);
   color: var(--ink);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;

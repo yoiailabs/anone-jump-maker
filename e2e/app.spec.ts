@@ -91,6 +91,28 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#playBtn")).toBeDisabled();
 });
 
+test("reorders photos by drag and drop", async ({ page }) => {
+  await uploadPhoto(page);
+  await page.locator("#picker").setInputFiles(await jpegInput("extra.jpg"));
+  await expect(page.locator("#status")).toContainText("1 枚を追加しました（合計 2 枚）", { timeout: 20_000 });
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
+
+  const first = page.locator(".thumb[data-photo-id]").nth(0);
+  const second = page.locator(".thumb[data-photo-id]").nth(1);
+  const box = await second.boundingBox();
+  expect(box).toBeTruthy();
+  await first.dragTo(second, {
+    force: true,
+    targetPosition: { x: Math.round((box?.width ?? 96) * 0.82), y: Math.round((box?.height ?? 96) * 0.5) },
+  });
+
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator(".thumb-index").nth(0)).toHaveText("1");
+  await expect(page.locator(".thumb-index").nth(1)).toHaveText("2");
+});
+
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {
   await uploadPhoto(page);
   // VideoEncoder があっても pickOfflinePlan が null なら未対応（WebKit でよくある）。

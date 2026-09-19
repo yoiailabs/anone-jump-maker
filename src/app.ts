@@ -232,8 +232,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     thumbs.querySelectorAll<HTMLButtonElement>(".thumb-remove").forEach((btn) => {
       btn.disabled = locked;
     });
-    thumbs.querySelectorAll<HTMLElement>(".thumb").forEach((item) => {
+    thumbs.querySelectorAll<HTMLElement>(".thumb[data-photo-id]").forEach((item) => {
       item.tabIndex = locked ? -1 : 0;
+      item.draggable = !locked;
       item.setAttribute("aria-disabled", locked ? "true" : "false");
     });
     const active = isPreviewPlaying();
