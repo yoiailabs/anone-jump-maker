@@ -84,7 +84,7 @@ export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
 
 /** 1ページの件数。無限スクロールにはしない。 */
-export const COMMUNITY_JUMP_PAGE_SIZE = 20;
+export const COMMUNITY_JUMP_PAGE_SIZE = 50;
 export const DEFAULT_COMMUNITY_JUMP_PAGE = 1;
 
 export function communityJumpPageCount(
@@ -425,15 +425,9 @@ export function communityPagerHtml(
   const current = clampCommunityJumpPage(page, total, pageSize);
   const prevDisabled = current <= 1 ? " disabled" : "";
   const nextDisabled = current >= pages ? " disabled" : "";
-  const numbers = Array.from({ length: pages }, (_, index) => {
-    const n = index + 1;
-    const currentAttr = n === current ? ' aria-current="page"' : "";
-    return `<button type="button" class="btn ghost community-page-num" data-community-page="${n}"${currentAttr}>${n}</button>`;
-  }).join("");
   return `
     <nav class="community-pager" id="communityPager" aria-label="${t(locale, "communityPager")}">
       <button type="button" class="btn ghost" id="communityPagePrev" data-community-page="${current - 1}"${prevDisabled}>${t(locale, "communityPagePrev")}</button>
-      <div class="community-pager-pages">${numbers}</div>
       <button type="button" class="btn ghost" id="communityPageNext" data-community-page="${current + 1}"${nextDisabled}>${t(locale, "communityPageNext")}</button>
     </nav>
   `;
