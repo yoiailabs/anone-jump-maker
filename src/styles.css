@@ -280,8 +280,14 @@ body {
   outline-offset: 4px;
 }
 
-.loop-link picture {
+.loop-frame {
   display: block;
+  position: relative;
+  border-radius: 1.5rem;
+  background: var(--card);
+  border: 3.5px solid var(--ink);
+  box-shadow: 7px 8px 0 var(--ink);
+  overflow: hidden;
 }
 
 .loop {
@@ -290,10 +296,27 @@ body {
   height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: 1.5rem;
   background: var(--card);
-  border: 3.5px solid var(--ink);
-  box-shadow: 7px 8px 0 var(--ink);
+}
+
+.loop-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.loop-video.is-ready {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loop-video {
+    display: none;
+  }
 }
 
 .preview-dialog:not([open]) {

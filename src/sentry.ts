@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/browser";
 import { MESSAGES } from "./messages.ts";
 import { isTranslatorCallStackOverflow, type SentryExceptionEvent } from "./translate-guard.ts";
 
@@ -97,21 +96,35 @@ export function scrubSentryEvent<T extends ScrubEvent>(event: T): T {
   return event;
 }
 
-export function initSentry(): void {
-  Sentry.init({
-    dsn: resolveSentryDsn(import.meta.env.VITE_SENTRY_DSN),
-    environment: sentryEnvironment(window.location.hostname),
-    tracesSampleRate: 0.1,
-    sendDefaultPii: false,
-    denyUrls: [
-      /translate\.googleapis\.com/i,
-      /translate\.googleusercontent\.com/i,
-      /translate\.google\.com/i,
-    ],
-    beforeSend(event) {
-      return filterSentryEvent(scrubSentryEvent(event));
-    },
+type SentryBrowser = typeof import("@sentry/browser");
+
+let sentryPromise: Promise<SentryBrowser> | null = null;
+
+function loadSentry(): Promise<SentryBrowser> {
+  sentryPromise ??= import("@sentry/browser").then((Sentry) => {
+    if (typeof window === "undefined") return Sentry;
+    Sentry.init({
+      dsn: resolveSentryDsn(import.meta.env.VITE_SENTRY_DSN),
+      environment: sentryEnvironment(window.location.hostname),
+      tracesSampleRate: 0.1,
+      sendDefaultPii: false,
+      denyUrls: [
+        /translate\.googleapis\.com/i,
+        /translate\.googleusercontent\.com/i,
+        /translate\.google\.com/i,
+      ],
+      beforeSend(event) {
+        return filterSentryEvent(scrubSentryEvent(event));
+      },
+    });
+    return Sentry;
   });
+  return sentryPromise;
+}
+
+/** SDK は別チャンク。初回描画のあとで呼ぶ。 */
+export function initSentry(): void {
+  void loadSentry();
 }
 
 /** 翻訳スクリプトの Ok↔Qk スタックオーバーフローと、想定どおりの UX エラーは送らない。 */
@@ -121,20 +134,21 @@ export function filterSentryEvent<T extends ScrubEvent & SentryExceptionEvent>(e
   return event;
 }
 
-export function reportError(
-  error: unknown,
-  capture: (error: unknown) => void = (value) => {
-    const extras = errorReportExtras(value);
+export function reportError(error: unknown, capture?: (error: unknown) => void): void {
+  if (isExpectedUxError(error)) return;
+  if (capture) {
+    capture(error);
+    return;
+  }
+  void loadSentry().then((Sentry) => {
+    const extras = errorReportExtras(error);
     if (extras) {
       Sentry.withScope((scope) => {
         scope.setExtras(extras);
-        Sentry.captureException(value);
+        Sentry.captureException(error);
       });
     } else {
-      Sentry.captureException(value);
+      Sentry.captureException(error);
     }
-  },
-): void {
-  if (isExpectedUxError(error)) return;
-  capture(error);
+  });
 }

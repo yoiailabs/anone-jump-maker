@@ -29,6 +29,38 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect
     .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))
     .toBe("none");
+  await expect(page.locator("img.loop")).toHaveAttribute("src", "/jump-loop-still.png");
+  await expect(page.locator('link[rel="preload"][as="image"]')).toHaveAttribute(
+    "href",
+    "/jump-loop-still.png",
+  );
+  const html = await page.request.get("/").then((response) => response.text());
+  expect(html).not.toMatch(/<script[^>]+src="https:\/\/www\.googletagmanager\.com/);
+  expect(html).toContain("Zen+Maru+Gothic");
+  expect(html).toContain("wght@400;700");
+  expect(html).not.toContain("400;500;700");
+  expect(html).not.toContain("Noto+Sans+KR");
+  expect(html).not.toContain("Noto+Sans+SC");
+  expect(html).not.toContain("communityJumpsTitle");
+  expect(html).not.toContain('src="/jump-loop.mp4"');
+  const firstLoad = await page.evaluate(() => {
+    const resources = performance.getEntriesByType("resource").map((entry) => entry.name);
+    return {
+      templateVideo: resources.some((name) => /\/template\/(landscape|vertical)\.mp4/.test(name)),
+      widgets: Boolean(document.getElementById("twitter-wjs")),
+      gtagScript: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
+    };
+  });
+  expect(firstLoad.templateVideo).toBe(false);
+  expect(firstLoad.widgets).toBe(false);
+  await expect
+    .poll(async () =>
+      page.locator("video.loop-video").evaluate((el) => {
+        const video = el as HTMLVideoElement;
+        return video.currentSrc.includes("jump-loop.mp4") || video.src.includes("jump-loop.mp4");
+      }),
+    )
+    .toBe(true);
 });
 
 test("loads a photo then previews, mutes, and switches aspect in Chromium and WebKit", async ({ page }) => {
@@ -36,6 +68,11 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#thumbs img")).toHaveCount(1);
   await expect(page.locator("#playBtn")).toBeEnabled();
   await expect(page.locator("#saveBtn")).toBeEnabled();
+  expect(
+    await page.evaluate(() =>
+      performance.getEntriesByType("resource").some((entry) => /\/template\/(landscape|vertical)\.mp4/.test(entry.name)),
+    ),
+  ).toBe(true);
 
   await page.locator("#playBtn").click();
   const dialog = page.locator("#previewDialog");
@@ -437,6 +474,7 @@ test("copies hashtags from the panel", async ({ page, context, browserName }) =>
 async function uploadPhoto(page: Page): Promise<void> {
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
   await expect(page.locator("#status")).toContainText("1 枚を読み込みました", { timeout: 20_000 });
+  await expect(page.locator("#playBtn")).toBeEnabled({ timeout: 20_000 });
 }
 
 async function settlePreviewPlayback(page: Page): Promise<void> {

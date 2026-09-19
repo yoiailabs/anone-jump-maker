@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createTemplateVideo } from "./app.ts";
+import { beginTemplateVideoLoad, createTemplateVideo } from "./app.ts";
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
 import { createCompositor } from "./compositor.ts";
 import {
@@ -20,13 +20,27 @@ afterEach(() => {
 });
 
 describe("createTemplateVideo", () => {
-  it("marks the element playsinline for iOS Safari", () => {
+  it("marks the element playsinline for iOS Safari and does not preload the file", () => {
     const video = createTemplateVideo("landscape");
     expect(video.playsInline).toBe(true);
     expect(video.getAttribute("playsinline")).toBe("");
     expect(video.getAttribute("webkit-playsinline")).toBe("");
     expect(video.className).toBe("offscreen-video");
-    expect(video.src).toContain(TEMPLATES.landscape.video);
+    expect(video.preload).toBe("none");
+    expect(video.getAttribute("src")).toBeNull();
+    expect(video.dataset.templateSrc).toBe(TEMPLATES.landscape.video);
+    video.remove();
+  });
+});
+
+describe("beginTemplateVideoLoad", () => {
+  it("assigns src and switches preload to auto once", () => {
+    const video = createTemplateVideo("portrait");
+    beginTemplateVideoLoad(video);
+    expect(video.preload).toBe("auto");
+    expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
+    beginTemplateVideoLoad(video);
+    expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
     video.remove();
   });
 });

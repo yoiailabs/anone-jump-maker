@@ -1,8 +1,7 @@
-import { useEffect, useRef } from "react";
-import { boot } from "../app.ts";
+import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
-import { communityJumpsSectionHtml } from "../community-list.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
+import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml } from "../links.ts";
@@ -14,18 +13,37 @@ import {
   PREVIEW_MUTED_DEFAULT,
   restartButtonHtml,
 } from "../preview.ts";
-import { PhotoThumbs } from "@/components/PhotoThumbs.tsx";
+import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+
+const PhotoThumbs = lazy(async () => {
+  const { PhotoThumbs: Thumbs } = await import("@/components/PhotoThumbs.tsx");
+  return { default: Thumbs };
+});
+
+function PhotoThumbsSlot({ locale }: { locale: Locale }) {
+  const { photos } = useSyncExternalStore(
+    subscribePhotoThumbs,
+    getPhotoThumbsState,
+    getPhotoThumbsState,
+  );
+  if (photos.length === 0) return null;
+  return (
+    <Suspense fallback={null}>
+      <PhotoThumbs locale={locale} />
+    </Suspense>
+  );
+}
 
 type MakerAppProps = {
   initialView: AppView;
   locale: Locale;
+  communityHtml?: string;
 };
 
-export default function MakerApp({ initialView, locale }: MakerAppProps) {
+export default function MakerApp({ initialView, locale, communityHtml = "" }: MakerAppProps) {
   const started = useRef(false);
-  const communityHtml = communityJumpsSectionHtml(undefined, locale);
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
@@ -34,11 +52,24 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
     started.current = true;
     const root = document.querySelector<HTMLElement>("#app");
     if (!root) return;
-    initSentry();
-    void boot(root, { locale }).catch((error: unknown) => {
-      reportError(error);
-      root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
-    });
+    const startSentry = () => {
+      initSentry();
+    };
+    const onFirstGesture = () => startSentry();
+    window.addEventListener("pointerdown", onFirstGesture, { once: true, passive: true });
+    window.addEventListener("keydown", onFirstGesture, { once: true });
+    window.addEventListener("error", onFirstGesture, { once: true });
+    window.addEventListener("unhandledrejection", onFirstGesture, { once: true });
+    const sentryTimer = window.setTimeout(startSentry, 20000);
+    void import("../app.ts")
+      .then(({ boot }) => boot(root, { locale }))
+      .catch((error: unknown) => {
+        reportError(error);
+        root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
+      });
+    return () => {
+      window.clearTimeout(sentryTimer);
+    };
   }, [locale]);
 
   const makerHidden = initialView !== "maker";
@@ -76,18 +107,10 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           </header>
 
           <div className="loop-wrap">
-            <a
-              className="loop-link"
+            <JumpLoop
               href="https://www.youtube.com/watch?v=M-IayQIR0XA"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
-            >
-              <picture>
-                <source media="(prefers-reduced-motion: reduce)" srcSet="/jump-loop-still.png" />
-                <img className="loop" src="/jump-loop.png" alt="" width={448} height={252} decoding="async" />
-              </picture>
-            </a>
+              ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
+            />
           </div>
 
           <section className="panel">
@@ -100,7 +123,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
               />
               <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
             </Label>
-            <PhotoThumbs locale={locale} />
+            <PhotoThumbsSlot locale={locale} />
             <fieldset className="aspect-field">
               <legend>{t(locale, "makerAspectLegend")}</legend>
               <RadioPills
@@ -223,7 +246,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           className="app-view"
           id="communityView"
           hidden={communityHidden}
-          dangerouslySetInnerHTML={{ __html: communityHtml }}
+          {...(communityHtml ? { dangerouslySetInnerHTML: { __html: communityHtml } } : {})}
         />
       </div>
       <dialog className="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">

@@ -26,6 +26,7 @@ test("reopens preview immediately after close during playback start", async ({ p
 
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
   await expect(page.locator("#status")).toContainText("1 枚を読み込みました", { timeout: 20_000 });
+  await expect(page.locator("#playBtn")).toBeEnabled({ timeout: 20_000 });
 
   const playBtn = page.locator("#playBtn");
   const dialog = page.locator("#previewDialog");
