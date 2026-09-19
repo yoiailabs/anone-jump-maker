@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/browser";
+import { isTranslatorCallStackOverflow, type SentryExceptionEvent } from "./translate-guard.ts";
 
 /** Preview/prod でも env 無しで動く公開 DSN。上書きは VITE_SENTRY_DSN。 */
 export const DEFAULT_SENTRY_DSN =
@@ -54,10 +55,21 @@ export function initSentry(): void {
     environment: sentryEnvironment(window.location.hostname),
     tracesSampleRate: 0.1,
     sendDefaultPii: false,
+    denyUrls: [
+      /translate\.googleapis\.com/i,
+      /translate\.googleusercontent\.com/i,
+      /translate\.google\.com/i,
+    ],
     beforeSend(event) {
-      return scrubSentryEvent(event);
+      return filterSentryEvent(scrubSentryEvent(event));
     },
   });
+}
+
+/** 翻訳スクリプトの Ok↔Qk スタックオーバーフローは first-party ではないので送らない。 */
+export function filterSentryEvent<T extends ScrubEvent & SentryExceptionEvent>(event: T): T | null {
+  if (isTranslatorCallStackOverflow(event)) return null;
+  return event;
 }
 
 export function reportError(
