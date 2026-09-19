@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { t } from "./i18n.ts";
 import {
   COMMUNITY_JUMPS_EMPTY,
   COMMUNITY_JUMPS_LEDE,
@@ -8,19 +9,19 @@ import {
   COMMUNITY_MASONRY_GAP_PX,
   COMMUNITY_MASONRY_ROW_PX,
   DEFAULT_COMMUNITY_JUMP_PAGE,
+  COMMUNITY_HASHTAG_SEARCH_LINKS,
   MORE_JUMPS_HREF,
   MORE_JUMPS_QUERY,
   applyCommunityMasonryItem,
   applyCommunityMasonryLayout,
   clampCommunityJumpPage,
-  communityHashtagLinkHtml,
+  communityHashtagSearchHtml,
   communityJumpPageCount,
   communityJumpPagePosts,
   communityJumpsSectionHtml,
   communityMasonryColumns,
   communityMasonryRowSpan,
   communityPagerHtml,
-  communityTitleHtml,
   hydrateIndexes,
   hydratePadForColumns,
   refreshCommunityJumps,
@@ -139,7 +140,7 @@ describe("community list markup", () => {
     expect(COMMUNITY_JUMP_PAGE_SIZE).toBe(50);
     expect(DEFAULT_COMMUNITY_JUMP_PAGE).toBe(1);
     expect(communityJumpPageCount(493)).toBe(10);
-    expect(html).toContain(communityTitleHtml());
+    expect(html).toContain(`<h1 id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h1>`);
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain('id="communityJumps"');
     expect(html).toContain('id="communityJumpsList"');
@@ -156,9 +157,11 @@ describe("community list markup", () => {
     expect(html).toContain('href="/"');
     expect(html).toContain('class="page-link"');
     expect(html).toContain("メーカーに戻る");
-    expect(html).toContain(communityTitleHtml());
-    expect(html).toContain('id="communityHashtag"');
-    expect(html).toContain('class="community-hashtag-link"');
+    expect(html).toMatch(/<h1 id="communityJumpsTitle">[^<]+<\/h1>/);
+    expect(html).not.toContain('id="communityHashtag"');
+    expect(html).not.toContain("community-hashtag-link");
+    expect(html).toContain('id="communityHashtagSearch"');
+    expect(html).toContain("community-hashtag-search");
     expect(html).toContain(`href="${MORE_JUMPS_HREF}"`);
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
@@ -168,14 +171,12 @@ describe("community list markup", () => {
     expect(MORE_JUMPS_HREF).toBe(`https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`);
     expect(html.match(/id="toMaker"/g)).toHaveLength(1);
     expect(html.match(/メーカーに戻る/g)).toHaveLength(2);
-    expect(html.match(/id="communityHashtag"/g)).toHaveLength(1);
-    expect(html.match(/class="community-hashtag-link"/g)).toHaveLength(1);
     expect(html).toContain('<p class="eyebrow">#あのねジャンプ</p>');
     expect(html).not.toContain('<p class="eyebrow"><a');
-    expect(html.indexOf("communityHashtag")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("communityPager"));
-    expect(html.indexOf("communityPager")).toBeLessThan(html.indexOf("toMakerBottom"));
+    expect(html.indexOf("communityPager")).toBeLessThan(html.indexOf("communityHashtagSearch"));
+    expect(html.indexOf("communityHashtagSearch")).toBeLessThan(html.indexOf("toMakerBottom"));
     expect(html).toContain('class="lang-switch"');
     expect(html).toContain('lang="en"');
     expect(html).toContain('href="/en/community"');
@@ -234,15 +235,19 @@ describe("community list markup", () => {
     const empty: readonly CommunityJumpPost[] = [];
     const html = communityJumpsSectionHtml(empty);
     expect(html).toContain(COMMUNITY_JUMPS_EMPTY);
-    expect(html).toContain(communityTitleHtml());
+    expect(html).toContain(`<h1 id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h1>`);
     expect(html).toContain('id="toMakerBottom"');
-    expect(html).toContain(communityTitleHtml());
-    expect(html).toContain('id="communityHashtag"');
+    expect(html).toContain('id="communityHashtagSearch"');
+    expect(html).not.toContain('id="communityHashtag"');
+    expect(html).not.toContain("community-hashtag-link");
     expect(html).not.toContain('id="moreJumps"');
     expect(html).not.toContain("community-jumps-list");
     expect(html).not.toContain("communitySort");
     expect(html).not.toContain("communityPager");
     expect(html).not.toContain(COMMUNITY_JUMPS_LEDE);
+    expect(html).toContain("こっちにもあるよ");
+    expect(html.indexOf("community-jumps-empty")).toBeLessThan(html.indexOf("communityHashtagSearch"));
+    expect(html.indexOf("communityHashtagSearch")).toBeLessThan(html.indexOf("toMakerBottom"));
   });
 
   it("keeps a single masonry item when only one post remains", () => {
@@ -252,30 +257,82 @@ describe("community list markup", () => {
     expect(html).not.toContain("communitySort");
     expect(html).not.toContain("communityPager");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
-    expect(html).toContain(communityTitleHtml());
+    expect(html).toContain(`<h1 id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h1>`);
+    expect(html).toContain('id="communityHashtagSearch"');
+    expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("communityHashtagSearch"));
   });
 });
 
-describe("community hashtag title link", () => {
-  it("turns #あのねジャンプ in each locale title into the X search link", () => {
+describe("community hashtag search links", () => {
+  it("keeps the title as plain text and puts SNS search banners below the pager", () => {
     expect(COMMUNITY_JUMPS_TITLE).toBe("みんなの #あのねジャンプ");
-    expect(communityTitleHtml("ja")).toContain("みんなの ");
-    expect(communityTitleHtml("en")).toContain("Everyone’s ");
-    expect(communityTitleHtml("ko")).toContain("모두의 ");
-    expect(communityTitleHtml("zh")).toContain("大家的 ");
-    for (const locale of ["ja", "en", "ko", "zh"] as const) {
-      const title = communityTitleHtml(locale);
-      expect(title).toContain('id="communityHashtag"');
-      expect(title).toContain(`href="${MORE_JUMPS_HREF}"`);
-      expect(title).toContain(MORE_JUMPS_QUERY);
-      expect(title).not.toContain("btn");
-    }
-    expect(communityHashtagLinkHtml()).toBe(
-      `<a class="community-hashtag-link" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${MORE_JUMPS_QUERY}</a>`,
+    expect(COMMUNITY_HASHTAG_SEARCH_LINKS.map((link) => link.id)).toEqual([
+      "x",
+      "instagram",
+      "youtube",
+      "tiktok",
+    ]);
+    expect(COMMUNITY_HASHTAG_SEARCH_LINKS.find((link) => link.id === "x")?.href).toBe(MORE_JUMPS_HREF);
+    expect(COMMUNITY_HASHTAG_SEARCH_LINKS.find((link) => link.id === "instagram")?.href).toBe(
+      `https://www.instagram.com/explore/tags/${encodeURIComponent(MORE_JUMPS_QUERY.slice(1))}/`,
     );
+    expect(COMMUNITY_HASHTAG_SEARCH_LINKS.find((link) => link.id === "youtube")?.href).toBe(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(MORE_JUMPS_QUERY)}`,
+    );
+    expect(COMMUNITY_HASHTAG_SEARCH_LINKS.find((link) => link.id === "tiktok")?.href).toBe(
+      `https://www.tiktok.com/tag/${encodeURIComponent(MORE_JUMPS_QUERY.slice(1))}`,
+    );
+
     const html = communityJumpsSectionHtml();
+    expect(html).toMatch(/<h1 id="communityJumpsTitle">みんなの #あのねジャンプ<\/h1>/);
+    expect(html).not.toContain("community-hashtag-link");
+    expect(html).not.toContain('id="communityHashtag"');
     expect(html).toContain('<p class="eyebrow">#あのねジャンプ</p>');
-    expect(html.indexOf('<p class="eyebrow">#あのねジャンプ</p>')).toBeLessThan(html.indexOf('id="communityHashtag"'));
+    expect(html).not.toContain('<p class="eyebrow"><a');
+
+    const ledeIdx = html.indexOf(`<p class="lede">${COMMUNITY_JUMPS_LEDE}</p>`);
+    const sortIdx = html.indexOf('id="communitySort"');
+    const pagerIdx = html.indexOf('id="communityPager"');
+    const searchIdx = html.indexOf('id="communityHashtagSearch"');
+    const headingIdx = html.indexOf('id="communityHashtagSearchHeading"');
+    expect(ledeIdx).toBeGreaterThan(-1);
+    expect(sortIdx).toBeGreaterThan(ledeIdx);
+    expect(sortIdx).toBeLessThan(html.indexOf("communityJumpsList"));
+    expect(pagerIdx).toBeGreaterThan(html.indexOf("communityJumpsList"));
+    expect(searchIdx).toBeGreaterThan(pagerIdx);
+    expect(headingIdx).toBeGreaterThan(pagerIdx);
+    expect(headingIdx).toBeLessThan(searchIdx);
+    expect(html).toContain("こっちにもあるよ");
+    expect(html).toContain('id="communityHashtagSearchHeading"');
+
+    for (const link of COMMUNITY_HASHTAG_SEARCH_LINKS) {
+      expect(html).toContain(`href="${link.href}"`);
+      expect(html).toContain(`data-service="${link.id}"`);
+    }
+    expect(html.match(/class="link-banner"/g)).toHaveLength(4);
+    expect(html.match(/target="_blank"/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(html).toContain('aria-label="Xで #あのねジャンプ を検索する（新しいタブ）"');
+    expect(html).toContain('aria-label="Instagramで #あのねジャンプ を検索する（新しいタブ）"');
+    expect(html).toContain('aria-label="YouTubeで #あのねジャンプ を検索する（新しいタブ）"');
+    expect(html).toContain('aria-label="TikTokで #あのねジャンプ を検索する（新しいタブ）"');
+    expect(html).toContain('aria-label="#あのねジャンプを探す"');
+    expect(html).not.toContain("ナナツカゼさんのXを開く");
+    expect(html).not.toContain('id="moreJumps"');
+    expect(html).not.toContain("もっと見る");
+
+    const en = communityJumpsSectionHtml(undefined, "en");
+    expect(en).toContain(`<h1 id="communityJumpsTitle">${t("en", "communityTitle")}</h1>`);
+    expect(en).toContain("Search #あのねジャンプ on X (new tab)");
+    expect(en).toContain("Also on these apps");
+    expect(communityHashtagSearchHtml("ko")).toContain("다른 앱에도 있어");
+    expect(communityHashtagSearchHtml("zh")).toContain("这些应用上也有哦");
+    expect(communityHashtagSearchHtml("ko")).toContain("X에서 #あのねジャンプ 검색(새 탭)");
+    expect(communityHashtagSearchHtml("zh")).toContain("在X搜索 #あのねジャンプ（新标签页）");
+    for (const locale of ["ja", "en", "ko", "zh"] as const) {
+      const titleHtml = communityJumpsSectionHtml(undefined, locale);
+      expect(titleHtml).toContain(`<h1 id="communityJumpsTitle">${t(locale, "communityTitle")}</h1>`);
+      expect(titleHtml).not.toContain("community-hashtag-link");
+    }
   });
 });
 

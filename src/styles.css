@@ -272,23 +272,6 @@ html[lang="ja"] .lede {
   text-decoration: none;
 }
 
-.community-hashtag-link {
-  color: #2a7f82;
-  font: inherit;
-  letter-spacing: inherit;
-  text-decoration: underline;
-  text-underline-offset: 0.14em;
-}
-
-.community-hashtag-link:hover {
-  color: var(--ink);
-}
-
-.community-hashtag-link:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
-}
-
 .community-back-wrap {
   margin: 0;
   text-align: center;
@@ -1287,6 +1270,19 @@ a.btn:focus-visible {
   justify-content: center;
   gap: 0.75rem;
   margin: 0.15rem 0 0;
+}
+
+.community-hashtag-search {
+  margin: 0.2rem 0 0;
+}
+
+.community-hashtag-search-lede {
+  margin: 0 0 0.7rem;
+  color: var(--mute);
+  font-size: 0.88rem;
+  line-height: 1.75;
+  text-align: center;
+  text-wrap: pretty;
 }
 
 .community-pager .btn {

@@ -321,6 +321,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#communityView")).toBeVisible();
   await expect(page.locator("#makerView")).toBeHidden();
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
+  await expect(page.locator("#communityJumpsTitle a")).toHaveCount(0);
+  await expect(page.locator("#communityHashtag")).toHaveCount(0);
   await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
   await expect
     .poll(async () =>
@@ -332,23 +334,46 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#toMaker")).not.toHaveClass(/\bbtn\b/);
   await expect(page.locator("#toMakerBottom")).toHaveClass(/\bpage-link\b/);
   await expect(page.locator("#toMakerBottom")).not.toHaveClass(/\bbtn\b/);
-  const hashtag = page.locator("#communityHashtag");
-  await expect(hashtag).toHaveText("#あのねジャンプ");
-  await expect(hashtag).toHaveClass(/community-hashtag-link/);
-  await expect(hashtag).not.toHaveClass(/\bbtn\b/);
-  await expect(hashtag).toHaveAttribute("target", "_blank");
-  await expect(hashtag).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(hashtag).toHaveAttribute(
+  const search = page.locator("#communityHashtagSearch");
+  const searchX = page.locator('#communityHashtagSearch a[data-service="x"]');
+  const searchIg = page.locator('#communityHashtagSearch a[data-service="instagram"]');
+  const searchYt = page.locator('#communityHashtagSearch a[data-service="youtube"]');
+  const searchTt = page.locator('#communityHashtagSearch a[data-service="tiktok"]');
+  await expect(search).toBeVisible();
+  await expect(page.locator("#communityHashtagSearch a.link-banner")).toHaveCount(4);
+  await expect(searchX).toHaveAttribute(
     "href",
     `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
   );
-  await expect(page.locator("#communityJumpsTitle a.community-hashtag-link")).toHaveCount(1);
+  await expect(searchIg).toHaveAttribute(
+    "href",
+    `https://www.instagram.com/explore/tags/${encodeURIComponent("あのねジャンプ")}/`,
+  );
+  await expect(searchYt).toHaveAttribute(
+    "href",
+    `https://www.youtube.com/results?search_query=${encodeURIComponent("#あのねジャンプ")}`,
+  );
+  await expect(searchTt).toHaveAttribute(
+    "href",
+    `https://www.tiktok.com/tag/${encodeURIComponent("あのねジャンプ")}`,
+  );
+  for (const link of [searchX, searchIg, searchYt, searchTt]) {
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  }
+  await expect(searchX).toHaveAttribute("aria-label", "Xで #あのねジャンプ を検索する（新しいタブ）");
+  await expect(page.locator("#communityHashtagSearchHeading")).toHaveText("こっちにもあるよ");
   await expect(page.locator("#communityJumps .eyebrow a")).toHaveCount(0);
   await expect(page.locator("#communityJumps .eyebrow")).toHaveText("#あのねジャンプ");
   await expect(page.locator("#moreJumps")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "もっと見る" })).toHaveCount(0);
   const titleBox = await page.locator("#communityJumpsTitle").boundingBox();
+  const ledeBox = await page.locator("#communityJumps .lede").boundingBox();
+  const sortBox = await page.locator("#communitySort").boundingBox();
   const listBox = await page.locator("#communityJumpsList").boundingBox();
+  expect(titleBox && ledeBox && titleBox.y < ledeBox.y).toBe(true);
+  expect(ledeBox && sortBox && ledeBox.y < sortBox.y).toBe(true);
+  expect(sortBox && listBox && sortBox.y < listBox.y).toBe(true);
   expect(titleBox && listBox && titleBox.y < listBox.y).toBe(true);
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(50);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
@@ -401,9 +426,11 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await lastAfter.scrollIntoViewIfNeeded();
   const lastAfterBox = await lastAfter.boundingBox();
   const pagerBox = await page.locator("#communityPager").boundingBox();
+  const searchBox = await search.boundingBox();
   const bottomBox = await bottomBack.boundingBox();
   expect(lastAfterBox && pagerBox && lastAfterBox.y < pagerBox.y).toBe(true);
-  expect(pagerBox && bottomBox && pagerBox.y < bottomBox.y).toBe(true);
+  expect(pagerBox && searchBox && pagerBox.y < searchBox.y).toBe(true);
+  expect(searchBox && bottomBox && searchBox.y < bottomBox.y).toBe(true);
   await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(50);
   await expect(bottomBack).toHaveAttribute("href", "/");
 

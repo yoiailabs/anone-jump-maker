@@ -37,5 +37,8 @@ describe("official link banners", () => {
     expect(linkBannersHtml(undefined, "en")).toContain("Open Nanatsukaze");
     expect(linkBannersHtml(undefined, "ko")).toContain("Nanatsukaze의 X 열기");
     expect(linkBannersHtml(undefined, "zh")).toContain("打开 Nanatsukaze 的X");
+    expect(linkBannersHtml(OFFICIAL_LINKS.slice(0, 1), "ja", "communityHashtagSearchAria")).toContain(
+      "Xで #あのねジャンプ を検索する（新しいタブ）",
+    );
   });
 });
