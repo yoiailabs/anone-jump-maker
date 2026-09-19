@@ -10,6 +10,10 @@ export default defineConfig({
   output: "static",
   trailingSlash: "ignore",
   integrations: [react()],
+  server: ({ command }) => ({
+    host: true,
+    port: command === "preview" ? 4173 : 5173,
+  }),
   vite: {
     envPrefix: ["PUBLIC_", "VITE_"],
     resolve: { alias: { "@": src } },
@@ -18,14 +22,6 @@ export default defineConfig({
       target: "es2022",
       assetsInlineLimit: 0,
       sourcemap: true,
-    },
-    server: {
-      host: true,
-      port: 5173,
-    },
-    preview: {
-      host: true,
-      port: 4173,
     },
   },
 });
