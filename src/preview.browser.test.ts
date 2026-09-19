@@ -11,7 +11,7 @@ import {
   UNSUPPORTED_EXPORT_MESSAGE,
 } from "./export.ts";
 import { createGpuKeyer } from "./keying-gpu.ts";
-import { TEMPLATES } from "./layout.ts";
+import { mainPanelRect, TEMPLATES } from "./layout.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import { loadPhotos, type LoadedPhoto } from "./photos.ts";
 
@@ -76,6 +76,44 @@ describe("createCompositor", () => {
       photo.bitmap.close();
       compositor.destroy();
     }
+  });
+
+  it("does not paint a white seam on the top edge of the portrait 16:9 panel", async () => {
+    const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
+    const rest = 7 / 30;
+    const photo = await makePhoto("#3a6ea5");
+    const character = makeTemplateLikeCharacter();
+    const video = document.createElement("video");
+
+    for (const scale of [1, PREVIEW_RESOLUTION_SCALE]) {
+      const compositor = createCompositor({
+        resolutionScale: scale,
+        createKeyer: () => null,
+      });
+      try {
+        compositor.setAspect("portrait");
+        compositor.draw(video, [photo], timeline, rest, "jump", "none", {
+          source: character,
+          width: character.width,
+          height: character.height,
+        });
+        const panel = mainPanelRect(compositor.canvas.width, compositor.canvas.height, "portrait");
+        assertNoBrightSeam(compositor.canvas, panel.y);
+
+        compositor.setAspect("landscape");
+        compositor.draw(video, [photo], timeline, rest, "jump", "none");
+        expect(compositor.canvas.height).toBeGreaterThan(0);
+        const ctx = compositor.canvas.getContext("2d");
+        expect(ctx).toBeTruthy();
+        const top = ctx!.getImageData(8, 0, 8, 1).data;
+        expect(top[0] + top[1] + top[2]).toBeGreaterThan(40);
+        expect(top[3]).toBe(255);
+      } finally {
+        compositor.destroy();
+      }
+    }
+
+    photo.bitmap.close();
   });
 });
 
@@ -213,6 +251,58 @@ function sampleCenter(canvas: HTMLCanvasElement): Uint8ClampedArray {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas");
   return ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data;
+}
+
+/** Real vertical.mp4: black letterbox, 1px dark-green antialias at y=312, solid green 313–654. */
+function makeTemplateLikeCharacter(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 608;
+  canvas.height = 1080;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas");
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, 608, 1080);
+  ctx.fillStyle = "rgb(0, 48, 0)";
+  ctx.fillRect(0, 312, 608, 1);
+  ctx.fillStyle = "rgb(20, 182, 54)";
+  ctx.fillRect(0, 313, 608, 342);
+  ctx.fillStyle = "#111111";
+  ctx.fillRect(220, 400, 160, 220);
+  return canvas;
+}
+
+function rowMeanLuma(ctx: CanvasRenderingContext2D, y: number, x: number, width: number): number {
+  const data = ctx.getImageData(x, y, width, 1).data;
+  let sum = 0;
+  const n = width;
+  for (let i = 0; i < n; i += 1) {
+    const o = i * 4;
+    sum += data[o]! * 0.299 + data[o + 1]! * 0.587 + data[o + 2]! * 0.114;
+  }
+  return sum / n;
+}
+
+function assertNoBrightSeam(canvas: HTMLCanvasElement, panelY: number): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas");
+  const y0 = Math.round(panelY);
+  const x = Math.floor(canvas.width * 0.08);
+  const width = Math.max(8, Math.floor(canvas.width * 0.84));
+  const start = Math.max(0, y0 - 2);
+  const end = Math.min(canvas.height - 1, y0 + 4);
+  const lumas: number[] = [];
+  for (let y = start; y <= end; y += 1) {
+    lumas.push(rowMeanLuma(ctx, y, x, width));
+  }
+  for (let i = 1; i < lumas.length - 1; i += 1) {
+    const luma = lumas[i]!;
+    const prev = lumas[i - 1]!;
+    const next = lumas[i + 1]!;
+    const spike = luma > prev + 28 && luma > next + 28;
+    expect(spike && luma > 180, `bright seam at y=${start + i} lumas=${lumas.map((v) => v.toFixed(1)).join(",")}`).toBe(
+      false,
+    );
+  }
 }
 
 async function jpegFile(): Promise<File> {

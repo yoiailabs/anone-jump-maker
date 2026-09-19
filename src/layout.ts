@@ -34,8 +34,12 @@ export const TEMPLATES = {
   landscape: { video: "/template/landscape.mp4", cuts: "/template/landscape-cuts.json" },
 } as const;
 
-/** テンプレ緑 16:9 帯（実測 312–654、高さ 342 = 608×9/16）。 */
-export const TEMPLATE_BAND_Y = 312;
+/**
+ * テンプレ緑 16:9 帯。ベタ緑は y=313–654（高さ 342 = 608×9/16）。
+ * y=312 は黒レターボックスとの 1px アンチエイリアスで、キーすると darkProtect が
+ * 不透明に残し、白ステッカー縁が本編上端に横一線を描いてしまう。
+ */
+export const TEMPLATE_BAND_Y = 313;
 export const TEMPLATE_BAND_H = 342;
 
 export const MAIN_PANEL_Y_FRAC = TEMPLATE_BAND_Y / OUTPUT.height;

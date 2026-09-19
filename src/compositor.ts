@@ -628,12 +628,17 @@ function paintOutput(
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
-  ctx.drawImage(main, panel.x, panel.y, panel.w, panel.h);
+  const panelX = Math.round(panel.x);
+  const panelY = Math.round(panel.y);
+  const panelW = Math.round(panel.w);
+  const panelH = Math.round(panel.h);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(main, panelX, panelY, panelW, panelH);
+  ctx.imageSmoothingEnabled = true;
 
   ctx.fillStyle = "rgba(8, 6, 4, 0.85)";
-  const half = PANEL_DIVIDER_PX / 2;
-  ctx.fillRect(0, panel.y - half, w, PANEL_DIVIDER_PX);
-  ctx.fillRect(0, panel.y + panel.h - half, w, PANEL_DIVIDER_PX);
+  ctx.fillRect(0, panelY, w, PANEL_DIVIDER_PX);
+  ctx.fillRect(0, panelY + panelH - PANEL_DIVIDER_PX, w, PANEL_DIVIDER_PX);
 }
 
 export const SONG_CREDIT = songCreditLine();

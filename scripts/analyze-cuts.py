@@ -39,7 +39,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FPS = 30
 
-PORTRAIT_BAND_Y = 312
+PORTRAIT_BAND_Y = 313
 PORTRAIT_BAND_H = 342
 
 # Template frame index of each photo swap (frame 0 = first slot), from the

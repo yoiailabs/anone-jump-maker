@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import landscapeCuts from "../public/template/landscape-cuts.json" with { type: "json" };
 import portraitCuts from "../public/template/cuts.json" with { type: "json" };
+import { TEMPLATE_BAND_H, TEMPLATE_BAND_Y } from "./layout.ts";
 import { TEMPLATE_PHOTO_COUNT, TEMPLATE_SLOT_PHOTO_ORDER } from "./timeline.ts";
 
 describe("template cut tables", () => {
@@ -18,5 +19,10 @@ describe("template cut tables", () => {
     for (let i = 1; i < portraitCuts.slots.length; i += 1) {
       expect(portraitCuts.slots[i]!).toBeGreaterThan(portraitCuts.slots[i - 1]!);
     }
+  });
+
+  it("records the portrait 16:9 band that skips the letterbox antialias row", () => {
+    expect(portraitCuts.band).toEqual({ y: TEMPLATE_BAND_Y, h: TEMPLATE_BAND_H });
+    expect(landscapeCuts.band).toEqual({ y: 0, h: 1080 });
   });
 });

@@ -90,6 +90,16 @@ describe("output size", () => {
     expect(PANEL_DIVIDER_PX).toBe(1);
     expect(BLUR_SOURCE).toBe("main-frame");
   });
+
+  it("skips the 1px letterbox antialias above the solid green 16:9 band", () => {
+    expect(TEMPLATE_BAND_Y).toBe(313);
+    expect(TEMPLATE_BAND_H).toBe(342);
+    expect(TEMPLATE_BAND_Y + TEMPLATE_BAND_H).toBe(655);
+    const preview = mainPanelRect(304, 540, "portrait");
+    expect(preview.y).toBe(Math.round(540 * (313 / 1080)));
+    expect(Number.isInteger(preview.y)).toBe(true);
+    expect(Number.isInteger(preview.h)).toBe(true);
+  });
 });
 
 describe("characterDest", () => {
@@ -123,13 +133,14 @@ describe("characterDest", () => {
 describe("mainPanelRect", () => {
   it("places a full-width 16:9 panel on the measured green band", () => {
     const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
+    expect(TEMPLATE_BAND_Y).toBe(313);
     expect(panel.x).toBe(0);
     expect(panel.w).toBe(608);
     expect(panel.y).toBe(TEMPLATE_BAND_Y);
     expect(panel.h).toBe(TEMPLATE_BAND_H);
     expect(panel.w / panel.h).toBeCloseTo(16 / 9, 5);
-    expect(panel.y / OUTPUT.height).toBeCloseTo(0.2889, 3);
-    expect((panel.y + panel.h) / OUTPUT.height).toBeCloseTo(0.6056, 3);
+    expect(panel.y / OUTPUT.height).toBeCloseTo(313 / 1080, 5);
+    expect((panel.y + panel.h) / OUTPUT.height).toBeCloseTo(655 / 1080, 5);
   });
 
   it("fills the landscape canvas with the 16:9 main frame", () => {
@@ -141,7 +152,7 @@ describe("mainPanelRect", () => {
 describe("templateBandRect", () => {
   it("crops the same 16:9 band from the template", () => {
     const band = templateBandRect(608, 1080);
-    expect(band).toEqual({ x: 0, y: 312, w: 608, h: 342 });
+    expect(band).toEqual({ x: 0, y: 313, w: 608, h: 342 });
   });
 
   it("uses the full landscape template frame", () => {
