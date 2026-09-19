@@ -27,6 +27,7 @@ export const TWITTER_DATA_LANG: Record<Locale, string> = {
 
 const ja = {
   makerTitle: "あのねジャンプメーカー",
+  pwaShortName: "あのねジャンプ",
   makerLede1: "写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。",
   makerLede2: "動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。",
   makerLede3: "※ファン制作の非公式アプリです。",
@@ -132,6 +133,7 @@ export type MessageKey = keyof typeof ja;
 
 const en: Record<MessageKey, string> = {
   makerTitle: "Anone Jump Maker",
+  pwaShortName: "Anone Jump",
   makerLede1: "Pick a few photos to make an Anone Jump video in seconds.",
   makerLede2: "Everything is created on this device, so your images never leave the browser.",
   makerLede3: "Unofficial fan-made app.",
@@ -235,6 +237,7 @@ const en: Record<MessageKey, string> = {
 
 const ko: Record<MessageKey, string> = {
   makerTitle: "아노네 점프 메이커",
+  pwaShortName: "아노네 점프",
   makerLede1: "사진 몇 장만 고르면 「아노네 점프」 영상을 쉽게 만들 수 있어요.",
   makerLede2: "영상은 모두 이 기기 안에서 만들어지며, 이미지가 외부 서버로 전송되지 않습니다.",
   makerLede3: "※팬이 만든 비공식 앱입니다.",
@@ -338,6 +341,7 @@ const ko: Record<MessageKey, string> = {
 
 const zh: Record<MessageKey, string> = {
   makerTitle: "あのね跳跃制作器",
+  pwaShortName: "あのね跳跃",
   makerLede1: "只需选择几张照片，就能轻松制作「あのね跳跃」视频。",
   makerLede2: "视频全部在本设备内生成，图片不会上传到外部服务器。",
   makerLede3: "※粉丝制作的非官方应用。",
