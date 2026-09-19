@@ -27,7 +27,7 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect
     .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))
     .toBe("none");
-  await expect(page.locator(".loop")).toHaveAttribute("src", "/jump-loop-still.png");
+  await expect(page.locator("img.loop")).toHaveAttribute("src", "/jump-loop-still.png");
   await expect(page.locator('link[rel="preload"][as="image"]')).toHaveAttribute(
     "href",
     "/jump-loop-still.png",
