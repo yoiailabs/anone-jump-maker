@@ -13,11 +13,10 @@ routes = [
 [observability]
 enabled = true
 
-# Vite の dist を Workers 静的アセットとして配信する。
-# `/community` は Worker が index.html を書き換えてから返す（ページ固有の OGP）。
+# Vite / Astro の dist を Workers 静的アセットとして配信する。
+# `/community` はビルド済み HTML（ページ固有の OGP）をそのまま返す。
 [assets]
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
-run_worker_first = ["/community", "/community/"]

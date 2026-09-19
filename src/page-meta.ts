@@ -4,6 +4,8 @@ export const COMMUNITY_PATH = "/community";
 export const OG_IMAGE_URL = `${APP_ORIGIN}/og.png`;
 
 export const MAKER_DOCUMENT_TITLE = "あのねジャンプメーカー";
+export const MAKER_DESCRIPTION =
+  "写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。※ファン制作の非公式アプリです。";
 export const COMMUNITY_DOCUMENT_TITLE = "みんなの #あのねジャンプ";
 export const COMMUNITY_DESCRIPTION =
   "ファンが投稿したジャンプ動画です。下にスクロールして見てね。";
@@ -13,6 +15,13 @@ export type PageMeta = {
   description: string;
   url: string;
   image: string;
+};
+
+export const MAKER_PAGE_META: PageMeta = {
+  title: MAKER_DOCUMENT_TITLE,
+  description: MAKER_DESCRIPTION,
+  url: `${APP_ORIGIN}/`,
+  image: OG_IMAGE_URL,
 };
 
 export const COMMUNITY_PAGE_META: PageMeta = {
@@ -28,7 +37,7 @@ export function isCommunityPath(pathname: string): boolean {
   return trimmed === COMMUNITY_PATH;
 }
 
-/** index.html の title / description / OGP をコミュニティ用に差し替える。 */
+/** メーカー HTML の title / description / OGP をコミュニティ用に差し替える。 */
 export function rewriteHtmlPageMeta(html: string, meta: PageMeta = COMMUNITY_PAGE_META): string {
   const title = escapeHtml(meta.title);
   const description = escapeAttr(meta.description);

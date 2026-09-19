@@ -9,7 +9,7 @@ import {
 export const APP_VIEWS = ["maker", "community"] as const;
 export type AppView = (typeof APP_VIEWS)[number];
 
-export { MAKER_DOCUMENT_TITLE };
+export { MAKER_DOCUMENT_TITLE, COMMUNITY_PATH };
 export const TO_COMMUNITY_LABEL = "みんなの #あのねジャンプ を見る";
 export const TO_MAKER_LABEL = "メーカーに戻る";
 

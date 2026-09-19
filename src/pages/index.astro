@@ -1,0 +1,11 @@
+---
+import Layout from "../layouts/Layout.astro";
+import MakerApp from "../components/MakerApp.tsx";
+import { MAKER_PAGE_META } from "../page-meta.ts";
+---
+
+<Layout {...MAKER_PAGE_META}>
+  <div id="app">
+    <MakerApp client:load initialView="maker" />
+  </div>
+</Layout>

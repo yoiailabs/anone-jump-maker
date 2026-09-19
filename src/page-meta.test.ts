@@ -1,14 +1,31 @@
 import { describe, expect, it } from "vitest";
-import indexHtml from "../index.html?raw";
 import {
   COMMUNITY_DESCRIPTION,
   COMMUNITY_DOCUMENT_TITLE,
   COMMUNITY_PAGE_META,
   COMMUNITY_PATH,
   isCommunityPath,
+  MAKER_DESCRIPTION,
+  MAKER_DOCUMENT_TITLE,
+  MAKER_PAGE_META,
   OG_IMAGE_URL,
   rewriteHtmlPageMeta,
 } from "./page-meta.ts";
+
+const makerHtml = `<!doctype html>
+<html lang="ja">
+  <head>
+    <title>${MAKER_DOCUMENT_TITLE}</title>
+    <meta name="description" content="${MAKER_DESCRIPTION}" />
+    <meta property="og:title" content="${MAKER_DOCUMENT_TITLE}" />
+    <meta property="og:description" content="${MAKER_DESCRIPTION}" />
+    <meta property="og:url" content="${MAKER_PAGE_META.url}" />
+    <meta property="og:image" content="${OG_IMAGE_URL}" />
+    <meta name="twitter:image" content="${OG_IMAGE_URL}" />
+  </head>
+  <body></body>
+</html>
+`;
 
 describe("community path", () => {
   it("matches /community with or without a trailing slash", () => {
@@ -22,13 +39,13 @@ describe("community path", () => {
 });
 
 describe("community page meta rewrite", () => {
-  it("swaps title, description, and OGP on the maker index.html", () => {
-    expect(indexHtml).toContain("<title>あのねジャンプメーカー</title>");
-    expect(indexHtml).toContain('content="https://anone.yoiailabs.com/"');
+  it("swaps title, description, and OGP on maker HTML", () => {
+    expect(makerHtml).toContain(`<title>${MAKER_DOCUMENT_TITLE}</title>`);
+    expect(makerHtml).toContain('content="https://anone.yoiailabs.com/"');
 
-    const html = rewriteHtmlPageMeta(indexHtml);
+    const html = rewriteHtmlPageMeta(makerHtml);
     expect(html).toContain(`<title>${COMMUNITY_DOCUMENT_TITLE}</title>`);
-    expect(html).not.toContain("<title>あのねジャンプメーカー</title>");
+    expect(html).not.toContain(`<title>${MAKER_DOCUMENT_TITLE}</title>`);
     expect(html).toContain(`name="description"`);
     expect(html).toContain(`content="${COMMUNITY_DESCRIPTION}"`);
     expect(html).toContain(`property="og:title"`);
