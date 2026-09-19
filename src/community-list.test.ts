@@ -136,7 +136,7 @@ describe("community list markup", () => {
     const html = communityJumpsSectionHtml();
     expect(COMMUNITY_JUMP_PAGE_SIZE).toBe(20);
     expect(DEFAULT_COMMUNITY_JUMP_PAGE).toBe(1);
-    expect(communityJumpPageCount(152)).toBe(8);
+    expect(communityJumpPageCount(309)).toBe(16);
     expect(html).toContain(COMMUNITY_JUMPS_TITLE);
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain('id="communityJumps"');
@@ -180,7 +180,7 @@ describe("community list markup", () => {
     expect(html.match(/class="community-jumps-item"/g)).toHaveLength(20);
     expect(html.match(/data-media="video"/g)).toHaveLength(20);
     expect(html.match(/data-post-id="2101288627989057912"/g)).toHaveLength(1);
-    expect(html).not.toContain('data-post-id="2011056367419998636"');
+    expect(html).not.toContain('data-post-id="2009475998488961327"');
     expect(html).toContain("@wktkhnkc1852");
     expect(html).toContain(`data-post-id="${page1[page1.length - 1]?.id}"`);
     expect(html).toContain('id="communityPager"');
@@ -192,15 +192,15 @@ describe("community list markup", () => {
     expect(html).toContain('aria-current="page"');
     expect(html).toContain('id="communityPagePrev" data-community-page="0" disabled');
     const popular = communityJumpsSectionHtml(undefined, "ja", "popular");
-    expect(popular.indexOf("2100570924915548571")).toBeLessThan(popular.indexOf("2100797924125049167"));
+    expect(popular.indexOf("2010196958527533380")).toBeLessThan(popular.indexOf("2100570924915548571"));
     expect(popular).toContain('data-sort="popular"');
     expect(popular.match(/class="community-jumps-item"/g)).toHaveLength(20);
-    const lastPage = communityJumpsSectionHtml(undefined, "ja", "newest", 8);
-    expect(lastPage).toContain('data-page="8"');
-    expect(lastPage.match(/class="community-jumps-item"/g)).toHaveLength(12);
-    expect(lastPage).toContain('data-post-id="2011056367419998636"');
-    expect(lastPage).toContain("@Midoh_013");
-    expect(lastPage).toContain('id="communityPageNext" data-community-page="9" disabled');
+    const lastPage = communityJumpsSectionHtml(undefined, "ja", "newest", 16);
+    expect(lastPage).toContain('data-page="16"');
+    expect(lastPage.match(/class="community-jumps-item"/g)).toHaveLength(9);
+    expect(lastPage).toContain('data-post-id="2009475998488961327"');
+    expect(lastPage).toContain("@PIKASONIC_ofc");
+    expect(lastPage).toContain('id="communityPageNext" data-community-page="17" disabled');
   });
 
   it("pages a long curated list 20 at a time so new rows are drop-in", () => {
@@ -210,7 +210,7 @@ describe("community list markup", () => {
     const html = communityJumpsSectionHtml(posts);
     expect(html.match(/class="community-jumps-item"/g)).toHaveLength(20);
     expect(communityJumpPageCount(30)).toBe(2);
-    expect(COMMUNITY_JUMP_CAPACITY).toBeGreaterThanOrEqual(152);
+    expect(COMMUNITY_JUMP_CAPACITY).toBeGreaterThanOrEqual(309);
     expect(html).toContain("community-jumps-masonry");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain("communitySort");
@@ -247,19 +247,19 @@ describe("community pagination", () => {
     expect(communityJumpPageCount(-1)).toBe(0);
     expect(communityJumpPageCount(20)).toBe(1);
     expect(communityJumpPageCount(21)).toBe(2);
-    expect(communityJumpPageCount(152)).toBe(8);
-    expect(clampCommunityJumpPage(0, 152)).toBe(1);
-    expect(clampCommunityJumpPage(1.5, 152)).toBe(1);
-    expect(clampCommunityJumpPage(9, 152)).toBe(8);
-    expect(clampCommunityJumpPage(3, 152)).toBe(3);
+    expect(communityJumpPageCount(309)).toBe(16);
+    expect(clampCommunityJumpPage(0, 309)).toBe(1);
+    expect(clampCommunityJumpPage(1.5, 309)).toBe(1);
+    expect(clampCommunityJumpPage(17, 309)).toBe(16);
+    expect(clampCommunityJumpPage(3, 309)).toBe(3);
     const newest = sortCommunityJumpPosts(COMMUNITY_JUMP_POSTS, "newest");
     const page1 = communityJumpPagePosts(newest, 1);
-    const page8 = communityJumpPagePosts(newest, 8);
+    const page16 = communityJumpPagePosts(newest, 16);
     expect(page1).toHaveLength(20);
     expect(page1[0]?.id).toBe("2101288627989057912");
-    expect(page8).toHaveLength(12);
-    expect(page8[page8.length - 1]?.id).toBe("2011056367419998636");
-    expect(communityJumpPagePosts(newest, 99).at(-1)?.id).toBe("2011056367419998636");
+    expect(page16).toHaveLength(9);
+    expect(page16[page16.length - 1]?.id).toBe("2009475998488961327");
+    expect(communityJumpPagePosts(newest, 99).at(-1)?.id).toBe("2009475998488961327");
   });
 
   it("hides the pager when everything fits on one page", () => {

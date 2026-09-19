@@ -481,13 +481,13 @@ test("pages 20 community posts and resets to page 1 when sorting", async ({ page
   await expect(items.first()).not.toHaveAttribute("data-post-id", "2101288627989057912");
   await expect(page.locator("#communityPagePrev")).toBeEnabled();
 
-  await page.locator('button.community-page-num[data-community-page="8"]').click();
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "8");
-  await expect(items).toHaveCount(12);
-  await expect(items.last()).toHaveAttribute("data-post-id", "2011056367419998636");
+  await page.locator('button.community-page-num[data-community-page="16"]').click();
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "16");
+  await expect(items).toHaveCount(9);
+  await expect(items.last()).toHaveAttribute("data-post-id", "2009475998488961327");
   await expect(page.locator("#communityPageNext")).toBeDisabled();
   await page.locator("#moreJumps").scrollIntoViewIfNeeded();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(12);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(9);
 
   await page.locator("#communitySort").scrollIntoViewIfNeeded();
   await page.locator("label:has(#communitySortPopular)").click();
@@ -495,7 +495,7 @@ test("pages 20 community posts and resets to page 1 when sorting", async ({ page
   await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
   await expect(page.locator("#communityPagePrev")).toBeDisabled();
   await expect(items).toHaveCount(20);
-  await expect(items.first()).toHaveAttribute("data-post-id", "2100570924915548571");
+  await expect(items.first()).toHaveAttribute("data-post-id", "2010196958527533380");
 });
 
 test("uses three masonry columns on iPad-sized viewports and can sort by popularity", async ({ page }) => {
@@ -520,7 +520,7 @@ test("uses three masonry columns on iPad-sized viewports and can sort by popular
   await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2100570924915548571",
+    "2010196958527533380",
   );
   await page.locator("label:has(#communitySortNewest)").click();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
