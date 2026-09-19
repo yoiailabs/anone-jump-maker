@@ -1,12 +1,18 @@
 ---
 import "../styles/global.css";
 import type { PageMeta } from "../page-meta.ts";
-import { LOCALES, OG_LOCALE } from "../i18n.ts";
+import { LOCALES, OG_LOCALE, t } from "../i18n.ts";
 import { pageUrl } from "../page-meta.ts";
+import {
+  PWA_APPLE_TOUCH_ICON_HREF,
+  PWA_MANIFEST_HREF,
+  PWA_THEME_COLOR,
+} from "../pwa.ts";
 
 type Props = PageMeta;
 
 const { title, description, url, image, imageAlt, siteName, lang, ogLocale, view } = Astro.props;
+const shortName = t(lang, "pwaShortName");
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -35,7 +41,13 @@ const jsonLd = JSON.stringify({
       gtag("js", new Date());
       gtag("config", "G-L8WKQQFBZC");
     </script>
-    <meta name="theme-color" content="#F6EFE2" />
+    <meta name="theme-color" content={PWA_THEME_COLOR} />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content={shortName} />
+    <link rel="manifest" href={PWA_MANIFEST_HREF} />
+    <link rel="apple-touch-icon" href={PWA_APPLE_TOUCH_ICON_HREF} />
     <meta name="description" content={description} />
     <link rel="canonical" href={url} />
     <meta property="og:title" content={title} />
@@ -72,5 +84,9 @@ const jsonLd = JSON.stringify({
   </head>
   <body>
     <slot />
+    <script>
+      import { registerPwa } from "../pwa.ts";
+      registerPwa();
+    </script>
   </body>
 </html>

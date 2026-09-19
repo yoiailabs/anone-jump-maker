@@ -27,6 +27,9 @@ describe("parseAppPath", () => {
 
   it("ignores static assets and unknown segments", () => {
     expect(parseAppPath("/og.png")).toBeNull();
+    expect(parseAppPath("/sw.js")).toBeNull();
+    expect(parseAppPath("/manifest.webmanifest")).toBeNull();
+    expect(parseAppPath("/icons/icon-192.png")).toBeNull();
     expect(parseAppPath("/community-jumps")).toBeNull();
     expect(parseAppPath("/en/template/cuts.json")).toBeNull();
   });
@@ -85,12 +88,24 @@ describe("localeRedirectLocation", () => {
     ).toBeNull();
     expect(localeRedirectLocation("/ja", "", null, "en", "Googlebot/2.1")).toBe("/");
   });
+
+  it("ignores Accept-Language on the worker so unknown crawlers still get Japanese /", () => {
+    expect(localeRedirectLocation("/", "", null, "en-US", "Chrome/128", { acceptLanguageRedirect: false })).toBeNull();
+    expect(
+      localeRedirectLocation("/community", "?from=x", null, "ko", "Chrome/128", { acceptLanguageRedirect: false }),
+    ).toBeNull();
+    expect(
+      localeRedirectLocation("/", "", "anone-locale=en", "ja", "Chrome/128", { acceptLanguageRedirect: false }),
+    ).toBe("/en");
+  });
 });
 
 describe("messages", () => {
   it("keeps Japanese as the default copy and translates titles", () => {
     expect(t("ja", "makerTitle")).toBe("あのねジャンプメーカー");
+    expect(t("ja", "pwaShortName")).toBe("あのねジャンプ");
     expect(t("en", "makerTitle")).toBe("Anone Jump Maker");
+    expect(t("en", "pwaShortName")).toBe("Anone Jump");
     expect(t("ko", "makerTitle")).toBe("아노네 점프 메이커");
     expect(t("zh", "makerTitle")).toBe("あのね跳跃制作器");
     expect(t("en", "statusPhotosLoaded", { n: 3 })).toBe("Loaded 3 photos");
@@ -101,6 +116,10 @@ describe("messages", () => {
     expect(t("en", "exportDownload")).toBe("Download");
     expect(t("ko", "statusExportCancelled")).toBe("생성을 취소했습니다");
     expect(t("zh", "exportTitle")).toBe("正在生成视频");
+    expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
+    expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
+    expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");
+    expect(t("ja", "statusPhotoRemoved", { n: 2 })).toBe("写真を外しました（残り 2 枚）");
   });
 
   it("uses the English store title in non-Japanese credits", () => {
@@ -121,6 +140,19 @@ describe("document crawlers", () => {
       true,
     );
     expect(isDocumentCrawler("Twitterbot/1.0")).toBe(true);
+    expect(isDocumentCrawler("meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)")).toBe(
+      true,
+    );
+    expect(
+      isDocumentCrawler(
+        "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.122 Mobile Safari/537.36 (compatible; GoogleOther)",
+      ),
+    ).toBe(true);
+    expect(
+      isDocumentCrawler(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari Line/13.6.0",
+      ),
+    ).toBe(true);
     expect(
       isDocumentCrawler(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",

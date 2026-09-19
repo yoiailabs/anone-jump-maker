@@ -147,6 +147,15 @@ export function preferredLocale(
   return localeFromCookieHeader(cookieHeader) ?? localeFromAcceptLanguage(acceptLanguage) ?? DEFAULT_LOCALE;
 }
 
+export type LocaleRedirectOptions = {
+  /**
+   * Accept-Language で寄せるか。ブラウザの JS は true。
+   * Worker は false：未知の OGP クローラ（汎用 Chrome UA 含む）が
+   * `https://anone.yoiailabs.com/` の日本語 title / OGP を掴めるようにする。
+   */
+  acceptLanguageRedirect?: boolean;
+};
+
 /**
  * プレフィックスなしの `/` `/community` をブラウザ言語または Cookie で寄せる。
  * `/ja` はデフォルト言語の正規 URL へ戻す。既に正しい場所なら null。
@@ -158,6 +167,7 @@ export function localeRedirectLocation(
   cookieHeader: string | null | undefined,
   acceptLanguage: string | null | undefined,
   userAgent?: string | null,
+  options?: LocaleRedirectOptions,
 ): string | null {
   const parsed = parseAppPath(pathname);
   if (!parsed) return null;
@@ -168,19 +178,26 @@ export function localeRedirectLocation(
   }
   if (parsed.prefixed) return null;
   if (isDocumentCrawler(userAgent)) return null;
-  const preferred = preferredLocale(cookieHeader, acceptLanguage);
+  const preferred =
+    options?.acceptLanguageRedirect === false
+      ? (localeFromCookieHeader(cookieHeader) ?? DEFAULT_LOCALE)
+      : preferredLocale(cookieHeader, acceptLanguage);
   if (preferred === DEFAULT_LOCALE) return null;
   const next = `${pathForApp(preferred, parsed.view)}${search}`;
   return next === current ? null : next;
 }
 
-/** Google などが `/` を言語リダイレクトすると hreflang の日本語版を拾えない。 */
+/**
+ * 検索・OGP クローラ。`/` を言語リダイレクトすると日本語の正規 URL と
+ * title / description / OGP を拾えない。
+ */
 export function isDocumentCrawler(userAgent: string | null | undefined): boolean {
   if (!userAgent) return false;
-  return /Googlebot|Google-InspectionTool|bingbot|BingPreview|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|Applebot|PetalBot|Bytespider|ia_archiver/i.test(
-    userAgent,
-  );
+  return DOCUMENT_CRAWLER_RE.test(userAgent);
 }
+
+const DOCUMENT_CRAWLER_RE =
+  /Googlebot|Google-InspectionTool|GoogleOther|Google-Extended|Storebot-Google|AdsBot-Google|APIs-Google|Mediapartners-Google|Google-Read-Aloud|bingbot|BingPreview|msnbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|Yeti\/|facebookexternalhit|Facebot|FacebookBot|meta-externalagent|meta-externalfetcher|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|Applebot|PetalBot|Bytespider|ia_archiver|Pinterestbot|redditbot|Embedly|Iframely|Hatena|LineBot|\bLine\//i;
 
 export function languageNavHtml(locale: Locale, view: AppView): string {
   const links = LOCALES.map((item) => {

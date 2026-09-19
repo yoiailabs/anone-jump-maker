@@ -19,6 +19,7 @@ export default defineConfig({
     locale: "ja-JP",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    serviceWorkers: "block",
     video: "off",
   },
   webServer: {

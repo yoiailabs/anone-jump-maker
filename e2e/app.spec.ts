@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, jpegInput, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -85,6 +85,130 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
   await page.locator("#cancelExportBtn").click();
   await expect(dialog).toBeHidden({ timeout: 15_000 });
   await expect(page.locator("#status")).toHaveText("生成をキャンセルしました");
+});
+
+test("adds, reorders, and removes photos after the first pick", async ({ page }) => {
+  await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
+  await expect(page.locator("#thumbs")).toBeHidden();
+  await expect(page.locator("#thumbsHint")).toBeHidden();
+
+  await uploadPhoto(page);
+  await expect(page.locator("#pickerLabel")).toHaveText("写真を追加");
+  await expect(page.locator("#thumbsHint")).toBeVisible();
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
+  await expect(page.locator(".thumb-add")).toBeVisible();
+
+  const extra = await jpegInput("extra.jpg");
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    page.locator(".thumb-add").click(),
+  ]);
+  await chooser.setFiles({ name: extra.name, mimeType: extra.mimeType, buffer: extra.buffer });
+  await expect(page.locator("#status")).toContainText("1 枚を追加しました（合計 2 枚）", { timeout: 20_000 });
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(2);
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
+
+  await page.locator(".thumb").nth(0).press("ArrowRight");
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator(".thumb-index").nth(0)).toHaveText("1");
+  await expect(page.locator(".thumb-index").nth(1)).toHaveText("2");
+
+  await page.locator(".thumb-remove").nth(0).click();
+  await expect(page.locator("#status")).toContainText("写真を外しました（残り 1 枚）");
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
+  await expect(page.locator(".thumb-add")).toBeVisible();
+  await expect(page.locator("#thumbs img")).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#playBtn")).toBeEnabled();
+
+  await page.locator(".thumb-remove").click();
+  await expect(page.locator("#status")).toContainText("写真をすべて外しました");
+  await expect(page.locator("#thumbs")).toBeHidden();
+  await expect(page.locator(".thumb-add")).toBeHidden();
+  await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
+  await expect(page.locator("#playBtn")).toBeDisabled();
+});
+
+test("keeps at most 32 photos and disables adding at the cap", async ({ page }) => {
+  const files = await Promise.all(Array.from({ length: 33 }, (_, i) => jpegInput(`p${i}.jpg`)));
+  await page.locator("#picker").setInputFiles(files);
+  await expect(page.locator("#status")).toContainText("32 枚を読み込みました", { timeout: 45_000 });
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(32);
+  await expect(page.locator(".thumb-add")).toBeDisabled();
+  await expect(page.locator("#pickerLabel")).toHaveText("32枚まで");
+  await expect(page.locator("#thumbsHint")).toContainText("32枚が上限");
+  await expect(page.locator("#status")).not.toContainText("失敗");
+});
+
+test("reorders photos by drag and drop", async ({ page }) => {
+  await uploadPhoto(page);
+  await page.locator("#picker").setInputFiles(await jpegInput("extra.jpg"));
+  await expect(page.locator("#status")).toContainText("1 枚を追加しました（合計 2 枚）", { timeout: 20_000 });
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
+
+  const first = page.locator(".thumb[data-photo-id]").nth(0);
+  const second = page.locator(".thumb[data-photo-id]").nth(1);
+  await first.scrollIntoViewIfNeeded();
+  const from = await first.boundingBox();
+  const to = await second.boundingBox();
+  expect(from && to).toBeTruthy();
+  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to!.x + to!.width * 0.82, to!.y + to!.height / 2, { steps: 16 });
+  await page.mouse.up();
+
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator(".thumb-index").nth(0)).toHaveText("1");
+  await expect(page.locator(".thumb-index").nth(1)).toHaveText("2");
+
+  const thumbsStyle = await page.locator("#thumbs").evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { wrap: style.flexWrap, overflowX: style.overflowX };
+  });
+  expect(thumbsStyle.wrap).toBe("wrap");
+  expect(thumbsStyle.overflowX).not.toBe("auto");
+  await expect
+    .poll(async () => page.locator(".thumb").first().evaluate((el) => getComputedStyle(el).touchAction))
+    .toBe("pan-y");
+});
+
+test("a touch swipe does not reorder photos without a long press", async ({ page }) => {
+  await uploadPhoto(page);
+  await page.locator("#picker").setInputFiles(await jpegInput("extra.jpg"));
+  await expect(page.locator("#status")).toContainText("1 枚を追加しました（合計 2 枚）", { timeout: 20_000 });
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
+
+  await page.evaluate(() => {
+    const first = document.querySelector<HTMLElement>(".thumb[data-photo-id]");
+    const thumbs = document.querySelector("#thumbs");
+    if (!first || !thumbs) throw new Error("missing thumbs");
+    const start = first.getBoundingClientRect();
+    const fire = (type: string, x: number, buttons: number) => {
+      const target = type === "pointermove" ? thumbs : first;
+      target.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 1,
+          pointerType: "touch",
+          button: 0,
+          buttons,
+          clientX: x,
+          clientY: start.top + 10,
+        }),
+      );
+    };
+    fire("pointerdown", start.left + 8, 1);
+    fire("pointermove", start.left + 90, 1);
+    fire("pointerup", start.left + 90, 0);
+  });
+
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
+  await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "extra.jpg");
 });
 
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {
