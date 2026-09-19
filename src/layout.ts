@@ -256,21 +256,15 @@ export const BLUR_DIM_RGB = [4, 3, 3] as const;
 export const BLUR_DIM_ALPHA = 0.62;
 export const BLUR_DIM = `rgba(${BLUR_DIM_RGB[0]}, ${BLUR_DIM_RGB[1]}, ${BLUR_DIM_RGB[2]}, ${BLUR_DIM_ALPHA})`;
 
-export function blurDimRgba(alpha: number): string {
-  return `rgba(${BLUR_DIM_RGB[0]}, ${BLUR_DIM_RGB[1]}, ${BLUR_DIM_RGB[2]}, ${alpha})`;
-}
-
 /**
  * 本編端で暗転を 0 にするフェード幅（出力 1080p 基準）。
  * 全面 dim のままシャープな 16:9 を重ねると、帯との輝度段差が 1px の線に見える。
+ * 同じ幅で本編の端 1 行をレターボックスへ伸ばし、cover-zoom との色段差も消す。
  */
 export const PANEL_SEAM_FADE_PX = 16;
 
 /** 本編をレターボックスへ重ね、丸め / CSS 拡大の隙間を潰す。 */
 export const PANEL_SEAM_OVERLAP_PX = 1;
-
-/** 本編端色をレターボックスへ滲ませるぼかし（出力 1080p 基準）。cover-zoom との色の段差を消す。 */
-export const PANEL_SEAM_BLEED_BLUR_PX = 8;
 
 /**
  * 公式テンプレの本編キャラ。16:9 プレート（縦は緑帯、横は全面）に対して等倍。

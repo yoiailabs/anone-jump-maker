@@ -4,7 +4,6 @@ import {
   BLUR_DIM,
   BLUR_DIM_ALPHA,
   BLUR_SOURCE,
-  PANEL_SEAM_BLEED_BLUR_PX,
   PANEL_SEAM_FADE_PX,
   PANEL_SEAM_OVERLAP_PX,
   CHAR_OUTLINE_PX,
@@ -96,7 +95,6 @@ describe("output size", () => {
     expect(BLUR_DIM_ALPHA).toBe(0.62);
     expect(PANEL_SEAM_FADE_PX).toBe(16);
     expect(PANEL_SEAM_OVERLAP_PX).toBe(1);
-    expect(PANEL_SEAM_BLEED_BLUR_PX).toBe(8);
   });
 
   it("skips the 1px letterbox antialias above the solid green 16:9 band", () => {
