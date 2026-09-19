@@ -157,7 +157,9 @@ describe("community list markup", () => {
     expect(html.match(/id="toMaker"/g)).toHaveLength(1);
     expect(html.match(/メーカーに戻る/g)).toHaveLength(2);
     expect(html.match(/id="communityHashtag"/g)).toHaveLength(1);
-    expect(html.match(/class="community-hashtag-link"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html.match(/class="community-hashtag-link"/g)).toHaveLength(1);
+    expect(html).toContain('<p class="eyebrow">#あのねジャンプ</p>');
+    expect(html).not.toContain('<p class="eyebrow"><a');
     expect(html.indexOf("communityHashtag")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("toMakerBottom"));
@@ -239,5 +241,8 @@ describe("community hashtag title link", () => {
     expect(communityHashtagLinkHtml()).toBe(
       `<a class="community-hashtag-link" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${MORE_JUMPS_QUERY}</a>`,
     );
+    const html = communityJumpsSectionHtml();
+    expect(html).toContain('<p class="eyebrow">#あのねジャンプ</p>');
+    expect(html.indexOf('<p class="eyebrow">#あのねジャンプ</p>')).toBeLessThan(html.indexOf('id="communityHashtag"'));
   });
 });

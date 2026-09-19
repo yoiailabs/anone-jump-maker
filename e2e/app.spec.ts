@@ -340,6 +340,9 @@ test("opens community jumps from the disclaimer link and returns via the back li
     "href",
     `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
   );
+  await expect(page.locator("#communityJumpsTitle a.community-hashtag-link")).toHaveCount(1);
+  await expect(page.locator("#communityJumps .eyebrow a")).toHaveCount(0);
+  await expect(page.locator("#communityJumps .eyebrow")).toHaveText("#あのねジャンプ");
   await expect(page.locator("#moreJumps")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "もっと見る" })).toHaveCount(0);
   const titleBox = await page.locator("#communityJumpsTitle").boundingBox();
