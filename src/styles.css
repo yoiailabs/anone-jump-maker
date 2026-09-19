@@ -15,8 +15,8 @@
   --page-pad-x: 1.15rem;
   --page-pad-bottom: 3.8rem;
   --section-gap: 2.35rem;
-  /* sticky タブの高さ＋下の空き。カード先頭がタブに隠れないようにする。 */
-  --app-tabs-offset: 4.35rem;
+  /* sticky タブ一式の高さ。scroll-padding と揃えてカード先頭がタブに隠れないようにする。 */
+  --app-tabs-offset: 4rem;
 }
 
 * {
@@ -840,10 +840,6 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.community-jumps-item {
-  scroll-margin-top: var(--app-tabs-offset);
 }
 
 .community-jumps-card {
