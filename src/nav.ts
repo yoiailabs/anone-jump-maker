@@ -20,9 +20,9 @@ export function documentTitleForView(view: AppView, communityTitle: string): str
 }
 
 export function toCommunityLinkHtml(): string {
-  return `<p class="hero-more"><a id="toCommunity" href="#community">${TO_COMMUNITY_LABEL}</a></p>`;
+  return `<p class="hero-more"><a id="toCommunity" class="btn" href="#community">${TO_COMMUNITY_LABEL}</a></p>`;
 }
 
 export function toMakerLinkHtml(): string {
-  return `<p class="community-back-wrap"><a id="toMaker" href="#maker">${TO_MAKER_LABEL}</a></p>`;
+  return `<p class="community-back-wrap"><a id="toMaker" class="btn ghost" href="#maker">${TO_MAKER_LABEL}</a></p>`;
 }

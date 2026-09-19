@@ -34,10 +34,12 @@ describe("app view hash", () => {
     expect(toCommunity).toContain(TO_COMMUNITY_LABEL);
     expect(toCommunity).toContain('href="#community"');
     expect(toCommunity).toContain('id="toCommunity"');
+    expect(toCommunity).toContain('class="btn"');
     expect(toCommunity).not.toContain("app-tab");
     expect(toMaker).toContain(TO_MAKER_LABEL);
     expect(toMaker).toContain('href="#maker"');
     expect(toMaker).toContain('id="toMaker"');
+    expect(toMaker).toContain('class="btn ghost"');
     expect(toMaker).not.toContain("app-tab");
   });
 });

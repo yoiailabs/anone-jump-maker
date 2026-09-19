@@ -183,23 +183,9 @@ body {
   margin: 0 0 0.85rem;
 }
 
-.hero-more a,
-.community-back-wrap a {
-  color: #2a7f82;
-  font-weight: 700;
-  text-decoration: none;
-  border-bottom: 2px solid color-mix(in srgb, #2a7f82 50%, white);
-}
-
-.hero-more a:hover,
-.community-back-wrap a:hover {
-  border-bottom-color: currentColor;
-}
-
-.hero-more a:focus-visible,
-.community-back-wrap a:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
+.hero-more .btn,
+.community-back-wrap .btn {
+  width: 100%;
 }
 
 /* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
@@ -624,6 +610,15 @@ body {
   background: var(--lime);
   color: var(--ink);
   font-weight: 700;
+}
+
+a.btn {
+  text-decoration: none;
+}
+
+a.btn:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 .btn.ghost {

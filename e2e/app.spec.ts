@@ -77,6 +77,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const toCommunity = page.locator("#toCommunity");
   await expect(disclaimer).toContainText("※ファン制作の非公式アプリです。");
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
+  await expect(toCommunity).toHaveClass(/\bbtn\b/);
   const disclaimerBox = await disclaimer.boundingBox();
   const linkBox = await toCommunity.boundingBox();
   expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
@@ -88,6 +89,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
   await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
   await expect(page.locator("#toMaker")).toBeVisible();
+  await expect(page.locator("#toMaker")).toHaveClass(/\bbtn\b/);
+  await expect(page.locator("#toMaker")).toHaveClass(/\bghost\b/);
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
