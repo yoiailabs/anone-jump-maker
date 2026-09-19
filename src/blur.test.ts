@@ -34,4 +34,10 @@ describe("software blur", () => {
     expect(softwareBlurDownscale(0)).toBe(1);
     expect(softwareBlurDownscale(24)).toBeLessThan(softwareBlurDownscale(8));
   });
+
+  it("leaves pixels alone when the radius is under 1", () => {
+    const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 255]);
+    boxBlurRgba(data, 2, 1, 0);
+    expect([...data]).toEqual([255, 0, 0, 255, 0, 0, 0, 255]);
+  });
 });

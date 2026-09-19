@@ -5,9 +5,14 @@ import {
   KEY_GREEN_KILL,
   KEY_PARAMS,
   KEY_SAMPLE_COUNT,
+  colorDistance,
+  despill,
   keyAlpha,
+  keyImageData,
   keySamplePixels,
   keySampleUvBottomLeft,
+  luma,
+  sampleKeyColor,
 } from "./keying.ts";
 
 describe("keyAlpha", () => {
@@ -60,5 +65,34 @@ describe("key sample points", () => {
     // pixel (2, 2) → GL (2.5/100, 1 - 2.5/50) then into the band
     expect(uv[0]).toBeCloseTo(0.1 + 0.025 * 0.4);
     expect(uv[1]).toBeCloseTo(0.2 + (1 - 0.05) * 0.3);
+  });
+});
+
+describe("keyImageData", () => {
+  it("keys a solid plate and keeps a dark line opaque", () => {
+    expect(colorDistance(0, 0, 0, 0, 0, 0)).toBe(0);
+    expect(luma(255, 255, 255)).toBeCloseTo(255, 5);
+    const despilled = despill(40, 200, 40, 20, 180, 50);
+    expect(despilled[1]).toBeLessThan(200);
+
+    const width = 8;
+    const height = 8;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 20;
+      data[i + 1] = 182;
+      data[i + 2] = 54;
+      data[i + 3] = 255;
+    }
+    const line = ((4 * width + 4) * 4);
+    data[line] = 8;
+    data[line + 1] = 8;
+    data[line + 2] = 8;
+    const image = { data, width, height } as ImageData;
+    const key = sampleKeyColor(data, width, height);
+    expect(key[1]).toBeGreaterThan(key[0]!);
+    keyImageData(image);
+    expect(data[3]).toBe(0);
+    expect(data[line + 3]).toBe(255);
   });
 });

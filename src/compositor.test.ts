@@ -54,7 +54,16 @@ describe("chroma key path", () => {
     const canvas = { width: 1920, height: 1080 } as CanvasImageSource;
     const override = { source: canvas, width: 1920, height: 1080 };
     expect(resolveCharacterSource(video, override)).toEqual(override);
+    expect(resolveCharacterSource(video)).toEqual({ source: video, width: 608, height: 1080 });
     expect(KEYING_EXPORT_PATH).toBe("shared-compositor");
+  });
+
+  it("skips the HTML video while it has no current frame", () => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    const video = { readyState: 0, videoWidth: 0, videoHeight: 0 } as HTMLVideoElement;
+    expect(resolveCharacterSource(video)).toBeNull();
   });
 });
 
