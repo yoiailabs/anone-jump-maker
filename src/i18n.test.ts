@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_LOCALE,
+  isDocumentCrawler,
   localeFromAcceptLanguage,
   localeRedirectLocation,
   parseAppPath,
@@ -74,6 +75,16 @@ describe("localeRedirectLocation", () => {
     expect(localeRedirectLocation("/", "", "anone-locale=zh", "ja")).toBe("/zh");
     expect(localeRedirectLocation("/", "", "anone-locale=ja", "en-US")).toBeNull();
   });
+
+  it("does not language-redirect search or social crawlers", () => {
+    expect(
+      localeRedirectLocation("/", "", null, "en-US", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"),
+    ).toBeNull();
+    expect(
+      localeRedirectLocation("/community", "", null, "ko", "facebookexternalhit/1.1"),
+    ).toBeNull();
+    expect(localeRedirectLocation("/ja", "", null, "en", "Googlebot/2.1")).toBe("/");
+  });
 });
 
 describe("messages", () => {
@@ -94,5 +105,19 @@ describe("messages", () => {
     expect(songCreditLine("en")).toBe("♪ Anone(Connect the World) - Nanatsukaze");
     expect(songCreditLine("ko")).toBe(songCreditLine("en"));
     expect(songCreditLine("zh")).toBe(songCreditLine("en"));
+  });
+});
+
+describe("document crawlers", () => {
+  it("recognizes Googlebot and social unfurlers", () => {
+    expect(isDocumentCrawler("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")).toBe(
+      true,
+    );
+    expect(isDocumentCrawler("Twitterbot/1.0")).toBe(true);
+    expect(
+      isDocumentCrawler(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      ),
+    ).toBe(false);
   });
 });

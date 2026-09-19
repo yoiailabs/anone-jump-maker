@@ -1,4 +1,4 @@
-import { parseAppPath, pathForApp, t, type AppView, type Locale } from "./i18n.ts";
+import { DEFAULT_LOCALE, OG_LOCALE, parseAppPath, pathForApp, t, type AppView, type Locale } from "./i18n.ts";
 
 /** 本番の正規オリジン。プレビュー URL ではなく OGP に載せる。 */
 export const APP_ORIGIN = "https://anone.yoiailabs.com";
@@ -15,16 +15,11 @@ export type PageMeta = {
   description: string;
   url: string;
   image: string;
+  imageAlt: string;
+  siteName: string;
   lang: Locale;
   ogLocale: string;
   view: AppView;
-};
-
-const OG_LOCALE: Record<Locale, string> = {
-  ja: "ja_JP",
-  en: "en_US",
-  ko: "ko_KR",
-  zh: "zh_CN",
 };
 
 export function pageUrl(locale: Locale, view: AppView): string {
@@ -32,12 +27,19 @@ export function pageUrl(locale: Locale, view: AppView): string {
   return path === "/" ? `${APP_ORIGIN}/` : `${APP_ORIGIN}${path}`;
 }
 
+export function ogImageUrl(locale: Locale): string {
+  return locale === DEFAULT_LOCALE ? OG_IMAGE_URL : `${APP_ORIGIN}/og-${locale}.png`;
+}
+
 export function pageMeta(locale: Locale, view: AppView): PageMeta {
+  const siteName = t(locale, "makerTitle");
   return {
-    title: view === "community" ? t(locale, "communityTitle") : t(locale, "makerTitle"),
+    title: view === "community" ? t(locale, "communityTitle") : siteName,
     description: t(locale, view === "community" ? "metaCommunityDescription" : "metaMakerDescription"),
     url: pageUrl(locale, view),
-    image: OG_IMAGE_URL,
+    image: ogImageUrl(locale),
+    imageAlt: siteName,
+    siteName,
     lang: locale,
     ogLocale: OG_LOCALE[locale],
     view,

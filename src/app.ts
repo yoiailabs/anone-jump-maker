@@ -68,7 +68,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       : navigator.languages.length > 0
         ? [...navigator.languages]
         : [navigator.language];
-  const dest = localeRedirectLocation(location.pathname, location.search, cookie, languages.join(","));
+  const dest = localeRedirectLocation(
+    location.pathname,
+    location.search,
+    cookie,
+    languages.join(","),
+    typeof navigator === "undefined" ? "" : navigator.userAgent,
+  );
   if (dest) {
     location.replace(dest);
     return;

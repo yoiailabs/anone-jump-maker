@@ -88,4 +88,31 @@ describe("worker fetch", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/");
   });
+
+  it("serves Japanese / to Googlebot even when Accept-Language is English", async () => {
+    const response = await worker.fetch(
+      new Request("https://anone.yoiailabs.com/", {
+        headers: {
+          "accept-language": "en-US,en;q=0.9",
+          "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        },
+      }),
+      assetsEnv(),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("maker");
+  });
+
+  it("does not language-redirect Twitterbot on /", async () => {
+    const response = await worker.fetch(
+      new Request("https://anone.yoiailabs.com/", {
+        headers: {
+          "accept-language": "en",
+          "user-agent": "Twitterbot/1.0",
+        },
+      }),
+      assetsEnv(),
+    );
+    expect(response.status).toBe(200);
+  });
 });

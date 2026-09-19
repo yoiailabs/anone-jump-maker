@@ -150,12 +150,14 @@ export function preferredLocale(
 /**
  * プレフィックスなしの `/` `/community` をブラウザ言語または Cookie で寄せる。
  * `/ja` はデフォルト言語の正規 URL へ戻す。既に正しい場所なら null。
+ * 検索・SNS クローラは言語リダイレクトせず、hreflang で各言語を辿れるようにする。
  */
 export function localeRedirectLocation(
   pathname: string,
   search: string,
   cookieHeader: string | null | undefined,
   acceptLanguage: string | null | undefined,
+  userAgent?: string | null,
 ): string | null {
   const parsed = parseAppPath(pathname);
   if (!parsed) return null;
@@ -165,10 +167,19 @@ export function localeRedirectLocation(
     return next === current ? null : next;
   }
   if (parsed.prefixed) return null;
+  if (isDocumentCrawler(userAgent)) return null;
   const preferred = preferredLocale(cookieHeader, acceptLanguage);
   if (preferred === DEFAULT_LOCALE) return null;
   const next = `${pathForApp(preferred, parsed.view)}${search}`;
   return next === current ? null : next;
+}
+
+/** Google などが `/` を言語リダイレクトすると hreflang の日本語版を拾えない。 */
+export function isDocumentCrawler(userAgent: string | null | undefined): boolean {
+  if (!userAgent) return false;
+  return /Googlebot|Google-InspectionTool|bingbot|BingPreview|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|Applebot|PetalBot|Bytespider|ia_archiver/i.test(
+    userAgent,
+  );
 }
 
 export function languageNavHtml(locale: Locale, view: AppView): string {

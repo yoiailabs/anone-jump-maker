@@ -27,6 +27,7 @@ export default {
       url.search,
       request.headers.get("cookie"),
       request.headers.get("accept-language"),
+      request.headers.get("user-agent"),
     );
     if (dest) {
       return new Response(null, {

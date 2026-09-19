@@ -9,6 +9,8 @@ import {
   MAKER_DOCUMENT_TITLE,
   MAKER_PAGE_META,
   OG_IMAGE_URL,
+  ogImageUrl,
+  pageMeta,
   rewriteHtmlPageMeta,
 } from "./page-meta.ts";
 
@@ -59,5 +61,16 @@ describe("community page meta rewrite", () => {
     expect(html).toContain(`name="twitter:image"`);
     expect(html).toContain(COMMUNITY_PATH);
     expect(COMMUNITY_PAGE_META.url).toBe("https://anone.yoiailabs.com/community");
+  });
+});
+
+describe("locale page meta", () => {
+  it("uses a per-locale OG image and Open Graph locale", () => {
+    expect(ogImageUrl("ja")).toBe(OG_IMAGE_URL);
+    expect(ogImageUrl("en")).toBe("https://anone.yoiailabs.com/og-en.png");
+    expect(pageMeta("en", "maker").ogLocale).toBe("en_US");
+    expect(pageMeta("en", "maker").siteName).toBe("Anone Jump Maker");
+    expect(pageMeta("ko", "community").image).toBe("https://anone.yoiailabs.com/og-ko.png");
+    expect(pageMeta("zh", "maker").url).toBe("https://anone.yoiailabs.com/zh");
   });
 });
