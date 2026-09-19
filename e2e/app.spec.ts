@@ -65,22 +65,29 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
 });
 
-test("keeps community jumps off the maker and opens a stacked list from the tab", async ({ page }) => {
-  await expect(page.locator("#tabMaker")).toHaveAttribute("aria-current", "page");
+test("opens community jumps from the disclaimer link and returns via the back link", async ({ page }) => {
+  await expect(page.locator(".app-tabs")).toHaveCount(0);
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#communityJumpsTitle")).toBeHidden();
   await expect(page.locator("#playBtn")).toBeVisible();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
 
-  await page.locator("#reactionsTitle").scrollIntoViewIfNeeded();
-  await page.locator("#tabCommunity").click();
+  const disclaimer = page.locator("#makerView .lede");
+  const toCommunity = page.locator("#toCommunity");
+  await expect(disclaimer).toContainText("※ファン制作の非公式アプリです。");
+  await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
+  const disclaimerBox = await disclaimer.boundingBox();
+  const linkBox = await toCommunity.boundingBox();
+  expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
+
+  await toCommunity.click();
   await expect(page).toHaveURL(/#community/);
-  await expect(page.locator("#tabCommunity")).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#communityView")).toBeVisible();
   await expect(page.locator("#makerView")).toBeHidden();
   await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
   await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
+  await expect(page.locator("#toMaker")).toBeVisible();
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
@@ -95,14 +102,8 @@ test("keeps community jumps off the maker and opens a stacked list from the tab"
   expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
   expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
 
-  const mid = page.locator("#communityJumps .community-jumps-item").nth(3);
-  await mid.evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
-  const tabsBox = await page.locator(".app-tabs").boundingBox();
-  const midBox = await mid.boundingBox();
-  expect(tabsBox && midBox && midBox.y + 1 >= tabsBox.y + tabsBox.height).toBe(true);
-
   await page.locator("#communityJumps .community-jumps-item").nth(9).scrollIntoViewIfNeeded();
-  await page.locator("#tabMaker").click();
+  await page.locator("#toMaker").click();
   await expect(page).toHaveURL(/#maker/);
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#playBtn")).toBeVisible();

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  appTabsHtml,
   documentTitleForView,
   hashForView,
   MAKER_DOCUMENT_TITLE,
   parseAppView,
-  syncAppTabs,
-  TAB_COMMUNITY_LABEL,
-  TAB_MAKER_LABEL,
+  TO_COMMUNITY_LABEL,
+  TO_MAKER_LABEL,
+  toCommunityLinkHtml,
+  toMakerLinkHtml,
 } from "./nav.ts";
 
 describe("app view hash", () => {
@@ -28,32 +28,16 @@ describe("app view hash", () => {
     expect(documentTitleForView("community", "みんなの #あのねジャンプ")).toBe("みんなの #あのねジャンプ");
   });
 
-  it("renders Japanese top tabs that point at the hashes", () => {
-    const html = appTabsHtml();
-    expect(html).toContain(TAB_MAKER_LABEL);
-    expect(html).toContain(TAB_COMMUNITY_LABEL);
-    expect(html).toContain('href="#maker"');
-    expect(html).toContain('href="#community"');
-    expect(html).toContain('id="tabMaker"');
-    expect(html).toContain('id="tabCommunity"');
-  });
-
-  it("marks the active tab with aria-current", () => {
-    const attrs = new Map<string, string>();
-    const el = (id: string) => ({
-      setAttribute(name: string, value: string) {
-        attrs.set(`${id}:${name}`, value);
-      },
-    });
-    const root = {
-      querySelector(sel: string) {
-        if (sel === "#tabMaker") return el("maker");
-        if (sel === "#tabCommunity") return el("community");
-        return null;
-      },
-    };
-    syncAppTabs(root as unknown as ParentNode, "community");
-    expect(attrs.get("maker:aria-current")).toBe("false");
-    expect(attrs.get("community:aria-current")).toBe("page");
+  it("renders Japanese in-site links to the hashes", () => {
+    const toCommunity = toCommunityLinkHtml();
+    const toMaker = toMakerLinkHtml();
+    expect(toCommunity).toContain(TO_COMMUNITY_LABEL);
+    expect(toCommunity).toContain('href="#community"');
+    expect(toCommunity).toContain('id="toCommunity"');
+    expect(toCommunity).not.toContain("app-tab");
+    expect(toMaker).toContain(TO_MAKER_LABEL);
+    expect(toMaker).toContain('href="#maker"');
+    expect(toMaker).toContain('id="toMaker"');
+    expect(toMaker).not.toContain("app-tab");
   });
 });

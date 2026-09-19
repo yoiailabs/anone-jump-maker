@@ -2,6 +2,7 @@ import {
   COMMUNITY_JUMP_POSTS,
   type CommunityJumpPost,
 } from "./community-jumps.ts";
+import { toMakerLinkHtml } from "./nav.ts";
 import { hydrateReactionEmbed } from "./reactions.ts";
 
 export const COMMUNITY_JUMPS_TITLE = "みんなの #あのねジャンプ";
@@ -34,6 +35,7 @@ export function communityJumpsSectionHtml(
   return `
     <section class="community-jumps" id="communityJumps" aria-labelledby="communityJumpsTitle">
       <header class="hero community-jumps-hero">
+        ${toMakerLinkHtml()}
         <p class="eyebrow">#あのねジャンプ</p>
         <h1 id="communityJumpsTitle">${COMMUNITY_JUMPS_TITLE}</h1>
         ${

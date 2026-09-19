@@ -15,7 +15,7 @@ import {
 } from "./layout.ts";
 import { COMMUNITY_JUMPS_TITLE, communityJumpsSectionHtml, mountCommunityJumps } from "./community-list.ts";
 import { linkBannersHtml } from "./links.ts";
-import { appTabsHtml, documentTitleForView, parseAppView, syncAppTabs, type AppView } from "./nav.ts";
+import { documentTitleForView, parseAppView, toCommunityLinkHtml, type AppView } from "./nav.ts";
 import { hydrateReactionEmbed, reactionEmbedHtml } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
@@ -66,12 +66,12 @@ export async function boot(root: HTMLElement): Promise<void> {
       <span class="blob blob-coral"></span>
     </div>
     <div class="app">
-      ${appTabsHtml()}
       <div class="app-view" id="makerView">
       <header class="hero">
         <p class="eyebrow">#あのねジャンプ</p>
         <h1>あのねジャンプメーカー</h1>
         <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
+        ${toCommunityLinkHtml()}
       </header>
 
       <div class="loop-wrap">
@@ -552,7 +552,6 @@ export async function boot(root: HTMLElement): Promise<void> {
     const communityView = must(root, "#communityView");
     makerView.hidden = view !== "maker";
     communityView.hidden = view !== "community";
-    syncAppTabs(root, view);
     document.title = documentTitleForView(view, COMMUNITY_JUMPS_TITLE);
     if (view !== "maker") {
       closePreview();

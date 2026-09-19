@@ -15,8 +15,6 @@
   --page-pad-x: 1.15rem;
   --page-pad-bottom: 3.8rem;
   --section-gap: 2.35rem;
-  /* sticky タブ一式の高さ。scroll-padding と揃えてカード先頭がタブに隠れないようにする。 */
-  --app-tabs-offset: 4rem;
 }
 
 * {
@@ -29,10 +27,6 @@ body {
   min-height: 100%;
   color: var(--ink);
   background-color: var(--paper);
-}
-
-html {
-  scroll-padding-top: var(--app-tabs-offset);
 }
 
 body {
@@ -52,51 +46,9 @@ body {
   padding: var(--page-pad-top) var(--page-pad-x) var(--page-pad-bottom);
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: var(--section-gap);
   position: relative;
   z-index: 1;
-}
-
-.app-tabs {
-  position: sticky;
-  top: 0;
-  z-index: 8;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  padding: calc(0.25rem + env(safe-area-inset-top, 0px)) 0 1rem;
-  background: var(--paper);
-}
-
-.app-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.7rem;
-  padding: 0.35rem 0.55rem;
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 0.86rem;
-  letter-spacing: 0.03em;
-  transition: transform 0.16s ease, background 0.16s ease;
-}
-
-.app-tab:hover {
-  transform: translateY(-2px);
-}
-
-.app-tab:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
-}
-
-.app-tab[aria-current="page"] {
-  background: var(--peach);
-  box-shadow: 3px 4px 0 var(--ink);
 }
 
 .app-view {
@@ -220,6 +172,34 @@ body {
 
 .lede {
   text-wrap: pretty;
+}
+
+.hero-more,
+.community-back-wrap {
+  margin: 0.85rem 0 0;
+}
+
+.community-back-wrap {
+  margin: 0 0 0.85rem;
+}
+
+.hero-more a,
+.community-back-wrap a {
+  color: #2a7f82;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 2px solid color-mix(in srgb, #2a7f82 50%, white);
+}
+
+.hero-more a:hover,
+.community-back-wrap a:hover {
+  border-bottom-color: currentColor;
+}
+
+.hero-more a:focus-visible,
+.community-back-wrap a:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 /* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */

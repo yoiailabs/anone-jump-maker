@@ -2,9 +2,9 @@
 export const APP_VIEWS = ["maker", "community"] as const;
 export type AppView = (typeof APP_VIEWS)[number];
 
-export const TAB_MAKER_LABEL = "メーカー";
-export const TAB_COMMUNITY_LABEL = "みんなのジャンプ";
 export const MAKER_DOCUMENT_TITLE = "あのねジャンプメーカー";
+export const TO_COMMUNITY_LABEL = "みんなの #あのねジャンプ を見る";
+export const TO_MAKER_LABEL = "メーカーに戻る";
 
 export function parseAppView(hash: string): AppView {
   const raw = hash.trim().replace(/^#\/?/, "");
@@ -19,18 +19,10 @@ export function documentTitleForView(view: AppView, communityTitle: string): str
   return view === "community" ? communityTitle : MAKER_DOCUMENT_TITLE;
 }
 
-export function appTabsHtml(): string {
-  return `
-    <nav class="app-tabs" aria-label="ページ">
-      <a class="app-tab" id="tabMaker" href="#maker">${TAB_MAKER_LABEL}</a>
-      <a class="app-tab" id="tabCommunity" href="#community">${TAB_COMMUNITY_LABEL}</a>
-    </nav>
-  `;
+export function toCommunityLinkHtml(): string {
+  return `<p class="hero-more"><a id="toCommunity" href="#community">${TO_COMMUNITY_LABEL}</a></p>`;
 }
 
-export function syncAppTabs(root: ParentNode, view: AppView): void {
-  const maker = root.querySelector("#tabMaker");
-  const community = root.querySelector("#tabCommunity");
-  maker?.setAttribute("aria-current", view === "maker" ? "page" : "false");
-  community?.setAttribute("aria-current", view === "community" ? "page" : "false");
+export function toMakerLinkHtml(): string {
+  return `<p class="community-back-wrap"><a id="toMaker" href="#maker">${TO_MAKER_LABEL}</a></p>`;
 }

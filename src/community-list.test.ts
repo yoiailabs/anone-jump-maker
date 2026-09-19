@@ -27,6 +27,10 @@ describe("community list markup", () => {
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain('id="communityJumps"');
     expect(html).toContain('id="communityJumpsList"');
+    expect(html).toContain('id="toMaker"');
+    expect(html).toContain('href="#maker"');
+    expect(html).toContain("メーカーに戻る");
+    expect(html).not.toContain("app-tab");
     expect(html).not.toContain("communityJumpsPrev");
     expect(html).not.toContain("communityJumpsNext");
     expect(html).not.toContain("communityJumpsMeter");

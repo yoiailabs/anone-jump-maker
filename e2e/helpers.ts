@@ -45,6 +45,6 @@ export async function blockAnalytics(page: Page): Promise<void> {
 }
 
 export async function waitForAppReady(page: Page): Promise<void> {
-  await page.locator("#tabMaker").waitFor({ state: "attached" });
+  await page.locator("#toCommunity").waitFor({ state: "attached" });
   await page.locator("#playBtn").waitFor({ state: "attached" });
 }
