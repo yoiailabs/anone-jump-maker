@@ -373,12 +373,6 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(ledeBox && sortBox && ledeBox.y < sortBox.y).toBe(true);
   expect(sortBox && listBox && sortBox.y < listBox.y).toBe(true);
   expect(titleBox && listBox && titleBox.y < listBox.y).toBe(true);
-  await search.scrollIntoViewIfNeeded();
-  const pagerBox = await page.locator("#communityPager").boundingBox();
-  const searchBox = await search.boundingBox();
-  const bottomBox = await page.locator("#toMakerBottom").boundingBox();
-  expect(pagerBox && searchBox && pagerBox.y < searchBox.y).toBe(true);
-  expect(searchBox && bottomBox && searchBox.y < bottomBox.y).toBe(true);
   await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(50);
   await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
   await expect(page.locator("#communitySortNewest")).toBeChecked();
@@ -430,9 +424,11 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await lastAfter.scrollIntoViewIfNeeded();
   const lastAfterBox = await lastAfter.boundingBox();
   const pagerBox = await page.locator("#communityPager").boundingBox();
+  const searchBox = await search.boundingBox();
   const bottomBox = await bottomBack.boundingBox();
   expect(lastAfterBox && pagerBox && lastAfterBox.y < pagerBox.y).toBe(true);
-  expect(pagerBox && bottomBox && pagerBox.y < bottomBox.y).toBe(true);
+  expect(pagerBox && searchBox && pagerBox.y < searchBox.y).toBe(true);
+  expect(searchBox && bottomBox && searchBox.y < bottomBox.y).toBe(true);
   await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(50);
   await expect(bottomBack).toHaveAttribute("href", "/");
 
