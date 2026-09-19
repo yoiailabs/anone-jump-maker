@@ -14,8 +14,8 @@ export const MORE_JUMPS_LABEL = "もっと見る";
 export const MORE_JUMPS_QUERY = "#あのねジャンプ";
 export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
 
-/** 画面の少し外まで先読みする余白。 */
-export const HYDRATE_ROOT_MARGIN_PX = 160;
+/** 画面の少し外まで先読みする余白。埋め込みが伸びても後続を取りこぼさない。 */
+export const HYDRATE_ROOT_MARGIN_PX = 640;
 
 /** 交差中のカードと上下 pad 件だけ widgets.js を載せる。 */
 export function hydrateIndexes(
@@ -31,6 +31,51 @@ export function hydrateIndexes(
     }
   }
   return [...want].sort((a, b) => a - b);
+}
+
+/** 一度近づいたカードは忘れない。IO が空振りしても後続を落とさない。 */
+export function rememberHydrateIndexes(
+  remembered: Iterable<number>,
+  incoming: readonly number[],
+  length: number,
+  pad = 1,
+): readonly number[] {
+  const seen = new Set<number>();
+  for (const index of remembered) {
+    if (Number.isInteger(index) && index >= 0 && index < length) seen.add(index);
+  }
+  for (const index of hydrateIndexes(incoming, length, pad)) {
+    seen.add(index);
+  }
+  return [...seen].sort((a, b) => a - b);
+}
+
+type MeasurableItem = {
+  dataset: { logical?: string };
+  getBoundingClientRect: () => Pick<DOMRect, "top" | "bottom" | "width" | "height">;
+};
+
+export function visibleLogicalIndexes(
+  items: readonly MeasurableItem[],
+  viewportHeight: number,
+  marginPx = HYDRATE_ROOT_MARGIN_PX,
+): readonly number[] {
+  const top = -marginPx;
+  const bottom = viewportHeight + marginPx;
+  const found: number[] = [];
+  for (const item of items) {
+    const rect = item.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) continue;
+    if (rect.bottom < top || rect.top > bottom) continue;
+    const logical = Number(item.dataset.logical);
+    if (Number.isInteger(logical)) found.push(logical);
+  }
+  return found;
+}
+
+/** 一覧の下端が近いときは残り全部を載せる。末尾だけフォールバックのまま残さない。 */
+export function shouldHydrateRemaining(listBottom: number, viewportHeight: number, marginPx = HYDRATE_ROOT_MARGIN_PX): boolean {
+  return listBottom <= viewportHeight + marginPx;
 }
 
 export function communityJumpsSectionHtml(
@@ -68,29 +113,42 @@ export function mountCommunityJumps(
   const list = section.querySelector<HTMLElement>("#communityJumpsList");
   if (!list || posts.length === 0) return;
 
-  const items = [...list.querySelectorAll<HTMLElement>(".community-jumps-item")];
-  const intersecting = new Set<number>();
+  const remembered = new Set<number>();
+
+  const itemsNow = () => [...list.querySelectorAll<HTMLElement>(".community-jumps-item")];
+
+  const incomingIndexes = () => {
+    const items = itemsNow();
+    if (typeof window !== "undefined" && shouldHydrateRemaining(list.getBoundingClientRect().bottom, window.innerHeight)) {
+      return posts.map((_, index) => index);
+    }
+    if (typeof window === "undefined") return remembered.size > 0 ? [] : [0];
+    return visibleLogicalIndexes(items, window.innerHeight);
+  };
 
   const hydrateWanted = () => {
-    const source = intersecting.size > 0 ? [...intersecting] : [0];
-    const want = new Set(hydrateIndexes(source, posts.length));
-    let addedEmbed = false;
-    for (const item of items) {
+    const incoming = incomingIndexes();
+    const kickstart = remembered.size === 0 && incoming.length === 0 ? [0] : incoming;
+    const want = rememberHydrateIndexes(remembered, kickstart, posts.length);
+    for (const index of want) remembered.add(index);
+
+    const freshCards: HTMLElement[] = [];
+    for (const item of itemsNow()) {
       const logical = Number(item.dataset.logical);
       const card = item.querySelector<HTMLElement>(".community-jumps-card");
       const post = posts[logical];
-      if (!card || !post || !want.has(logical) || card.dataset.hydrated === "1") continue;
+      if (!card || !post || !want.includes(logical) || card.dataset.hydrated === "1") continue;
       card.innerHTML = embedHtml(post);
       card.dataset.hydrated = "1";
-      addedEmbed = true;
+      freshCards.push(card);
     }
-    if (addedEmbed) {
-      hydrateReactionEmbed(list);
+    for (const card of freshCards) {
+      hydrateReactionEmbed(card);
     }
   };
 
   if (typeof IntersectionObserver === "undefined") {
-    intersecting.add(0);
+    for (let index = 0; index < posts.length; index += 1) remembered.add(index);
     hydrateWanted();
     return;
   }
@@ -98,24 +156,27 @@ export function mountCommunityJumps(
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
-        if (!(entry.target instanceof HTMLElement)) continue;
+        if (!entry.isIntersecting || !(entry.target instanceof HTMLElement)) continue;
         const logical = Number(entry.target.dataset.logical);
-        if (!Number.isInteger(logical)) continue;
-        if (entry.isIntersecting) intersecting.add(logical);
-        else intersecting.delete(logical);
+        if (Number.isInteger(logical)) remembered.add(logical);
       }
       hydrateWanted();
     },
-    { root: null, rootMargin: `${HYDRATE_ROOT_MARGIN_PX}px 0px`, threshold: 0.01 },
+    { root: null, rootMargin: `${HYDRATE_ROOT_MARGIN_PX}px 0px`, threshold: 0 },
   );
 
-  for (const item of items) {
+  for (const item of itemsNow()) {
     observer.observe(item);
   }
+
+  const onScrollOrResize = () => hydrateWanted();
+  window.addEventListener("scroll", onScrollOrResize, { passive: true });
+  window.addEventListener("resize", onScrollOrResize);
+  requestAnimationFrame(hydrateWanted);
 }
 
 export function moreJumpsLinkHtml(): string {
-  return `<p class="community-more-wrap"><a id="moreJumps" class="btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${MORE_JUMPS_LABEL}</a></p>`;
+  return `<p class="community-more-wrap"><a id="moreJumps" class="btn community-more-btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${MORE_JUMPS_LABEL}</a></p>`;
 }
 
 function itemsHtml(posts: readonly CommunityJumpPost[]): string {

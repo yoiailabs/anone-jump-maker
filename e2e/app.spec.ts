@@ -88,6 +88,14 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
 
   await expect(toCommunity).toHaveAttribute("href", "/community");
+  const communityBtn = await toCommunity.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      background: style.backgroundColor,
+      height: el.getBoundingClientRect().height,
+      radius: style.borderRadius,
+    };
+  });
   await toCommunity.click();
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page).not.toHaveURL(/#community/);
@@ -104,6 +112,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const moreJumps = page.locator("#moreJumps");
   await expect(moreJumps).toHaveText("もっと見る");
   await expect(moreJumps).toHaveClass(/\bbtn\b/);
+  await expect(moreJumps).toHaveClass(/\bcommunity-more-btn\b/);
   await expect(moreJumps).toHaveAttribute("target", "_blank");
   await expect(moreJumps).toHaveAttribute("rel", "noopener noreferrer");
   await expect(moreJumps).toHaveAttribute(
@@ -132,6 +141,21 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const bottomBox = await bottomBack.boundingBox();
   expect(lastAfterBox && moreBox && lastAfterBox.y < moreBox.y).toBe(true);
   expect(moreBox && bottomBox && moreBox.y < bottomBox.y).toBe(true);
+  expect(moreBox && moreBox.height).toBeGreaterThan(40);
+  const moreStyle = await moreJumps.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      background: style.backgroundColor,
+      height: el.getBoundingClientRect().height,
+      radius: style.borderRadius,
+      decoration: style.textDecorationLine,
+    };
+  });
+  expect(moreStyle.background).toBe(communityBtn.background);
+  expect(moreStyle.height).toBeGreaterThan(40);
+  expect(moreStyle.radius).toBe(communityBtn.radius);
+  expect(moreStyle.decoration).toBe("none");
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(10);
   await expect(bottomBack).toHaveAttribute("href", "/");
   await bottomBack.click();
   await expect(page).not.toHaveURL(/\/community/);
@@ -141,6 +165,20 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
+});
+
+test("hydrates every community card after scrolling the list", async ({ page }) => {
+  await page.goto("/community");
+  await waitForAppReady(page);
+  const items = page.locator("#communityJumps .community-jumps-item");
+  await expect(items).toHaveCount(10);
+  for (let index = 0; index < 10; index += 1) {
+    await items.nth(index).scrollIntoViewIfNeeded();
+    await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
+    await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
+  }
+  await page.locator("#moreJumps").scrollIntoViewIfNeeded();
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(10);
 });
 
 test("opens /community directly and moves leftover hashes onto the path", async ({ page }) => {

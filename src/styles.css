@@ -183,8 +183,15 @@ body {
 }
 
 .hero-more .btn,
-.community-more-wrap .btn {
+.community-more-wrap .btn,
+#moreJumps.btn {
+  display: flex;
   width: 100%;
+  box-sizing: border-box;
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .community-back-wrap {
@@ -881,6 +888,23 @@ a.btn:focus-visible {
 .community-jumps-end .community-more-wrap,
 .community-jumps-end .community-back-wrap {
   margin: 0;
+}
+
+.community-jumps-end .community-more-wrap {
+  display: flex;
+}
+
+.community-jumps-end #moreJumps.btn.community-more-btn {
+  display: flex;
+  width: 100%;
+  min-height: 2.95rem;
+  padding: 0.7rem 1rem;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .community-jumps-card .twitter-tweet {

@@ -77,7 +77,7 @@ export async function boot(root: HTMLElement): Promise<void> {
       <div class="app-view" id="makerView">
       <header class="hero">
         <p class="eyebrow">#あのねジャンプ</p>
-        <h1>あのねジャンプメーカー</h1>
+        <h1 id="makerTitle">あのねジャンプメーカー</h1>
         <p class="lede">写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。<br />動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。<br />※ファン制作の非公式アプリです。</p>
         ${toCommunityLinkHtml()}
       </header>
@@ -567,10 +567,22 @@ export async function boot(root: HTMLElement): Promise<void> {
     if (activeView !== view) {
       activeView = view;
       window.scrollTo(0, 0);
+      const heading =
+        view === "community"
+          ? root.querySelector<HTMLElement>("#communityJumpsTitle")
+          : root.querySelector<HTMLElement>("#makerTitle");
+      heading?.setAttribute("tabindex", "-1");
+      heading?.focus({ preventScroll: true });
     }
-    if (view === "community" && !communityMounted) {
-      mountCommunityJumps(must(root, "#communityJumps"));
-      communityMounted = true;
+    if (view === "community") {
+      if (!communityMounted) {
+        mountCommunityJumps(must(root, "#communityJumps"));
+        communityMounted = true;
+      } else {
+        hydrateReactionEmbed(must(root, "#communityJumps"));
+      }
+    } else {
+      hydrateReactionEmbed(must(root, "#reactionsEmbed"));
     }
   };
 

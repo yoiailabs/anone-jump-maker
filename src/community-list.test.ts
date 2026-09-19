@@ -7,6 +7,9 @@ import {
   MORE_JUMPS_LABEL,
   communityJumpsSectionHtml,
   hydrateIndexes,
+  rememberHydrateIndexes,
+  shouldHydrateRemaining,
+  visibleLogicalIndexes,
 } from "./community-list.ts";
 import { COMMUNITY_JUMP_POSTS, type CommunityJumpPost } from "./community-jumps.ts";
 
@@ -19,6 +22,31 @@ describe("community list hydrate window", () => {
     expect(hydrateIndexes([], 10)).toEqual([]);
     expect(hydrateIndexes([0], 1)).toEqual([0]);
     expect(hydrateIndexes([2], 0)).toEqual([]);
+  });
+
+  it("keeps earlier cards after later ones enter view", () => {
+    expect(rememberHydrateIndexes([0, 1], [4], 10)).toEqual([0, 1, 3, 4, 5]);
+    expect(rememberHydrateIndexes([0, 1, 2], [], 10)).toEqual([0, 1, 2]);
+    expect(rememberHydrateIndexes([], [8, 9], 10)).toEqual([7, 8, 9]);
+  });
+
+  it("treats cards overlapping the padded viewport as visible", () => {
+    const items = [0, 1, 2, 3].map((logical) => ({
+      dataset: { logical: String(logical) },
+      getBoundingClientRect: () => ({
+        top: logical * 400 - 100,
+        bottom: logical * 400 + 200,
+        width: 320,
+        height: 300,
+      }),
+    }));
+    expect(visibleLogicalIndexes(items, 700, 160)).toEqual([0, 1, 2]);
+    expect(visibleLogicalIndexes(items, 200, 0)).toEqual([0]);
+  });
+
+  it("hydrates the rest of the list once the bottom is near the viewport", () => {
+    expect(shouldHydrateRemaining(900, 800, 160)).toBe(true);
+    expect(shouldHydrateRemaining(2000, 800, 160)).toBe(false);
   });
 });
 
@@ -37,6 +65,7 @@ describe("community list markup", () => {
     expect(html).toContain("メーカーに戻る");
     expect(html).toContain(MORE_JUMPS_LABEL);
     expect(html).toContain('id="moreJumps"');
+    expect(html).toContain('class="btn community-more-btn"');
     expect(html).toContain(`href="${MORE_JUMPS_HREF}"`);
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
