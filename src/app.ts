@@ -38,7 +38,7 @@ import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible } from ".
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, removeById, sameIdOrder } from "./photo-list.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
-import { bindPhotoThumbs, renderPhotoThumbs, type ThumbCopy } from "./thumbs.ts";
+import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
   muteButtonHtml,
@@ -113,8 +113,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   const stage = must(root, "#stage");
-  const thumbs = must(root, "#thumbs");
-  const thumbsHint = must(root, "#thumbsHint");
   const pickerLabel = must(root, "#pickerLabel");
   const slotMeter = must(root, "#slotMeter");
   const statusEl = must(root, "#status");
@@ -197,22 +195,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  const thumbCopy: ThumbCopy = {
-    listLabel: msg("makerThumbsLabel"),
-    photoAlt: (index: number, name: string) => name.trim() || msg("makerPhotoAlt", { n: index + 1 }),
-    removeLabel: (index: number) => msg("makerRemovePhoto", { n: index + 1 }),
-    itemLabel: (index: number) => msg("makerPhotoItem", { n: index + 1 }),
-  };
-
   const photosLocked = () => recording || photosBusy;
 
   const syncPickerLabel = () => {
     pickerLabel.textContent = photos.length === 0 ? msg("makerPickPhotos") : msg("makerAddPhotos");
-    thumbsHint.hidden = photos.length === 0;
   };
 
   const renderThumbs = () => {
-    renderPhotoThumbs(thumbs, photos, thumbCopy, { disabled: photosLocked() });
+    setPhotoThumbsState({
+      photos: photos.map((photo) => ({ id: photo.id, name: photo.name, thumbUrl: photo.thumbUrl })),
+      locked: photosLocked(),
+    });
     syncPickerLabel();
   };
 
@@ -229,14 +222,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     picker.disabled = locked;
-    thumbs.querySelectorAll<HTMLButtonElement>(".thumb-remove").forEach((btn) => {
-      btn.disabled = locked;
-    });
-    thumbs.querySelectorAll<HTMLElement>(".thumb[data-photo-id]").forEach((item) => {
-      item.tabIndex = locked ? -1 : 0;
-      item.draggable = !locked;
-      item.setAttribute("aria-disabled", locked ? "true" : "false");
-    });
+    renderThumbs();
     const active = isPreviewPlaying();
     modalPlayBtn.innerHTML = playPauseButtonHtml(active, locale);
     modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
@@ -276,6 +262,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const next = orderByIds(photos, ids);
     if (sameIdOrder(photos, next)) return;
     photos = next;
+    renderThumbs();
     paint();
   };
 
@@ -295,12 +282,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     setStatus(msg("statusPhotoRemoved", { n: photos.length }));
   };
 
-  bindPhotoThumbs(thumbs, {
-    copy: thumbCopy,
-    isLocked: photosLocked,
+  setPhotoThumbsHandlers({
     onReorder: applyPhotoOrder,
     onRemove: removePhoto,
   });
+  renderThumbs();
 
   const benchSnapshot = () => {
     const elapsed = paintClockStart === 0 ? 0 : performance.now() - paintClockStart;

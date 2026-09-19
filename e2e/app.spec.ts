@@ -100,12 +100,14 @@ test("reorders photos by drag and drop", async ({ page }) => {
 
   const first = page.locator(".thumb[data-photo-id]").nth(0);
   const second = page.locator(".thumb[data-photo-id]").nth(1);
-  const box = await second.boundingBox();
-  expect(box).toBeTruthy();
-  await first.dragTo(second, {
-    force: true,
-    targetPosition: { x: Math.round((box?.width ?? 96) * 0.82), y: Math.round((box?.height ?? 96) * 0.5) },
-  });
+  await first.scrollIntoViewIfNeeded();
+  const from = await first.boundingBox();
+  const to = await second.boundingBox();
+  expect(from && to).toBeTruthy();
+  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to!.x + to!.width * 0.82, to!.y + to!.height / 2, { steps: 16 });
+  await page.mouse.up();
 
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
   await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");

@@ -16,6 +16,8 @@
   --page-pad-x: 1.15rem;
   --page-pad-bottom: 3.8rem;
   --section-gap: 2.35rem;
+  --thumb-size: 6rem;
+  --thumb-radius: 0.9rem;
 }
 
 * {
@@ -777,35 +779,18 @@ a.btn:focus-visible {
   outline-offset: 2px;
 }
 
-.thumb.is-dragging {
+.thumb.is-placeholder {
+  opacity: 0.28;
+}
+
+.thumb.thumb-float,
+.thumb-float {
   cursor: grabbing;
-  z-index: 2;
-  opacity: 0.55;
   touch-action: none;
-  transform: scale(1.06);
+  box-shadow: 8px 10px 0 var(--ink);
 }
 
-.thumb.drop-before::before,
-.thumb.drop-after::after {
-  content: "";
-  position: absolute;
-  top: 0.15rem;
-  bottom: 0.15rem;
-  width: 0.38rem;
-  border-radius: 999px;
-  background: var(--teal);
-  box-shadow: 2px 2px 0 var(--ink);
-  pointer-events: none;
-}
-
-.thumb.drop-before::before {
-  left: -0.52rem;
-}
-
-.thumb.drop-after::after {
-  right: -0.52rem;
-}
-
+.thumb img,
 .thumbs img {
   width: var(--thumb-size);
   height: var(--thumb-size);

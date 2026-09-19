@@ -14,6 +14,7 @@ import {
   PREVIEW_MUTED_DEFAULT,
   restartButtonHtml,
 } from "../preview.ts";
+import { PhotoThumbs } from "@/components/PhotoThumbs.tsx";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -99,10 +100,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
               />
               <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
             </Label>
-            <div className="thumbs" id="thumbs" hidden aria-describedby="thumbsHint" />
-            <p className="thumbs-hint" id="thumbsHint" hidden>
-              {t(locale, "makerThumbsHint")}
-            </p>
+            <PhotoThumbs locale={locale} />
             <fieldset className="aspect-field">
               <legend>{t(locale, "makerAspectLegend")}</legend>
               <RadioPills
