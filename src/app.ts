@@ -485,7 +485,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await ensureTimelines();
       paint();
       refreshButtons();
-      if (!recording) {
+      if (!recording && photos.length === 0) {
         setStatus(msg("statusTemplateReady", { n: timeline().slots.length }));
       }
       const resume = aspectResume;
