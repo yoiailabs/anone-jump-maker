@@ -348,22 +348,50 @@ test("opens community jumps from the disclaimer link and returns via the back li
     "href",
     `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
   );
-  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(10);
+  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(51);
+  await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
+  await expect(page.locator("#communitySortNewest")).toBeChecked();
+  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
+    "data-post-id",
+    "2101252511386710099",
+  );
+  await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(51);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
   await expect(page.locator("#communityJumpsMeter")).toHaveCount(0);
   await expect(page.locator("#playBtn")).toBeHidden();
 
+  const masonryCols = await page.locator("#communityJumpsList").evaluate((el) => {
+    const n = Number(getComputedStyle(el).getPropertyValue("--community-masonry-cols"));
+    return n === 2 || n === 3 ? n : 1;
+  });
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const expectedCols = viewportWidth >= 768 ? 3 : viewportWidth >= 640 ? 2 : 1;
+  expect(masonryCols).toBe(expectedCols);
+  await expect(page.locator("#communityJumpsList")).toHaveAttribute("data-masonry-cols", String(expectedCols));
+
   const first = page.locator("#communityJumps .community-jumps-item").nth(0);
   const second = page.locator("#communityJumps .community-jumps-item").nth(1);
-  const last = page.locator("#communityJumps .community-jumps-item").nth(9);
+  const last = page.locator("#communityJumps .community-jumps-item").nth(50);
   const firstBox = await first.boundingBox();
   const secondBox = await second.boundingBox();
   const lastBox = await last.boundingBox();
-  expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
-  expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
+  expect(firstBox && secondBox && lastBox).toBeTruthy();
+  if (expectedCols === 1) {
+    expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
+    expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
+  } else {
+    expect(firstBox && secondBox && secondBox.x > firstBox.x + 40).toBe(true);
+    expect(firstBox && secondBox && Math.abs(firstBox.y - secondBox.y) < 48).toBe(true);
+    expect(firstBox && lastBox && lastBox.y > firstBox.y + 40).toBe(true);
+  }
+
+  if (viewportWidth >= 640) {
+    const communityAppWidth = await page.locator(".app").evaluate((el) => el.getBoundingClientRect().width);
+    expect(communityAppWidth).toBeGreaterThan(28 * 16);
+  }
 
   const bottomBack = page.locator("#toMakerBottom");
-  const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(9);
+  const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(50);
   await lastAfter.scrollIntoViewIfNeeded();
   const lastAfterBox = await lastAfter.boundingBox();
   const moreBox = await moreJumps.boundingBox();
@@ -384,7 +412,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(moreStyle.height).toBeGreaterThan(40);
   expect(moreStyle.radius).toBe(communityBtn.radius);
   expect(moreStyle.decoration).toBe("none");
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(10);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
   await expect(bottomBack).toHaveAttribute("href", "/");
 
   // widgets.js が display:none 中に測ると iframe が潰れる。戻ったら blockquote から載せ直す。
@@ -403,6 +431,10 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(new URL(page.url()).pathname).toBe("/");
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#playBtn")).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) >= 640) {
+    const makerAppWidth = await page.locator(".app").evaluate((el) => el.getBoundingClientRect().width);
+    expect(makerAppWidth).toBeLessThanOrEqual(28 * 16 + 2);
+  }
   await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
@@ -412,7 +444,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await page.locator("#toCommunity").click();
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page.locator("#communityView")).toBeVisible();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(10);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(51);
   await expect(page.locator(".community-jumps-card iframe.twitter-tweet-rendered")).toHaveCount(0);
 });
 
@@ -420,14 +452,43 @@ test("hydrates every community card after scrolling the list", async ({ page }) 
   await page.goto("/community");
   await waitForAppReady(page);
   const items = page.locator("#communityJumps .community-jumps-item");
-  await expect(items).toHaveCount(10);
-  for (let index = 0; index < 10; index += 1) {
+  await expect(items).toHaveCount(51);
+  await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
+  for (const index of [0, 1, 2, 25, 50]) {
     await items.nth(index).scrollIntoViewIfNeeded();
     await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
     await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
   }
   await page.locator("#moreJumps").scrollIntoViewIfNeeded();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(10);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(51);
+});
+
+test("uses three masonry columns on iPad-sized viewports and can sort by popularity", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/community");
+  await waitForAppReady(page);
+  await expect(page.locator("#communityJumpsList")).toHaveAttribute("data-masonry-cols", "3");
+  const first = page.locator("#communityJumps .community-jumps-item").nth(0);
+  const second = page.locator("#communityJumps .community-jumps-item").nth(1);
+  const firstBox = await first.boundingBox();
+  const secondBox = await second.boundingBox();
+  expect(firstBox && secondBox && secondBox.x > firstBox.x + 40).toBe(true);
+  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
+    "data-post-id",
+    "2101252511386710099",
+  );
+  await page.locator("#communitySort").scrollIntoViewIfNeeded();
+  await page.locator("label:has(#communitySortPopular)").click();
+  await expect(page.locator("#communitySortPopular")).toBeChecked();
+  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
+    "data-post-id",
+    "2100570924915548571",
+  );
+  await page.locator("label:has(#communitySortNewest)").click();
+  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
+    "data-post-id",
+    "2101252511386710099",
+  );
 });
 
 test("opens /community directly and moves leftover hashes onto the path", async ({ page }) => {

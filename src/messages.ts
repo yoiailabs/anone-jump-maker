@@ -75,6 +75,9 @@ const ja = {
   communityLikes: "{n} いいね",
   communityViewOnX: "Xで見る",
   communityXPost: "Xの投稿",
+  communitySort: "並び替え",
+  communitySortNewest: "新しい順",
+  communitySortPopular: "人気順",
   metaCommunityDescription: "ファンが投稿したジャンプ動画です。下にスクロールして見てね。",
 
   previewTitle: "プレビュー",
@@ -202,6 +205,9 @@ const en: Record<MessageKey, string> = {
   communityLikes: "{n} likes",
   communityViewOnX: "View on X",
   communityXPost: "Post on X",
+  communitySort: "Sort",
+  communitySortNewest: "Newest",
+  communitySortPopular: "Popular",
   metaCommunityDescription: "Fan-made jump videos. Scroll down to watch.",
 
   previewTitle: "Preview",
@@ -327,6 +333,9 @@ const ko: Record<MessageKey, string> = {
   communityLikes: "좋아요 {n}",
   communityViewOnX: "X에서 보기",
   communityXPost: "X 게시물",
+  communitySort: "정렬",
+  communitySortNewest: "최신순",
+  communitySortPopular: "인기순",
   metaCommunityDescription: "팬이 올린 점프 영상입니다. 아래로 스크롤해서 봐 주세요.",
 
   previewTitle: "미리보기",
@@ -452,6 +461,9 @@ const zh: Record<MessageKey, string> = {
   communityLikes: "{n} 次喜欢",
   communityViewOnX: "在 X 查看",
   communityXPost: "X 帖子",
+  communitySort: "排序",
+  communitySortNewest: "最新",
+  communitySortPopular: "热门",
   metaCommunityDescription: "粉丝投稿的跳跃视频。往下滑动就能看。",
 
   previewTitle: "预览",

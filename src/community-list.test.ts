@@ -3,16 +3,29 @@ import {
   COMMUNITY_JUMPS_EMPTY,
   COMMUNITY_JUMPS_LEDE,
   COMMUNITY_JUMPS_TITLE,
+  COMMUNITY_MASONRY_BREAKPOINTS,
+  COMMUNITY_MASONRY_GAP_PX,
+  COMMUNITY_MASONRY_ROW_PX,
   MORE_JUMPS_HREF,
   MORE_JUMPS_LABEL,
+  applyCommunityMasonryItem,
+  applyCommunityMasonryLayout,
   communityJumpsSectionHtml,
+  communityMasonryColumns,
+  communityMasonryRowSpan,
   hydrateIndexes,
+  hydratePadForColumns,
   refreshCommunityJumps,
   rememberHydrateIndexes,
   shouldHydrateRemaining,
   visibleLogicalIndexes,
 } from "./community-list.ts";
-import { COMMUNITY_JUMP_POSTS, type CommunityJumpPost } from "./community-jumps.ts";
+import {
+  COMMUNITY_JUMP_CAPACITY,
+  COMMUNITY_JUMP_POSTS,
+  communityJumpFromHref,
+  type CommunityJumpPost,
+} from "./community-jumps.ts";
 
 describe("community list hydrate window", () => {
   it("hydrates intersecting cards plus one neighbor above and below", () => {
@@ -56,13 +69,73 @@ describe("community list hydrate window", () => {
   });
 });
 
+describe("community masonry", () => {
+  it("uses 1 / 2 / 3 columns at the community page breakpoints", () => {
+    expect(COMMUNITY_MASONRY_BREAKPOINTS).toEqual({ tablet: 640, wide: 768 });
+    expect(communityMasonryColumns(390)).toBe(1);
+    expect(communityMasonryColumns(639)).toBe(1);
+    expect(communityMasonryColumns(640)).toBe(2);
+    expect(communityMasonryColumns(767)).toBe(2);
+    expect(communityMasonryColumns(768)).toBe(3);
+    expect(communityMasonryColumns(820)).toBe(3);
+    expect(communityMasonryColumns(1024)).toBe(3);
+    expect(communityMasonryColumns(1280)).toBe(3);
+    expect(communityMasonryColumns(Number.NaN)).toBe(1);
+    expect(hydratePadForColumns(1)).toBe(1);
+    expect(hydratePadForColumns(2)).toBe(2);
+    expect(hydratePadForColumns(3)).toBe(3);
+    expect(hydratePadForColumns(0)).toBe(1);
+    expect(hydrateIndexes([0], 10, hydratePadForColumns(3))).toEqual([0, 1, 2, 3]);
+  });
+
+  it("maps card height onto grid row spans with the same row and gap as CSS", () => {
+    expect(COMMUNITY_MASONRY_ROW_PX).toBe(8);
+    expect(COMMUNITY_MASONRY_GAP_PX).toBe(18);
+    expect(communityMasonryRowSpan(8)).toBe(1);
+    expect(communityMasonryRowSpan(9)).toBe(2);
+    expect(communityMasonryRowSpan(416)).toBe(17);
+    expect(communityMasonryRowSpan(192)).toBe(9);
+    expect(communityMasonryRowSpan(0)).toBe(1);
+    expect(communityMasonryRowSpan(-4)).toBe(1);
+  });
+
+  it("clears spans in one column and writes them from card height in three", () => {
+    const card = { offsetHeight: 416 };
+    const item = {
+      style: { gridRowEnd: "span 9" },
+      querySelector: () => card,
+      offsetHeight: 416,
+    } as unknown as HTMLElement;
+    applyCommunityMasonryItem(item, 1);
+    expect(item.style.gridRowEnd).toBe("");
+    applyCommunityMasonryItem(item, 3);
+    expect(item.style.gridRowEnd).toBe("span 17");
+
+    const list = {
+      dataset: {} as Record<string, string>,
+      style: { setProperty: (name: string, value: string) => {
+        list.dataset[name] = value;
+      }},
+    } as unknown as HTMLElement;
+    applyCommunityMasonryLayout(list, [item], 2);
+    expect(list.dataset.masonryCols).toBe("2");
+  });
+});
+
 describe("community list markup", () => {
-  it("stacks one item per curated post with no carousel chrome", () => {
+  it("lays out one masonry item per curated post with no carousel chrome", () => {
     const html = communityJumpsSectionHtml();
     expect(html).toContain(COMMUNITY_JUMPS_TITLE);
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain('id="communityJumps"');
     expect(html).toContain('id="communityJumpsList"');
+    expect(html).toContain("community-jumps-masonry");
+    expect(html).toContain('data-sort="newest"');
+    expect(html).toContain('id="communitySortNewest"');
+    expect(html).toContain('id="communitySortPopular"');
+    expect(html).toContain("新しい順");
+    expect(html).toContain("人気順");
+    expect(html).toContain('data-media="video"');
     expect(html).toContain('id="toMaker"');
     expect(html).toContain('id="toMakerBottom"');
     expect(html).toContain('href="/"');
@@ -91,14 +164,32 @@ describe("community list markup", () => {
     expect(html).not.toContain("communityJumpsMeter");
     expect(html).not.toContain("community-jumps-track");
     expect(html).not.toContain("community-jumps-viewport");
-    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(10);
-    expect(html.match(/data-post-id="2100797924125049167"/g)).toHaveLength(1);
-    expect(html.match(/data-post-id="2100886138257121546"/g)).toHaveLength(1);
+    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(51);
+    expect(html.match(/data-media="video"/g)).toHaveLength(51);
+    expect(html.match(/data-post-id="2101252511386710099"/g)).toHaveLength(1);
+    expect(html.match(/data-post-id="2100164507607949586"/g)).toHaveLength(1);
+    expect(html).toContain("@qmapon");
     expect(html).toContain("@02_ZERO_Ni");
     expect(html).toContain("738 いいね");
     expect(html).toContain("@_nakotanmaru");
     expect(html).toContain('href="https://x.com/_nakotanmaru/status/2100880092864122959"');
-    expect(html.indexOf("2100797924125049167")).toBeLessThan(html.indexOf("2100886138257121546"));
+    expect(html.indexOf("2101252511386710099")).toBeLessThan(html.indexOf("2100164507607949586"));
+    const popular = communityJumpsSectionHtml(undefined, "ja", "popular");
+    expect(popular.indexOf("2100570924915548571")).toBeLessThan(popular.indexOf("2100797924125049167"));
+    expect(popular).toContain('data-sort="popular"');
+  });
+
+  it("keeps a long curated list in the same masonry markup so new rows are drop-in", () => {
+    const posts = Array.from({ length: 30 }, (_, index) =>
+      communityJumpFromHref(`https://x.com/user${index}/status/${2_100_000_000_000_000 + index}`, index + 1),
+    );
+    const html = communityJumpsSectionHtml(posts);
+    expect(html.match(/class="community-jumps-item"/g)).toHaveLength(30);
+    expect(COMMUNITY_JUMP_CAPACITY).toBeGreaterThanOrEqual(51);
+    expect(html).toContain("community-jumps-masonry");
+    expect(html).toContain(COMMUNITY_JUMPS_LEDE);
+    expect(html).toContain("communitySort");
+    expect(html).not.toContain("community-jumps-track");
   });
 
   it("shows an empty state and no list when the posts are swapped to empty", () => {
@@ -109,12 +200,15 @@ describe("community list markup", () => {
     expect(html).toContain('id="toMakerBottom"');
     expect(html).toContain('id="moreJumps"');
     expect(html).not.toContain("community-jumps-list");
+    expect(html).not.toContain("communitySort");
     expect(html).not.toContain(COMMUNITY_JUMPS_LEDE);
   });
 
-  it("keeps a single stacked item when only one post remains", () => {
+  it("keeps a single masonry item when only one post remains", () => {
     const html = communityJumpsSectionHtml(COMMUNITY_JUMP_POSTS.slice(0, 1));
     expect(html.match(/class="community-jumps-item"/g)).toHaveLength(1);
+    expect(html).toContain("community-jumps-masonry");
+    expect(html).not.toContain("communitySort");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
   });
 });
