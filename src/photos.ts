@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { OUTPUTS } from "./layout.ts";
 import { reportError } from "./sentry.ts";
 
@@ -263,6 +264,18 @@ export function selectImageFiles(files: readonly File[]): File[] {
   return files.filter((file) => isLikelyImageFile(file));
 }
 
+/**
+ * LINE の in-app など非セキュア / WebView では crypto.randomUUID が無い。
+ * 無いときは uuid の v4 にフォールバックする。写真 ID 用。デコードには使わない。
+ */
+export function newPhotoId(): string {
+  const webCrypto = globalThis.crypto;
+  if (typeof webCrypto?.randomUUID === "function") {
+    return webCrypto.randomUUID();
+  }
+  return uuidv4();
+}
+
 export async function loadPhotos(
   files: File[],
   options: {
@@ -319,7 +332,7 @@ async function loadPhoto(file: File, convertHeic?: HeicConverter): Promise<Loade
   try {
     const thumbUrl = await makeThumbUrl(working);
     return {
-      id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+      id: `${file.name}-${file.size}-${file.lastModified}-${newPhotoId()}`,
       name: file.name,
       bitmap: working,
       thumbUrl,
