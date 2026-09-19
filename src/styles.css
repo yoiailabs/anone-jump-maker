@@ -61,7 +61,7 @@ body {
   }
 }
 
-@media (min-width: 64rem) {
+@media (min-width: 48rem) {
   .app:has(#communityView:not([hidden])) {
     width: min(68rem, 100%);
   }
@@ -239,6 +239,11 @@ body {
 
 .community-jumps-hero .community-back-wrap {
   margin: 0 0 0.85rem;
+}
+
+.community-jumps-hero .community-sort {
+  margin: 1rem 0 0;
+  text-align: left;
 }
 
 .hero-more .btn,
@@ -1184,7 +1189,7 @@ a.btn:focus-visible {
   }
 }
 
-@media (min-width: 64rem) {
+@media (min-width: 48rem) {
   .community-jumps-list.community-jumps-masonry {
     --community-masonry-cols: 3;
     grid-template-columns: repeat(3, minmax(0, 1fr));

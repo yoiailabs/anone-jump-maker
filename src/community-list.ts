@@ -1,6 +1,10 @@
 import {
   COMMUNITY_JUMP_POSTS,
+  DEFAULT_COMMUNITY_JUMP_SORT,
+  isCommunityJumpSort,
+  sortCommunityJumpPosts,
   type CommunityJumpPost,
+  type CommunityJumpSort,
 } from "./community-jumps.ts";
 import {
   DEFAULT_LOCALE,
@@ -13,10 +17,10 @@ import {
 import { toMakerLinkHtml } from "./nav.ts";
 import { hydrateReactionEmbed, isEmbedHostVisible } from "./reactions.ts";
 
-/** 1 col < 40rem、2 col ≥ 40rem、3 col ≥ 64rem（.app のコミュニティ幅と揃える）。 */
+/** 1 col < 40rem、2 col ≥ 40rem、3 col ≥ 48rem（iPad 縦 / PC。.app 幅と揃える）。 */
 export const COMMUNITY_MASONRY_BREAKPOINTS = {
   tablet: 640,
-  desktop: 1024,
+  wide: 768,
 } as const;
 
 /** grid-auto-rows と gap。span 計算と CSS を一致させる。 */
@@ -25,7 +29,7 @@ export const COMMUNITY_MASONRY_GAP_PX = 18;
 
 export function communityMasonryColumns(widthPx: number): 1 | 2 | 3 {
   if (!Number.isFinite(widthPx) || widthPx < COMMUNITY_MASONRY_BREAKPOINTS.tablet) return 1;
-  if (widthPx < COMMUNITY_MASONRY_BREAKPOINTS.desktop) return 2;
+  if (widthPx < COMMUNITY_MASONRY_BREAKPOINTS.wide) return 2;
   return 3;
 }
 
@@ -151,9 +155,11 @@ export function shouldHydrateRemaining(
 export function communityJumpsSectionHtml(
   posts: readonly CommunityJumpPost[] = COMMUNITY_JUMP_POSTS,
   locale: Locale = DEFAULT_LOCALE,
+  sort: CommunityJumpSort = DEFAULT_COMMUNITY_JUMP_SORT,
 ): string {
+  const ordered = sortCommunityJumpPosts(posts, sort);
   return `
-    <section class="community-jumps" id="communityJumps" data-locale="${locale}" aria-labelledby="communityJumpsTitle">
+    <section class="community-jumps" id="communityJumps" data-locale="${locale}" data-sort="${sort}" aria-labelledby="communityJumpsTitle">
       <header class="hero community-jumps-hero">
         ${languageNavHtml(locale, "community")}
         ${toMakerLinkHtml("toMaker", locale)}
@@ -164,11 +170,12 @@ export function communityJumpsSectionHtml(
             ? ""
             : `<p class="lede">${t(locale, "communityLede")}</p>`
         }
+        ${posts.length < 2 ? "" : communitySortHtml(locale, sort)}
       </header>
       ${
         posts.length === 0
           ? `<p class="community-jumps-empty">${t(locale, "communityEmpty")}</p>`
-          : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(posts, locale)}</ol>`
+          : `<ol class="community-jumps-list community-jumps-masonry" id="communityJumpsList">${itemsHtml(ordered, locale)}</ol>`
       }
       <footer class="community-jumps-end">
         ${moreJumpsLinkHtml(locale)}
@@ -194,6 +201,10 @@ export function mountCommunityJumps(
   if (!list || posts.length === 0) return;
 
   const remembered = new Set<number>();
+  let ordered = sortCommunityJumpPosts(
+    posts,
+    isCommunityJumpSort(section.dataset.sort) ? section.dataset.sort : DEFAULT_COMMUNITY_JUMP_SORT,
+  );
 
   const itemsNow = () => [...list.querySelectorAll<HTMLElement>(".community-jumps-item")];
 
@@ -207,7 +218,7 @@ export function mountCommunityJumps(
   const incomingIndexes = () => {
     const items = itemsNow();
     if (typeof window !== "undefined" && shouldHydrateRemaining(list.getBoundingClientRect(), window.innerHeight)) {
-      return posts.map((_, index) => index);
+      return ordered.map((_, index) => index);
     }
     if (typeof window === "undefined") return remembered.size > 0 ? [] : [0];
     return visibleLogicalIndexes(items, window.innerHeight);
@@ -217,14 +228,14 @@ export function mountCommunityJumps(
     if (!isEmbedHostVisible(section)) return;
     const incoming = incomingIndexes();
     const kickstart = remembered.size === 0 && incoming.length === 0 ? [0] : incoming;
-    const want = rememberHydrateIndexes(remembered, kickstart, posts.length, hydratePadForColumns(columnCount()));
+    const want = rememberHydrateIndexes(remembered, kickstart, ordered.length, hydratePadForColumns(columnCount()));
     for (const index of want) remembered.add(index);
 
     const freshCards: HTMLElement[] = [];
     for (const item of itemsNow()) {
       const logical = Number(item.dataset.logical);
       const card = item.querySelector<HTMLElement>(".community-jumps-card");
-      const post = posts[logical];
+      const post = ordered[logical];
       if (!card || !post || !want.includes(logical) || card.dataset.hydrated === "1") continue;
       card.innerHTML = embedHtml(post, localeOf(section));
       card.dataset.hydrated = "1";
@@ -241,7 +252,7 @@ export function mountCommunityJumps(
     for (const item of itemsNow()) {
       const logical = Number(item.dataset.logical);
       const card = item.querySelector<HTMLElement>(".community-jumps-card");
-      const post = posts[logical];
+      const post = ordered[logical];
       if (!card || !post || card.dataset.hydrated !== "1") continue;
       card.innerHTML = embedHtml(post, localeOf(section));
       hydrateReactionEmbed(card);
@@ -255,28 +266,60 @@ export function mountCommunityJumps(
   };
   communityRefreshers.set(section, refresh);
 
+  let observer: IntersectionObserver | undefined;
+  let resizeObserver: ResizeObserver | undefined;
+
+  const watchItems = () => {
+    observer?.disconnect();
+    resizeObserver?.disconnect();
+    if (typeof IntersectionObserver !== "undefined") {
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting || !(entry.target instanceof HTMLElement)) continue;
+            const logical = Number(entry.target.dataset.logical);
+            if (Number.isInteger(logical)) remembered.add(logical);
+          }
+          hydrateWanted();
+        },
+        { root: null, rootMargin: `${HYDRATE_ROOT_MARGIN_PX}px 0px`, threshold: 0 },
+      );
+      for (const item of itemsNow()) observer.observe(item);
+    }
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        layoutMasonry();
+      });
+      for (const item of itemsNow()) {
+        resizeObserver.observe(item.querySelector(".community-jumps-card") ?? item);
+      }
+    }
+  };
+
+  const applySort = (sort: CommunityJumpSort) => {
+    ordered = sortCommunityJumpPosts(posts, sort);
+    remembered.clear();
+    section.dataset.sort = sort;
+    list.innerHTML = itemsHtml(ordered, localeOf(section));
+    watchItems();
+    layoutMasonry();
+    hydrateWanted();
+  };
+
+  const sortRoot = section.querySelector<HTMLElement>("#communitySort");
+  sortRoot?.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !isCommunityJumpSort(target.value)) return;
+    applySort(target.value);
+  });
+
   layoutMasonry();
+  watchItems();
 
   if (typeof IntersectionObserver === "undefined") {
-    for (let index = 0; index < posts.length; index += 1) remembered.add(index);
+    for (let index = 0; index < ordered.length; index += 1) remembered.add(index);
     hydrateWanted();
     return;
-  }
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting || !(entry.target instanceof HTMLElement)) continue;
-        const logical = Number(entry.target.dataset.logical);
-        if (Number.isInteger(logical)) remembered.add(logical);
-      }
-      hydrateWanted();
-    },
-    { root: null, rootMargin: `${HYDRATE_ROOT_MARGIN_PX}px 0px`, threshold: 0 },
-  );
-
-  for (const item of itemsNow()) {
-    observer.observe(item);
   }
 
   const onScrollOrResize = () => {
@@ -286,21 +329,33 @@ export function mountCommunityJumps(
   window.addEventListener("scroll", onScrollOrResize, { passive: true });
   window.addEventListener("resize", onScrollOrResize);
 
-  if (typeof ResizeObserver !== "undefined") {
-    const resizeObserver = new ResizeObserver(() => {
-      layoutMasonry();
-    });
-    for (const item of itemsNow()) {
-      const card = item.querySelector(".community-jumps-card");
-      resizeObserver.observe(card ?? item);
-    }
-  }
-
   requestAnimationFrame(hydrateWanted);
 }
 
 export function moreJumpsLinkHtml(locale: Locale = DEFAULT_LOCALE): string {
   return `<p class="community-more-wrap"><a id="moreJumps" class="btn community-more-btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${t(locale, "communityMore")}</a></p>`;
+}
+
+export function communitySortHtml(
+  locale: Locale = DEFAULT_LOCALE,
+  sort: CommunityJumpSort = DEFAULT_COMMUNITY_JUMP_SORT,
+): string {
+  const newest = sort === "newest";
+  return `
+    <fieldset class="aspect-field community-sort">
+      <legend>${t(locale, "communitySort")}</legend>
+      <div class="aspect-toggle" id="communitySort" role="radiogroup" aria-label="${t(locale, "communitySort")}">
+        <label>
+          <input type="radio" name="communitySort" id="communitySortNewest" value="newest"${newest ? " checked" : ""} />
+          <span>${t(locale, "communitySortNewest")}</span>
+        </label>
+        <label>
+          <input type="radio" name="communitySort" id="communitySortPopular" value="popular"${newest ? "" : " checked"} />
+          <span>${t(locale, "communitySortPopular")}</span>
+        </label>
+      </div>
+    </fieldset>
+  `;
 }
 
 function itemsHtml(posts: readonly CommunityJumpPost[], locale: Locale): string {
