@@ -2,13 +2,21 @@ import { describe, expect, it } from "vitest";
 import { linkBannersHtml, OFFICIAL_LINKS } from "./links.ts";
 
 describe("official link banners", () => {
-  it("covers the four services once each", () => {
+  it("covers the official SNS and streaming services once each", () => {
     expect(OFFICIAL_LINKS.map((link) => link.id)).toEqual([
       "x",
+      "instagram",
       "youtube",
+      "tiktok",
       "spotify",
       "apple-music",
     ]);
+    expect(OFFICIAL_LINKS.find((link) => link.id === "instagram")?.href).toBe(
+      "https://www.instagram.com/nanatsukaze_/",
+    );
+    expect(OFFICIAL_LINKS.find((link) => link.id === "tiktok")?.href).toBe(
+      "https://www.tiktok.com/@nanatsukaze_ofc",
+    );
   });
 
   it("points at https URLs only", () => {
