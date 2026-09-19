@@ -1,0 +1,19 @@
+---
+import AppPage from "../../components/AppPage.astro";
+import { isPrefixedLocale } from "../../i18n.ts";
+
+export function getStaticPaths() {
+  return [
+    { params: { locale: "en" } },
+    { params: { locale: "ko" } },
+    { params: { locale: "zh" } },
+  ];
+}
+
+const { locale } = Astro.params;
+if (!isPrefixedLocale(locale)) {
+  throw new Error(`invalid locale: ${locale}`);
+}
+---
+
+<AppPage locale={locale} view="community" />

@@ -26,11 +26,14 @@ export type ShareNavigatorLike = {
 export type AppShareOutcome = "shared" | "copied" | "cancelled" | "unsupported";
 
 /** アプリ URL を Web Share API で出せるか。 */
-export function canShareAppUrl(nav: ShareNavigatorLike | undefined): boolean {
+export function canShareAppUrl(
+  nav: ShareNavigatorLike | undefined,
+  data: ShareData = APP_SHARE_DATA,
+): boolean {
   if (!nav?.share) return false;
   if (!nav.canShare) return true;
   try {
-    return nav.canShare(APP_SHARE_DATA);
+    return nav.canShare(data);
   } catch {
     return false;
   }
@@ -43,17 +46,20 @@ export function canShareAppUrl(nav: ShareNavigatorLike | undefined): boolean {
 export async function shareAppUrl(options: {
   navigator?: ShareNavigatorLike;
   copyText?: (text: string) => Promise<boolean>;
+  url?: string;
 }): Promise<AppShareOutcome> {
   const nav = options.navigator;
-  if (canShareAppUrl(nav)) {
+  const url = options.url ?? APP_SHARE_URL;
+  const data: ShareData = { title: APP_SHARE_TITLE, url };
+  if (canShareAppUrl(nav, data)) {
     try {
-      await nav?.share?.(APP_SHARE_DATA);
+      await nav?.share?.(data);
       return "shared";
     } catch (error) {
       if (isAbort(error)) return "cancelled";
     }
   }
-  if (options.copyText && (await options.copyText(APP_SHARE_URL))) {
+  if (options.copyText && (await options.copyText(url))) {
     return "copied";
   }
   return "unsupported";

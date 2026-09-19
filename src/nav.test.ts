@@ -28,13 +28,20 @@ describe("app view path", () => {
     expect(parseAppView({ pathname: "/", hash: "#community" })).toBe("community");
     expect(parseAppView({ pathname: "/community", hash: "" })).toBe("community");
     expect(parseAppView({ pathname: "/nope", hash: "" })).toBe("maker");
+    expect(parseAppView("/en")).toBe("maker");
+    expect(parseAppView("/en/community")).toBe("community");
+    expect(parseAppView("/ko/community/")).toBe("community");
+    expect(parseAppView({ pathname: "/en", hash: "#community" })).toBe("community");
   });
 
   it("writes stable paths and titles", () => {
     expect(pathForView("maker")).toBe("/");
     expect(pathForView("community")).toBe("/community");
+    expect(pathForView("maker", "en")).toBe("/en");
+    expect(pathForView("community", "ko")).toBe("/ko/community");
     expect(documentTitleForView("maker")).toBe(MAKER_DOCUMENT_TITLE);
     expect(documentTitleForView("community")).toBe("みんなの #あのねジャンプ");
+    expect(documentTitleForView("maker", "en")).toBe("Anone Jump Maker");
   });
 
   it("canonicalizes leftover hashes onto the real path and keeps the query", () => {
@@ -46,6 +53,9 @@ describe("app view path", () => {
     );
     expect(canonicalAppUrl({ pathname: "/", search: "?bench=1", hash: "#maker" })).toBe("/?bench=1");
     expect(canonicalAppUrl({ pathname: "/community", search: "?bench=1", hash: "" })).toBeNull();
+    expect(canonicalAppUrl({ pathname: "/en", search: "", hash: "#community" })).toBe("/en/community");
+    expect(canonicalAppUrl({ pathname: "/ja", search: "", hash: "" })).toBe("/");
+    expect(canonicalAppUrl({ pathname: "/en/", search: "", hash: "" })).toBe("/en");
   });
 
   it("renders Japanese in-site links to the real paths", () => {
@@ -70,6 +80,8 @@ describe("app view path", () => {
     const origin = "https://anone.yoiailabs.com";
     expect(appViewFromClick({ href: `${origin}/community`, target: "" }, origin)).toBe("community");
     expect(appViewFromClick({ href: `${origin}/`, target: "" }, origin)).toBe("maker");
+    expect(appViewFromClick({ href: `${origin}/en/community`, target: "" }, origin)).toBe("community");
+    expect(appViewFromClick({ href: `${origin}/zh`, target: "" }, origin)).toBe("maker");
     expect(appViewFromClick({ href: `${origin}/community`, target: "_blank" }, origin)).toBeNull();
     expect(
       appViewFromClick({ href: "https://x.com/search?q=%23test", target: "_blank" }, origin),

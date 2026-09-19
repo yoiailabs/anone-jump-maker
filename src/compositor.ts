@@ -39,6 +39,7 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
+import { DEFAULT_LOCALE, songCreditLine, type Locale } from "./i18n.ts";
 import { photoForSlot, slotForTime, type SlotTimeline } from "./timeline.ts";
 
 export { BLUR_SOURCE, OUTPUT, OUTPUTS, STAGE_MAX_REM, type AspectMode } from "./layout.ts";
@@ -125,12 +126,14 @@ export type Compositor = {
 export function createCompositor(options?: {
   resolutionScale?: number;
   createKeyer?: () => GpuKeyer | null;
+  locale?: Locale;
 }): Compositor {
   let gpuKeyer = (options?.createKeyer ?? createGpuKeyer)();
   let keying = pickKeyingBackend(gpuKeyer);
   let keyingDebug = describeKeying(keying, gpuKeyer?.debug);
   let mode: AspectMode = DEFAULT_ASPECT;
   let resolutionScale = options?.resolutionScale ?? 1;
+  const locale = options?.locale ?? DEFAULT_LOCALE;
   const canvas = document.createElement("canvas");
   applyCanvasSize(canvas, mode, resolutionScale);
   canvas.className = "stage-canvas";
@@ -217,7 +220,7 @@ export function createCompositor(options?: {
     } else {
       paintLandscape(ctx, main, w, h);
     }
-    paintSongCredit(ctx, w, h, mode);
+    paintSongCredit(ctx, w, h, mode, locale);
     return slot;
   };
 
@@ -633,7 +636,7 @@ function paintOutput(
   ctx.fillRect(0, panel.y + panel.h - half, w, PANEL_DIVIDER_PX);
 }
 
-export const SONG_CREDIT = "♪ あのね - ナナツカゼ";
+export const SONG_CREDIT = songCreditLine();
 
 /** 横短辺×この比。縦はプレビュー CSS スケールで横と同じ見た目になるよう小さくする。 */
 export const SONG_CREDIT_FONT_FRAC = 0.055;
@@ -697,14 +700,30 @@ export function songCreditLayout(
   };
 }
 
-function paintSongCredit(ctx: CanvasRenderingContext2D, w: number, h: number, mode: AspectMode): void {
-  const { fontSize, x, y, textAlign, textBaseline } = songCreditLayout(w, h, mode);
+const SONG_CREDIT_FONT =
+  '"Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif';
+
+function paintSongCredit(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  mode: AspectMode,
+  locale: Locale = DEFAULT_LOCALE,
+): void {
+  const credit = songCreditLine(locale);
+  const layout = songCreditLayout(w, h, mode);
+  let { fontSize, x, y, textAlign, textBaseline, pad } = layout;
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-  ctx.font = `500 ${fontSize}px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif`;
+  const maxWidth = Math.max(1, w - pad * 2);
+  ctx.font = `500 ${fontSize}px ${SONG_CREDIT_FONT}`;
+  while (fontSize > 10 && ctx.measureText(credit).width > maxWidth) {
+    fontSize -= 1;
+    ctx.font = `500 ${fontSize}px ${SONG_CREDIT_FONT}`;
+  }
   ctx.textAlign = textAlign;
   ctx.textBaseline = textBaseline;
   ctx.shadowColor = "rgba(0, 0, 0, 0.65)";
@@ -712,6 +731,6 @@ function paintSongCredit(ctx: CanvasRenderingContext2D, w: number, h: number, mo
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = Math.max(1, Math.round(fontSize * 0.06));
   ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
-  ctx.fillText(SONG_CREDIT, x, y);
+  ctx.fillText(credit, x, y);
   ctx.restore();
 }
