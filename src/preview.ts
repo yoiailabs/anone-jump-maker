@@ -47,7 +47,7 @@ export function restartButtonHtml(locale: Locale = DEFAULT_LOCALE): string {
 }
 
 export function muteButtonHtml(muted: boolean, locale: Locale = DEFAULT_LOCALE): string {
-  return `${controlIcon("sound-on", ICON_SOUND_ON, !muted)}${controlIcon("sound-off", ICON_SOUND_OFF, muted)}${volatileLabel(previewSoundLabel(muted, locale))}`;
+  return `<span class="preview-ctrl-row">${controlIcon("sound-on", ICON_SOUND_ON, !muted)}${controlIcon("sound-off", ICON_SOUND_OFF, muted)}${volatileLabel(previewSoundLabel(muted, locale))}</span><small class="preview-mute-hint">${t(locale, "previewMuteHint")}</small>`;
 }
 
 export type PreviewControlRoot = {

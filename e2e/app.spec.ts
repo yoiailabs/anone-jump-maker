@@ -91,7 +91,7 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#previewSaveHint")).toHaveText("端末内で生成します。数十秒かかることがあります。");
   await expect(page.locator("#restartBtn")).toBeVisible();
   await expect(page.locator("#muteBtn")).toBeVisible();
-  await expect(page.locator("#previewMuteHint")).toHaveText("プレビュー時のみ");
+  await expect(page.locator("#muteBtn .preview-mute-hint")).toHaveText("プレビュー時のみ");
   await expect(page.locator("#modalPlayBtn")).toHaveCount(0);
   await expect(page.locator("#previewState")).toHaveCount(0);
   await expect(page.locator("#slotMeter")).toHaveCount(0);

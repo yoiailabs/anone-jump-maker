@@ -59,8 +59,8 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain('id="slotMeter"');
     expect(makerSrc.indexOf('id="stage"')).toBeLessThan(makerSrc.indexOf('id="restartBtn"'));
     expect(makerSrc.indexOf('id="restartBtn"')).toBeLessThan(makerSrc.indexOf('id="muteBtn"'));
-    expect(makerSrc.indexOf('id="muteBtn"')).toBeLessThan(makerSrc.indexOf('id="previewMuteHint"'));
-    expect(makerSrc.indexOf('id="previewMuteHint"')).toBeLessThan(makerSrc.indexOf('id="previewSaveBtn"'));
+    expect(makerSrc).not.toContain('id="previewMuteHint"');
+    expect(makerSrc.indexOf('id="muteBtn"')).toBeLessThan(makerSrc.indexOf('id="previewSaveBtn"'));
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");
     expect(appSrc).toContain("previewSaveBtn.disabled = saveDisabled");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(2);
