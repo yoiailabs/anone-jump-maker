@@ -307,6 +307,12 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect
     .poll(async () => stripZwsp((await disclaimer.textContent()) ?? ""))
     .toContain("※ファン制作の非公式アプリです。");
+  await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
+  await expect(toCommunity).toHaveClass(/\bbtn\b/);
+  const disclaimerBox = await disclaimer.boundingBox();
+  const linkBox = await toCommunity.boundingBox();
+  expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
+
   const browsersNote = page.locator("#browsersNote");
   await expect(browsersNote).toBeVisible();
   await expect(browsersNote).toContainText("動作確認済み");
@@ -315,13 +321,13 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(browsersNote).toContainText("PC / Mac / Linux：Chrome");
   await expect(browsersNote).toContainText("Mac：Safari も可");
   await expect(browsersNote).not.toContainText("サポート");
-  await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
-  await expect(toCommunity).toHaveClass(/\bbtn\b/);
-  const disclaimerBox = await disclaimer.boundingBox();
+  const statusBox = await page.locator("#status").boundingBox();
   const browsersBox = await browsersNote.boundingBox();
-  const linkBox = await toCommunity.boundingBox();
-  expect(disclaimerBox && browsersBox && disclaimerBox.y < browsersBox.y).toBe(true);
-  expect(browsersBox && linkBox && browsersBox.y < linkBox.y).toBe(true);
+  const shareBox = await page.locator("#shareAppBtn").boundingBox();
+  const heroBox = await page.locator("#makerView .hero").boundingBox();
+  expect(heroBox && browsersBox && heroBox.y + heroBox.height < browsersBox.y).toBe(true);
+  expect(statusBox && browsersBox && statusBox.y < browsersBox.y).toBe(true);
+  expect(browsersBox && shareBox && browsersBox.y < shareBox.y).toBe(true);
 
   await expect(toCommunity).toHaveAttribute("href", "/community");
   await toCommunity.click();

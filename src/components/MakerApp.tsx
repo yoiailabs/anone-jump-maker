@@ -91,7 +91,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <p className="eyebrow">#あのねジャンプ</p>
             <h1 id="makerTitle">{t(locale, "makerTitle")}</h1>
             <JaLede locale={locale} />
-            <BrowsersNote locale={locale} />
             <p className="hero-more">
               <Button
                 variant="site"
@@ -167,6 +166,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <p className="status notranslate" id="status" data-kind="idle" translate="no">
               {t(locale, "makerStatusIdle")}
             </p>
+            <BrowsersNote locale={locale} />
           </section>
 
           <div className="share-wrap">

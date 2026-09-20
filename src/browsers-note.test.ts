@@ -39,11 +39,12 @@ describe("verified browsers notice", () => {
     }
   });
 
-  it("renders in the maker hero after the unofficial lede", () => {
+  it("renders under the idle status, not in the hero", () => {
     expect(noteSrc).toContain('id="browsersNote"');
     expect(noteSrc).toContain("makerBrowsersHeading");
-    expect(makerSrc).toMatch(/<JaLede\b[^/]*\/>\s*<BrowsersNote\b/);
+    expect(makerSrc).not.toMatch(/<JaLede\b[^/]*\/>\s*<BrowsersNote\b/);
+    expect(makerSrc).toMatch(/id="status"[\s\S]*?<BrowsersNote\b/);
     expect(makerSrc).not.toMatch(/id="browsersNote"[^>]*translate="no"|translate="no"[^>]*id="browsersNote"/);
-    expect(stylesSrc).toMatch(/\.browsers-note\s*\{/);
+    expect(stylesSrc).toMatch(/\.browsers-note\s*\{[^}]*font-size:\s*0\.72rem/);
   });
 });
