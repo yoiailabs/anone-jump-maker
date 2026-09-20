@@ -78,7 +78,7 @@ describe("createCompositor", () => {
     }
   });
 
-  it("draws standard and scaled character plates at x1.2, x1.3, and x1.4", async () => {
+  it("draws standard and scaled character plates at 1.2 and 1.4", async () => {
     const compositor = createCompositor({
       resolutionScale: 1,
       createKeyer: () => null,
@@ -109,15 +109,11 @@ describe("createCompositor", () => {
       expect(luma(standardUpper)).toBeGreaterThan(80);
       expect(luma(standardLower)).toBeLessThan(80);
 
-      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "x1.2");
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.2");
       expect(luma(sample(640, 250))).toBeGreaterThan(80);
       expect(luma(sample(640, 400))).toBeLessThan(80);
 
-      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "x1.3");
-      expect(luma(sample(640, 280))).toBeLessThan(80);
-      expect(luma(sample(640, 540))).toBeLessThan(80);
-
-      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "x1.4");
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.4");
       expect(luma(sample(640, 280))).toBeLessThan(80);
       expect(luma(sample(640, 540))).toBeLessThan(80);
     } finally {

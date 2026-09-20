@@ -727,14 +727,6 @@ html[lang="ja"] .lede {
   padding: 0.35rem 0.25rem;
 }
 
-.aspect-toggle.cols-4 {
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-}
-
-.aspect-toggle.cols-4 label {
-  padding: 0.35rem 0.12rem;
-}
-
 .aspect-toggle label {
   display: flex;
   align-items: center;

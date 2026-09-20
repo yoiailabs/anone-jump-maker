@@ -128,11 +128,12 @@ describe("characterDest", () => {
 describe("character size", () => {
   it("defaults to the official standard scale", () => {
     expect(DEFAULT_CHARACTER_SIZE).toBe("standard");
-    expect(CHARACTER_SIZES).toEqual(["standard", "x1.2", "x1.3", "x1.4"]);
+    expect(CHARACTER_SIZES).toEqual(["standard", "1.2", "1.4"]);
     expect(isCharacterSize("standard")).toBe(true);
-    expect(isCharacterSize("x1.2")).toBe(true);
-    expect(isCharacterSize("x1.3")).toBe(true);
-    expect(isCharacterSize("x1.4")).toBe(true);
+    expect(isCharacterSize("1.2")).toBe(true);
+    expect(isCharacterSize("1.4")).toBe(true);
+    expect(isCharacterSize("1.3")).toBe(false);
+    expect(isCharacterSize("x1.3")).toBe(false);
     expect(isCharacterSize("large")).toBe(false);
     expect(isCharacterSize("none")).toBe(false);
     expect(characterPlateScale()).toBe(1);
@@ -141,14 +142,13 @@ describe("character size", () => {
     expect(characterScale("landscape", "standard")).toBe(LANDSCAPE_CHAR_SCALE);
   });
 
-  it("scales the keyed plate by x1.2, x1.3, and x1.4 in both aspects", () => {
+  it("scales the keyed plate by 1.2 and 1.4 in both aspects", () => {
     expect(CHARACTER_SIZE_SCALE).toEqual({
       standard: 1,
-      "x1.2": 1.2,
-      "x1.3": 1.3,
-      "x1.4": 1.4,
+      "1.2": 1.2,
+      "1.4": 1.4,
     });
-    for (const size of ["x1.2", "x1.3", "x1.4"] as const) {
+    for (const size of ["1.2", "1.4"] as const) {
       const factor = CHARACTER_SIZE_SCALE[size];
       expect(characterPlateScale(size)).toBeCloseTo(factor, 5);
       expect(characterScale("portrait", size)).toBeCloseTo(CHAR_SCALE * factor, 5);

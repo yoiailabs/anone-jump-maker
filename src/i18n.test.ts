@@ -136,14 +136,13 @@ describe("messages", () => {
     expect(t("en", "makerOfficialMv")).toBe("“Anone” MV");
     expect(t("ja", "makerCharacterLegend")).toBe("キャラサイズ");
     expect(t("ja", "makerCharacterStandard")).toBe("標準");
-    expect(t("ja", "makerCharacterX12")).toBe("x1.2");
-    expect(t("ja", "makerCharacterX13")).toBe("x1.3");
-    expect(t("ja", "makerCharacterX14")).toBe("x1.4");
+    expect(t("ja", "makerCharacter12")).toBe("1.2");
+    expect(t("ja", "makerCharacter14")).toBe("1.4");
     expect(t("en", "makerCharacterLegend")).toBe("Character size");
     expect(t("en", "makerCharacterStandard")).toBe("Standard");
-    expect(t("en", "makerCharacterX13")).toBe("x1.3");
+    expect(t("en", "makerCharacter12")).toBe("1.2");
     expect(t("ko", "makerCharacterStandard")).toBe("표준");
-    expect(t("zh", "makerCharacterX14")).toBe("x1.4");
+    expect(t("zh", "makerCharacter14")).toBe("1.4");
     expect(t("ja", "previewCharacterAria")).toBe("プレビューのキャラサイズ");
   });
 

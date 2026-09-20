@@ -226,16 +226,15 @@ describe("character size draw path", () => {
     expect(DEFAULT_CHARACTER_SIZE).toBe("standard");
   });
 
-  it("keeps the keyed plate at 1× for 標準 and at x1.2 / x1.3 / x1.4", () => {
+  it("keeps the keyed plate at 1× for 標準 and at 1.2 / 1.4", () => {
     expect(characterScale("portrait", "standard")).toBe(CHAR_SCALE);
     expect(characterScale("landscape", "standard")).toBe(LANDSCAPE_CHAR_SCALE);
     const panel = mainPanelRect(608, 1080, "portrait");
     const standard = characterDest(panel.w, panel.h, characterScale("portrait", "standard"));
     expect(standard).toEqual({ x: 0, y: 0, w: panel.w, h: panel.h });
     for (const [size, factor] of [
-      ["x1.2", 1.2],
-      ["x1.3", 1.3],
-      ["x1.4", 1.4],
+      ["1.2", 1.2],
+      ["1.4", 1.4],
     ] as const) {
       const scaled = characterDest(panel.w, panel.h, characterScale("portrait", size));
       expect(scaled.w / standard.w).toBeCloseTo(factor, 5);
@@ -254,9 +253,11 @@ describe("character size draw path", () => {
     expect(makerSrc).toContain('name="character"');
     expect(makerSrc).toContain('name="preview-character"');
     expect(makerSrc).toContain('value: "standard"');
-    expect(makerSrc).toContain('value: "x1.2"');
-    expect(makerSrc).toContain('value: "x1.3"');
-    expect(makerSrc).toContain('value: "x1.4"');
+    expect(makerSrc).toContain('value: "1.2"');
+    expect(makerSrc).toContain('value: "1.4"');
+    expect(makerSrc).not.toContain('value: "1.3"');
+    expect(makerSrc).not.toContain('value: "x1.3"');
+    expect(makerSrc).not.toContain("makerCharacterX13");
     expect(makerSrc).not.toContain('value: "large"');
     expect(makerSrc).not.toContain("makerCharacterNone");
     expect(appSrc).toContain('input[name="character"], input[name="preview-character"]');

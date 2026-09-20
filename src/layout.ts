@@ -93,24 +93,22 @@ export function isImageFilter(value: string): value is ImageFilter {
  * 線画キャラの大きさ。向き・切替・フィルターと独立。
  * キー済み 16:9 プレートの倍率。標準は公式テンプレと同じ等倍。
  */
-export type CharacterSize = "standard" | "x1.2" | "x1.3" | "x1.4";
+export type CharacterSize = "standard" | "1.2" | "1.4";
 
-export const CHARACTER_SIZES = ["standard", "x1.2", "x1.3", "x1.4"] as const;
+export const CHARACTER_SIZES = ["standard", "1.2", "1.4"] as const;
 
 export const DEFAULT_CHARACTER_SIZE: CharacterSize = "standard";
 
 export const CHARACTER_SIZE_LABELS: Record<CharacterSize, string> = {
   standard: "標準",
-  "x1.2": "x1.2",
-  "x1.3": "x1.3",
-  "x1.4": "x1.4",
+  "1.2": "1.2",
+  "1.4": "1.4",
 };
 
 export const CHARACTER_SIZE_SCALE: Record<CharacterSize, number> = {
   standard: 1,
-  "x1.2": 1.2,
-  "x1.3": 1.3,
-  "x1.4": 1.4,
+  "1.2": 1.2,
+  "1.4": 1.4,
 };
 
 export function isCharacterSize(value: string): value is CharacterSize {
