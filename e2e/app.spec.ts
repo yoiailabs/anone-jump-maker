@@ -86,10 +86,14 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 
   await settlePreviewPlayback(page);
-  await expect(page.locator("#previewState")).toHaveText(/再生中|停止中/);
   await expect(page.locator("#previewSaveBtn")).toBeVisible();
   await expect(page.locator("#previewSaveBtn")).toHaveText("動画を保存");
   await expect(page.locator("#previewSaveHint")).toHaveText("端末内で生成します。数十秒かかることがあります。");
+  await expect(page.locator("#restartBtn")).toBeVisible();
+  await expect(page.locator("#muteBtn")).toBeVisible();
+  await expect(page.locator("#modalPlayBtn")).toHaveCount(0);
+  await expect(page.locator("#previewState")).toHaveCount(0);
+  await expect(page.locator("#slotMeter")).toHaveCount(0);
 
   const mute = page.locator("#muteBtn");
   await mute.click();
@@ -701,13 +705,10 @@ async function uploadPhoto(page: Page): Promise<void> {
 }
 
 async function settlePreviewPlayback(page: Page): Promise<void> {
-  const state = page.locator("#previewState");
-  await expect(state).toHaveText(/再生中|停止中/);
-  if ((await state.textContent())?.includes("再生中")) return;
+  await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
   if ((await page.locator("#status").textContent())?.includes("再生できませんでした")) {
     await page.locator("#muteBtn").click();
-    await page.locator("#modalPlayBtn").click();
-    await expect(state).toHaveText(/再生中|停止中/);
+    await page.locator("#stage").click();
   }
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 }

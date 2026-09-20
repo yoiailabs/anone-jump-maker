@@ -10,12 +10,7 @@ import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
-import {
-  muteButtonHtml,
-  playPauseButtonHtml,
-  PREVIEW_MUTED_DEFAULT,
-  restartButtonHtml,
-} from "../preview.ts";
+import { muteButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -339,36 +334,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <span className="stage-play-hint" aria-hidden="true" />
             </button>
           </div>
-          <div className="preview-save">
-            <Button
-              variant="site"
-              type="button"
-              id="previewSaveBtn"
-              className="btn preview-save-btn"
-              disabled
-              aria-describedby="previewSaveHint"
-            >
-              {t(locale, "makerSave")}
-            </Button>
-            <p className="preview-save-hint" id="previewSaveHint">
-              {t(locale, "previewSaveHint")}
-            </p>
-          </div>
-          <p className="slot-meter notranslate" id="slotMeter" translate="no">
-            {t(locale, "previewSlotPending")}
-          </p>
-          <p className="preview-state notranslate" id="previewState" translate="no" aria-live="polite">
-            {t(locale, "previewStopped")}
-          </p>
           <div className="preview-actions">
-            <Button
-              variant="site"
-              type="button"
-              id="modalPlayBtn"
-              className="btn notranslate"
-              translate="no"
-              dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
-            />
             <Button
               variant="site"
               type="button"
@@ -385,6 +351,21 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
               dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
             />
+          </div>
+          <div className="preview-save">
+            <Button
+              variant="site"
+              type="button"
+              id="previewSaveBtn"
+              className="btn preview-save-btn"
+              disabled
+              aria-describedby="previewSaveHint"
+            >
+              {t(locale, "makerSave")}
+            </Button>
+            <p className="preview-save-hint" id="previewSaveHint">
+              {t(locale, "previewSaveHint")}
+            </p>
           </div>
         </div>
       </dialog>

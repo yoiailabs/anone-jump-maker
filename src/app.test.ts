@@ -52,8 +52,14 @@ describe("preview save CTA", () => {
   it("keeps the panel save button and wires preview save to the same export path", () => {
     expect(makerSrc).toContain('id="saveBtn"');
     expect(makerSrc).toContain('id="previewSaveBtn"');
-    expect(makerSrc.indexOf('id="stage"')).toBeLessThan(makerSrc.indexOf('id="previewSaveBtn"'));
-    expect(makerSrc.indexOf('id="previewSaveBtn"')).toBeLessThan(makerSrc.indexOf('id="modalPlayBtn"'));
+    expect(makerSrc).toContain('id="restartBtn"');
+    expect(makerSrc).toContain('id="muteBtn"');
+    expect(makerSrc).not.toContain('id="modalPlayBtn"');
+    expect(makerSrc).not.toContain('id="previewState"');
+    expect(makerSrc).not.toContain('id="slotMeter"');
+    expect(makerSrc.indexOf('id="stage"')).toBeLessThan(makerSrc.indexOf('id="restartBtn"'));
+    expect(makerSrc.indexOf('id="restartBtn"')).toBeLessThan(makerSrc.indexOf('id="muteBtn"'));
+    expect(makerSrc.indexOf('id="muteBtn"')).toBeLessThan(makerSrc.indexOf('id="previewSaveBtn"'));
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");
     expect(appSrc).toContain("previewSaveBtn.disabled = saveDisabled");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(2);

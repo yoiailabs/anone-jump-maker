@@ -126,10 +126,10 @@ describe("volatile chrome in the maker markup", () => {
     expect(appSrc.includes("muteBtn.innerHTML")).toBe(false);
   });
 
-  it("isolates status, slot meter, and preview state", () => {
+  it("isolates status chrome", () => {
     expect(makerSrc).toMatch(/id="status"[^>]*translate="no"|translate="no"[^>]*id="status"/);
-    expect(makerSrc).toMatch(/id="slotMeter"[^>]*translate="no"|translate="no"[^>]*id="slotMeter"/);
-    expect(makerSrc).toMatch(/id="previewState"[^>]*translate="no"|translate="no"[^>]*id="previewState"/);
+    expect(makerSrc).not.toMatch(/id="slotMeter"/);
+    expect(makerSrc).not.toMatch(/id="previewState"/);
     expect(appSrc).toContain("isolateVolatileChrome");
   });
 
