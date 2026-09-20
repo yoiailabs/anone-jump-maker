@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkBannersHtml, OFFICIAL_LINKS } from "./links.ts";
+import { linkBannersHtml, OFFICIAL_LINKS, OFFICIAL_MV_WATCH_HREF } from "./links.ts";
 
 describe("official link banners", () => {
   it("covers the official SNS and streaming services once each", () => {
@@ -40,5 +40,9 @@ describe("official link banners", () => {
     expect(linkBannersHtml(OFFICIAL_LINKS.slice(0, 1), "ja", "communityHashtagSearchAria")).toContain(
       "Xで #あのねジャンプ を検索する（新しいタブ）",
     );
+  });
+
+  it("shares the official MV watch URL with the JumpLoop", () => {
+    expect(OFFICIAL_MV_WATCH_HREF).toBe("https://www.youtube.com/watch?v=M-IayQIR0XA");
   });
 });

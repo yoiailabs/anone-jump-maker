@@ -1168,6 +1168,40 @@ a.btn:focus-visible {
   stroke-linejoin: round;
 }
 
+/* 公式欄末尾の「あのね」MV。16:9 を予約して hydrate 前後のジャンプを抑える。 */
+.official-mv {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0.15rem 0 0;
+}
+
+.official-mv-title {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+}
+
+.official-mv-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 1.4rem;
+  background: var(--card);
+  border: 3.5px solid var(--ink);
+  box-shadow: 7px 8px 0 var(--ink);
+  overflow: hidden;
+}
+
+.official-mv-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 /* コミュニティ専用ページ。masonry。高さの違う埋め込みがメーカーを揺すらない。 */
 .community-jumps {
   display: flex;
