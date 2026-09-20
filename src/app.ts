@@ -5,11 +5,14 @@ import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts
 import { EXPORT_FPS, exportJumpVideo, exportProgressPercent, isAbortError, seekVideo, throwIfAborted } from "./export.ts";
 import {
   DEFAULT_ASPECT,
+  DEFAULT_CHARACTER_SIZE,
   isAspectMode,
+  isCharacterSize,
   isImageFilter,
   isSwapStyle,
   TEMPLATES,
   type AspectMode,
+  type CharacterSize,
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
@@ -148,13 +151,19 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const filterInputs = [
     ...root.querySelectorAll<HTMLInputElement>('input[name="filter"], input[name="preview-filter"]'),
   ];
+  const characterInputs = [
+    ...root.querySelectorAll<HTMLInputElement>('input[name="character"], input[name="preview-character"]'),
+  ];
 
   const aspectValue = checkedNamedValue(aspectInputs, "aspect");
   const swapValue = checkedNamedValue(swapInputs, "swap");
   const filterValue = checkedNamedValue(filterInputs, "filter");
+  const characterValue = checkedNamedValue(characterInputs, "character");
   let mode: AspectMode = aspectValue && isAspectMode(aspectValue) ? aspectValue : DEFAULT_ASPECT;
   let swapStyle: SwapStyle = swapValue && isSwapStyle(swapValue) ? swapValue : "jump";
   let imageFilter: ImageFilter = filterValue && isImageFilter(filterValue) ? filterValue : "none";
+  let characterSize: CharacterSize =
+    characterValue && isCharacterSize(characterValue) ? characterValue : DEFAULT_CHARACTER_SIZE;
   const video = createTemplateVideo(mode);
   stage.dataset.aspect = mode;
   document.body.append(video);
@@ -236,6 +245,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
+  const syncCharacterRadios = (value: CharacterSize) => {
+    for (const input of characterInputs) {
+      input.checked = input.value === value;
+    }
+  };
+
   const photosLocked = () => recording || photosBusy;
 
   const syncPickerLabel = () => {
@@ -285,6 +300,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     for (const input of filterInputs) {
       input.disabled = recording;
     }
+    for (const input of characterInputs) {
+      input.disabled = recording;
+    }
   };
 
   const paintSamples: number[] = [];
@@ -294,7 +312,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (!compositor || !timelines) return;
     const started = benchFlags.bench ? performance.now() : 0;
     const cuts = timeline();
-    const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character);
+    const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize);
     if (benchFlags.bench) {
       if (paintClockStart === 0) paintClockStart = started;
       paintSamples.push(performance.now() - started);
@@ -664,6 +682,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     paint();
   };
 
+  const applyCharacterSize = (next: CharacterSize) => {
+    if (next === characterSize) return;
+    characterSize = next;
+    syncCharacterRadios(characterSize);
+    paint();
+  };
+
   video.addEventListener("loadeddata", () => {
     void (async () => {
       await ensureTimelines();
@@ -727,6 +752,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isImageFilter(input.value)) return;
       applyFilter(input.value);
+    });
+  }
+
+  for (const input of characterInputs) {
+    input.addEventListener("change", () => {
+      if (recording || !input.checked || !isCharacterSize(input.value)) return;
+      applyCharacterSize(input.value);
     });
   }
 

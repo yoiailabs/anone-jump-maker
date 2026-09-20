@@ -90,6 +90,32 @@ export function isImageFilter(value: string): value is ImageFilter {
 }
 
 /**
+ * 線画キャラの大きさ。向き・切替・フィルターと独立。
+ * キー済み 16:9 プレートの倍率。標準は公式テンプレと同じ等倍。
+ */
+export type CharacterSize = "standard" | "1.2" | "1.4";
+
+export const CHARACTER_SIZES = ["standard", "1.2", "1.4"] as const;
+
+export const DEFAULT_CHARACTER_SIZE: CharacterSize = "standard";
+
+export const CHARACTER_SIZE_LABELS: Record<CharacterSize, string> = {
+  standard: "標準",
+  "1.2": "1.2",
+  "1.4": "1.4",
+};
+
+export const CHARACTER_SIZE_SCALE: Record<CharacterSize, number> = {
+  standard: 1,
+  "1.2": 1.2,
+  "1.4": 1.4,
+};
+
+export function isCharacterSize(value: string): value is CharacterSize {
+  return (CHARACTER_SIZES as readonly string[]).includes(value);
+}
+
+/**
  * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強はその一段上。
  * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
  */
@@ -279,8 +305,16 @@ export function usesBlurBackdrop(mode: AspectMode): boolean {
   return mode === "portrait";
 }
 
-export function characterScale(mode: AspectMode = "portrait"): number {
-  return mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
+export function characterPlateScale(size: CharacterSize = DEFAULT_CHARACTER_SIZE): number {
+  return CHARACTER_SIZE_SCALE[size];
+}
+
+export function characterScale(
+  mode: AspectMode = "portrait",
+  size: CharacterSize = DEFAULT_CHARACTER_SIZE,
+): number {
+  const base = mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
+  return base * characterPlateScale(size);
 }
 
 /** 公式は縦横とも 0。`CHAR_SHIFT_Y` を変えたときだけパネル高さに比例させる。 */

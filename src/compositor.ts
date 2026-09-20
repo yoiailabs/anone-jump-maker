@@ -21,6 +21,7 @@ import {
   characterShiftY,
   coverDest,
   DEFAULT_ASPECT,
+  DEFAULT_CHARACTER_SIZE,
   filterBlurPx,
   hasFrameFx,
   hasImageFilter,
@@ -34,6 +35,7 @@ import {
   templateBandRect,
   usesBlurBackdrop,
   type AspectMode,
+  type CharacterSize,
   type ImageFilter,
   type SwapFx,
   type SwapStyle,
@@ -112,6 +114,7 @@ export type Compositor = {
     swapStyle?: SwapStyle,
     imageFilter?: ImageFilter,
     character?: CharacterFrame,
+    characterSize?: CharacterSize,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   setResolutionScale: (scale: number) => void;
@@ -203,6 +206,7 @@ export function createCompositor(options?: {
     swapStyle: SwapStyle = "jump",
     imageFilter: ImageFilter = "none",
     character?: CharacterFrame,
+    characterSize: CharacterSize = DEFAULT_CHARACTER_SIZE,
   ) => {
     const { slots, slotPhotoOrder } = timeline;
     const slot = slotForTime(time, slots);
@@ -214,7 +218,19 @@ export function createCompositor(options?: {
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
     const characterSource = resolveCharacterSource(video, character);
 
-    composeMain(main, mainCtx, surfaces, plate, characterSource, fx, swapStyle, panel, mode, imageFilter);
+    composeMain(
+      main,
+      mainCtx,
+      surfaces,
+      plate,
+      characterSource,
+      fx,
+      swapStyle,
+      panel,
+      mode,
+      imageFilter,
+      characterSize,
+    );
     if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
@@ -304,6 +320,7 @@ function composeMain(
   panel: { w: number; h: number },
   mode: AspectMode,
   imageFilter: ImageFilter,
+  characterSize: CharacterSize,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -319,7 +336,7 @@ function composeMain(
   }
 
   if (character) {
-    drawCharacter(mainCtx, surfaces, character, mw, mh, mode);
+    drawCharacter(mainCtx, surfaces, character, mw, mh, mode, characterSize);
   }
 
   if (hasFrameFx(fx)) {
@@ -399,13 +416,14 @@ function drawCharacter(
   mw: number,
   mh: number,
   mode: AspectMode,
+  characterSize: CharacterSize,
 ): void {
   const fallback = outputSize(mode);
   const vw = character.width || fallback.width;
   const vh = character.height || fallback.height;
   const band = templateBandRect(vw, vh, mode);
   const keyedSource = keyCharacterBand(surfaces, character, band, mw, mh);
-  paintCharacterOverlay(mainCtx, surfaces, keyedSource, mw, mh, mode);
+  paintCharacterOverlay(mainCtx, surfaces, keyedSource, mw, mh, mode, characterSize);
 }
 
 function keyCharacterBand(
@@ -446,6 +464,7 @@ function paintCharacterOverlay(
   mw: number,
   mh: number,
   mode: AspectMode,
+  characterSize: CharacterSize,
 ): void {
   halo.width = mw;
   halo.height = mh;
@@ -457,7 +476,7 @@ function paintCharacterOverlay(
   haloCtx.fillRect(0, 0, mw, mh);
   haloCtx.globalCompositeOperation = "source-over";
 
-  const dest = characterDest(mw, mh, characterScale(mode), characterShiftY(mh, mode));
+  const dest = characterDest(mw, mh, characterScale(mode, characterSize), characterShiftY(mh, mode));
   const o = characterOutlinePx(mw);
   const ring: ReadonlyArray<readonly [number, number]> = [
     [-o, 0],

@@ -77,6 +77,50 @@ describe("createCompositor", () => {
       compositor.destroy();
     }
   });
+
+  it("draws standard and scaled character plates at 1.2 and 1.4", async () => {
+    const compositor = createCompositor({
+      resolutionScale: 1,
+      createKeyer: () => null,
+    });
+    const photo = await makePhoto("#22ccee");
+    const characterCanvas = document.createElement("canvas");
+    characterCanvas.width = 1280;
+    characterCanvas.height = 720;
+    const cctx = characterCanvas.getContext("2d");
+    expect(cctx).toBeTruthy();
+    cctx!.fillStyle = "#20b836";
+    cctx!.fillRect(0, 0, 1280, 720);
+    cctx!.fillStyle = "#111111";
+    cctx!.fillRect(0, 360, 1280, 360);
+    const character = { source: characterCanvas, width: 1280, height: 720 };
+    const video = document.createElement("video");
+    const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
+    const sample = (x: number, y: number) => {
+      const ctx = compositor.canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas");
+      return ctx.getImageData(x, y, 1, 1).data;
+    };
+    const luma = (px: Uint8ClampedArray) => (px[0] ?? 0) + (px[1] ?? 0) + (px[2] ?? 0);
+    try {
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "standard");
+      const standardUpper = sample(640, 280);
+      const standardLower = sample(640, 540);
+      expect(luma(standardUpper)).toBeGreaterThan(80);
+      expect(luma(standardLower)).toBeLessThan(80);
+
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.2");
+      expect(luma(sample(640, 250))).toBeGreaterThan(80);
+      expect(luma(sample(640, 400))).toBeLessThan(80);
+
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.4");
+      expect(luma(sample(640, 280))).toBeLessThan(80);
+      expect(luma(sample(640, 540))).toBeLessThan(80);
+    } finally {
+      photo.bitmap.close();
+      compositor.destroy();
+    }
+  });
 });
 
 describe("createGpuKeyer", () => {

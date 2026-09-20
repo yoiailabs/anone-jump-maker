@@ -134,6 +134,16 @@ describe("messages", () => {
     expect(t("zh", "makerBrowsersNote")).toBe("已确认可运行的浏览器：Safari, Chrome");
     expect(t("ja", "makerOfficialMv")).toBe("「あのね」MV");
     expect(t("en", "makerOfficialMv")).toBe("“Anone” MV");
+    expect(t("ja", "makerCharacterLegend")).toBe("キャラサイズ");
+    expect(t("ja", "makerCharacterStandard")).toBe("標準");
+    expect(t("ja", "makerCharacter12")).toBe("1.2");
+    expect(t("ja", "makerCharacter14")).toBe("1.4");
+    expect(t("en", "makerCharacterLegend")).toBe("Character size");
+    expect(t("en", "makerCharacterStandard")).toBe("Standard");
+    expect(t("en", "makerCharacter12")).toBe("1.2");
+    expect(t("ko", "makerCharacterStandard")).toBe("표준");
+    expect(t("zh", "makerCharacter14")).toBe("1.4");
+    expect(t("ja", "previewCharacterAria")).toBe("プレビューのキャラサイズ");
   });
 
   it("uses the English store title in non-Japanese credits", () => {
