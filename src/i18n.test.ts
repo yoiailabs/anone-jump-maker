@@ -148,6 +148,10 @@ describe("messages", () => {
     expect(t("en", "previewSaveHint")).toBe("Made on this device. May take tens of seconds.");
     expect(t("ko", "previewSaveHint")).toBe("이 기기에서 만들어요. 수십 초 걸릴 수 있어요.");
     expect(t("zh", "previewSaveHint")).toBe("在本设备内生成，大约几十秒。");
+    expect(t("ja", "previewMuteHint")).toBe("プレビュー時のみ");
+    expect(t("en", "previewMuteHint")).toBe("Preview only");
+    expect(t("ko", "previewMuteHint")).toBe("미리보기에서만");
+    expect(t("zh", "previewMuteHint")).toBe("仅预览时");
   });
 
   it("uses the English store title in non-Japanese credits", () => {

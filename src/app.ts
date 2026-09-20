@@ -139,7 +139,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   benchFlag.id = "benchFlag";
   benchFlag.hidden = !benchFlags.bench;
   benchFlag.style.cssText = "margin:0.4rem 0 0;font-size:0.78rem;color:#5c5146";
-  muteBtn.parentElement?.after(benchFlag);
+  muteBtn.closest(".preview-actions")?.after(benchFlag);
   const aspectInputs = [
     ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
   ];

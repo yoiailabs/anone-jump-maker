@@ -342,15 +342,21 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               className="btn ghost"
               dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
             />
-            <Button
-              variant="site"
-              type="button"
-              id="muteBtn"
-              className="btn ghost notranslate"
-              translate="no"
-              aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
-              dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
-            />
+            <div className="preview-mute">
+              <Button
+                variant="site"
+                type="button"
+                id="muteBtn"
+                className="btn ghost notranslate"
+                translate="no"
+                aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
+                aria-describedby="previewMuteHint"
+                dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
+              />
+              <p className="preview-mute-hint" id="previewMuteHint">
+                {t(locale, "previewMuteHint")}
+              </p>
+            </div>
           </div>
           <div className="preview-save">
             <Button
