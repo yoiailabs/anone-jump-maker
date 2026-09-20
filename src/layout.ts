@@ -91,37 +91,30 @@ export function isImageFilter(value: string): value is ImageFilter {
 
 /**
  * 線画キャラの大きさ。向き・切替・フィルターと独立。
- * - standard: 公式テンプレと同じ等倍（現行）
- * - large: キー済みプレートを約 1.4 倍
- * - none: キャラを描かない（写真と背景エフェクトはそのまま）
+ * キー済み 16:9 プレートの倍率。標準は公式テンプレと同じ等倍。
  */
-export type CharacterSize = "standard" | "large" | "none";
+export type CharacterSize = "standard" | "x1.2" | "x1.3" | "x1.4";
 
-export const CHARACTER_SIZES = ["standard", "large", "none"] as const;
+export const CHARACTER_SIZES = ["standard", "x1.2", "x1.3", "x1.4"] as const;
 
 export const DEFAULT_CHARACTER_SIZE: CharacterSize = "standard";
 
 export const CHARACTER_SIZE_LABELS: Record<CharacterSize, string> = {
   standard: "標準",
-  large: "大",
-  none: "なし",
+  "x1.2": "x1.2",
+  "x1.3": "x1.3",
+  "x1.4": "x1.4",
 };
-
-/** 標準に対するプレート倍率。none は描かないので 0。 */
-export const CHAR_LARGE_SCALE = 1.4;
 
 export const CHARACTER_SIZE_SCALE: Record<CharacterSize, number> = {
   standard: 1,
-  large: CHAR_LARGE_SCALE,
-  none: 0,
+  "x1.2": 1.2,
+  "x1.3": 1.3,
+  "x1.4": 1.4,
 };
 
 export function isCharacterSize(value: string): value is CharacterSize {
-  return value === "standard" || value === "large" || value === "none";
-}
-
-export function showsCharacter(size: CharacterSize): boolean {
-  return size !== "none";
+  return (CHARACTER_SIZES as readonly string[]).includes(value);
 }
 
 /**

@@ -30,7 +30,6 @@ import {
   outputSize,
   plateCoverScale,
   plateRestShiftFrac,
-  showsCharacter,
   STAGE_MAX_REM,
   swapFx,
   templateBandRect,
@@ -103,16 +102,6 @@ export function resolveCharacterSource(
   if (override && override.width > 0 && override.height > 0) return override;
   if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
   return { source: video, width: video.videoWidth, height: video.videoHeight };
-}
-
-/** `none` はキーイングごと省く。プレビューと保存の同じ `draw()` が使う。 */
-export function resolveDrawCharacter(
-  video: HTMLVideoElement,
-  override: CharacterFrame | undefined,
-  size: CharacterSize = DEFAULT_CHARACTER_SIZE,
-): CharacterFrame | null {
-  if (!showsCharacter(size)) return null;
-  return resolveCharacterSource(video, override);
 }
 
 export type Compositor = {
@@ -227,7 +216,7 @@ export function createCompositor(options?: {
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle);
     const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
-    const characterSource = resolveDrawCharacter(video, character, characterSize);
+    const characterSource = resolveCharacterSource(video, character);
 
     composeMain(
       main,
@@ -346,7 +335,7 @@ function composeMain(
     applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
   }
 
-  if (character && showsCharacter(characterSize)) {
+  if (character) {
     drawCharacter(mainCtx, surfaces, character, mw, mh, mode, characterSize);
   }
 

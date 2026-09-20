@@ -78,7 +78,7 @@ describe("createCompositor", () => {
     }
   });
 
-  it("draws standard and large character plates and skips the character when size is none", async () => {
+  it("draws standard and scaled character plates at x1.2, x1.3, and x1.4", async () => {
     const compositor = createCompositor({
       resolutionScale: 1,
       createKeyer: () => null,
@@ -103,24 +103,23 @@ describe("createCompositor", () => {
     };
     const luma = (px: Uint8ClampedArray) => (px[0] ?? 0) + (px[1] ?? 0) + (px[2] ?? 0);
     try {
-      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "none");
-      const noneUpper = sample(640, 280);
-      const noneLower = sample(640, 540);
-      expect(luma(noneUpper)).toBeGreaterThan(80);
-      expect(luma(noneLower)).toBeGreaterThan(80);
-      expect((noneUpper[1] ?? 0) + (noneUpper[2] ?? 0)).toBeGreaterThan(noneUpper[0] ?? 0);
-
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "standard");
       const standardUpper = sample(640, 280);
       const standardLower = sample(640, 540);
       expect(luma(standardUpper)).toBeGreaterThan(80);
       expect(luma(standardLower)).toBeLessThan(80);
 
-      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "large");
-      const largeUpper = sample(640, 280);
-      const largeLower = sample(640, 540);
-      expect(luma(largeUpper)).toBeLessThan(80);
-      expect(luma(largeLower)).toBeLessThan(80);
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "x1.2");
+      expect(luma(sample(640, 250))).toBeGreaterThan(80);
+      expect(luma(sample(640, 400))).toBeLessThan(80);
+
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "x1.3");
+      expect(luma(sample(640, 280))).toBeLessThan(80);
+      expect(luma(sample(640, 540))).toBeLessThan(80);
+
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "x1.4");
+      expect(luma(sample(640, 280))).toBeLessThan(80);
+      expect(luma(sample(640, 540))).toBeLessThan(80);
     } finally {
       photo.bitmap.close();
       compositor.destroy();

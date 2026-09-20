@@ -162,11 +162,12 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <RadioPills
                 name="character"
                 ariaLabel={t(locale, "makerCharacterLegend")}
-                className="aspect-toggle cols-3"
+                className="aspect-toggle cols-4"
                 options={[
                   { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                  { value: "large", label: t(locale, "makerCharacterLarge") },
-                  { value: "none", label: t(locale, "makerCharacterNone") },
+                  { value: "x1.2", label: t(locale, "makerCharacterX12") },
+                  { value: "x1.3", label: t(locale, "makerCharacterX13") },
+                  { value: "x1.4", label: t(locale, "makerCharacterX14") },
                 ]}
               />
             </fieldset>
@@ -318,11 +319,12 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <RadioPills
                 name="preview-character"
                 ariaLabel={t(locale, "previewCharacterAria")}
-                className="aspect-toggle preview-toggle cols-3"
+                className="aspect-toggle preview-toggle cols-4"
                 options={[
                   { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                  { value: "large", label: t(locale, "makerCharacterLarge") },
-                  { value: "none", label: t(locale, "makerCharacterNone") },
+                  { value: "x1.2", label: t(locale, "makerCharacterX12") },
+                  { value: "x1.3", label: t(locale, "makerCharacterX13") },
+                  { value: "x1.4", label: t(locale, "makerCharacterX14") },
                 ]}
               />
             </fieldset>
