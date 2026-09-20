@@ -132,6 +132,8 @@ describe("messages", () => {
     expect(t("en", "makerBrowsersNote")).toBe("Verified browsers: Safari, Chrome");
     expect(t("ko", "makerBrowsersNote")).toBe("동작 확인된 브라우저: Safari, Chrome");
     expect(t("zh", "makerBrowsersNote")).toBe("已确认可运行的浏览器：Safari, Chrome");
+    expect(t("ja", "makerOfficialMv")).toBe("「あのね」MV");
+    expect(t("en", "makerOfficialMv")).toBe("“Anone” MV");
   });
 
   it("uses the English store title in non-Japanese credits", () => {

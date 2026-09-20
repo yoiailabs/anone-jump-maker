@@ -21,6 +21,7 @@ test.describe("language routing", () => {
     await expect(page.locator("#browsersNote")).toHaveText(t("en", "makerBrowsersNote"));
     await expect(page.locator("#browsersNote")).not.toContainText(/supported/i);
     await expect(page.locator("#linksTitle")).toHaveText(t("en", "makerOfficial"));
+    await expect(page.locator("#officialMvTitle")).toHaveText(t("en", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(
       "aria-label",
       t("en", "makerPvAria", { song: t("en", "songTitle") }),
@@ -192,6 +193,7 @@ test.describe("song and artist names", () => {
     await page.goto("/");
     await waitForAppReady(page);
     await expect(page.locator("#linksTitle")).toHaveText(t("ja", "makerOfficial"));
+    await expect(page.locator("#officialMvTitle")).toHaveText(t("ja", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(
       "aria-label",
       t("ja", "makerPvAria", { song: t("ja", "songTitle") }),
@@ -200,6 +202,7 @@ test.describe("song and artist names", () => {
     await page.goto("/ko");
     await waitForAppReady(page);
     await expect(page.locator("#linksTitle")).toHaveText(t("ko", "makerOfficial"));
+    await expect(page.locator("#officialMvTitle")).toHaveText(t("ko", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(
       "aria-label",
       t("ko", "makerPvAria", { song: t("ko", "songTitle") }),
@@ -212,6 +215,7 @@ test.describe("song and artist names", () => {
     await page.goto("/zh");
     await waitForAppReady(page);
     await expect(page.locator("#linksTitle")).toHaveText(t("zh", "makerOfficial"));
+    await expect(page.locator("#officialMvTitle")).toHaveText(t("zh", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(
       "aria-label",
       t("zh", "makerPvAria", { song: t("zh", "songTitle") }),

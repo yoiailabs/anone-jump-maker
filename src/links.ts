@@ -1,5 +1,10 @@
 import { DEFAULT_LOCALE, t, type Locale, type MessageKey } from "./i18n.ts";
 
+/** 公式「あのね」MV。上部 JumpLoop と公式欄の埋め込みで同じ ID を使う。 */
+export const OFFICIAL_MV_VIDEO_ID = "M-IayQIR0XA";
+export const OFFICIAL_MV_WATCH_HREF = `https://www.youtube.com/watch?v=${OFFICIAL_MV_VIDEO_ID}`;
+export const OFFICIAL_MV_EMBED_SRC = `https://www.youtube-nocookie.com/embed/${OFFICIAL_MV_VIDEO_ID}`;
+
 /** 画面最下部に置くナナツカゼさんの公式リンク。ファン制作なので出典として並べる。 */
 export type OfficialLink = {
   /** CSS のアクセント色とアイコンの引き当てに使う。 */

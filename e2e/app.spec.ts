@@ -43,16 +43,20 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   expect(html).not.toContain("Noto+Sans+SC");
   expect(html).not.toContain("communityJumpsTitle");
   expect(html).not.toContain('src="/jump-loop.mp4"');
+  expect(html).not.toContain("youtube-nocookie.com");
+  expect(html).not.toContain("youtube.com/embed");
   const firstLoad = await page.evaluate(() => {
     const resources = performance.getEntriesByType("resource").map((entry) => entry.name);
     return {
       templateVideo: resources.some((name) => /\/template\/(landscape|vertical)\.mp4/.test(name)),
       widgets: Boolean(document.getElementById("twitter-wjs")),
       gtagScript: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
+      officialMv: Boolean(document.querySelector("#officialMv iframe")),
     };
   });
   expect(firstLoad.templateVideo).toBe(false);
   expect(firstLoad.widgets).toBe(false);
+  expect(firstLoad.officialMv).toBe(false);
   await expect
     .poll(async () =>
       page.locator("video.loop-video").evaluate((el) => {
@@ -301,6 +305,26 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#communityJumpsTitle")).toBeHidden();
   await expect(page.locator("#playBtn")).toBeVisible();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
+  await expect(page.locator("#officialMvTitle")).toHaveText("「あのね」MV");
+  await expect(page.locator("#makerView .loop-link")).toHaveAttribute(
+    "href",
+    "https://www.youtube.com/watch?v=M-IayQIR0XA",
+  );
+  const bannersBox = await page.locator("#makerView nav.links .link-banners").boundingBox();
+  const mvBox = await page.locator("#officialMv").boundingBox();
+  const reactionsBox = await page.locator("#makerView .reactions").boundingBox();
+  expect(bannersBox && mvBox && bannersBox.y < mvBox.y).toBe(true);
+  expect(mvBox && reactionsBox && mvBox.y < reactionsBox.y).toBe(true);
+  await page.locator("#officialMv").scrollIntoViewIfNeeded();
+  await expect(page.locator("#officialMvEmbed")).toHaveAttribute(
+    "src",
+    "https://www.youtube-nocookie.com/embed/M-IayQIR0XA",
+  );
+  await expect(page.locator("#officialMvEmbed")).toHaveAttribute(
+    "title",
+    "「あのね」の公式ミュージックビデオ",
+  );
+  await expect(page.locator("#officialMvEmbed")).toHaveAttribute("loading", "lazy");
 
   const disclaimer = page.locator("#makerView .lede");
   const toCommunity = page.locator("#toCommunity");

@@ -4,9 +4,10 @@ import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { BrowsersNote } from "@/components/BrowsersNote.tsx";
 import { JaLede } from "@/components/JaLede.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
+import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
-import { linkBannersHtml } from "../links.ts";
+import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
 import {
@@ -104,7 +105,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
 
           <div className="loop-wrap">
             <JumpLoop
-              href="https://www.youtube.com/watch?v=M-IayQIR0XA"
+              href={OFFICIAL_MV_WATCH_HREF}
               ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
             />
           </div>
@@ -225,6 +226,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 {t(locale, "makerOfficial")}
               </p>
               <ul className="link-banners" dangerouslySetInnerHTML={{ __html: linksHtml }} />
+              <OfficialMvEmbed locale={locale} />
             </nav>
             <section className="reactions" aria-labelledby="reactionsTitle">
               <h2 className="reactions-title" id="reactionsTitle">
