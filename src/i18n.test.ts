@@ -128,10 +128,10 @@ describe("messages", () => {
     expect(t("en", "statusShareUnsupported", { text: "#あのねジャンプ #あのねジャンプメーカー" })).not.toMatch(
       /https?:\/\//,
     );
-    expect(t("ja", "makerBrowsersHeading")).toBe("動作確認済み");
-    expect(t("en", "makerBrowsersIos")).toBe("iOS / iPad: Safari");
-    expect(t("ko", "makerBrowsersHeading")).toBe("동작 확인됨");
-    expect(t("zh", "makerBrowsersMacSafari")).toBe("Mac：Safari 也可以");
+    expect(t("ja", "makerBrowsersNote")).toBe("動作確認済みブラウザ: Safari, Chrome");
+    expect(t("en", "makerBrowsersNote")).toBe("Verified browsers: Safari, Chrome");
+    expect(t("ko", "makerBrowsersNote")).toBe("동작 확인된 브라우저: Safari, Chrome");
+    expect(t("zh", "makerBrowsersNote")).toBe("已确认可运行的浏览器：Safari, Chrome");
   });
 
   it("uses the English store title in non-Japanese credits", () => {

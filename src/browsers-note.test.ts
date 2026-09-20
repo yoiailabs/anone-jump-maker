@@ -1,49 +1,34 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { LOCALES, t, type Locale } from "./i18n.ts";
+import { LOCALES, t } from "./i18n.ts";
 import makerSrc from "./components/MakerApp.tsx?raw";
 import noteSrc from "./components/BrowsersNote.tsx?raw";
 
 const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
-const BROWSER_NOTE_KEYS = [
-  "makerBrowsersHeading",
-  "makerBrowsersIos",
-  "makerBrowsersAndroid",
-  "makerBrowsersDesktop",
-  "makerBrowsersMacSafari",
-] as const;
-
-function noteCopy(locale: Locale): string {
-  return BROWSER_NOTE_KEYS.map((key) => t(locale, key)).join("\n");
-}
-
 describe("verified browsers notice", () => {
-  it("uses 動作確認済み-style wording in every locale", () => {
-    expect(t("ja", "makerBrowsersHeading")).toBe("動作確認済み");
-    expect(t("en", "makerBrowsersHeading")).toBe("Verified on");
-    expect(t("ko", "makerBrowsersHeading")).toBe("동작 확인됨");
-    expect(t("zh", "makerBrowsersHeading")).toBe("已确认可运行");
+  it("uses a short 動作確認済み line in every locale", () => {
+    expect(t("ja", "makerBrowsersNote")).toBe("動作確認済みブラウザ: Safari, Chrome");
+    expect(t("en", "makerBrowsersNote")).toBe("Verified browsers: Safari, Chrome");
+    expect(t("ko", "makerBrowsersNote")).toBe("동작 확인된 브라우저: Safari, Chrome");
+    expect(t("zh", "makerBrowsersNote")).toBe("已确认可运行的浏览器：Safari, Chrome");
   });
 
-  it("lists the verified browsers without a support guarantee", () => {
+  it("names only Safari and Chrome, without a support guarantee", () => {
     for (const locale of LOCALES) {
-      const copy = noteCopy(locale);
-      expect(copy).toContain("iOS / iPad");
+      const copy = t(locale, "makerBrowsersNote");
       expect(copy).toContain("Safari");
-      expect(copy).toContain("Android");
       expect(copy).toContain("Chrome");
-      expect(copy).toContain("PC / Mac / Linux");
-      expect(copy).toMatch(/Safari も可|Safari also OK|Safari도 가능|Safari 也可以/);
-      expect(copy).not.toMatch(/サポート|support|지원|支持|Edge/i);
+      expect(copy).not.toMatch(/iOS|Android|iPad|Linux|Mac|サポート|support|지원|支持|Edge/i);
     }
   });
 
-  it("renders under the idle status, not in the hero", () => {
+  it("renders above the photo picker, not in the hero", () => {
     expect(noteSrc).toContain('id="browsersNote"');
-    expect(noteSrc).toContain("makerBrowsersHeading");
+    expect(noteSrc).toContain("makerBrowsersNote");
+    expect(noteSrc).not.toContain("<ul");
     expect(makerSrc).not.toMatch(/<JaLede\b[^/]*\/>\s*<BrowsersNote\b/);
-    expect(makerSrc).toMatch(/id="status"[\s\S]*?<BrowsersNote\b/);
+    expect(makerSrc).toMatch(/<BrowsersNote\b[^/]*\/>\s*<Label className="file-btn">/);
     expect(makerSrc).not.toMatch(/id="browsersNote"[^>]*translate="no"|translate="no"[^>]*id="browsersNote"/);
     expect(stylesSrc).toMatch(/\.browsers-note\s*\{[^}]*font-size:\s*0\.72rem/);
   });

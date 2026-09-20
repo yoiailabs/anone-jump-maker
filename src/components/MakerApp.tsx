@@ -110,6 +110,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           </div>
 
           <section className="panel">
+            <BrowsersNote locale={locale} />
             <Label className="file-btn">
               <input
                 id="picker"
@@ -166,7 +167,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <p className="status notranslate" id="status" data-kind="idle" translate="no">
               {t(locale, "makerStatusIdle")}
             </p>
-            <BrowsersNote locale={locale} />
           </section>
 
           <div className="share-wrap">

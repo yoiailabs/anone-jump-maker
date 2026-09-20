@@ -314,20 +314,14 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
 
   const browsersNote = page.locator("#browsersNote");
-  await expect(browsersNote).toBeVisible();
-  await expect(browsersNote).toContainText("動作確認済み");
-  await expect(browsersNote).toContainText("iOS / iPad：Safari");
-  await expect(browsersNote).toContainText("Android：Chrome");
-  await expect(browsersNote).toContainText("PC / Mac / Linux：Chrome");
-  await expect(browsersNote).toContainText("Mac：Safari も可");
+  await expect(browsersNote).toHaveText("動作確認済みブラウザ: Safari, Chrome");
   await expect(browsersNote).not.toContainText("サポート");
-  const statusBox = await page.locator("#status").boundingBox();
+  await expect(browsersNote).not.toContainText("iOS");
+  const pickerBox = await page.locator("#picker").evaluate((el) => el.closest("label")?.getBoundingClientRect());
   const browsersBox = await browsersNote.boundingBox();
-  const shareBox = await page.locator("#shareAppBtn").boundingBox();
   const heroBox = await page.locator("#makerView .hero").boundingBox();
   expect(heroBox && browsersBox && heroBox.y + heroBox.height < browsersBox.y).toBe(true);
-  expect(statusBox && browsersBox && statusBox.y < browsersBox.y).toBe(true);
-  expect(browsersBox && shareBox && browsersBox.y < shareBox.y).toBe(true);
+  expect(browsersBox && pickerBox && browsersBox.y < pickerBox.y).toBe(true);
 
   await expect(toCommunity).toHaveAttribute("href", "/community");
   await toCommunity.click();
