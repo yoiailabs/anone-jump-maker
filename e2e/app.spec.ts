@@ -313,6 +313,16 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const linkBox = await toCommunity.boundingBox();
   expect(disclaimerBox && linkBox && disclaimerBox.y < linkBox.y).toBe(true);
 
+  const browsersNote = page.locator("#browsersNote");
+  await expect(browsersNote).toHaveText("動作確認済みブラウザ: Safari, Chrome");
+  await expect(browsersNote).not.toContainText("サポート");
+  await expect(browsersNote).not.toContainText("iOS");
+  const pickerBox = await page.locator("#picker").evaluate((el) => el.closest("label")?.getBoundingClientRect());
+  const browsersBox = await browsersNote.boundingBox();
+  const heroBox = await page.locator("#makerView .hero").boundingBox();
+  expect(heroBox && browsersBox && heroBox.y + heroBox.height < browsersBox.y).toBe(true);
+  expect(browsersBox && pickerBox && browsersBox.y < pickerBox.y).toBe(true);
+
   await expect(toCommunity).toHaveAttribute("href", "/community");
   await toCommunity.click();
   await expect(page).toHaveURL(/\/community\/?$/);

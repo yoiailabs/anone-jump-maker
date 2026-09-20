@@ -1064,6 +1064,17 @@ a.btn:focus-visible {
   color: #c44b45;
 }
 
+.browsers-note {
+  margin: 0 0 -0.5rem;
+  color: var(--mute);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: pretty;
+}
+
 .notes {
   display: flex;
   flex-direction: column;
