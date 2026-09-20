@@ -20,6 +20,7 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   );
   await expect(page.locator("#playBtn")).toBeDisabled();
   await expect(page.locator("#saveBtn")).toBeDisabled();
+  await expect(page.locator("#previewSaveBtn")).toBeDisabled();
   await expect(page.locator("#shareAppBtn")).toBeEnabled();
   await expect(page.locator("#copyHashtagsBtn")).toBeEnabled();
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
@@ -72,6 +73,7 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#thumbs img")).toHaveCount(1);
   await expect(page.locator("#playBtn")).toBeEnabled();
   await expect(page.locator("#saveBtn")).toBeEnabled();
+  await expect(page.locator("#previewSaveBtn")).toBeEnabled();
   expect(
     await page.evaluate(() =>
       performance.getEntriesByType("resource").some((entry) => /\/template\/(landscape|vertical)\.mp4/.test(entry.name)),
@@ -85,6 +87,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
 
   await settlePreviewPlayback(page);
   await expect(page.locator("#previewState")).toHaveText(/再生中|停止中/);
+  await expect(page.locator("#previewSaveBtn")).toBeVisible();
+  await expect(page.locator("#previewSaveBtn")).toHaveText("動画を保存");
+  await expect(page.locator("#previewSaveHint")).toHaveText("端末内で生成します。数十秒かかることがあります。");
 
   const mute = page.locator("#muteBtn");
   await mute.click();
@@ -99,6 +104,26 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
 
   await page.locator("#closePreviewBtn").click();
   await expect(dialog).toBeHidden();
+});
+
+test("opens a generation modal from the preview save button", async ({ page }) => {
+  await uploadPhoto(page);
+  await page.locator("#playBtn").click();
+  const preview = page.locator("#previewDialog");
+  await expect(preview).toBeVisible();
+  await expect(page.locator("#previewSaveBtn")).toBeEnabled();
+
+  const exportDialog = page.locator("#exportDialog");
+  await page.locator("#previewSaveBtn").click();
+  await expect(preview).toBeHidden();
+  try {
+    await expect(exportDialog).toBeVisible({ timeout: 3_000 });
+  } catch {
+    await expect(page.locator("#status")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
+    return;
+  }
+  await expect(page.locator("#exportTitle")).toHaveText(/動画を生成中|生成が完了しました/);
+  await expect(page.locator("#saveBtn")).toBeVisible();
 });
 
 test("opens a generation modal with progress and cancel", async ({ page }) => {

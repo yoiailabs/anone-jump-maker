@@ -111,6 +111,7 @@ const ja = {
   previewSoundOff: "音声オフ",
   previewSoundOn: "音声オン",
   previewMuteHint: "プレビュー再生中の音声をミュートできます",
+  previewSaveHint: "端末内で生成します。数十秒かかることがあります。",
 
   statusPaused: "一時停止しました",
   statusPreviewing: "プレビュー中",
@@ -253,6 +254,7 @@ const en: Record<MessageKey, string> = {
   previewSoundOff: "Sound off",
   previewSoundOn: "Sound on",
   previewMuteHint: "You can mute audio during preview playback",
+  previewSaveHint: "Made on this device. May take tens of seconds.",
 
   statusPaused: "Paused",
   statusPreviewing: "Playing preview",
@@ -393,6 +395,7 @@ const ko: Record<MessageKey, string> = {
   previewSoundOff: "소리 끄기",
   previewSoundOn: "소리 켜기",
   previewMuteHint: "미리보기 재생 중 소리를 끌 수 있어요",
+  previewSaveHint: "이 기기에서 만들어요. 수십 초 걸릴 수 있어요.",
 
   statusPaused: "일시정지했습니다",
   statusPreviewing: "미리보기 중",
@@ -533,6 +536,7 @@ const zh: Record<MessageKey, string> = {
   previewSoundOff: "关闭声音",
   previewSoundOn: "打开声音",
   previewMuteHint: "预览播放时可以静音",
+  previewSaveHint: "在本设备内生成，大约几十秒。",
 
   statusPaused: "已暂停",
   statusPreviewing: "预览中",

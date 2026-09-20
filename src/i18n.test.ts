@@ -144,6 +144,10 @@ describe("messages", () => {
     expect(t("ko", "makerCharacterStandard")).toBe("표준");
     expect(t("zh", "makerCharacter14")).toBe("1.4");
     expect(t("ja", "previewCharacterAria")).toBe("プレビューのキャラサイズ");
+    expect(t("ja", "previewSaveHint")).toBe("端末内で生成します。数十秒かかることがあります。");
+    expect(t("en", "previewSaveHint")).toBe("Made on this device. May take tens of seconds.");
+    expect(t("ko", "previewSaveHint")).toBe("이 기기에서 만들어요. 수십 초 걸릴 수 있어요.");
+    expect(t("zh", "previewSaveHint")).toBe("在本设备内生成，大约几十秒。");
   });
 
   it("uses the English store title in non-Japanese credits", () => {

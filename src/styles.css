@@ -535,6 +535,33 @@ html[lang="ja"] .lede {
   transform: translateY(-2px);
 }
 
+.preview-save {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.28rem;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.btn.preview-save-btn {
+  width: 100%;
+  min-height: 3.15rem;
+  background: #e6fb3c;
+  box-shadow: 4px 5px 0 var(--ink);
+  font-size: 1.02rem;
+}
+
+.preview-save-hint {
+  margin: 0;
+  text-align: center;
+  color: var(--mute);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
 .preview-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -606,8 +633,8 @@ html[lang="ja"] .lede {
 .stage {
   display: block;
   position: relative;
-  width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
-  max-height: calc(100svh - 20rem);
+  width: min(100%, 16rem, calc((100svh - 23.5rem) * 608 / 1080));
+  max-height: calc(100svh - 23.5rem);
   aspect-ratio: 608 / 1080;
   height: auto;
   flex: 0 0 auto;
@@ -656,7 +683,7 @@ html[lang="ja"] .lede {
 
 .stage[data-aspect="landscape"] {
   width: min(100%, 22rem);
-  max-height: calc(100svh - 20rem);
+  max-height: calc(100svh - 23.5rem);
   aspect-ratio: 16 / 9;
 }
 

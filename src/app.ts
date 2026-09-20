@@ -120,6 +120,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
+  const previewSaveBtn = must(root, "#previewSaveBtn") as HTMLButtonElement;
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
@@ -280,7 +281,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const ready = canUse();
     const locked = photosLocked();
     playBtn.disabled = recording || !ready;
-    saveBtn.disabled = recording || !ready;
+    const saveDisabled = recording || !ready;
+    saveBtn.disabled = saveDisabled;
+    previewSaveBtn.disabled = saveDisabled;
     modalPlayBtn.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
@@ -901,7 +904,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     video.muted = true;
   });
 
-  saveBtn.addEventListener("click", async () => {
+  const startSave = async () => {
     if (recording || photos.length === 0) return;
     closePreview();
     recording = true;
@@ -962,6 +965,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       refreshButtons();
       paint();
     }
+  };
+
+  saveBtn.addEventListener("click", () => {
+    void startSave();
+  });
+  previewSaveBtn.addEventListener("click", () => {
+    void startSave();
   });
 
   copyHashtagsBtn.addEventListener("click", async () => {

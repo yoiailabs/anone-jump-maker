@@ -339,6 +339,21 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <span className="stage-play-hint" aria-hidden="true" />
             </button>
           </div>
+          <div className="preview-save">
+            <Button
+              variant="site"
+              type="button"
+              id="previewSaveBtn"
+              className="btn preview-save-btn"
+              disabled
+              aria-describedby="previewSaveHint"
+            >
+              {t(locale, "makerSave")}
+            </Button>
+            <p className="preview-save-hint" id="previewSaveHint">
+              {t(locale, "previewSaveHint")}
+            </p>
+          </div>
           <p className="slot-meter notranslate" id="slotMeter" translate="no">
             {t(locale, "previewSlotPending")}
           </p>
