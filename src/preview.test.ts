@@ -51,9 +51,9 @@ describe("preview control markup", () => {
     expect(muteButtonHtml(false)).toContain('data-preview-icon="sound-on"');
     expect(muteButtonHtml(true)).toContain('data-preview-icon="sound-off"');
     expect(muteButtonHtml(false)).not.toBe(muteButtonHtml(true));
+    expect(muteButtonHtml(false)).toContain("preview-mute-hint");
     expect(muteButtonHtml(false)).toContain(PREVIEW_MUTE_HINT);
-    expect(muteButtonHtml(true)).toContain(PREVIEW_MUTE_HINT);
-    expect(PREVIEW_MUTE_HINT).toBe("プレビュー再生中の音声をミュートできます");
+    expect(PREVIEW_MUTE_HINT).toBe("プレビュー時のみ");
   });
 });
 

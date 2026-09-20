@@ -47,7 +47,6 @@ import {
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
   syncMuteControl,
-  syncPlayPauseControl,
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
@@ -111,15 +110,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let playGen = 0;
   let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
-  let lastSlot = -1;
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   const stage = must(root, "#stage");
   const pickerLabel = must(root, "#pickerLabel");
-  const slotMeter = must(root, "#slotMeter");
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
+  const previewSaveBtn = must(root, "#previewSaveBtn") as HTMLButtonElement;
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
@@ -135,15 +133,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
   const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
-  const modalPlayBtn = must(root, "#modalPlayBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
   const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
-  const previewState = must(root, "#previewState");
   const benchFlag = document.createElement("p");
   benchFlag.id = "benchFlag";
   benchFlag.hidden = !benchFlags.bench;
   benchFlag.style.cssText = "margin:0.4rem 0 0;font-size:0.78rem;color:#5c5146";
-  previewState.after(benchFlag);
+  muteBtn.closest(".preview-actions")?.after(benchFlag);
   const aspectInputs = [
     ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
   ];
@@ -196,8 +192,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   isolateVolatileChrome(statusEl);
-  isolateVolatileChrome(slotMeter);
-  isolateVolatileChrome(previewState);
   isolateVolatileChrome(benchFlag);
   isolateVolatileChrome(exportStatus);
   isolateVolatileChrome(exportProgressLabel);
@@ -206,16 +200,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (!timelines) throw new Error(msg("statusCutsMissing"));
     return timelines[mode];
   };
-
-  const refreshSlotMeter = () => {
-    setTextIfChanged(
-      slotMeter,
-      timelines
-        ? msg("previewSlotEmpty", { total: timelines[mode].slots.length })
-        : msg("previewSlotPending"),
-    );
-  };
-  refreshSlotMeter();
 
   const setStatus = (text: string, kind: StatusKind = "idle") => {
     setTextIfChanged(statusEl, text);
@@ -280,17 +264,15 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const ready = canUse();
     const locked = photosLocked();
     playBtn.disabled = recording || !ready;
-    saveBtn.disabled = recording || !ready;
-    modalPlayBtn.disabled = recording || !ready;
+    const saveDisabled = recording || !ready;
+    saveBtn.disabled = saveDisabled;
+    previewSaveBtn.disabled = saveDisabled;
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
-    syncPlayPauseControl(modalPlayBtn, active, locale);
-    modalPlayBtn.setAttribute("aria-pressed", active ? "true" : "false");
     stage.setAttribute("aria-pressed", active ? "true" : "false");
-    setTextIfChanged(previewState, active ? msg("previewPlaying") : msg("previewStopped"));
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -312,14 +294,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (!compositor || !timelines) return;
     const started = benchFlags.bench ? performance.now() : 0;
     const cuts = timeline();
-    const slot = compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize);
+    compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize);
     if (benchFlags.bench) {
       if (paintClockStart === 0) paintClockStart = started;
       paintSamples.push(performance.now() - started);
-    }
-    if (slot !== lastSlot) {
-      lastSlot = slot;
-      setTextIfChanged(slotMeter, msg("previewSlot", { n: slot + 1, total: cuts.slots.length }));
     }
     refreshBenchFlag();
   };
@@ -475,7 +453,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await video.play();
       if (gen !== playGen) return;
       video.blur();
-      modalPlayBtn.focus();
+      stage.focus();
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
@@ -550,7 +528,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await ensureTimelines();
       if (recording || previewDialog.open) return;
       previewDialog.showModal();
-      lastSlot = -1;
       paint();
     } catch (error) {
       closePreview();
@@ -656,8 +633,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     mode = next;
     compositor?.setAspect(mode);
     stage.dataset.aspect = mode;
-    lastSlot = -1;
-    refreshSlotMeter();
     syncAspectRadios(mode);
     video.dataset.templateSrc = TEMPLATES[mode].video;
     video.removeAttribute("src");
@@ -703,7 +678,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       previewTracked = resume.tracked;
       try {
         await seekVideo(video, resume.time);
-        lastSlot = -1;
         paint();
         if (resume.play) {
           await startPlayback(false);
@@ -812,22 +786,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     void startPlayback(false);
   };
 
-  let playToggleFromPointer = false;
-  modalPlayBtn.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    playToggleFromPointer = true;
-    togglePreviewPlay();
-  });
-  modalPlayBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (playToggleFromPointer) {
-      playToggleFromPointer = false;
-      return;
-    }
-    togglePreviewPlay();
-  });
-
   previewDialog.addEventListener(
     "click",
     (event) => {
@@ -901,7 +859,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     video.muted = true;
   });
 
-  saveBtn.addEventListener("click", async () => {
+  const startSave = async () => {
     if (recording || photos.length === 0) return;
     closePreview();
     recording = true;
@@ -962,6 +920,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       refreshButtons();
       paint();
     }
+  };
+
+  saveBtn.addEventListener("click", () => {
+    void startSave();
+  });
+  previewSaveBtn.addEventListener("click", () => {
+    void startSave();
   });
 
   copyHashtagsBtn.addEventListener("click", async () => {
@@ -1035,7 +1000,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
   await syncViewFromLocation();
   await ensureTimelines();
-  refreshSlotMeter();
   if (benchFlags.bench) await ensureCompositor();
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
     paint();
