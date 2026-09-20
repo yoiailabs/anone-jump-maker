@@ -136,6 +136,7 @@ describe("volatile chrome in the maker markup", () => {
   it("leaves the static hero copy translatable", () => {
     expect(makerSrc).toMatch(/id="makerTitle"/);
     expect(makerSrc).toMatch(/<JaLede\b/);
+    expect(makerSrc).toMatch(/<BrowsersNote\b/);
     expect(makerSrc).not.toMatch(/id="makerTitle"[^>]*translate="no"|translate="no"[^>]*id="makerTitle"/);
     expect(makerSrc).not.toMatch(/className="lede"[^>]*translate="no"|translate="no"[^>]*className="lede"/);
     expect(jaLedeSrc).toContain('"lede"');

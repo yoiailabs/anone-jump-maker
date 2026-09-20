@@ -222,7 +222,8 @@ body {
 .lede,
 .notes p,
 .status,
-.slot-meter {
+.slot-meter,
+.browsers-note {
   margin: 0;
   color: var(--mute);
   line-height: 1.75;
@@ -247,6 +248,23 @@ html[lang="ja"] .lede {
     word-break: keep-all;
     overflow-wrap: anywhere;
   }
+}
+
+.browsers-note {
+  margin: 0.7rem 0 0;
+  text-wrap: pretty;
+}
+
+.browsers-note-heading {
+  margin: 0;
+}
+
+.browsers-note ul {
+  display: inline-block;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
 }
 
 .hero-more {

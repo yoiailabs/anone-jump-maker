@@ -18,6 +18,9 @@ test.describe("language routing", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#makerTitle")).toHaveText(t("en", "makerTitle"));
     await expect(page.locator("#playBtn")).toHaveText(t("en", "makerPreview"));
+    await expect(page.locator("#browsersNote")).toContainText(t("en", "makerBrowsersHeading"));
+    await expect(page.locator("#browsersNote")).toContainText(t("en", "makerBrowsersDesktop"));
+    await expect(page.locator("#browsersNote")).not.toContainText(/supported/i);
     await expect(page.locator("#linksTitle")).toHaveText(t("en", "makerOfficial"));
     await expect(page.locator(".loop-link")).toHaveAttribute(
       "aria-label",
