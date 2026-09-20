@@ -94,6 +94,8 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
   await page.locator('#previewDialog label:has(input[name="preview-swap"][value="zoom"])').click();
   await page.locator('#previewDialog label:has(input[name="preview-filter"][value="blur-weak"])').click();
+  await page.locator('#previewDialog label:has(input[name="preview-character"][value="large"])').click();
+  await expect(page.locator('#previewDialog input[name="preview-character"][value="large"]')).toBeChecked();
 
   await page.locator("#closePreviewBtn").click();
   await expect(dialog).toBeHidden();

@@ -77,6 +77,55 @@ describe("createCompositor", () => {
       compositor.destroy();
     }
   });
+
+  it("draws standard and large character plates and skips the character when size is none", async () => {
+    const compositor = createCompositor({
+      resolutionScale: 1,
+      createKeyer: () => null,
+    });
+    const photo = await makePhoto("#22ccee");
+    const characterCanvas = document.createElement("canvas");
+    characterCanvas.width = 1280;
+    characterCanvas.height = 720;
+    const cctx = characterCanvas.getContext("2d");
+    expect(cctx).toBeTruthy();
+    cctx!.fillStyle = "#20b836";
+    cctx!.fillRect(0, 0, 1280, 720);
+    cctx!.fillStyle = "#111111";
+    cctx!.fillRect(0, 360, 1280, 360);
+    const character = { source: characterCanvas, width: 1280, height: 720 };
+    const video = document.createElement("video");
+    const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
+    const sample = (x: number, y: number) => {
+      const ctx = compositor.canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas");
+      return ctx.getImageData(x, y, 1, 1).data;
+    };
+    const luma = (px: Uint8ClampedArray) => (px[0] ?? 0) + (px[1] ?? 0) + (px[2] ?? 0);
+    try {
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "none");
+      const noneUpper = sample(640, 280);
+      const noneLower = sample(640, 540);
+      expect(luma(noneUpper)).toBeGreaterThan(80);
+      expect(luma(noneLower)).toBeGreaterThan(80);
+      expect((noneUpper[1] ?? 0) + (noneUpper[2] ?? 0)).toBeGreaterThan(noneUpper[0] ?? 0);
+
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "standard");
+      const standardUpper = sample(640, 280);
+      const standardLower = sample(640, 540);
+      expect(luma(standardUpper)).toBeGreaterThan(80);
+      expect(luma(standardLower)).toBeLessThan(80);
+
+      compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "large");
+      const largeUpper = sample(640, 280);
+      const largeLower = sample(640, 540);
+      expect(luma(largeUpper)).toBeLessThan(80);
+      expect(luma(largeLower)).toBeLessThan(80);
+    } finally {
+      photo.bitmap.close();
+      compositor.destroy();
+    }
+  });
 });
 
 describe("createGpuKeyer", () => {

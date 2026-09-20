@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import appSrc from "./app.ts?raw";
+import makerSrc from "./components/MakerApp.tsx?raw";
 import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import {
   BLUR_SOURCE,
@@ -14,11 +16,13 @@ import {
   blurTapCount,
   plateDest,
   resolveCharacterSource,
+  resolveDrawCharacter,
   songCreditFontSize,
   songCreditLayout,
 } from "./compositor.ts";
 import {
   CHAR_SCALE,
+  DEFAULT_CHARACTER_SIZE,
   JUMP_COVER_SCALE,
   JUMP_DROP_FRAC,
   LANDSCAPE_CHAR_SCALE,
@@ -26,6 +30,7 @@ import {
   STAGE_MAX_REM,
   TEMPLATE_FPS,
   characterDest,
+  characterScale,
   mainPanelRect,
   swapFx,
   usesBlurBackdrop,
@@ -207,5 +212,49 @@ describe("resolveCharacterSource", () => {
     expect(resolveCharacterSource(video, override)).toEqual(override);
     expect(resolveCharacterSource(video)?.source).toBe(video);
     expect(resolveCharacterSource({ readyState: 0, videoWidth: 0, videoHeight: 0 } as HTMLVideoElement)).toBeNull();
+  });
+});
+
+describe("character size draw path", () => {
+  it("skips the character source entirely when size is なし", () => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    const video = { readyState: 2, videoWidth: 608, videoHeight: 1080 } as HTMLVideoElement;
+    const override = { source: { width: 1920, height: 1080 } as CanvasImageSource, width: 1920, height: 1080 };
+    expect(resolveDrawCharacter(video, override, "none")).toBeNull();
+    expect(resolveDrawCharacter(video, undefined, "none")).toBeNull();
+    expect(resolveDrawCharacter(video, override, "standard")).toEqual(override);
+    expect(resolveDrawCharacter(video, override, "large")).toEqual(override);
+    expect(resolveDrawCharacter(video, override)).toEqual(override);
+    expect(DEFAULT_CHARACTER_SIZE).toBe("standard");
+  });
+
+  it("keeps the keyed plate at 1× for 標準 and 1.4× for 大", () => {
+    expect(characterScale("portrait", "standard")).toBe(CHAR_SCALE);
+    expect(characterScale("landscape", "standard")).toBe(LANDSCAPE_CHAR_SCALE);
+    const panel = mainPanelRect(608, 1080, "portrait");
+    const standard = characterDest(panel.w, panel.h, characterScale("portrait", "standard"));
+    const large = characterDest(panel.w, panel.h, characterScale("portrait", "large"));
+    expect(standard).toEqual({ x: 0, y: 0, w: panel.w, h: panel.h });
+    expect(large.w / standard.w).toBeCloseTo(1.4, 5);
+    expect(large.h / standard.h).toBeCloseTo(1.4, 5);
+    const land = characterDest(
+      OUTPUTS.landscape.width,
+      OUTPUTS.landscape.height,
+      characterScale("landscape", "large"),
+    );
+    expect(land.w).toBeCloseTo(OUTPUTS.landscape.width * 1.4, 5);
+    expect(land.h).toBeCloseTo(OUTPUTS.landscape.height * 1.4, 5);
+  });
+
+  it("exposes maker and preview radios that feed the shared compositor draw", () => {
+    expect(makerSrc).toContain('name="character"');
+    expect(makerSrc).toContain('name="preview-character"');
+    expect(makerSrc).toContain('value: "standard"');
+    expect(makerSrc).toContain('value: "large"');
+    expect(appSrc).toContain('input[name="character"], input[name="preview-character"]');
+    expect(appSrc).toContain("characterSize");
+    expect(appSrc).toContain("applyCharacterSize");
   });
 });

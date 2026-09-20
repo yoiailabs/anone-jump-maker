@@ -90,6 +90,41 @@ export function isImageFilter(value: string): value is ImageFilter {
 }
 
 /**
+ * 線画キャラの大きさ。向き・切替・フィルターと独立。
+ * - standard: 公式テンプレと同じ等倍（現行）
+ * - large: キー済みプレートを約 1.4 倍
+ * - none: キャラを描かない（写真と背景エフェクトはそのまま）
+ */
+export type CharacterSize = "standard" | "large" | "none";
+
+export const CHARACTER_SIZES = ["standard", "large", "none"] as const;
+
+export const DEFAULT_CHARACTER_SIZE: CharacterSize = "standard";
+
+export const CHARACTER_SIZE_LABELS: Record<CharacterSize, string> = {
+  standard: "標準",
+  large: "大",
+  none: "なし",
+};
+
+/** 標準に対するプレート倍率。none は描かないので 0。 */
+export const CHAR_LARGE_SCALE = 1.4;
+
+export const CHARACTER_SIZE_SCALE: Record<CharacterSize, number> = {
+  standard: 1,
+  large: CHAR_LARGE_SCALE,
+  none: 0,
+};
+
+export function isCharacterSize(value: string): value is CharacterSize {
+  return value === "standard" || value === "large" || value === "none";
+}
+
+export function showsCharacter(size: CharacterSize): boolean {
+  return size !== "none";
+}
+
+/**
  * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強はその一段上。
  * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
  */
@@ -279,8 +314,16 @@ export function usesBlurBackdrop(mode: AspectMode): boolean {
   return mode === "portrait";
 }
 
-export function characterScale(mode: AspectMode = "portrait"): number {
-  return mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
+export function characterPlateScale(size: CharacterSize = DEFAULT_CHARACTER_SIZE): number {
+  return CHARACTER_SIZE_SCALE[size];
+}
+
+export function characterScale(
+  mode: AspectMode = "portrait",
+  size: CharacterSize = DEFAULT_CHARACTER_SIZE,
+): number {
+  const base = mode === "landscape" ? LANDSCAPE_CHAR_SCALE : CHAR_SCALE;
+  return base * characterPlateScale(size);
 }
 
 /** 公式は縦横とも 0。`CHAR_SHIFT_Y` を変えたときだけパネル高さに比例させる。 */

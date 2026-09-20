@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   BLUR_COVER_SCALE,
   BLUR_SOURCE,
+  CHARACTER_SIZES,
+  CHARACTER_SIZE_SCALE,
+  CHAR_LARGE_SCALE,
   CHAR_OUTLINE_PX,
   CHAR_SCALE,
   CHAR_SHIFT_Y,
   DEFAULT_ASPECT,
+  DEFAULT_CHARACTER_SIZE,
   ASPECT_MODES,
   LANDSCAPE_CHAR_SCALE,
   JUMP_COVER_SCALE,
@@ -32,6 +36,7 @@ import {
   ZOOM_SWAP_DELAY_FRAMES,
   characterDest,
   characterOutlinePx,
+  characterPlateScale,
   characterScale,
   characterShiftY,
   coverDest,
@@ -40,6 +45,7 @@ import {
   hasImageFilter,
   IMAGE_FILTERS,
   isAspectMode,
+  isCharacterSize,
   isImageFilter,
   isSwapStyle,
   jumpCycle,
@@ -52,6 +58,7 @@ import {
   swapFx,
   templateBandRect,
   usesBlurBackdrop,
+  showsCharacter,
   zoomInScale,
   zoomKeyAt,
   zoomOutScale,
@@ -117,6 +124,63 @@ describe("characterDest", () => {
     expect(dest).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
     expect(characterOutlinePx(608)).toBe(2);
     expect(characterOutlinePx(1280)).toBe(4);
+  });
+});
+
+describe("character size", () => {
+  it("defaults to the official standard scale", () => {
+    expect(DEFAULT_CHARACTER_SIZE).toBe("standard");
+    expect(CHARACTER_SIZES).toEqual(["standard", "large", "none"]);
+    expect(isCharacterSize("standard")).toBe(true);
+    expect(isCharacterSize("large")).toBe(true);
+    expect(isCharacterSize("none")).toBe(true);
+    expect(isCharacterSize("huge")).toBe(false);
+    expect(characterPlateScale()).toBe(1);
+    expect(characterPlateScale("standard")).toBe(1);
+    expect(characterScale("portrait")).toBe(CHAR_SCALE);
+    expect(characterScale("landscape", "standard")).toBe(LANDSCAPE_CHAR_SCALE);
+    expect(showsCharacter("standard")).toBe(true);
+    expect(showsCharacter("large")).toBe(true);
+    expect(showsCharacter("none")).toBe(false);
+  });
+
+  it("scales the keyed plate about 1.4× for 大, in both aspects", () => {
+    expect(CHAR_LARGE_SCALE).toBeCloseTo(1.4, 5);
+    expect(CHARACTER_SIZE_SCALE.large).toBe(CHAR_LARGE_SCALE);
+    expect(characterPlateScale("large")).toBeCloseTo(1.4, 5);
+    expect(characterScale("portrait", "large")).toBeCloseTo(CHAR_SCALE * 1.4, 5);
+    expect(characterScale("landscape", "large")).toBeCloseTo(LANDSCAPE_CHAR_SCALE * 1.4, 5);
+
+    const portrait = mainPanelRect(OUTPUT.width, OUTPUT.height, "portrait");
+    const standardP = characterDest(portrait.w, portrait.h, characterScale("portrait", "standard"));
+    const largeP = characterDest(portrait.w, portrait.h, characterScale("portrait", "large"));
+    expect(standardP).toEqual({ x: 0, y: 0, w: portrait.w, h: portrait.h });
+    expect(largeP.w).toBeCloseTo(standardP.w * 1.4, 5);
+    expect(largeP.h).toBeCloseTo(standardP.h * 1.4, 5);
+    expect(largeP.x).toBeCloseTo((portrait.w - largeP.w) / 2, 5);
+    expect(largeP.y + largeP.h).toBeCloseTo(portrait.h, 5);
+
+    const landscape = characterDest(
+      OUTPUTS.landscape.width,
+      OUTPUTS.landscape.height,
+      characterScale("landscape", "large"),
+    );
+    const standardL = characterDest(
+      OUTPUTS.landscape.width,
+      OUTPUTS.landscape.height,
+      characterScale("landscape", "standard"),
+    );
+    expect(landscape.w).toBeCloseTo(standardL.w * 1.4, 5);
+    expect(landscape.h).toBeCloseTo(standardL.h * 1.4, 5);
+    expect(landscape.x).toBeCloseTo((OUTPUTS.landscape.width - landscape.w) / 2, 5);
+    expect(landscape.y + landscape.h).toBeCloseTo(OUTPUTS.landscape.height, 5);
+  });
+
+  it("does not place a plate when the character is なし", () => {
+    expect(characterPlateScale("none")).toBe(0);
+    expect(characterScale("portrait", "none")).toBe(0);
+    expect(characterScale("landscape", "none")).toBe(0);
+    expect(showsCharacter("none")).toBe(false);
   });
 });
 

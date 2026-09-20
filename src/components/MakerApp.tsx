@@ -157,6 +157,19 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 ]}
               />
             </fieldset>
+            <fieldset className="aspect-field" id="characterField">
+              <legend>{t(locale, "makerCharacterLegend")}</legend>
+              <RadioPills
+                name="character"
+                ariaLabel={t(locale, "makerCharacterLegend")}
+                className="aspect-toggle cols-3"
+                options={[
+                  { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+                  { value: "large", label: t(locale, "makerCharacterLarge") },
+                  { value: "none", label: t(locale, "makerCharacterNone") },
+                ]}
+              />
+            </fieldset>
             <div className="actions">
               <Button variant="site" type="button" id="playBtn" className="btn ghost" disabled>
                 {t(locale, "makerPreview")}
@@ -297,6 +310,19 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                   { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
                   { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
                   { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
+                ]}
+              />
+            </fieldset>
+            <fieldset className="aspect-field preview-field preview-field-span">
+              <legend>{t(locale, "makerCharacterLegend")}</legend>
+              <RadioPills
+                name="preview-character"
+                ariaLabel={t(locale, "previewCharacterAria")}
+                className="aspect-toggle preview-toggle cols-3"
+                options={[
+                  { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+                  { value: "large", label: t(locale, "makerCharacterLarge") },
+                  { value: "none", label: t(locale, "makerCharacterNone") },
                 ]}
               />
             </fieldset>
