@@ -188,6 +188,7 @@ describe("community list markup", () => {
     expect(html).not.toContain("community-jumps-viewport");
     expect(html.match(/class="community-jumps-item"/g)).toHaveLength(50);
     expect(html.match(/data-media="video"/g)).toHaveLength(50);
+    expect(html.match(/data-post-id="2101803923954970918"/g)).toHaveLength(1);
     expect(html.match(/data-post-id="2101336573879239085"/g)).toHaveLength(1);
     expect(html).not.toContain('data-post-id="2009475998488961327"');
     expect(html).toContain("@Muni_0362");
@@ -208,12 +209,12 @@ describe("community list markup", () => {
     expect(popular).toContain("@Nanatsukaze_ofc");
     expect(popular).toContain('data-post-id="2084205622862725181"');
     expect(popular.match(/class="community-jumps-item"/g)).toHaveLength(50);
-    const lastPage = communityJumpsSectionHtml(undefined, "ja", "newest", 10);
-    expect(lastPage).toContain('data-page="10"');
-    expect(lastPage.match(/class="community-jumps-item"/g)).toHaveLength(43);
+    const lastPage = communityJumpsSectionHtml(undefined, "ja", "newest", 11);
+    expect(lastPage).toContain('data-page="11"');
+    expect(lastPage.match(/class="community-jumps-item"/g)).toHaveLength(15);
     expect(lastPage).toContain('data-post-id="2009475998488961327"');
     expect(lastPage).toContain("@PIKASONIC_ofc");
-    expect(lastPage).toContain('id="communityPageNext" data-community-page="11" disabled');
+    expect(lastPage).toContain('id="communityPageNext" data-community-page="12" disabled');
   });
 
   it("pages a long curated list 50 at a time so new rows are drop-in", () => {
@@ -223,7 +224,7 @@ describe("community list markup", () => {
     const html = communityJumpsSectionHtml(posts);
     expect(html.match(/class="community-jumps-item"/g)).toHaveLength(50);
     expect(communityJumpPageCount(60)).toBe(2);
-    expect(COMMUNITY_JUMP_CAPACITY).toBeGreaterThanOrEqual(493);
+    expect(COMMUNITY_JUMP_CAPACITY).toBeGreaterThanOrEqual(515);
     expect(html).toContain("community-jumps-masonry");
     expect(html).toContain(COMMUNITY_JUMPS_LEDE);
     expect(html).toContain("communitySort");
@@ -351,9 +352,11 @@ describe("community pagination", () => {
     const page1 = communityJumpPagePosts(newest, 1);
     const page10 = communityJumpPagePosts(newest, 10);
     expect(page1).toHaveLength(50);
-    expect(page1[0]?.id).toBe("2101336573879239085");
-    expect(page10).toHaveLength(43);
-    expect(page10[page10.length - 1]?.id).toBe("2009475998488961327");
+    expect(page1[0]?.id).toBe("2101803923954970918");
+    expect(page10).toHaveLength(50);
+    const page11 = communityJumpPagePosts(newest, 11);
+    expect(page11).toHaveLength(15);
+    expect(page11[page11.length - 1]?.id).toBe("2009475998488961327");
     expect(communityJumpPagePosts(newest, 99).at(-1)?.id).toBe("2009475998488961327");
   });
 
