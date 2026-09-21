@@ -163,6 +163,48 @@ const ja = {
   errorShrink: "画像を縮小できませんでした",
   errorThumb: "サムネを作れませんでした",
 
+  privacyTitle: "プライバシーポリシー",
+  metaPrivacyDescription:
+    "Yoiailabs が運営するあのねジャンプメーカーのプライバシーポリシーです。写真と動画は端末内で生成し、Google アナリティクスで利用状況を把握します。",
+  privacyUpdated: "最終更新: 2026年9月21日",
+  privacyLink: "プライバシーポリシー",
+  footerOperator: "運営: Yoiailabs",
+  footerNavAria: "サイト情報",
+  privacyOperatorHeading: "運営者",
+  privacyOperatorBody: "このサイトは Yoiailabs が運営しています。",
+  privacyAboutHeading: "このアプリについて",
+  privacyAboutBody:
+    "あのねジャンプメーカーは、ファンが作った非公式のメーカーです。写真の合成と動画の生成は、お使いの端末の中で行われます。生成のために、画像を私たちのサーバーへアップロードすることはありません。",
+  privacyAnalyticsHeading: "Google アナリティクス",
+  privacyAnalyticsIntro:
+    "サイトの使われ方を知るために、Google アナリティクスを使っています。たとえば、次のような情報が集まることがあります。",
+  privacyAnalyticsPages: "ページの閲覧",
+  privacyAnalyticsNav: "サイト内の移動",
+  privacyAnalyticsEvents:
+    "すでに計測している操作（動画のプレビューと保存）。送るのは向きとエフェクトの種類だけで、写真の中身や生成した動画は含みません",
+  privacyAnalyticsDevice: "おおよその端末、ブラウザ、表示言語",
+  privacyAnalyticsOutro: "選んだ写真の内容や、作った動画そのものは送りません。",
+  privacyCookiesHeading: "Cookie と識別子",
+  privacyCookiesBody:
+    "Google アナリティクスは、ブラウザに Cookie を保存したり、それに近い仕組みでブラウザを区別したりすることがあります。同じ人が何度訪れたかを大まかに知るためのもので、氏名や写真とは結び付けません。",
+  privacyPurposeHeading: "利用目的",
+  privacyPurposeBody: "製品の改善と、どのくらいアクセスがあるかを知るためです。個人のデータを販売することはありません。",
+  privacyThirdHeading: "第三者",
+  privacyThirdBody: "計測データは Google に送られます。取り扱いは Google のポリシーに従います。",
+  privacyGooglePolicy: "Google のプライバシーポリシー",
+  privacyGoogleAnalytics: "Google アナリティクスにおけるデータの保護",
+  privacyOptOutHeading: "計測を減らすには",
+  privacyOptOutBody:
+    "ブラウザの設定で Cookie を拒否したり削除したりできます。Google アナリティクスのオプトアウト用ブラウザアドオンや、Google の広告設定からも、計測や広告の扱いを調整できます。",
+  privacyOptOutAddon: "Google アナリティクス オプトアウト アドオン",
+  privacyOptOutAds: "Google の広告設定",
+  privacyContactHeading: "お問い合わせ",
+  privacyContactBody: "ご連絡は、このプロジェクトの GitHub Issues からお願いします。",
+  privacyContactLink: "GitHub Issues を開く",
+  privacyOrgLink: "GitHub の Yoiailabs",
+  privacyUpdatesHeading: "改定",
+  privacyUpdatesBody: "このポリシーは変わることがあります。変わったときは、このページの日付を更新します。",
+
   langNavAria: "言語",
 } as const;
 
@@ -306,6 +348,47 @@ const en: Record<MessageKey, string> = {
   errorShrink: "Couldn’t shrink the image",
   errorThumb: "Couldn’t make a thumbnail",
 
+  privacyTitle: "Privacy Policy",
+  metaPrivacyDescription:
+    "Privacy policy for Anone Jump Maker, operated by Yoiailabs. Photos and video are made on your device. Google Analytics is used to understand usage.",
+  privacyUpdated: "Last updated: September 21, 2026",
+  privacyLink: "Privacy Policy",
+  footerOperator: "Operated by Yoiailabs",
+  footerNavAria: "Site info",
+  privacyOperatorHeading: "Operator",
+  privacyOperatorBody: "This site is operated by Yoiailabs.",
+  privacyAboutHeading: "What this app does",
+  privacyAboutBody:
+    "Anone Jump Maker is an unofficial fan-made maker. Photo compositing and video generation run on your device. Images are not uploaded to our servers for generation.",
+  privacyAnalyticsHeading: "Google Analytics",
+  privacyAnalyticsIntro: "We use Google Analytics to understand how the site is used. Information like the following may be collected:",
+  privacyAnalyticsPages: "Page views",
+  privacyAnalyticsNav: "How you move around the site",
+  privacyAnalyticsEvents:
+    "Instrumented actions (video preview and save). These send orientation and effect only, not the contents of your photos or the generated videos",
+  privacyAnalyticsDevice: "Approximate device, browser, and language",
+  privacyAnalyticsOutro: "The contents of the photos you choose, and the videos you generate, are not sent.",
+  privacyCookiesHeading: "Cookies and identifiers",
+  privacyCookiesBody:
+    "Google Analytics may store cookies in your browser, or use a similar method to tell browsers apart. This is a rough way to see repeat visits. It is not tied to your name or your photos.",
+  privacyPurposeHeading: "Purpose",
+  privacyPurposeBody: "We use this to improve the product and understand traffic. We do not sell personal data.",
+  privacyThirdHeading: "Third parties",
+  privacyThirdBody: "Measurement data is sent to Google and handled under Google’s policies.",
+  privacyGooglePolicy: "Google Privacy Policy",
+  privacyGoogleAnalytics: "Safeguarding data in Google Analytics",
+  privacyOptOutHeading: "Opting out",
+  privacyOptOutBody:
+    "You can refuse or delete cookies in your browser settings. You can also use the Google Analytics opt-out browser add-on, or adjust measurement and ads in Google’s ads settings.",
+  privacyOptOutAddon: "Google Analytics opt-out add-on",
+  privacyOptOutAds: "Google ads settings",
+  privacyContactHeading: "Contact",
+  privacyContactBody: "Please reach us through this project’s GitHub Issues.",
+  privacyContactLink: "Open GitHub Issues",
+  privacyOrgLink: "Yoiailabs on GitHub",
+  privacyUpdatesHeading: "Updates",
+  privacyUpdatesBody: "This policy may change. When it does, the date on this page is updated.",
+
   langNavAria: "Language",
 };
 
@@ -447,6 +530,48 @@ const ko: Record<MessageKey, string> = {
   errorShrink: "이미지를 축소하지 못했습니다",
   errorThumb: "썸네일을 만들지 못했습니다",
 
+  privacyTitle: "개인정보 처리방침",
+  metaPrivacyDescription:
+    "Yoiailabs가 운영하는 아노네 점프 메이커의 개인정보 처리방침입니다. 사진과 영상은 기기 안에서 만들고, Google 애널리틱스로 이용 상황을 파악합니다.",
+  privacyUpdated: "최종 업데이트: 2026년 9월 21일",
+  privacyLink: "개인정보 처리방침",
+  footerOperator: "운영: Yoiailabs",
+  footerNavAria: "사이트 정보",
+  privacyOperatorHeading: "운영자",
+  privacyOperatorBody: "이 사이트는 Yoiailabs가 운영합니다.",
+  privacyAboutHeading: "이 앱이 하는 일",
+  privacyAboutBody:
+    "아노네 점프 메이커는 팬이 만든 비공식 메이커입니다. 사진 합성과 영상 생성은 사용 중인 기기 안에서 이루어집니다. 생성을 위해 이미지를 우리 서버로 업로드하지 않습니다.",
+  privacyAnalyticsHeading: "Google 애널리틱스",
+  privacyAnalyticsIntro:
+    "사이트가 어떻게 쓰이는지 알기 위해 Google 애널리틱스를 사용합니다. 예를 들어 다음과 같은 정보가 모일 수 있습니다.",
+  privacyAnalyticsPages: "페이지 조회",
+  privacyAnalyticsNav: "사이트 안에서의 이동",
+  privacyAnalyticsEvents:
+    "이미 측정 중인 조작(영상 미리보기와 저장). 방향과 효과 종류만 보내며, 사진 내용이나 만든 영상은 포함하지 않습니다",
+  privacyAnalyticsDevice: "대략적인 기기, 브라우저, 표시 언어",
+  privacyAnalyticsOutro: "고른 사진의 내용과 만든 영상 자체는 보내지 않습니다.",
+  privacyCookiesHeading: "쿠키와 식별자",
+  privacyCookiesBody:
+    "Google 애널리틱스는 브라우저에 쿠키를 저장하거나, 비슷한 방식으로 브라우저를 구분할 수 있습니다. 같은 사람이 몇 번 방문했는지 대략 알기 위한 것이며, 이름이나 사진과는 연결하지 않습니다.",
+  privacyPurposeHeading: "이용 목적",
+  privacyPurposeBody: "제품을 개선하고 이용량을 파악하기 위해서입니다. 개인 데이터를 판매하지 않습니다.",
+  privacyThirdHeading: "제3자",
+  privacyThirdBody: "측정 데이터는 Google에 전송되며, Google의 정책에 따라 처리됩니다.",
+  privacyGooglePolicy: "Google 개인정보처리방침",
+  privacyGoogleAnalytics: "Google 애널리틱스의 데이터 보호",
+  privacyOptOutHeading: "측정을 줄이려면",
+  privacyOptOutBody:
+    "브라우저 설정에서 쿠키를 거부하거나 삭제할 수 있습니다. Google 애널리틱스 옵트아웃 브라우저 부가기능이나 Google 광고 설정에서도 측정과 광고 관련 처리를 조정할 수 있습니다.",
+  privacyOptOutAddon: "Google 애널리틱스 옵트아웃 부가기능",
+  privacyOptOutAds: "Google 광고 설정",
+  privacyContactHeading: "문의",
+  privacyContactBody: "연락은 이 프로젝트의 GitHub Issues로 부탁드립니다.",
+  privacyContactLink: "GitHub Issues 열기",
+  privacyOrgLink: "GitHub의 Yoiailabs",
+  privacyUpdatesHeading: "변경",
+  privacyUpdatesBody: "이 방침은 바뀔 수 있습니다. 바뀌면 이 페이지의 날짜를 갱신합니다.",
+
   langNavAria: "언어",
 };
 
@@ -587,6 +712,47 @@ const zh: Record<MessageKey, string> = {
   errorExportBuffer: "生成缓冲区为空",
   errorShrink: "无法缩小图片",
   errorThumb: "无法生成缩略图",
+
+  privacyTitle: "隐私政策",
+  metaPrivacyDescription:
+    "由 Yoiailabs 运营的あのね跳跃制作器隐私政策。照片和视频在设备内生成，并通过 Google Analytics 了解使用情况。",
+  privacyUpdated: "最后更新：2026年9月21日",
+  privacyLink: "隐私政策",
+  footerOperator: "运营：Yoiailabs",
+  footerNavAria: "站点信息",
+  privacyOperatorHeading: "运营者",
+  privacyOperatorBody: "本站由 Yoiailabs 运营。",
+  privacyAboutHeading: "这个应用做什么",
+  privacyAboutBody:
+    "あのね跳跃制作器是粉丝制作的非官方工具。照片合成和视频生成都在你的设备上完成。为了生成，我们不会把图片上传到自己的服务器。",
+  privacyAnalyticsHeading: "Google Analytics",
+  privacyAnalyticsIntro: "我们使用 Google Analytics 了解网站的使用情况。可能会收集例如以下信息：",
+  privacyAnalyticsPages: "页面浏览",
+  privacyAnalyticsNav: "站内浏览路径",
+  privacyAnalyticsEvents:
+    "已埋点的操作（视频预览与保存）。发送的只有方向和效果类型，不含照片内容或生成的视频",
+  privacyAnalyticsDevice: "大致的设备、浏览器和界面语言",
+  privacyAnalyticsOutro: "你选择的照片内容，以及生成的视频本身，都不会被发送。",
+  privacyCookiesHeading: "Cookie 与标识",
+  privacyCookiesBody:
+    "Google Analytics 可能会在浏览器中保存 Cookie，或用类似方式区分浏览器。这是为了大致了解重复访问，不会与姓名或照片关联。",
+  privacyPurposeHeading: "使用目的",
+  privacyPurposeBody: "用于改进产品、了解访问情况。我们不会出售个人数据。",
+  privacyThirdHeading: "第三方",
+  privacyThirdBody: "测量数据会发送给 Google，并按 Google 的政策处理。",
+  privacyGooglePolicy: "Google 隐私政策",
+  privacyGoogleAnalytics: "Google Analytics 中的数据保护",
+  privacyOptOutHeading: "如何减少测量",
+  privacyOptOutBody:
+    "你可以在浏览器设置中拒绝或删除 Cookie。也可以使用 Google Analytics 停用浏览器插件，或在 Google 的广告设置中调整测量与广告相关选项。",
+  privacyOptOutAddon: "Google Analytics 停用插件",
+  privacyOptOutAds: "Google 广告设置",
+  privacyContactHeading: "联系",
+  privacyContactBody: "请通过本项目的 GitHub Issues 联系我们。",
+  privacyContactLink: "打开 GitHub Issues",
+  privacyOrgLink: "GitHub 上的 Yoiailabs",
+  privacyUpdatesHeading: "更新",
+  privacyUpdatesBody: "本政策可能会变更。变更时会更新本页的日期。",
 
   langNavAria: "语言",
 };

@@ -152,7 +152,9 @@ body {
 .stage-wrap,
 .panel,
 .share-wrap,
-.notes {
+.notes,
+.site-footer,
+.privacy {
   position: relative;
   z-index: 1;
 }
@@ -1440,5 +1442,91 @@ a.btn:focus-visible {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding-top: 0.15rem;
+  color: var(--mute);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.site-footer nav {
+  display: flex;
+}
+
+.site-footer a {
+  color: #2a7f82;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-footer a[aria-current="page"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.site-footer a:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.site-footer-credit {
+  margin: 0;
+}
+
+.privacy {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.privacy section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.privacy h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.privacy p,
+.privacy li {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.88rem;
+  line-height: 1.75;
+}
+
+.privacy ul {
+  margin: 0.1rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.privacy a {
+  color: #2a7f82;
+  font-weight: 700;
+}
+
+.privacy a:focus-visible,
+.privacy-back a:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.privacy-back {
+  margin: 0;
+  text-align: center;
 }
 

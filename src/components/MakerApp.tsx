@@ -5,6 +5,7 @@ import { BrowsersNote } from "@/components/BrowsersNote.tsx";
 import { JaLede } from "@/components/JaLede.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
+import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
@@ -255,6 +256,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           hidden={communityHidden}
           {...(communityHtml ? { dangerouslySetInnerHTML: { __html: communityHtml } } : {})}
         />
+        <SiteFooter locale={locale} />
       </div>
       <dialog className="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
         <div className="preview-sheet">

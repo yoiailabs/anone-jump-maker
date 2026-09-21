@@ -23,6 +23,8 @@ describe("worker fetch", () => {
   it("lets prefixed locales fall through to static HTML", async () => {
     const response = await worker.fetch(new Request("https://anone.yoiailabs.com/en"));
     expect(response.status).toBe(404);
+    const privacy = await worker.fetch(new Request("https://anone.yoiailabs.com/en/privacy"));
+    expect(privacy.status).toBe(404);
   });
 
   it("serves Japanese HTML when the browser prefers Japanese", async () => {
@@ -100,6 +102,29 @@ describe("worker fetch", () => {
     const response = await worker.fetch(new Request("https://anone.yoiailabs.com/ja"));
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/");
+  });
+
+  it("serves /privacy and redirects it with the locale cookie", async () => {
+    const response = await worker.fetch(
+      new Request("https://anone.yoiailabs.com/privacy", {
+        headers: { "accept-language": "en" },
+      }),
+      assetsEnv("<html lang=\"ja\"><title>プライバシーポリシー</title></html>"),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("プライバシーポリシー");
+
+    const redirected = await worker.fetch(
+      new Request("https://anone.yoiailabs.com/privacy", {
+        headers: { cookie: "anone-locale=en" },
+      }),
+    );
+    expect(redirected.status).toBe(302);
+    expect(redirected.headers.get("location")).toBe("/en/privacy");
+
+    const canonical = await worker.fetch(new Request("https://anone.yoiailabs.com/ja/privacy"));
+    expect(canonical.status).toBe(302);
+    expect(canonical.headers.get("location")).toBe("/privacy");
   });
 
   it("serves Japanese / to Googlebot even when Accept-Language is English", async () => {

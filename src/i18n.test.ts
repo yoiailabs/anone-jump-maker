@@ -16,13 +16,17 @@ describe("parseAppPath", () => {
     expect(parseAppPath("/")).toEqual({ locale: "ja", view: "maker", prefixed: false });
     expect(parseAppPath("/community")).toEqual({ locale: "ja", view: "community", prefixed: false });
     expect(parseAppPath("/community/")).toEqual({ locale: "ja", view: "community", prefixed: false });
+    expect(parseAppPath("/privacy")).toEqual({ locale: "ja", view: "privacy", prefixed: false });
+    expect(parseAppPath("/privacy/")).toEqual({ locale: "ja", view: "privacy", prefixed: false });
   });
 
   it("reads locale prefixes and community subpaths", () => {
     expect(parseAppPath("/en")).toEqual({ locale: "en", view: "maker", prefixed: true });
     expect(parseAppPath("/ko/community")).toEqual({ locale: "ko", view: "community", prefixed: true });
     expect(parseAppPath("/zh/community/")).toEqual({ locale: "zh", view: "community", prefixed: true });
+    expect(parseAppPath("/en/privacy")).toEqual({ locale: "en", view: "privacy", prefixed: true });
     expect(parseAppPath("/ja")).toEqual({ locale: "ja", view: "maker", prefixed: true });
+    expect(parseAppPath("/ja/privacy")).toEqual({ locale: "ja", view: "privacy", prefixed: true });
   });
 
   it("ignores static assets and unknown segments", () => {
@@ -39,8 +43,10 @@ describe("pathForApp", () => {
   it("omits a prefix for Japanese and prefixes other locales", () => {
     expect(pathForApp("ja", "maker")).toBe("/");
     expect(pathForApp("ja", "community")).toBe("/community");
+    expect(pathForApp("ja", "privacy")).toBe("/privacy");
     expect(pathForApp("en", "maker")).toBe("/en");
     expect(pathForApp("zh", "community")).toBe("/zh/community");
+    expect(pathForApp("en", "privacy")).toBe("/en/privacy");
   });
 });
 
@@ -65,6 +71,7 @@ describe("localeRedirectLocation", () => {
   it("redirects unprefixed paths when the browser language is not Japanese", () => {
     expect(localeRedirectLocation("/", "", null, "en-US")).toBe("/en");
     expect(localeRedirectLocation("/community", "?from=x", null, "ko")).toBe("/ko/community?from=x");
+    expect(localeRedirectLocation("/privacy", "", null, "en-US")).toBe("/en/privacy");
     expect(localeRedirectLocation("/", "", null, "ja-JP")).toBeNull();
     expect(localeRedirectLocation("/en", "", null, "ja")).toBeNull();
   });
@@ -72,6 +79,7 @@ describe("localeRedirectLocation", () => {
   it("canonicalizes /ja onto the unprefixed default URLs", () => {
     expect(localeRedirectLocation("/ja", "", null, "en")).toBe("/");
     expect(localeRedirectLocation("/ja/community", "?q=1", null, null)).toBe("/community?q=1");
+    expect(localeRedirectLocation("/ja/privacy", "", null, null)).toBe("/privacy");
   });
 
   it("honors a language cookie on unprefixed paths", () => {
@@ -152,6 +160,22 @@ describe("messages", () => {
     expect(t("en", "previewMuteHint")).toBe("Preview only");
     expect(t("ko", "previewMuteHint")).toBe("미리보기에서만");
     expect(t("zh", "previewMuteHint")).toBe("仅预览时");
+  });
+
+  it("states that photos stay on device and names Yoiailabs", () => {
+    expect(t("ja", "privacyTitle")).toBe("プライバシーポリシー");
+    expect(t("en", "privacyTitle")).toBe("Privacy Policy");
+    expect(t("ko", "privacyTitle")).toBe("개인정보 처리방침");
+    expect(t("zh", "privacyTitle")).toBe("隐私政策");
+    expect(t("ja", "privacyOperatorBody")).toContain("Yoiailabs");
+    expect(t("en", "footerOperator")).toContain("Yoiailabs");
+    expect(t("ja", "privacyAboutBody")).toContain("アップロードすることはありません");
+    expect(t("en", "privacyAboutBody")).toContain("not uploaded");
+    expect(t("ja", "privacyAnalyticsEvents")).toContain("プレビュー");
+    expect(t("ja", "privacyAnalyticsEvents")).toContain("保存");
+    expect(t("en", "privacyAnalyticsEvents")).toContain("preview");
+    expect(t("en", "privacyAnalyticsEvents")).toContain("not the contents");
+    expect(t("ja", "privacyUpdated")).toContain("2026年9月21日");
   });
 
   it("uses the English store title in non-Japanese credits", () => {
