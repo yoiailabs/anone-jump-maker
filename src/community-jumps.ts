@@ -27,7 +27,7 @@ export type CommunityJumpPost = {
 };
 
 /** 一覧の目安上限。行を足すだけで増える。 */
-export const COMMUNITY_JUMP_CAPACITY = 512;
+export const COMMUNITY_JUMP_CAPACITY = 1024;
 
 const X_STATUS =
   /^https:\/\/x\.com\/([A-Za-z0-9_]+)\/status\/(\d+)\/?$/;
@@ -38,6 +38,28 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
  * media を省略した行は video。初期表示は新しい順。
  */
 const CURATED_JUMPS: readonly CommunityJumpInput[] = [
+  { href: "https://x.com/namo_5G/status/2101803923954970918", likes: 5, createdAt: "2026-09-21" },
+  { href: "https://x.com/sato_fox_/status/2101746140035363283", likes: 5, createdAt: "2026-09-21" },
+  { href: "https://x.com/z2e___/status/2101715669175922922", likes: 4, createdAt: "2026-09-21" },
+  { href: "https://x.com/SHibari_1998/status/2101700547963387962", likes: 3, createdAt: "2026-09-21" },
+  { href: "https://x.com/Kinjou__/status/2101699383423299627", likes: 18, createdAt: "2026-09-21" },
+  { href: "https://x.com/kurororo0814/status/2101698339196817884", likes: 4, createdAt: "2026-09-21" },
+  { href: "https://x.com/TM404615689540/status/2101696630798065995", likes: 3, createdAt: "2026-09-21" },
+  { href: "https://x.com/Sanroku68_3668f/status/2101696357635604707", likes: 11, createdAt: "2026-09-21" },
+  { href: "https://x.com/hanamiryou/status/2101690466144268452", likes: 0, createdAt: "2026-09-21" },
+  { href: "https://x.com/fukuicity_lpa/status/2101686703870390782", likes: 24, createdAt: "2026-09-20" },
+  { href: "https://x.com/qv_ci0/status/2101670403978785243", likes: 10, createdAt: "2026-09-20" },
+  { href: "https://x.com/tunamayo_Kouyak/status/2101656473487237268", likes: 23, createdAt: "2026-09-20" },
+  { href: "https://x.com/ndk20b/status/2101641487494848827", likes: 3, createdAt: "2026-09-20" },
+  { href: "https://x.com/0130_ssss/status/2101577757742510581", likes: 14, createdAt: "2026-09-20" },
+  { href: "https://x.com/yama_oisiine/status/2101570963095933014", likes: 5, createdAt: "2026-09-20" },
+  { href: "https://x.com/sean20080530/status/2101534786691182749", likes: 3, createdAt: "2026-09-20" },
+  { href: "https://x.com/nuhura39/status/2101533110802276606", likes: 9, createdAt: "2026-09-20" },
+  { href: "https://x.com/mokeiya0000/status/2101498936926380482", likes: 6, createdAt: "2026-09-20" },
+  { href: "https://x.com/sinonome_camera/status/2101478657181253730", likes: 15, createdAt: "2026-09-20" },
+  { href: "https://x.com/tukimimanjyu/status/2101464502088929332", likes: 12, createdAt: "2026-09-20" },
+  { href: "https://x.com/Nanami_Cocoru/status/2101368635604504828", likes: 9, createdAt: "2026-09-20" },
+  { href: "https://x.com/na56217/status/2101361588733374680", likes: 10, createdAt: "2026-09-20" },
   { href: "https://x.com/02_ZERO_Ni/status/2100797924125049167", likes: 738, createdAt: "2026-09-18" },
   { href: "https://x.com/_nakotanmaru/status/2100880092864122959", likes: 646, createdAt: "2026-09-18" },
   { href: "https://x.com/aku11i/status/2100742211289989572", likes: 107, createdAt: "2026-09-18" },
