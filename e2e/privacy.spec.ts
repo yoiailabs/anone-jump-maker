@@ -38,7 +38,7 @@ test.describe("privacy policy", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "ja");
     await expect(page.locator("#privacyTitle")).toHaveText(t("ja", "privacyTitle"));
     await expect(page.locator("#privacyPolicy")).toContainText("Yoiailabs");
-    await expect(page.locator("#privacyPolicy")).toContainText("アップロードすることはありません");
+    await expect(page.locator("#privacyPolicy")).toContainText("外部のサーバーへ送られることはありません");
     await expect(page.locator("#privacyPolicy")).toContainText("プレビュー");
     await expect(page.locator('a[href="https://policies.google.com/privacy"]')).toBeVisible();
     await expect(page.locator(`a[href="${PRIVACY_CONTACT_URL}"]`)).toBeVisible();
@@ -64,7 +64,7 @@ test.describe("privacy policy", () => {
     await expect(page).toHaveTitle(t("en", "privacyTitle"));
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#privacyTitle")).toHaveText(t("en", "privacyTitle"));
-    await expect(page.locator("#privacyPolicy")).toContainText("not uploaded");
+    await expect(page.locator("#privacyPolicy")).toContainText("never leave the browser");
     await expect(page.locator("#siteFooter")).toContainText("Yoiailabs");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/en/privacy");
     await expect(page.locator('.lang-switch a[lang="ko"]')).toHaveAttribute("href", "/ko/privacy");

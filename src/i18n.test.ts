@@ -162,19 +162,19 @@ describe("messages", () => {
     expect(t("zh", "previewMuteHint")).toBe("仅预览时");
   });
 
-  it("states that photos stay on device and names Yoiailabs", () => {
+  it("describes on-device video and names Yoiailabs", () => {
     expect(t("ja", "privacyTitle")).toBe("プライバシーポリシー");
     expect(t("en", "privacyTitle")).toBe("Privacy Policy");
     expect(t("ko", "privacyTitle")).toBe("개인정보 처리방침");
     expect(t("zh", "privacyTitle")).toBe("隐私政策");
     expect(t("ja", "privacyOperatorBody")).toContain("Yoiailabs");
     expect(t("en", "footerOperator")).toContain("Yoiailabs");
-    expect(t("ja", "privacyAboutBody")).toContain("アップロードすることはありません");
-    expect(t("en", "privacyAboutBody")).toContain("not uploaded");
+    expect(t("ja", "privacyAboutBody")).toContain("外部のサーバーへ送られることはありません");
+    expect(t("en", "privacyAboutBody")).toContain("never leave the browser");
     expect(t("ja", "privacyAnalyticsEvents")).toContain("プレビュー");
     expect(t("ja", "privacyAnalyticsEvents")).toContain("保存");
-    expect(t("en", "privacyAnalyticsEvents")).toContain("preview");
-    expect(t("en", "privacyAnalyticsEvents")).toContain("not the contents");
+    expect(t("en", "privacyAnalyticsEvents")).toContain("Previewing or saving");
+    expect(t("en", "privacyAnalyticsEvents")).toContain("Photo contents");
     expect(t("ja", "privacyUpdated")).toContain("2026年9月21日");
   });
 
