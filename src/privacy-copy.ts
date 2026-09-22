@@ -1,11 +1,7 @@
 import type { Locale } from "./messages.ts";
 import {
   CLOUDFLARE_PRIVACY_URL,
-  FILL,
   FILL_CONTACT,
-  FILL_EFFECTIVE,
-  FILL_REPRESENTATIVE,
-  FILL_REVISED,
   GOOGLE_ANALYTICS_OPTOUT_URL,
   GOOGLE_ANALYTICS_SAFEGUARDS_URL,
   GOOGLE_PARTNER_SITES_URL,
@@ -43,9 +39,9 @@ export type PrivacyDocument = {
 
 const ja: PrivacyDocument = {
   revisedLabel: "最終改定日：",
-  revisedValue: FILL_REVISED,
+  revisedValue: "2026年9月22日",
   effectiveLabel: "適用開始日：",
-  effectiveValue: FILL_EFFECTIVE,
+  effectiveValue: "2026年9月22日",
   preamble:
     "あのねジャンプメーカーの運営者（以下「運営者」といいます。）は、あのねジャンプメーカーおよびその関連ページ（以下「本サービス」といいます。）における利用者に関する情報の取扱いについて、次のとおりプライバシーポリシー（以下「本ポリシー」といいます。）を定めます。",
   sections: [
@@ -55,13 +51,7 @@ const ja: PrivacyDocument = {
         { type: "p", parts: ["本サービスの運営者は、次のとおりです。"] },
         {
           type: "ul",
-          items: [
-            "運営名：Yoiailabs",
-            `運営主体の氏名または正式名称：${FILL}`,
-            `住所：${FILL}`,
-            `代表者氏名：${FILL_REPRESENTATIVE}`,
-            "お問い合わせ窓口：第11条に記載する窓口",
-          ],
+          items: ["運営名：Yoiailabs（個人制作者）"],
         },
         {
           type: "p",
@@ -312,12 +302,6 @@ const ja: PrivacyDocument = {
             "Sentryへ障害診断のために送信するサービスデータの取扱いは、運営者とSentryとの契約に基づきます。Sentry自身のウェブサイト等に適用されるプライバシーポリシーとは、適用範囲が異なります。",
           ],
         },
-        {
-          type: "p",
-          parts: [
-            "お問い合わせにGitHubを利用した場合、利用者が投稿・送信した情報はGitHubによっても取り扱われます。公開Issuesに投稿した内容は第三者が閲覧できます。個人情報を含むご連絡には、第11条の非公開窓口をご利用ください。",
-          ],
-        },
       ],
     },
     {
@@ -384,7 +368,7 @@ const ja: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "主な措置として、情報を取り扱う者・管理アカウントの限定、認証情報の適切な管理、管理端末の保護、通信の暗号化、ソフトウェアの更新、不要な情報の収集・送信の抑制、外部サービスの設定および取扱状況の確認を行います。安全管理措置の概要に関するお問い合わせは、第11条の窓口で受け付けます。",
+            "主な措置として、情報を取り扱う者・管理アカウントの限定、認証情報の適切な管理、管理端末の保護、通信の暗号化、ソフトウェアの更新、不要な情報の収集・送信の抑制、外部サービスの設定および取扱状況の確認を行います。",
           ],
         },
         {
@@ -501,9 +485,9 @@ const ja: PrivacyDocument = {
 
 const en: PrivacyDocument = {
   revisedLabel: "Last revised: ",
-  revisedValue: FILL_REVISED,
+  revisedValue: "September 22, 2026",
   effectiveLabel: "Effective date: ",
-  effectiveValue: FILL_EFFECTIVE,
+  effectiveValue: "September 22, 2026",
   preamble:
     "The operator of Anone Jump Maker (the “Operator”) sets out this privacy policy (this “Policy”) for how information about users is handled in Anone Jump Maker and its related pages (the “Service”).",
   sections: [
@@ -513,13 +497,7 @@ const en: PrivacyDocument = {
         { type: "p", parts: ["The operator of the Service is as follows."] },
         {
           type: "ul",
-          items: [
-            "Operator name: Yoiailabs",
-            `Name or legal name of the operator: ${FILL}`,
-            `Address: ${FILL}`,
-            `Name of the representative: ${FILL_REPRESENTATIVE}`,
-            "Contact: the contact listed in Article 11",
-          ],
+          items: ["Operator name: Yoiailabs (individual creator)"],
         },
         {
           type: "p",
@@ -775,12 +753,6 @@ const en: PrivacyDocument = {
             "Service data sent to Sentry for error diagnosis is handled under the contract between the Operator and Sentry. That is a different scope from the privacy policy that applies to Sentry’s own website.",
           ],
         },
-        {
-          type: "p",
-          parts: [
-            "If GitHub is used for an inquiry, information you post or send is also handled by GitHub. What you post on a public Issue can be read by others. For a message that includes personal information, please use the non-public contact in Article 11.",
-          ],
-        },
       ],
     },
     {
@@ -847,7 +819,7 @@ const en: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "The main measures are limiting who handles the information and which admin accounts exist, managing credentials appropriately, protecting devices used for administration, encrypting communications, updating software, limiting collection and transmission of information that is not needed, and checking the settings and handling of external services. Inquiries about a summary of these security measures are accepted at the contact in Article 11.",
+            "The main measures are limiting who handles the information and which admin accounts exist, managing credentials appropriately, protecting devices used for administration, encrypting communications, updating software, limiting collection and transmission of information that is not needed, and checking the settings and handling of external services.",
           ],
         },
         {
@@ -964,9 +936,9 @@ const en: PrivacyDocument = {
 
 const ko: PrivacyDocument = {
   revisedLabel: "최종 개정일: ",
-  revisedValue: FILL_REVISED,
+  revisedValue: "2026년 9월 22일",
   effectiveLabel: "적용 시작일: ",
-  effectiveValue: FILL_EFFECTIVE,
+  effectiveValue: "2026년 9월 22일",
   preamble:
     "아노네 점프 메이커의 운영자(이하 “운영자”)는 아노네 점프 메이커 및 관련 페이지(이하 “본 서비스”)에서 이용자에 관한 정보를 다루는 방법에 대해 다음과 같이 개인정보 처리방침(이하 “본 방침”)을 정합니다.",
   sections: [
@@ -976,13 +948,7 @@ const ko: PrivacyDocument = {
         { type: "p", parts: ["본 서비스의 운영자는 다음과 같습니다."] },
         {
           type: "ul",
-          items: [
-            "운영 이름: Yoiailabs",
-            `운영 주체의 성명 또는 정식 명칭: ${FILL}`,
-            `주소: ${FILL}`,
-            `대표자 성명: ${FILL_REPRESENTATIVE}`,
-            "문의 창구: 제11조에 적힌 창구",
-          ],
+          items: ["운영 이름: Yoiailabs (개인 제작자)"],
         },
         {
           type: "p",
@@ -1229,12 +1195,6 @@ const ko: PrivacyDocument = {
             "장애 진단을 위해 Sentry로 보내는 서비스 데이터의 취급은 운영자와 Sentry의 계약에 따릅니다. Sentry 자신의 웹사이트 등에 적용되는 개인정보 처리방침과는 적용 범위가 다릅니다.",
           ],
         },
-        {
-          type: "p",
-          parts: [
-            "문의에 GitHub를 이용한 경우, 이용자가 게시·전송한 정보는 GitHub에서도 취급됩니다. 공개 Issue에 게시한 내용은 제3자가 볼 수 있습니다. 개인정보가 포함된 연락은 제11조의 비공개 창구를 이용해 주세요.",
-          ],
-        },
       ],
     },
     {
@@ -1301,7 +1261,7 @@ const ko: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "주요 조치로, 정보를 다루는 사람과 관리 계정의 제한, 인증 정보의 적절한 관리, 관리 단말의 보호, 통신의 암호화, 소프트웨어 업데이트, 불필요한 정보의 수집·전송 억제, 외부 서비스의 설정과 취급 상황 확인을 합니다. 안전관리 조치의 개요에 관한 문의는 제11조의 창구에서 접수합니다.",
+            "주요 조치로, 정보를 다루는 사람과 관리 계정의 제한, 인증 정보의 적절한 관리, 관리 단말의 보호, 통신의 암호화, 소프트웨어 업데이트, 불필요한 정보의 수집·전송 억제, 외부 서비스의 설정과 취급 상황 확인을 합니다.",
           ],
         },
         {
@@ -1409,9 +1369,9 @@ const ko: PrivacyDocument = {
 
 const zh: PrivacyDocument = {
   revisedLabel: "最后修订日：",
-  revisedValue: FILL_REVISED,
+  revisedValue: "2026年9月22日",
   effectiveLabel: "开始适用日：",
-  effectiveValue: FILL_EFFECTIVE,
+  effectiveValue: "2026年9月22日",
   preamble:
     "あのね跳跃制作器的运营者（下称“运营者”）就あのね跳跃制作器及其相关页面（下称“本服务”）中与使用者有关的信息的处理，制定如下隐私政策（下称“本政策”）。",
   sections: [
@@ -1421,13 +1381,7 @@ const zh: PrivacyDocument = {
         { type: "p", parts: ["本服务的运营者如下。"] },
         {
           type: "ul",
-          items: [
-            "运营名称：Yoiailabs",
-            `运营主体的姓名或正式名称：${FILL}`,
-            `地址：${FILL}`,
-            `代表者姓名：${FILL_REPRESENTATIVE}`,
-            "咨询窗口：第11条所列窗口",
-          ],
+          items: ["运营名称：Yoiailabs（个人创作者）"],
         },
         {
           type: "p",
@@ -1665,12 +1619,6 @@ const zh: PrivacyDocument = {
             "为故障诊断而发送给 Sentry 的服务数据，依运营者与 Sentry 之间的合同处理。其适用范围与适用于 Sentry 自身网站等的隐私政策不同。",
           ],
         },
-        {
-          type: "p",
-          parts: [
-            "如果使用 GitHub 进行咨询，使用者投稿或发送的信息也会由 GitHub 处理。在公开 Issue 中投稿的内容可以被第三方查看。包含个人信息的联系，请使用第11条的非公开窗口。",
-          ],
-        },
       ],
     },
     {
@@ -1728,7 +1676,7 @@ const zh: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "主要措施包括：限制处理信息的人员和管理者账号，适当管理认证信息，保护管理用终端，加密通信，更新软件，抑制不必要的信息收集和发送，确认外部服务的设置和处理状况。关于安全管理措施概要的咨询，由第11条的窗口受理。",
+            "主要措施包括：限制处理信息的人员和管理者账号，适当管理认证信息，保护管理用终端，加密通信，更新软件，抑制不必要的信息收集和发送，确认外部服务的设置和处理状况。",
           ],
         },
         {

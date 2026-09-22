@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LOCALES } from "./messages.ts";
 import { privacyDocument, type PrivacyBlock } from "./privacy-copy.ts";
-import { FILL, FILL_CONTACT, FILL_EFFECTIVE, FILL_REPRESENTATIVE, FILL_REVISED } from "./privacy.ts";
+import { FILL_CONTACT } from "./privacy.ts";
 
 function shape(blocks: PrivacyBlock[]): string {
   return blocks
@@ -39,11 +39,9 @@ describe("privacy policy copy", () => {
       const text = JSON.stringify(doc);
       expect(text).toContain("Yoiailabs");
       expect(text).toContain("anone-locale");
-      expect(text).toContain(FILL);
-      expect(text).toContain(FILL_REVISED);
-      expect(text).toContain(FILL_EFFECTIVE);
-      expect(text).toContain(FILL_REPRESENTATIVE);
       expect(text).toContain(FILL_CONTACT);
+      expect(text).not.toContain("【要記入：実際の改定日】");
+      expect(text).not.toContain("【要記入：実際の適用開始日】");
       expect(text).not.toContain("編集者向け");
       expect(text).not.toContain("2026年9月21日");
     }
@@ -59,5 +57,13 @@ describe("privacy policy copy", () => {
     expect(text).toContain("Google Fonts／Google LLC");
     expect(text).toContain("YouTube／Google LLC");
     expect(text).toContain("X／X Corp.");
+    expect(text).toContain("運営名：Yoiailabs（個人制作者）");
+    expect(text).toContain("最終改定日");
+    expect(privacyDocument("ja").revisedValue).toBe("2026年9月22日");
+    expect(privacyDocument("ja").effectiveValue).toBe("2026年9月22日");
+    expect(privacyDocument("en").revisedValue).toBe("September 22, 2026");
+    expect(text).not.toContain("お問い合わせにGitHubを利用した場合");
+    expect(text).not.toContain("安全管理措置の概要に関するお問い合わせ");
+    expect(text).not.toContain("運営主体の氏名");
   });
 });

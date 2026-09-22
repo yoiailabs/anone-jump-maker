@@ -1,7 +1,3 @@
-export const FILL = "【要記入】";
-export const FILL_REVISED = "【要記入：実際の改定日】";
-export const FILL_EFFECTIVE = "【要記入：実際の適用開始日】";
-export const FILL_REPRESENTATIVE = "【要記入：法人の場合。個人運営の場合はこの項目を削除】";
 export const FILL_CONTACT = "【要記入：受信・対応可能なメールアドレスまたは非公開フォームURL】";
 
 export const GOOGLE_PRIVACY_POLICY_URL = "https://policies.google.com/privacy?hl=ja";
