@@ -108,6 +108,10 @@
         height: auto;
         aspect-ratio: 640 / 365;
       }
+
+      .hero-logo[height="390"] {
+        aspect-ratio: 640 / 390;
+      }
     </style>
   </head>
   <body>
@@ -136,10 +140,10 @@
         zh: "あのね跳跃制作器",
       };
       const logos = {
-        ja: "/brand/anone-logo-stacked.svg",
-        en: "/brand/anone-logo-stacked-en.svg",
-        ko: "/brand/anone-logo-stacked-en.svg",
-        zh: "/brand/anone-logo-stacked-en.svg",
+        ja: { src: "/brand/anone-logo-stacked.svg", width: 640, height: 365 },
+        en: { src: "/brand/anone-logo-stacked-en.svg", width: 640, height: 390 },
+        ko: { src: "/brand/anone-logo-stacked-en.svg", width: 640, height: 390 },
+        zh: { src: "/brand/anone-logo-stacked-en.svg", width: 640, height: 390 },
       };
       const locale = new URLSearchParams(location.search).get("locale");
       const title = locale && titles[locale] ? titles[locale] : titles.ja;
@@ -147,7 +151,10 @@
       document.documentElement.lang = lang;
       const logo = document.querySelector(".hero-logo");
       if (logo instanceof HTMLImageElement) {
-        logo.src = logos[lang];
+        const mark = logos[lang];
+        logo.src = mark.src;
+        logo.width = mark.width;
+        logo.height = mark.height;
         logo.alt = title;
       }
     </script>

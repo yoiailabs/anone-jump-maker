@@ -12,7 +12,7 @@ import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
 import { muteButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
-import { MAKER_LOGO_STACKED_SIZE, makerLogoStackedSrc } from "../brand.ts";
+import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -73,6 +73,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
 
   const makerHidden = initialView !== "maker";
   const communityHidden = initialView !== "community";
+  const logoSize = makerLogoStackedSize(locale);
 
   return (
     <>
@@ -90,8 +91,8 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <img
                 className="hero-logo"
                 src={makerLogoStackedSrc(locale)}
-                width={MAKER_LOGO_STACKED_SIZE.width}
-                height={MAKER_LOGO_STACKED_SIZE.height}
+                width={logoSize.width}
+                height={logoSize.height}
                 alt={t(locale, "makerTitle")}
                 decoding="async"
               />
