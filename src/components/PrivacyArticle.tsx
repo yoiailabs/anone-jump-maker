@@ -2,15 +2,7 @@ import { useEffect } from "react";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { localeRedirectLocation, pathForApp, t, type Locale } from "../i18n.ts";
-import {
-  GOOGLE_ADS_SETTINGS_URL,
-  GOOGLE_ANALYTICS_OPTOUT_URL,
-  GOOGLE_ANALYTICS_SAFEGUARDS_URL,
-  GOOGLE_PRIVACY_POLICY_URL,
-  PRIVACY_CONTACT_URL,
-  PRIVACY_ORG_URL,
-  PRIVACY_POLICY_UPDATED,
-} from "../privacy.ts";
+import { privacyDocument, type Inline, type PrivacyBlock } from "../privacy-copy.ts";
 
 function clientLocaleRedirect(): string | null {
   if (typeof location === "undefined" || typeof navigator === "undefined") return null;
@@ -25,11 +17,110 @@ function clientLocaleRedirect(): string | null {
   );
 }
 
+function olMark(title: string): string {
+  const latinOrHangul = /[A-Za-z\uac00-\ud7af]/.test(title);
+  const kanaOrKanji = /[\u3040-\u30ff\u4e00-\u9fff]/.test(title);
+  return latinOrHangul && !kanaOrKanji ? ": " : "：";
+}
+
+function Parts({ parts }: { parts: Inline[] }) {
+  return parts.map((part, index) =>
+    typeof part === "string" ? (
+      <span key={index}>{part}</span>
+    ) : (
+      <a key={index} href={part.href} target="_blank" rel="noopener noreferrer">
+        {part.label}
+      </a>
+    ),
+  );
+}
+
+function BlockView({ block }: { block: PrivacyBlock }) {
+  if (block.type === "p") {
+    return (
+      <p>
+        <Parts parts={block.parts} />
+      </p>
+    );
+  }
+  if (block.type === "ul") {
+    return (
+      <ul>
+        {block.items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
+  if (block.type === "ol") {
+    return (
+      <ol>
+        {block.items.map((item) => (
+          <li key={item.title}>
+            <strong>{item.title}</strong>
+            {olMark(item.title)}
+            {item.text}
+          </li>
+        ))}
+      </ol>
+    );
+  }
+  if (block.type === "table") {
+    return (
+      <div className="privacy-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              {block.headers.map((header) => (
+                <th key={header} scope="col">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {block.rows.map((row) => (
+              <tr key={row[0]}>
+                {row.map((cell, index) => (
+                  <td key={`${row[0]}-${index}`}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  return (
+    <>
+      <p>{block.intro}</p>
+      <ul>
+        {block.items.map((item) => (
+          <li key={item.name}>
+            {item.name}
+            {block.separator.includes("／") ? "：" : ": "}
+            {item.links.map((link, index) => (
+              <span key={link.href}>
+                {index > 0 ? block.separator : null}
+                <a href={link.href} target="_blank" rel="noopener noreferrer">
+                  {link.label}
+                </a>
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 export default function PrivacyArticle({ locale }: { locale: Locale }) {
   useEffect(() => {
     const dest = clientLocaleRedirect();
     if (dest) location.replace(dest);
   }, []);
+
+  const copy = privacyDocument(locale);
 
   return (
     <>
@@ -38,104 +129,29 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
         <span className="blob blob-teal" />
         <span className="blob blob-coral" />
       </div>
-      <div className="app">
+      <div className="app privacy-app">
         <header className="hero">
           <LanguageNav locale={locale} view="privacy" />
           <p className="eyebrow">#あのねジャンプ</p>
           <h1 id="privacyTitle">{t(locale, "privacyTitle")}</h1>
-          <p className="lede">
-            <time dateTime={PRIVACY_POLICY_UPDATED}>{t(locale, "privacyUpdated")}</time>
-          </p>
-          <p className="lede">{t(locale, "privacyLede")}</p>
         </header>
         <article className="privacy" id="privacyPolicy">
-          <section>
-            <h2>{t(locale, "privacyOperatorHeading")}</h2>
-            <p>{t(locale, "privacyOperatorBody")}</p>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyAboutHeading")}</h2>
-            <p>{t(locale, "privacyAboutBody")}</p>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyNotHeading")}</h2>
-            <ul>
-              <li>{t(locale, "privacyNotPhotos")}</li>
-              <li>{t(locale, "privacyNotVideo")}</li>
-              <li>{t(locale, "privacyNotAccount")}</li>
-            </ul>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyAnalyticsHeading")}</h2>
-            <p>{t(locale, "privacyAnalyticsIntro")}</p>
-            <ul>
-              <li>{t(locale, "privacyAnalyticsPages")}</li>
-              <li>{t(locale, "privacyAnalyticsNav")}</li>
-              <li>{t(locale, "privacyAnalyticsEvents")}</li>
-              <li>{t(locale, "privacyAnalyticsDevice")}</li>
-            </ul>
-            <p>{t(locale, "privacyAnalyticsOutro")}</p>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyCookiesHeading")}</h2>
-            <p>{t(locale, "privacyCookiesBody")}</p>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyPurposeHeading")}</h2>
-            <p>{t(locale, "privacyPurposeBody")}</p>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyThirdHeading")}</h2>
-            <p>{t(locale, "privacyThirdBody")}</p>
-            <ul>
-              <li>
-                <a href={GOOGLE_PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">
-                  {t(locale, "privacyGooglePolicy")}
-                </a>
-              </li>
-              <li>
-                <a href={GOOGLE_ANALYTICS_SAFEGUARDS_URL} target="_blank" rel="noopener noreferrer">
-                  {t(locale, "privacyGoogleAnalytics")}
-                </a>
-              </li>
-            </ul>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyOptOutHeading")}</h2>
-            <p>{t(locale, "privacyOptOutBody")}</p>
-            <ul>
-              <li>
-                <a href={GOOGLE_ANALYTICS_OPTOUT_URL} target="_blank" rel="noopener noreferrer">
-                  {t(locale, "privacyOptOutAddon")}
-                </a>
-              </li>
-              <li>
-                <a href={GOOGLE_ADS_SETTINGS_URL} target="_blank" rel="noopener noreferrer">
-                  {t(locale, "privacyOptOutAds")}
-                </a>
-              </li>
-            </ul>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyContactHeading")}</h2>
-            <p>{t(locale, "privacyContactBody")}</p>
-            <ul>
-              <li>
-                <a href={PRIVACY_CONTACT_URL} target="_blank" rel="noopener noreferrer">
-                  {t(locale, "privacyContactLink")}
-                </a>
-              </li>
-              <li>
-                <a href={PRIVACY_ORG_URL} target="_blank" rel="noopener noreferrer">
-                  {t(locale, "privacyOrgLink")}
-                </a>
-              </li>
-            </ul>
-          </section>
-          <section>
-            <h2>{t(locale, "privacyUpdatesHeading")}</h2>
-            <p>{t(locale, "privacyUpdatesBody")}</p>
-          </section>
+          <p className="privacy-dates">
+            {copy.revisedLabel}
+            {copy.revisedValue}
+            <br />
+            {copy.effectiveLabel}
+            {copy.effectiveValue}
+          </p>
+          <p>{copy.preamble}</p>
+          {copy.sections.map((section) => (
+            <section key={section.heading}>
+              <h2>{section.heading}</h2>
+              {section.blocks.map((block, index) => (
+                <BlockView key={`${section.heading}-${index}`} block={block} />
+              ))}
+            </section>
+          ))}
         </article>
         <p className="privacy-back">
           <a id="privacyBack" className="page-link" href={pathForApp(locale, "maker")}>

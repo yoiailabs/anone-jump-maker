@@ -167,18 +167,9 @@ describe("messages", () => {
     expect(t("en", "privacyTitle")).toBe("Privacy Policy");
     expect(t("ko", "privacyTitle")).toBe("개인정보 처리방침");
     expect(t("zh", "privacyTitle")).toBe("隐私政策");
-    expect(t("ja", "privacyOperatorBody")).toContain("Yoiailabs");
+    expect(t("ja", "footerOperator")).toContain("Yoiailabs");
     expect(t("en", "footerOperator")).toContain("Yoiailabs");
-    expect(t("ja", "privacyAboutBody")).toContain("外部のサーバーへ送られることはありません");
-    expect(t("en", "privacyAboutBody")).toContain("only on your device");
-    expect(t("ja", "privacyNotPhotos")).toContain("写真");
-    expect(t("ja", "privacyAnalyticsEvents")).toContain("プレビュー");
-    expect(t("ja", "privacyAnalyticsEvents")).toContain("保存");
-    expect(t("en", "privacyAnalyticsEvents")).toContain("Previewing or saving");
-    expect(t("en", "privacyAnalyticsEvents")).toContain("orientation");
-    expect(t("en", "privacyNotPhotos")).toContain("file names");
-    expect(t("ja", "privacyCookiesBody")).toContain("言語");
-    expect(t("ja", "privacyUpdated")).toContain("2026年9月21日");
+    expect(t("ja", "metaPrivacyDescription")).toContain("Yoiailabs");
   });
 
   it("uses the English store title in non-Japanese credits", () => {

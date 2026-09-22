@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { t } from "../src/i18n.ts";
-import { PRIVACY_CONTACT_URL } from "../src/privacy.ts";
+import { GOOGLE_PRIVACY_POLICY_URL } from "../src/privacy.ts";
 import { blockAnalytics, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 test.describe("privacy policy", () => {
@@ -38,10 +38,10 @@ test.describe("privacy policy", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "ja");
     await expect(page.locator("#privacyTitle")).toHaveText(t("ja", "privacyTitle"));
     await expect(page.locator("#privacyPolicy")).toContainText("Yoiailabs");
-    await expect(page.locator("#privacyPolicy")).toContainText("外部のサーバーへ送られることはありません");
-    await expect(page.locator("#privacyPolicy")).toContainText("プレビュー");
-    await expect(page.locator('a[href="https://policies.google.com/privacy"]')).toBeVisible();
-    await expect(page.locator(`a[href="${PRIVACY_CONTACT_URL}"]`)).toBeVisible();
+    await expect(page.locator("#privacyPolicy")).toContainText("第1条");
+    await expect(page.locator("#privacyPolicy")).toContainText("アップロードすることはありません");
+    await expect(page.locator("#privacyPolicy")).toContainText("【要記入】");
+    await expect(page.locator('a[href="' + GOOGLE_PRIVACY_POLICY_URL + '"]')).toBeVisible();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       "https://anone.yoiailabs.com/privacy",
@@ -64,7 +64,7 @@ test.describe("privacy policy", () => {
     await expect(page).toHaveTitle(t("en", "privacyTitle"));
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#privacyTitle")).toHaveText(t("en", "privacyTitle"));
-    await expect(page.locator("#privacyPolicy")).toContainText("only on your device");
+    await expect(page.locator("#privacyPolicy")).toContainText("not uploaded");
     await expect(page.locator("#siteFooter")).toContainText("Yoiailabs");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/en/privacy");
     await expect(page.locator('.lang-switch a[lang="ko"]')).toHaveAttribute("href", "/ko/privacy");

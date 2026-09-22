@@ -1482,6 +1482,10 @@ a.btn:focus-visible {
   margin: 0;
 }
 
+.privacy-app {
+  width: min(46rem, 100%);
+}
+
 .privacy {
   display: flex;
   flex-direction: column;
@@ -1509,9 +1513,62 @@ a.btn:focus-visible {
   line-height: 1.75;
 }
 
-.privacy ul {
+.privacy ul,
+.privacy ol {
   margin: 0.1rem 0 0;
   padding-left: 1.2rem;
+}
+
+.privacy ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.privacy strong {
+  color: var(--ink);
+}
+
+.privacy-dates {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.privacy-table-wrap {
+  overflow-x: auto;
+  border: 2px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--card);
+}
+
+.privacy table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.privacy th,
+.privacy td {
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+  line-height: 1.55;
+}
+
+.privacy th {
+  background: color-mix(in srgb, var(--lime) 72%, white);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.privacy td {
+  color: var(--mute);
+}
+
+.privacy tr:last-child td {
+  border-bottom: 0;
 }
 
 .privacy a {
