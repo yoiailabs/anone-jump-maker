@@ -37,6 +37,7 @@ test.describe("privacy policy", () => {
     await expect(page).toHaveTitle(t("ja", "privacyTitle"));
     await expect(page.locator("html")).toHaveAttribute("lang", "ja");
     await expect(page.locator("#privacyTitle")).toHaveText(t("ja", "privacyTitle"));
+    await expect(page.locator(".hero .eyebrow")).toHaveCount(0);
     await expect(page.locator("#privacyPolicy")).toContainText("Yoiailabs");
     await expect(page.locator("#privacyPolicy")).toContainText("第1条");
     await expect(page.locator("#privacyPolicy")).toContainText("アップロードすることはありません");

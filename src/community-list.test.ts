@@ -171,8 +171,7 @@ describe("community list markup", () => {
     expect(MORE_JUMPS_HREF).toBe(`https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`);
     expect(html.match(/id="toMaker"/g)).toHaveLength(1);
     expect(html.match(/メーカーに戻る/g)).toHaveLength(2);
-    expect(html).toContain('<p class="eyebrow">#あのねジャンプ</p>');
-    expect(html).not.toContain('<p class="eyebrow"><a');
+    expect(html).not.toContain('class="eyebrow"');
     expect(html.indexOf("toMaker")).toBeLessThan(html.indexOf("communityJumpsList"));
     expect(html.indexOf("communityJumpsList")).toBeLessThan(html.indexOf("communityPager"));
     expect(html.indexOf("communityPager")).toBeLessThan(html.indexOf("communityHashtagSearch"));
@@ -288,8 +287,7 @@ describe("community hashtag search links", () => {
     expect(html).toMatch(/<h1 id="communityJumpsTitle">みんなの #あのねジャンプ<\/h1>/);
     expect(html).not.toContain("community-hashtag-link");
     expect(html).not.toContain('id="communityHashtag"');
-    expect(html).toContain('<p class="eyebrow">#あのねジャンプ</p>');
-    expect(html).not.toContain('<p class="eyebrow"><a');
+    expect(html).not.toContain('class="eyebrow"');
 
     const ledeIdx = html.indexOf(`<p class="lede">${COMMUNITY_JUMPS_LEDE}</p>`);
     const sortIdx = html.indexOf('id="communitySort"');

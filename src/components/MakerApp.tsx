@@ -87,7 +87,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         <div className="app-view" id="makerView" hidden={makerHidden}>
           <header className="hero">
             <LanguageNav locale={locale} view="maker" />
-            <p className="eyebrow">#あのねジャンプ</p>
             <h1 id="makerTitle">
               <img
                 className="hero-logo"

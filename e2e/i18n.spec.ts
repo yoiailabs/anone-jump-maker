@@ -19,6 +19,7 @@ test.describe("language routing", () => {
     await expect(page.locator("#makerTitle .hero-logo")).toBeVisible();
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("en", "makerTitle"));
+    await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
     await expect(page.locator("#playBtn")).toHaveText(t("en", "makerPreview"));
     await expect(page.locator("#saveBtn")).toHaveText(t("en", "makerSave"));
     await expect(page.locator("#previewSaveBtn")).toHaveText(t("en", "makerSave"));
@@ -64,6 +65,7 @@ test.describe("language switcher", () => {
     await page.locator("#toCommunity").click();
     await expect(page).toHaveURL(/\/en\/community\/?$/);
     await expect(page.locator("#communityJumpsTitle")).toHaveText(t("en", "communityTitle"));
+    await expect(page.locator("#communityView .eyebrow")).toHaveCount(0);
     await expect(page.locator("#communityJumpsTitle a")).toHaveCount(0);
     await expect(page.locator('#communityHashtagSearch a[data-service="x"]')).toHaveAttribute(
       "aria-label",
@@ -211,6 +213,7 @@ test.describe("song and artist names", () => {
     await waitForAppReady(page);
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("ko", "makerTitle"));
+    await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
     await expect(page.locator("#linksTitle")).toHaveText(t("ko", "makerOfficial"));
     await expect(page.locator("#officialMvTitle")).toHaveText(t("ko", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(
@@ -226,6 +229,7 @@ test.describe("song and artist names", () => {
     await waitForAppReady(page);
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("zh", "makerTitle"));
+    await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
     await expect(page.locator("#linksTitle")).toHaveText(t("zh", "makerOfficial"));
     await expect(page.locator("#officialMvTitle")).toHaveText(t("zh", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(

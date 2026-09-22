@@ -50,6 +50,9 @@ describe("stacked maker hero logo", () => {
     expect(makerSrc).toContain("width={logoSize.width}");
     expect(makerSrc).toContain("height={logoSize.height}");
     expect(makerSrc).toContain('alt={t(locale, "makerTitle")}');
+    expect(makerSrc).not.toContain("eyebrow");
+    expect(privacySrc).not.toContain("eyebrow");
+    expect(termsSrc).not.toContain("eyebrow");
     expect(makerSrc).not.toMatch(/<h1 id="makerTitle">\{t\(locale, "makerTitle"\)\}<\/h1>/);
     expect(makerSrc).toMatch(/<LanguageNav[\s\S]*id="makerTitle"[\s\S]*<JaLede\b/);
     expect(makerSrc).toMatch(/<JaLede\b[\s\S]*id="toCommunity"/);

@@ -238,13 +238,6 @@ body {
   outline: none;
 }
 
-.eyebrow {
-  margin: 0;
-  color: var(--ink);
-  font-size: 0.74rem;
-  letter-spacing: 0.14em;
-}
-
 .lede,
 .notes p,
 .status {
