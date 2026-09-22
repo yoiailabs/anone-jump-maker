@@ -92,20 +92,25 @@
       .eyebrow {
         font-size: 24px;
         letter-spacing: 0.16em;
-        margin-bottom: 16px;
+        margin-bottom: 8px;
       }
 
       h1 {
-        font-size: 64px;
-        font-weight: 400;
-        letter-spacing: 0.045em;
-        line-height: 1.3;
+        display: flex;
+        justify-content: center;
         max-width: 1040px;
       }
 
-      html[lang="ko"] h1,
-      html[lang="zh"] h1 {
-        font-size: 56px;
+      .hero-logo {
+        display: block;
+        width: 800px;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 640 / 365;
+      }
+
+      .hero-logo[height="390"] {
+        aspect-ratio: 640 / 390;
       }
     </style>
   </head>
@@ -117,7 +122,15 @@
     </div>
     <div class="hero">
       <p class="eyebrow">#あのねジャンプ</p>
-      <h1 id="ogTitle">あのねジャンプメーカー</h1>
+      <h1 id="ogTitle">
+        <img
+          class="hero-logo"
+          src="/brand/anone-logo-stacked.svg"
+          width="640"
+          height="365"
+          alt="あのねジャンプメーカー"
+        />
+      </h1>
     </div>
     <script>
       const titles = {
@@ -126,11 +139,24 @@
         ko: "아노네 점프 메이커",
         zh: "あのね跳跃制作器",
       };
+      const logos = {
+        ja: { src: "/brand/anone-logo-stacked.svg", width: 640, height: 365 },
+        en: { src: "/brand/anone-logo-stacked-en.svg", width: 640, height: 390 },
+        ko: { src: "/brand/anone-logo-stacked-en.svg", width: 640, height: 390 },
+        zh: { src: "/brand/anone-logo-stacked-en.svg", width: 640, height: 390 },
+      };
       const locale = new URLSearchParams(location.search).get("locale");
       const title = locale && titles[locale] ? titles[locale] : titles.ja;
       const lang = locale && titles[locale] ? locale : "ja";
       document.documentElement.lang = lang;
-      document.getElementById("ogTitle").textContent = title;
+      const logo = document.querySelector(".hero-logo");
+      if (logo instanceof HTMLImageElement) {
+        const mark = logos[lang];
+        logo.src = mark.src;
+        logo.width = mark.width;
+        logo.height = mark.height;
+        logo.alt = title;
+      }
     </script>
   </body>
 </html>
