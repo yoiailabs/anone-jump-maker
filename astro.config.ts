@@ -9,6 +9,14 @@ const src = path.join(path.dirname(fileURLToPath(import.meta.url)), "src");
 export default defineConfig({
   site: "https://anone.yoiailabs.com",
   output: "static",
+  redirects: {
+    "/en/privacy": "/privacy",
+    "/ko/privacy": "/privacy",
+    "/zh/privacy": "/privacy",
+    "/en/terms": "/terms",
+    "/ko/terms": "/terms",
+    "/zh/terms": "/terms",
+  },
   trailingSlash: "ignore",
   i18n: {
     defaultLocale: "ja",

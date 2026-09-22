@@ -59,7 +59,9 @@ describe("privacy policy copy", () => {
     expect(text).toContain("最終改定日");
     expect(privacyDocument("ja").revisedValue).toBe("2026年9月22日");
     expect(privacyDocument("ja").effectiveValue).toBe("2026年9月22日");
-    expect(privacyDocument("en").revisedValue).toBe("September 22, 2026");
+    expect(privacyDocument("en")).toEqual(privacyDocument("ja"));
+    expect(privacyDocument("ko")).toEqual(privacyDocument("ja"));
+    expect(privacyDocument("zh")).toEqual(privacyDocument("ja"));
     expect(text).not.toContain("お問い合わせにGitHubを利用した場合");
     expect(text).not.toContain("安全管理措置の概要に関するお問い合わせ");
     expect(text).not.toContain("個人データの漏えい等が発生し");

@@ -2,7 +2,7 @@
 import "../styles/global.css";
 import type { PageMeta } from "../page-meta.ts";
 import { googleFontsHref } from "../fonts.ts";
-import { LOCALES, OG_LOCALE, t } from "../i18n.ts";
+import { LOCALES, OG_LOCALE, isJapaneseOnlyView, t } from "../i18n.ts";
 import { pageUrl } from "../page-meta.ts";
 import {
   PWA_APPLE_TOUCH_ICON_HREF,
@@ -13,6 +13,7 @@ import {
 type Props = PageMeta;
 
 const { title, description, url, image, imageAlt, siteName, lang, ogLocale, view } = Astro.props;
+const alternateLocales = isJapaneseOnlyView(view) ? (["ja"] as const) : LOCALES;
 const shortName = t(lang, "pwaShortName");
 const fontHref = googleFontsHref(lang);
 const activateStylesheet = "this.media='all'";
@@ -80,7 +81,7 @@ const jsonLd = JSON.stringify({
     <meta property="og:image:height" content="1260" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={ogLocale} />
-    {LOCALES.filter((item) => item !== lang).map((item) => (
+    {alternateLocales.filter((item) => item !== lang).map((item) => (
       <meta property="og:locale:alternate" content={OG_LOCALE[item]} />
     ))}
     <meta name="twitter:card" content="summary_large_image" />
@@ -88,7 +89,7 @@ const jsonLd = JSON.stringify({
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
     <meta name="twitter:image:alt" content={imageAlt} />
-    {LOCALES.map((item) => (
+    {alternateLocales.map((item) => (
       <link rel="alternate" hreflang={item} href={pageUrl(item, view)} />
     ))}
     <link rel="alternate" hreflang="x-default" href={pageUrl("ja", view)} />

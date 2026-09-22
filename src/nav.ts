@@ -53,8 +53,8 @@ export function parseAppView(input: string | Pick<Location, "pathname" | "hash">
 
 export function documentTitleForView(view: AppView, locale: Locale = DEFAULT_LOCALE): string {
   if (view === "community") return t(locale, "communityTitle");
-  if (view === "privacy") return t(locale, "privacyTitle");
-  if (view === "terms") return t(locale, "termsTitle");
+  if (view === "privacy") return t(DEFAULT_LOCALE, "privacyTitle");
+  if (view === "terms") return t(DEFAULT_LOCALE, "termsTitle");
   return t(locale, "makerTitle");
 }
 

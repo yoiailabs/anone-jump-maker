@@ -51,8 +51,8 @@ describe("pathForApp", () => {
     expect(pathForApp("ja", "terms")).toBe("/terms");
     expect(pathForApp("en", "maker")).toBe("/en");
     expect(pathForApp("zh", "community")).toBe("/zh/community");
-    expect(pathForApp("en", "privacy")).toBe("/en/privacy");
-    expect(pathForApp("ko", "terms")).toBe("/ko/terms");
+    expect(pathForApp("en", "privacy")).toBe("/privacy");
+    expect(pathForApp("ko", "terms")).toBe("/terms");
   });
 });
 
@@ -77,8 +77,9 @@ describe("localeRedirectLocation", () => {
   it("redirects unprefixed paths when the browser language is not Japanese", () => {
     expect(localeRedirectLocation("/", "", null, "en-US")).toBe("/en");
     expect(localeRedirectLocation("/community", "?from=x", null, "ko")).toBe("/ko/community?from=x");
-    expect(localeRedirectLocation("/privacy", "", null, "en-US")).toBe("/en/privacy");
-    expect(localeRedirectLocation("/terms", "", null, "en-US")).toBe("/en/terms");
+    expect(localeRedirectLocation("/privacy", "", null, "en-US")).toBeNull();
+    expect(localeRedirectLocation("/terms", "", null, "en-US")).toBeNull();
+    expect(localeRedirectLocation("/privacy", "", "anone-locale=en", "ja")).toBeNull();
     expect(localeRedirectLocation("/", "", null, "ja-JP")).toBeNull();
     expect(localeRedirectLocation("/en", "", null, "ja")).toBeNull();
   });

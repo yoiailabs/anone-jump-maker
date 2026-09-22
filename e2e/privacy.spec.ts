@@ -51,35 +51,45 @@ test.describe("privacy policy", () => {
       "content",
       t("ja", "metaPrivacyDescription"),
     );
-    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute(
+    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveCount(0);
+    await expect(page.locator('link[rel="alternate"][hreflang="ja"]')).toHaveAttribute(
       "href",
-      "https://anone.yoiailabs.com/en/privacy",
+      "https://anone.yoiailabs.com/privacy",
     );
+    await expect(page.locator('meta[property="og:locale:alternate"]')).toHaveCount(0);
+    await expect(page.locator(".lang-switch")).toHaveCount(0);
     await expect(page.locator("#playBtn")).toHaveCount(0);
     await expect(page.locator("#privacyBack")).toHaveAttribute("href", "/");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("aria-current", "page");
   });
 
-  test("serves the English policy at /en/privacy", async ({ page }) => {
+  test("shows the Japanese policy from the English maker and from /en/privacy", async ({ page }) => {
+    await page.goto("/en");
+    await waitForAppReady(page);
+    await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
+    await expect(page.locator("#termsLink")).toHaveAttribute("href", "/terms");
+    await expect(page.locator('.lang-switch a[lang="ko"]').first()).toHaveAttribute("href", "/ko");
+
     await page.goto("/en/privacy");
-    await expect(page).toHaveTitle(t("en", "privacyTitle"));
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.locator("#privacyTitle")).toHaveText(t("en", "privacyTitle"));
-    await expect(page.locator("#privacyPolicy")).toContainText("not uploaded");
-    await expect(page.locator("#siteFooter")).toContainText("Yoiailabs");
-    await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/en/privacy");
-    await expect(page.locator('.lang-switch a[lang="ko"]')).toHaveAttribute("href", "/ko/privacy");
+    await expect(page).toHaveURL(/\/privacy\/?$/);
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("#privacyTitle")).toHaveText(t("ja", "privacyTitle"));
+    await expect(page.locator("#privacyPolicy")).toContainText("アップロードすることはありません");
+    await expect(page.locator("#privacyPolicy")).not.toContainText("not uploaded");
+    await expect(page.locator(".lang-switch")).toHaveCount(0);
+    await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
   });
 });
 
-test.describe("privacy language redirect", () => {
+test.describe("privacy stays in Japanese", () => {
   test.use({ locale: "en-US" });
 
-  test("sends an English browser from /privacy to /en/privacy", async ({ page }) => {
+  test("keeps an English browser on the Japanese policy", async ({ page }) => {
     await blockAnalytics(page);
     await page.goto("/privacy");
-    await page.waitForURL(/\/en\/privacy\/?$/);
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.locator("#privacyTitle")).toHaveText(t("en", "privacyTitle"));
+    await expect(page).toHaveURL(/\/privacy\/?$/);
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("#privacyTitle")).toHaveText(t("ja", "privacyTitle"));
+    await expect(page.locator("#privacyPolicy")).toContainText("第1条");
   });
 });

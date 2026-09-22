@@ -24,9 +24,11 @@ describe("worker fetch", () => {
     const response = await worker.fetch(new Request("https://anone.yoiailabs.com/en"));
     expect(response.status).toBe(404);
     const privacy = await worker.fetch(new Request("https://anone.yoiailabs.com/en/privacy"));
-    expect(privacy.status).toBe(404);
-    const terms = await worker.fetch(new Request("https://anone.yoiailabs.com/en/terms"));
-    expect(terms.status).toBe(404);
+    expect(privacy.status).toBe(302);
+    expect(privacy.headers.get("location")).toBe("/privacy");
+    const terms = await worker.fetch(new Request("https://anone.yoiailabs.com/ko/terms?from=x"));
+    expect(terms.status).toBe(302);
+    expect(terms.headers.get("location")).toBe("/terms?from=x");
   });
 
   it("serves Japanese HTML when the browser prefers Japanese", async () => {
@@ -116,13 +118,14 @@ describe("worker fetch", () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("プライバシーポリシー");
 
-    const redirected = await worker.fetch(
+    const stayed = await worker.fetch(
       new Request("https://anone.yoiailabs.com/privacy", {
         headers: { cookie: "anone-locale=en" },
       }),
+      assetsEnv("<html lang=\"ja\"><title>プライバシーポリシー</title></html>"),
     );
-    expect(redirected.status).toBe(302);
-    expect(redirected.headers.get("location")).toBe("/en/privacy");
+    expect(stayed.status).toBe(200);
+    expect(await stayed.text()).toContain("プライバシーポリシー");
 
     const canonical = await worker.fetch(new Request("https://anone.yoiailabs.com/ja/privacy"));
     expect(canonical.status).toBe(302);
@@ -139,13 +142,14 @@ describe("worker fetch", () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("利用規約");
 
-    const redirected = await worker.fetch(
+    const stayed = await worker.fetch(
       new Request("https://anone.yoiailabs.com/terms", {
         headers: { cookie: "anone-locale=en" },
       }),
+      assetsEnv("<html lang=\"ja\"><title>利用規約</title></html>"),
     );
-    expect(redirected.status).toBe(302);
-    expect(redirected.headers.get("location")).toBe("/en/terms");
+    expect(stayed.status).toBe(200);
+    expect(await stayed.text()).toContain("利用規約");
 
     const canonical = await worker.fetch(new Request("https://anone.yoiailabs.com/ja/terms"));
     expect(canonical.status).toBe(302);

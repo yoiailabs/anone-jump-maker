@@ -1,6 +1,7 @@
 import {
   DEFAULT_LOCALE,
   OG_LOCALE,
+  isJapaneseOnlyView,
   parseAppPath,
   pathForApp,
   t,
@@ -48,17 +49,18 @@ const VIEW_COPY: Record<AppView, { title: MessageKey; description: MessageKey }>
 };
 
 export function pageMeta(locale: Locale, view: AppView): PageMeta {
-  const siteName = t(locale, "makerTitle");
+  const lang = isJapaneseOnlyView(view) ? DEFAULT_LOCALE : locale;
+  const siteName = t(lang, "makerTitle");
   const copy = VIEW_COPY[view];
   return {
-    title: t(locale, copy.title),
-    description: t(locale, copy.description),
-    url: pageUrl(locale, view),
-    image: ogImageUrl(locale),
+    title: t(lang, copy.title),
+    description: t(lang, copy.description),
+    url: pageUrl(lang, view),
+    image: ogImageUrl(lang),
     imageAlt: siteName,
     siteName,
-    lang: locale,
-    ogLocale: OG_LOCALE[locale],
+    lang,
+    ogLocale: OG_LOCALE[lang],
     view,
   };
 }

@@ -1,21 +1,6 @@
-import { useEffect } from "react";
-import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
-import { localeRedirectLocation, pathForApp, t, type Locale } from "../i18n.ts";
+import { pathForApp, t, type Locale } from "../i18n.ts";
 import { privacyDocument, type Inline, type PrivacyBlock } from "../privacy-copy.ts";
-
-function clientLocaleRedirect(): string | null {
-  if (typeof location === "undefined" || typeof navigator === "undefined") return null;
-  const languages =
-    navigator.languages.length > 0 ? [...navigator.languages] : [navigator.language];
-  return localeRedirectLocation(
-    location.pathname,
-    location.search,
-    typeof document === "undefined" ? "" : document.cookie,
-    languages.join(","),
-    navigator.userAgent,
-  );
-}
 
 function olMark(title: string): string {
   const latinOrHangul = /[A-Za-z\uac00-\ud7af]/.test(title);
@@ -115,11 +100,6 @@ function BlockView({ block }: { block: PrivacyBlock }) {
 }
 
 export default function PrivacyArticle({ locale }: { locale: Locale }) {
-  useEffect(() => {
-    const dest = clientLocaleRedirect();
-    if (dest) location.replace(dest);
-  }, []);
-
   const copy = privacyDocument(locale);
 
   return (
@@ -131,9 +111,8 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
       </div>
       <div className="app privacy-app">
         <header className="hero">
-          <LanguageNav locale={locale} view="privacy" />
           <p className="eyebrow">#あのねジャンプ</p>
-          <h1 id="privacyTitle">{t(locale, "privacyTitle")}</h1>
+          <h1 id="privacyTitle">{t("ja", "privacyTitle")}</h1>
         </header>
         <article className="privacy" id="privacyPolicy">
           <p className="privacy-dates">
@@ -154,11 +133,11 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
           ))}
         </article>
         <p className="privacy-back">
-          <a id="privacyBack" className="page-link" href={pathForApp(locale, "maker")}>
-            {t(locale, "communityBack")}
+          <a id="privacyBack" className="page-link" href={pathForApp("ja", "maker")}>
+            {t("ja", "communityBack")}
           </a>
         </p>
-        <SiteFooter locale={locale} current="privacy" />
+        <SiteFooter locale="ja" current="privacy" />
       </div>
     </>
   );

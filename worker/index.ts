@@ -1,4 +1,4 @@
-import { localeRedirectLocation, parseAppPath } from "../src/i18n.ts";
+import { isJapaneseOnlyView, localeRedirectLocation, parseAppPath, pathForApp } from "../src/i18n.ts";
 
 type AssetsEnv = {
   ASSETS?: { fetch(input: Request | URL, init?: RequestInit): Promise<Response> };
@@ -11,6 +11,7 @@ const VARY = "Cookie";
  * 静的アセットは wrangler の [assets] が配信する。
  * プレフィックスなしの `/` `/community` `/privacy` `/terms` は日本語 HTML（SEO / OGP）を返す。
  * ブラウザの言語寄せはクライアント JS。Cookie があるときだけ 302 する。
+ * `/en/privacy` など規約・ポリシーの言語付き URL は日本語の正規 URL へ 302 する。
  */
 export default {
   async fetch(request: Request, env: AssetsEnv = {}): Promise<Response> {
@@ -21,6 +22,16 @@ export default {
     const parsed = parseAppPath(url.pathname);
     if (!parsed) {
       return new Response("Not found", { status: 404 });
+    }
+    if (isJapaneseOnlyView(parsed.view) && parsed.prefixed) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          location: `${pathForApp("ja", parsed.view)}${url.search}`,
+          vary: VARY,
+          "cache-control": "private, no-store",
+        },
+      });
     }
     if (parsed.prefixed && parsed.locale !== "ja") {
       return new Response("Not found", { status: 404 });

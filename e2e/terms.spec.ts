@@ -44,37 +44,44 @@ test.describe("terms of use", () => {
       "content",
       t("ja", "metaTermsDescription"),
     );
-    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute(
+    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveCount(0);
+    await expect(page.locator('link[rel="alternate"][hreflang="ja"]')).toHaveAttribute(
       "href",
-      "https://anone.yoiailabs.com/en/terms",
+      "https://anone.yoiailabs.com/terms",
     );
+    await expect(page.locator('meta[property="og:locale:alternate"]')).toHaveCount(0);
+    await expect(page.locator(".lang-switch")).toHaveCount(0);
     await expect(page.locator("#playBtn")).toHaveCount(0);
     await expect(page.locator("#termsBack")).toHaveAttribute("href", "/");
     await expect(page.locator("#termsLink")).toHaveAttribute("aria-current", "page");
     await expect(page.locator("#privacyPolicyLink")).not.toHaveAttribute("aria-current", "page");
   });
 
-  test("serves the English terms at /en/terms", async ({ page }) => {
+  test("shows the Japanese terms from /en/terms", async ({ page }) => {
     await page.goto("/en/terms");
-    await expect(page).toHaveTitle(t("en", "termsTitle"));
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.locator("#termsTitle")).toHaveText(t("en", "termsTitle"));
-    await expect(page.locator("#termsOfUse")).toContainText("unofficial service");
-    await expect(page.locator("#termsOfUse")).toContainText("commercial purpose");
-    await expect(page.locator("#termsOfUse a[href='/en/privacy']")).toBeVisible();
-    await expect(page.locator("#termsLink")).toHaveAttribute("href", "/en/terms");
-    await expect(page.locator('.lang-switch a[lang="ko"]')).toHaveAttribute("href", "/ko/terms");
+    await expect(page).toHaveURL(/\/terms\/?$/);
+    await expect(page).toHaveTitle(t("ja", "termsTitle"));
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("#termsTitle")).toHaveText(t("ja", "termsTitle"));
+    await expect(page.locator("#termsOfUse")).toContainText("非公式サービス");
+    await expect(page.locator("#termsOfUse")).toContainText("営利目的に使用する行為");
+    await expect(page.locator("#termsOfUse")).not.toContainText("unofficial service");
+    await expect(page.locator("#termsOfUse a[href='/privacy']")).toBeVisible();
+    await expect(page.locator("#termsLink")).toHaveAttribute("href", "/terms");
+    await expect(page.locator(".lang-switch")).toHaveCount(0);
+    await expect(page.locator("#termsOfUse")).not.toContainText("GitHub Issues");
   });
 });
 
-test.describe("terms language redirect", () => {
+test.describe("terms stay in Japanese", () => {
   test.use({ locale: "en-US" });
 
-  test("sends an English browser from /terms to /en/terms", async ({ page }) => {
+  test("keeps an English browser on the Japanese terms", async ({ page }) => {
     await blockAnalytics(page);
     await page.goto("/terms");
-    await page.waitForURL(/\/en\/terms\/?$/);
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.locator("#termsTitle")).toHaveText(t("en", "termsTitle"));
+    await expect(page).toHaveURL(/\/terms\/?$/);
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("#termsTitle")).toHaveText(t("ja", "termsTitle"));
+    await expect(page.locator("#termsOfUse")).toContainText("第1条");
   });
 });

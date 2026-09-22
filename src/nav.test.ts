@@ -44,9 +44,9 @@ describe("app view path", () => {
     expect(pathForView("maker", "en")).toBe("/en");
     expect(pathForView("community", "ko")).toBe("/ko/community");
     expect(pathForView("privacy")).toBe("/privacy");
-    expect(pathForView("privacy", "ko")).toBe("/ko/privacy");
+    expect(pathForView("privacy", "ko")).toBe("/privacy");
     expect(pathForView("terms")).toBe("/terms");
-    expect(pathForView("terms", "en")).toBe("/en/terms");
+    expect(pathForView("terms", "en")).toBe("/terms");
     expect(documentTitleForView("maker")).toBe(MAKER_DOCUMENT_TITLE);
     expect(documentTitleForView("community")).toBe("みんなの #あのねジャンプ");
     expect(documentTitleForView("privacy")).toBe("プライバシーポリシー");

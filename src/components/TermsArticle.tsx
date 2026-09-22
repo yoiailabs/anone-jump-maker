@@ -1,39 +1,24 @@
-import { useEffect } from "react";
-import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
-import { localeRedirectLocation, pathForApp, t, type Locale } from "../i18n.ts";
+import { pathForApp, t, type Locale } from "../i18n.ts";
 import { termsDocument, type TermsBlock, type TermsPart } from "../terms-copy.ts";
 
-function clientLocaleRedirect(): string | null {
-  if (typeof location === "undefined" || typeof navigator === "undefined") return null;
-  const languages =
-    navigator.languages.length > 0 ? [...navigator.languages] : [navigator.language];
-  return localeRedirectLocation(
-    location.pathname,
-    location.search,
-    typeof document === "undefined" ? "" : document.cookie,
-    languages.join(","),
-    navigator.userAgent,
-  );
-}
-
-function Parts({ parts, locale }: { parts: TermsPart[]; locale: Locale }) {
+function Parts({ parts }: { parts: TermsPart[] }) {
   return parts.map((part, index) =>
     typeof part === "string" ? (
       <span key={index}>{part}</span>
     ) : (
-      <a key={index} href={pathForApp(locale, "privacy")}>
+      <a key={index} href={pathForApp("ja", "privacy")}>
         {part.label}
       </a>
     ),
   );
 }
 
-function BlockView({ block, locale }: { block: TermsBlock; locale: Locale }) {
+function BlockView({ block }: { block: TermsBlock }) {
   if (block.type === "p") {
     return (
       <p>
-        <Parts parts={block.parts} locale={locale} />
+        <Parts parts={block.parts} />
       </p>
     );
   }
@@ -50,7 +35,7 @@ function BlockView({ block, locale }: { block: TermsBlock; locale: Locale }) {
     <ol>
       {block.items.map((item, index) => (
         <li key={index}>
-          <Parts parts={item} locale={locale} />
+          <Parts parts={item} />
         </li>
       ))}
     </ol>
@@ -58,11 +43,6 @@ function BlockView({ block, locale }: { block: TermsBlock; locale: Locale }) {
 }
 
 export default function TermsArticle({ locale }: { locale: Locale }) {
-  useEffect(() => {
-    const dest = clientLocaleRedirect();
-    if (dest) location.replace(dest);
-  }, []);
-
   const copy = termsDocument(locale);
 
   return (
@@ -74,9 +54,8 @@ export default function TermsArticle({ locale }: { locale: Locale }) {
       </div>
       <div className="app privacy-app">
         <header className="hero">
-          <LanguageNav locale={locale} view="terms" />
           <p className="eyebrow">#あのねジャンプ</p>
-          <h1 id="termsTitle">{t(locale, "termsTitle")}</h1>
+          <h1 id="termsTitle">{t("ja", "termsTitle")}</h1>
         </header>
         <article className="privacy" id="termsOfUse">
           <p className="privacy-dates">
@@ -94,17 +73,17 @@ export default function TermsArticle({ locale }: { locale: Locale }) {
             <section key={section.heading}>
               <h2>{section.heading}</h2>
               {section.blocks.map((block, index) => (
-                <BlockView key={`${section.heading}-${index}`} block={block} locale={locale} />
+                <BlockView key={`${section.heading}-${index}`} block={block} />
               ))}
             </section>
           ))}
         </article>
         <p className="privacy-back">
-          <a id="termsBack" className="page-link" href={pathForApp(locale, "maker")}>
-            {t(locale, "communityBack")}
+          <a id="termsBack" className="page-link" href={pathForApp("ja", "maker")}>
+            {t("ja", "communityBack")}
           </a>
         </p>
-        <SiteFooter locale={locale} current="terms" />
+        <SiteFooter locale="ja" current="terms" />
       </div>
     </>
   );

@@ -69,7 +69,13 @@ export function parseAppPath(pathname: string): AppPath | null {
   return null;
 }
 
+/** 利用規約とプライバシーポリシーは日本語ページだけ。 */
+export function isJapaneseOnlyView(view: AppView): boolean {
+  return view === "privacy" || view === "terms";
+}
+
 export function pathForApp(locale: Locale, view: AppView): string {
+  if (isJapaneseOnlyView(view)) return `/${view}`;
   const prefix = locale === DEFAULT_LOCALE ? "" : `/${locale}`;
   if (view === "maker") return prefix || "/";
   return `${prefix}/${view}`;
@@ -165,7 +171,8 @@ export type LocaleRedirectOptions = {
 };
 
 /**
- * プレフィックスなしの `/` `/community` `/privacy` `/terms` をブラウザ言語または Cookie で寄せる。
+ * プレフィックスなしの `/` `/community` をブラウザ言語または Cookie で寄せる。
+ * `/privacy` `/terms` は日本語固定で、言語では寄せない。
  * `/ja` はデフォルト言語の正規 URL へ戻す。既に正しい場所なら null。
  * 検索・SNS クローラは言語リダイレクトせず、hreflang で各言語を辿れるようにする。
  */

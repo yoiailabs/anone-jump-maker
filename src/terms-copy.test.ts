@@ -66,29 +66,10 @@ describe("terms of use copy", () => {
     expect(termsDocument("ja").enactedValue).toBe("2026年9月22日");
     expect(termsDocument("ja").revisedValue).toBe("2026年9月22日");
     expect(termsDocument("ja").effectiveValue).toBe("2026年9月22日");
-    expect(termsDocument("en").enactedValue).toBe("September 22, 2026");
-    expect(termsDocument("ko").enactedValue).toBe("2026년 9월 22일");
-    expect(termsDocument("zh").enactedValue).toBe("2026年9月22日");
-
-    const en = JSON.stringify(termsDocument("en"));
-    expect(en).toContain("unofficial service");
-    expect(en).toContain("non-commercial fan activity");
-    expect(en).toContain("any other commercial purpose");
-    expect(en).toContain("Operator name: Yoiailabs (individual creator)");
-    expect(en).not.toContain("GitHub Issues");
-
-    const ko = JSON.stringify(termsDocument("ko"));
-    expect(ko).toContain("비공식 서비스");
-    expect(ko).toContain("비영리 팬 활동");
-    expect(ko).toContain("영리 목적");
-    expect(ko).toContain("운영 이름: Yoiailabs (개인 제작자)");
-    expect(ko).not.toContain("GitHub Issues");
-
-    const zh = JSON.stringify(termsDocument("zh"));
-    expect(zh).toContain("非官方服务");
-    expect(zh).toContain("非营利粉丝活动");
-    expect(zh).toContain("营利目的");
-    expect(zh).toContain("运营名称：Yoiailabs（个人创作者）");
-    expect(zh).not.toContain("GitHub Issues");
+    expect(termsDocument("en")).toEqual(termsDocument("ja"));
+    expect(termsDocument("ko")).toEqual(termsDocument("ja"));
+    expect(termsDocument("zh")).toEqual(termsDocument("ja"));
+    expect(ja).not.toContain("unofficial service");
+    expect(ja).not.toContain("Article 1");
   });
 });
