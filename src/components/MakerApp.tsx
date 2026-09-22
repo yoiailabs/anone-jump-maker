@@ -12,6 +12,7 @@ import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
 import { muteButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
+import { MAKER_LOGO_STACKED_SIZE, MAKER_LOGO_STACKED_SRC } from "../brand.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -85,7 +86,16 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           <header className="hero">
             <LanguageNav locale={locale} view="maker" />
             <p className="eyebrow">#あのねジャンプ</p>
-            <h1 id="makerTitle">{t(locale, "makerTitle")}</h1>
+            <h1 id="makerTitle">
+              <img
+                className="hero-logo"
+                src={MAKER_LOGO_STACKED_SRC}
+                width={MAKER_LOGO_STACKED_SIZE.width}
+                height={MAKER_LOGO_STACKED_SIZE.height}
+                alt={t(locale, "makerTitle")}
+                decoding="async"
+              />
+            </h1>
             <JaLede locale={locale} />
             <p className="hero-more">
               <Button
