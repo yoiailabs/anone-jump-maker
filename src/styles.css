@@ -212,6 +212,7 @@ body {
   width: min(100%, 22rem);
   max-width: 100%;
   height: auto;
+  aspect-ratio: 640 / 365;
   margin-inline: auto;
 }
 

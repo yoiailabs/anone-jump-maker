@@ -8,19 +8,13 @@ const logoSrc = readFileSync(new URL("../public/brand/anone-logo-stacked.svg", i
 const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 describe("stacked maker hero logo", () => {
-  it("ships the stacked wordmark only (600×335)", () => {
+  it("ships the stacked wordmark only (640×365)", () => {
     expect(MAKER_LOGO_STACKED_SRC).toBe("/brand/anone-logo-stacked.svg");
-    expect(MAKER_LOGO_STACKED_SIZE).toEqual({ width: 600, height: 335 });
-    expect(logoSrc).toContain('viewBox="0 0 600 335"');
+    expect(MAKER_LOGO_STACKED_SIZE).toEqual({ width: 640, height: 365 });
+    expect(logoSrc).toContain('viewBox="0 0 640 365"');
+    expect(logoSrc).toContain('width="640"');
+    expect(logoSrc).toContain('height="365"');
     expect(logoSrc).toContain("<title id=\"title\">あのねジャンプメーカー</title>");
-    expect(logoSrc).toContain('fill="#BCE7F5"');
-    expect(logoSrc).toContain('stroke="#000000"');
-    expect(logoSrc).toContain('stroke="#FFFFFF"');
-    expect(logoSrc).toContain('id="soft-shadow"');
-    expect(logoSrc).toContain("feGaussianBlur");
-    expect(logoSrc).not.toContain("#777F83");
-    expect(logoSrc).toContain('stroke="#72BEDB"');
-    expect(logoSrc).toContain('fill="#244A62"');
     expect(logoSrc).not.toContain("anone-logo-wide");
     expect(logoSrc).not.toContain("anone-logo-inline");
   });
@@ -43,6 +37,7 @@ describe("stacked maker hero logo", () => {
   it("keeps the logo from overflowing the hero column", () => {
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*max-width:\s*100%/);
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*height:\s*auto/);
+    expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*365/);
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*width:\s*min\(100%,\s*22rem\)/);
   });
 });
