@@ -1,16 +1,12 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { LOCALES, t } from "./i18n.ts";
 import {
-  OFFICIAL_LINKS,
   OFFICIAL_MV_EMBED_SRC,
   OFFICIAL_MV_VIDEO_ID,
   OFFICIAL_MV_WATCH_HREF,
 } from "./links.ts";
-import makerSrc from "./components/MakerApp.tsx?raw";
 import embedSrc from "./components/OfficialMvEmbed.tsx?raw";
 
-const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 describe("official Anone MV embed", () => {
   it("labels the MV in every locale", () => {
@@ -42,22 +38,5 @@ describe("official Anone MV embed", () => {
     expect(embedSrc).toContain("allowFullScreen");
   });
 
-  it("sits after the SNS banners and before reactions, without removing JumpLoop", () => {
-    expect(makerSrc).toContain("href={OFFICIAL_MV_WATCH_HREF}");
-    expect(makerSrc).toMatch(/<JumpLoop\b/);
-    expect(makerSrc).toMatch(
-      /className="link-banners"[^/]*\/>\s*<OfficialMvEmbed\b/,
-    );
-    expect(makerSrc).toMatch(/<OfficialMvEmbed\b[^/]*\/>\s*<\/nav>/);
-    expect(makerSrc).toMatch(/<\/nav>\s*<section className="reactions"/);
-    expect(OFFICIAL_LINKS.map((link) => link.id)).toEqual([
-      "x",
-      "instagram",
-      "youtube",
-      "tiktok",
-      "spotify",
-      "apple-music",
-    ]);
-    expect(stylesSrc).toMatch(/\.official-mv-frame\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/);
-  });
+
 });

@@ -80,7 +80,7 @@ export default function TermsArticle({ locale }: { locale: Locale }) {
           ))}
         </article>
         <p className="privacy-back">
-          <a id="termsBack" className="page-link" href={pathForApp("ja", "maker")}>
+          <a id="termsBack" className="page-link" href={pathForApp("ja", "home")}>
             {t("ja", "communityBack")}
           </a>
         </p>

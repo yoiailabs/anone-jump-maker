@@ -2,8 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
-import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, PHOTO_FILE, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, goToWizardStep, PHOTO_FILE, waitForAppReady } from "./helpers.ts";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -15,7 +14,7 @@ const SHORT_CUTS = {
   photoCount: 2,
 } as const;
 
-test("binds share, radios, and picker before cuts.json returns", async ({ page }) => {
+test("binds the picker before cuts.json returns and retains the selection across steps", async ({ page }) => {
   await blockAnalytics(page);
 
   let releaseCuts!: () => void;
@@ -43,21 +42,18 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
   await page.route("**/template/vertical.mp4", (route) => route.fulfill(serveClip()));
   await page.route("**/template/landscape.mp4", (route) => route.fulfill(serveClip()));
 
-  await page.goto("/");
-  await page.locator("#picker").waitFor({ state: "attached" });
+  await page.goto("/make");
+  await page.locator('#app[data-controls-ready="1"]').waitFor({ state: "attached" });
   await expect(page.locator("#app[data-app-ready='1']")).toHaveCount(0);
 
-  await page.locator("#copyHashtagsBtn").click();
-  await expect(page.locator("#status")).toContainText(/コピーしました|コピーできません/);
-  await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
-
-  await page.locator('#makerView label:has(input[name="aspect"][value="portrait"])').click();
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
 
   releaseCuts();
   await waitForAppReady(page);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
+  await goToWizardStep(page, 2);
+  await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
   await expect(page.getByRole("radio", { name: "縦" }).first()).toBeChecked();
   await expect(page.locator("#playBtn")).toBeEnabled();
-  await expect(page.locator("#status")).toContainText("1 枚を読み込みました");
+  await expect(page.locator("#thumbs img")).toHaveCount(1);
 });

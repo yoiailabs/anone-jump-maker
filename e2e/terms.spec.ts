@@ -10,7 +10,7 @@ test.describe("terms of use", () => {
 
   test("links from the footer and opens /terms", async ({ page }) => {
     await page.goto("/");
-    await waitForAppReady(page);
+    await expect(page.locator("#startMaking")).toBeVisible();
 
     const footer = page.locator("#siteFooter");
     await expect(footer).toContainText("非公式");
@@ -86,8 +86,8 @@ test.describe("terms logo", () => {
     await page.goto("/terms");
     await page.locator("#legalHome").click();
     await expect(page).toHaveURL(/\/$/);
-    await waitForAppReady(page);
-    await expect(page.locator("#makerTitle img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
+    await expect(page.locator("#startMaking")).toBeVisible();
+    await expect(page.locator(".brand-mark")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
   });
 });
 

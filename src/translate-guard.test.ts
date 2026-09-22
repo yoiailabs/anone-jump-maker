@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import appSrc from "./app.ts?raw";
-import makerSrc from "./components/MakerApp.tsx?raw";
+import makerSrc from "./components/StudioParts.tsx?raw";
 import jaLedeSrc from "./components/JaLede.tsx?raw";
 import layoutSrc from "./layouts/Layout.astro?raw";
 import {
@@ -135,8 +135,6 @@ describe("volatile chrome in the maker markup", () => {
 
   it("leaves the static hero copy translatable", () => {
     expect(makerSrc).toMatch(/id="makerTitle"/);
-    expect(makerSrc).toMatch(/<JaLede\b/);
-    expect(makerSrc).toContain('alt={t(locale, "makerTitle")}');
     expect(makerSrc).not.toMatch(/id="makerTitle"[^>]*translate="no"|translate="no"[^>]*id="makerTitle"/);
     expect(makerSrc).not.toMatch(/className="lede"[^>]*translate="no"|translate="no"[^>]*className="lede"/);
     expect(jaLedeSrc).toContain('"lede"');

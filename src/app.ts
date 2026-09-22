@@ -16,30 +16,19 @@ import {
   type ImageFilter,
   type SwapStyle,
 } from "./layout.ts";
-import { persistLocale, syncLanguageNav } from "./i18n-client.ts";
-import { applyJaPhrasePolyfill } from "./ja-phrase.ts";
 import {
   DEFAULT_LOCALE,
   localeFromLanguageTags,
   localeRedirectLocation,
   messageFromError,
   parseAppPath,
-  pathForApp,
   t,
   type Locale,
 } from "./i18n.ts";
-import {
-  appPathFromClick,
-  canonicalAppUrl,
-  documentTitleForView,
-  parseAppLocation,
-  parseAppView,
-  type AppView,
-} from "./nav.ts";
-import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNearViewport } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { setEditorState, setEditorHandlers } from "./editor-store.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
@@ -112,16 +101,15 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let stopLoop: (() => void) | null = null;
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
-  const stage = must(root, "#stage");
+  const stage = must(root, "#stage") as HTMLButtonElement;
   const pickerLabel = must(root, "#pickerLabel");
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
-  const previewSaveBtn = must(root, "#previewSaveBtn") as HTMLButtonElement;
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
-  const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
+  const previewRegion = must(root, "#previewRegion");
   const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
   const exportTitle = must(root, "#exportTitle");
   const exportStatus = must(root, "#exportStatus");
@@ -132,7 +120,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
   const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
   const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
-  const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
   const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const benchFlag = document.createElement("p");
@@ -266,7 +253,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     playBtn.disabled = recording || !ready;
     const saveDisabled = recording || !ready;
     saveBtn.disabled = saveDisabled;
-    previewSaveBtn.disabled = saveDisabled;
+    setEditorState({ ready, locked, playing: isPreviewPlaying() });
+    stage.disabled = recording || !ready;
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
@@ -306,6 +294,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const next = orderByIds(photos, ids);
     if (sameIdOrder(photos, next)) return;
     photos = next;
+    setEditorState({ exported: false });
     renderThumbs();
     paint();
   };
@@ -315,6 +304,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const { removed, rest } = removeById(photos, id);
     if (!removed) return;
     photos = rest;
+    setEditorState({ exported: false });
+    if (photos.length === 0) stopPlayback();
     revokePhotos([removed]);
     renderThumbs();
     paint();
@@ -453,7 +444,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await video.play();
       if (gen !== playGen) return;
       video.blur();
-      stage.focus();
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
@@ -467,9 +457,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const closePreview = () => {
-    if (previewDialog.open) {
-      previewDialog.close();
-    }
+    stopPlayback();
+    video.muted = true;
   };
 
   const setExportProgress = (percent: number, statusText: string) => {
@@ -519,111 +508,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     downloadBlob(pendingExport.blob, pendingExport.filename);
   };
 
-  let openingPreview = false;
-  const openPreview = async () => {
-    if (recording || !canUse() || previewDialog.open || openingPreview) return;
-    openingPreview = true;
-    try {
-      await ensureCompositor();
-      await ensureTimelines();
-      if (recording || previewDialog.open) return;
-      previewDialog.showModal();
-      paint();
-    } catch (error) {
-      closePreview();
-      setErrorStatus(error, "statusPreviewOpenFailed");
-      return;
-    } finally {
-      openingPreview = false;
-    }
-    await startPlayback(true);
-  };
-
-  let communityMounted = false;
-  let makerReactionsArmed = false;
-  let activeView: AppView | null = null;
-  let embedPaintGen = 0;
-  const focusViewHeading = (view: AppView) => {
-    const heading =
-      view === "community"
-        ? root.querySelector<HTMLElement>("#communityJumpsTitle")
-        : root.querySelector<HTMLElement>("#makerTitle");
-    heading?.setAttribute("tabindex", "-1");
-    heading?.focus({
-      preventScroll: true,
-      focusVisible: false,
-    } as FocusOptions & { focusVisible?: boolean });
-  };
-  const applyView = async (view: AppView) => {
-    if (view === "privacy" || view === "terms") {
-      const next = `${pathForApp(locale, view)}${location.search}`;
-      if (`${location.pathname}${location.search}` !== next) location.assign(next);
-      return;
-    }
-    const makerView = must(root, "#makerView");
-    const communityView = must(root, "#communityView");
-    makerView.hidden = view !== "maker";
-    communityView.hidden = view !== "community";
-    document.title = documentTitleForView(view, locale);
-    syncLanguageNav(root, locale, view);
-    if (view !== "maker") {
-      closePreview();
-      cancelExport();
-      closeExportDialog();
-    }
-    const firstPaint = activeView === null;
-    if (activeView !== view) {
-      activeView = view;
-      window.scrollTo(0, 0);
-      if (!firstPaint && view === "maker") {
-        focusViewHeading("maker");
-      }
-    }
-    const paintGen = ++embedPaintGen;
-    if (view === "community") {
-      const { communityJumpsSectionHtml, mountCommunityJumps, refreshCommunityJumps } = await import(
-        "./community-list.ts"
-      );
-      if (paintGen !== embedPaintGen) return;
-      if (!communityView.querySelector("#communityJumps")) {
-        communityView.innerHTML = communityJumpsSectionHtml(undefined, locale);
-        syncLanguageNav(root, locale, view);
-      }
-      void applyJaPhrasePolyfill(communityView, locale);
-      if (!firstPaint) {
-        focusViewHeading("community");
-      }
-      const section = must(root, "#communityJumps");
-      whenEmbedHostVisible(communityView, () => {
-        if (paintGen !== embedPaintGen) return;
-        if (!communityMounted) {
-          mountCommunityJumps(section);
-          communityMounted = true;
-        } else {
-          refreshCommunityJumps(section);
-        }
-      });
-      return;
-    }
-    const embed = must(root, "#reactionsEmbed");
-    whenEmbedHostVisible(makerView, () => {
-      if (paintGen !== embedPaintGen) return;
-      const paintReactions = () => remountReactionEmbed(embed, reactionEmbedHtml());
-      if (!makerReactionsArmed) {
-        makerReactionsArmed = true;
-        whenNearViewport(embed, () => {
-          if (paintGen !== embedPaintGen) return;
-          paintReactions();
-        });
-        return;
-      }
-      paintReactions();
-    });
-  };
-
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
-    const inPreview = previewDialog.open;
+    const inPreview = canUse();
     aspectResume = inPreview
       ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
       : null;
@@ -631,18 +518,23 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     playbackBusy = false;
     playing = false;
     haltLoop();
-    video.pause();
+    // Avoid starting WebKit resource selection on a video with no source yet.
+    if (video.hasAttribute("src")) video.pause();
     if (!inPreview) {
       previewTracked = false;
     }
     mode = next;
+    setEditorState({ exported: false });
     compositor?.setAspect(mode);
     stage.dataset.aspect = mode;
     syncAspectRadios(mode);
     video.dataset.templateSrc = TEMPLATES[mode].video;
-    video.removeAttribute("src");
+    if (video.hasAttribute("src")) {
+      video.removeAttribute("src");
+      video.load();
+    }
     video.preload = "none";
-    if (photos.length > 0 || previewDialog.open || recording) {
+    if (photos.length > 0 || recording) {
       beginTemplateVideoLoad(video);
     }
     refreshButtons();
@@ -651,6 +543,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const applySwap = (next: SwapStyle) => {
     if (next === swapStyle) return;
     swapStyle = next;
+    setEditorState({ exported: false });
     syncSwapRadios(swapStyle);
     paint();
   };
@@ -658,6 +551,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const applyFilter = (next: ImageFilter) => {
     if (next === imageFilter) return;
     imageFilter = next;
+    setEditorState({ exported: false });
     syncFilterRadios(imageFilter);
     paint();
   };
@@ -665,6 +559,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const applyCharacterSize = (next: CharacterSize) => {
     if (next === characterSize) return;
     characterSize = next;
+    setEditorState({ exported: false });
     syncCharacterRadios(characterSize);
     paint();
   };
@@ -679,7 +574,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       }
       const resume = aspectResume;
       aspectResume = null;
-      if (!resume || !previewDialog.open || recording) return;
+      if (!resume || recording) return;
       previewTracked = resume.tracked;
       try {
         await seekVideo(video, resume.time);
@@ -758,6 +653,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         },
       });
       photos = appendAll(photos, added);
+      setEditorState({ exported: false });
       renderThumbs();
       await compositorReady;
       await ensureTimelines();
@@ -780,7 +676,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   playBtn.addEventListener("click", () => {
-    void openPreview();
+    togglePreviewPlay();
   });
 
   const togglePreviewPlay = () => {
@@ -791,7 +687,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     void startPlayback(false);
   };
 
-  previewDialog.addEventListener(
+  previewRegion.addEventListener(
     "click",
     (event) => {
       const target = event.target;
@@ -814,10 +710,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     event.stopPropagation();
     previewMuted = !previewMuted;
     applyPreviewMute();
-  });
-
-  closePreviewBtn.addEventListener("click", () => {
-    closePreview();
   });
 
   cancelExportBtn.addEventListener("click", () => {
@@ -849,19 +741,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (!recording) return;
     event.preventDefault();
     event.returnValue = "";
-  });
-
-  previewDialog.addEventListener("click", (event) => {
-    if (event.target !== previewDialog) return;
-    const rect = previewDialog.getBoundingClientRect();
-    const { clientX: x, clientY: y } = event;
-    const inside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-    if (!inside) closePreview();
-  });
-
-  previewDialog.addEventListener("close", () => {
-    stopPlayback();
-    video.muted = true;
   });
 
   const startSave = async () => {
@@ -904,6 +783,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       setExportProgress(100, msg("statusSaved", { ext: result.extension.toUpperCase() }));
       setStatus(msg("statusSaved", { ext: result.extension.toUpperCase() }));
       setExportPhase("done");
+      setEditorState({ exported: true });
       downloadExportBtn.focus();
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
@@ -928,9 +808,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   saveBtn.addEventListener("click", () => {
-    void startSave();
-  });
-  previewSaveBtn.addEventListener("click", () => {
     void startSave();
   });
 
@@ -966,46 +843,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   });
 
-  const goToView = (view: AppView) => {
-    const next = `${pathForApp(locale, view)}${location.search}`;
-    if (`${location.pathname}${location.search}` !== next) {
-      history.pushState({ view, locale }, "", next);
-    }
-    void applyView(view);
-  };
-
-  const syncViewFromLocation = () => {
-    const next = canonicalAppUrl(location);
-    if (next) history.replaceState(history.state, "", next);
-    return applyView(parseAppLocation(location).view);
-  };
-
-  root.addEventListener("click", (event) => {
-    if (!(event instanceof MouseEvent) || event.defaultPrevented || event.button !== 0) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const anchor = target.closest("a");
-    if (!anchor) return;
-    const clicked = appPathFromClick(anchor, location.origin);
-    if (!clicked) return;
-    if (clicked.locale !== locale) {
-      persistLocale(clicked.locale);
-      return;
-    }
-    // プライバシーと利用規約は別ページ。メーカー内の表示切替にはしない。
-    if (clicked.view === "privacy" || clicked.view === "terms") return;
-    event.preventDefault();
-    goToView(clicked.view);
-  });
-
-  window.addEventListener("popstate", () => {
-    void applyView(parseAppView(location));
-  });
-  window.addEventListener("hashchange", () => {
-    void syncViewFromLocation();
-  });
-  await syncViewFromLocation();
+  setEditorHandlers({ pause: pausePlayback, seek: async (time) => {
+    if (recording || !canUse()) return;
+    pausePlayback();
+    await seekVideo(video, Math.max(0, Math.min(time, video.duration)));
+    paint();
+    setEditorState({ time: video.currentTime });
+  } });
+  video.addEventListener("timeupdate", () => setEditorState({ time: video.currentTime, duration: Number.isFinite(video.duration) ? video.duration : 0 }));
+  setEditorState({ booted: true });
+  refreshButtons();
+  root.dataset.controlsReady = "1";
   await ensureTimelines();
   if (benchFlags.bench) await ensureCompositor();
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {

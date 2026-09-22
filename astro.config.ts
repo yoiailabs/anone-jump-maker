@@ -10,6 +10,11 @@ export default defineConfig({
   site: "https://anone.yoiailabs.com",
   output: "static",
   redirects: {
+    "/community": "/",
+    "/ja/community": "/",
+    "/en/community": "/en",
+    "/ko/community": "/ko",
+    "/zh/community": "/zh",
     "/en/privacy": "/privacy",
     "/ko/privacy": "/privacy",
     "/zh/privacy": "/privacy",

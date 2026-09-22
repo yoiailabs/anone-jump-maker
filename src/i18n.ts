@@ -24,7 +24,7 @@ export {
 export const LOCALE_COOKIE = "anone-locale";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export type AppView = "maker" | "community" | "privacy" | "terms";
+export type AppView = "home" | "maker" | "privacy" | "terms";
 
 export type AppPath = {
   locale: Locale;
@@ -47,8 +47,8 @@ export function normalizePathname(pathname: string): string {
 }
 
 const UNPREFIXED_VIEWS: Record<string, AppView> = {
-  "/": "maker",
-  "/community": "community",
+  "/": "home",
+  "/make": "maker",
   "/privacy": "privacy",
   "/terms": "terms",
 };
@@ -61,10 +61,10 @@ export function parseAppPath(pathname: string): AppPath | null {
   const parts = path.slice(1).split("/");
   const first = parts[0];
   if (!isLocale(first)) return null;
-  if (parts.length === 1) return { locale: first, view: "maker", prefixed: true };
+  if (parts.length === 1) return { locale: first, view: "home", prefixed: true };
   const segment = parts[1];
-  if (parts.length === 2 && (segment === "community" || segment === "privacy" || segment === "terms")) {
-    return { locale: first, view: segment, prefixed: true };
+  if (parts.length === 2 && (segment === "make" || segment === "privacy" || segment === "terms")) {
+    return { locale: first, view: segment === "make" ? "maker" : segment, prefixed: true };
   }
   return null;
 }
@@ -77,7 +77,8 @@ export function isJapaneseOnlyView(view: AppView): boolean {
 export function pathForApp(locale: Locale, view: AppView): string {
   if (isJapaneseOnlyView(view)) return `/${view}`;
   const prefix = locale === DEFAULT_LOCALE ? "" : `/${locale}`;
-  if (view === "maker") return prefix || "/";
+  if (view === "home") return prefix || "/";
+  if (view === "maker") return `${prefix}/make`;
   return `${prefix}/${view}`;
 }
 
@@ -171,7 +172,7 @@ export type LocaleRedirectOptions = {
 };
 
 /**
- * プレフィックスなしの `/` `/community` をブラウザ言語または Cookie で寄せる。
+ * プレフィックスなしの `/` `/make` をブラウザ言語または Cookie で寄せる。
  * `/privacy` `/terms` は日本語固定で、言語では寄せない。
  * `/ja` はデフォルト言語の正規 URL へ戻す。既に正しい場所なら null。
  * 検索・SNS クローラは言語リダイレクトせず、hreflang で各言語を辿れるようにする。

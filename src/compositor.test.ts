@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import appSrc from "./app.ts?raw";
-import makerSrc from "./components/MakerApp.tsx?raw";
+import makerSrc from "./components/StudioParts.tsx?raw";
 import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import {
   BLUR_SOURCE,
@@ -251,10 +251,9 @@ describe("character size draw path", () => {
 
   it("exposes maker and preview radios that feed the shared compositor draw", () => {
     expect(makerSrc).toContain('name="character"');
-    expect(makerSrc).toContain('name="preview-character"');
-    expect(makerSrc).toContain('value: "standard"');
-    expect(makerSrc).toContain('value: "1.2"');
-    expect(makerSrc).toContain('value: "1.4"');
+    expect(makerSrc).toContain('["standard"');
+    expect(makerSrc).toContain('["1.2"');
+    expect(makerSrc).toContain('["1.4"');
     expect(makerSrc).not.toContain('value: "1.3"');
     expect(makerSrc).not.toContain('value: "x1.3"');
     expect(makerSrc).not.toContain("makerCharacterX13");
