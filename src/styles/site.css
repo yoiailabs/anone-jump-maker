@@ -493,6 +493,10 @@ button:disabled {
   transform: translateY(-2px);
 }
 
+.editor-settings:not([open]) .settings-grid {
+  display: none;
+}
+
 .settings-grid {
   display: grid;
   gap: 1rem;
@@ -503,13 +507,13 @@ button:disabled {
   box-shadow: 5px 6px 0 var(--ink);
 }
 
-.timeline-controls .editor-settings[open] .settings-grid {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 0.45rem);
-  z-index: 4;
-  width: max-content;
-  max-width: calc(100vw - 2.5rem);
+.timeline-controls .editor-settings[open] {
+  flex-basis: 100%;
+}
+
+.timeline-controls .settings-grid {
+  width: 100%;
+  margin-top: 0.75rem;
 }
 
 .editor-footer {
