@@ -113,7 +113,6 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
       <div className="app privacy-app">
         <header className="hero">
           <LegalHeroLogo />
-          <p className="eyebrow">#あのねジャンプ</p>
           <h1 id="privacyTitle">{t("ja", "privacyTitle")}</h1>
         </header>
         <article className="privacy" id="privacyPolicy">

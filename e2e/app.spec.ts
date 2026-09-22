@@ -30,6 +30,7 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect(heroLogo).toBeVisible();
   await expect(heroLogo).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
   await expect(heroLogo).toHaveAttribute("alt", "あのねジャンプメーカー");
+  await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
   const logoBox = await heroLogo.boundingBox();
   const heroBoxOnBoot = await page.locator("#makerView .hero").boundingBox();
   expect(logoBox && heroBoxOnBoot && logoBox.width <= heroBoxOnBoot.width + 1).toBe(true);
@@ -436,8 +437,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   }
   await expect(searchX).toHaveAttribute("aria-label", "Xで #あのねジャンプ を検索する（新しいタブ）");
   await expect(page.locator("#communityHashtagSearchHeading")).toHaveText("こっちにもあるよ");
-  await expect(page.locator("#communityJumps .eyebrow a")).toHaveCount(0);
-  await expect(page.locator("#communityJumps .eyebrow")).toHaveText("#あのねジャンプ");
+  await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
+  await expect(page.locator("#communityJumps .eyebrow")).toHaveCount(0);
   await expect(page.locator("#moreJumps")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "もっと見る" })).toHaveCount(0);
   const titleBox = await page.locator("#communityJumpsTitle").boundingBox();

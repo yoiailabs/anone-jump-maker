@@ -232,7 +232,6 @@ export function communityJumpsSectionHtml(
       <header class="hero community-jumps-hero">
         ${languageNavHtml(locale, "community")}
         ${toMakerLinkHtml("toMaker", locale)}
-        <p class="eyebrow">#あのねジャンプ</p>
         <h1 id="communityJumpsTitle">${t(locale, "communityTitle")}</h1>
         ${
           posts.length === 0

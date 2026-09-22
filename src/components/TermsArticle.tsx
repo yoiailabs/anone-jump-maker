@@ -56,7 +56,6 @@ export default function TermsArticle({ locale }: { locale: Locale }) {
       <div className="app privacy-app">
         <header className="hero">
           <LegalHeroLogo />
-          <p className="eyebrow">#あのねジャンプ</p>
           <h1 id="termsTitle">{t("ja", "termsTitle")}</h1>
         </header>
         <article className="privacy" id="termsOfUse">

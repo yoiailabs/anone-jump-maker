@@ -24,6 +24,7 @@ test.describe("terms of use", () => {
     await expect(page).toHaveTitle(t("ja", "termsTitle"));
     await expect(page.locator("html")).toHaveAttribute("lang", "ja");
     await expect(page.locator("#termsTitle")).toHaveText(t("ja", "termsTitle"));
+    await expect(page.locator(".hero .eyebrow")).toHaveCount(0);
     const article = page.locator("#termsOfUse");
     await expect(article).toContainText("2026年9月22日");
     await expect(article).toContainText("Yoiailabs（個人制作者）");
