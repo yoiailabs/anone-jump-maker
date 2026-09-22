@@ -19,6 +19,16 @@ describe("stacked maker hero logo", () => {
     expect(logoSrc).not.toContain("anone-logo-inline");
   });
 
+  it("darkens only the ジャンプ fill toward the mid cyan", () => {
+    expect(logoSrc).toContain('fill="#78C8E4"');
+    expect(logoSrc).not.toContain("#A4DCF0");
+    expect(logoSrc).toContain('fill="#48B5D8"');
+    expect(logoSrc).toContain('fill="#969DA3"');
+    expect(logoSrc).toContain('fill="#FFFFFF"');
+    expect(logoSrc.match(/fill="#78C8E4"/g)?.length).toBe(4);
+    expect(logoSrc.match(/fill="#48B5D8"/g)?.length).toBe(4);
+  });
+
   it("replaces the maker hero h1 text with the logo and localized alt", () => {
     expect(makerSrc).toContain('id="makerTitle"');
     expect(makerSrc).toContain("className=\"hero-logo\"");
