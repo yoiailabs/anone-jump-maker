@@ -357,7 +357,7 @@ const ja: PrivacyDocument = {
       ],
     },
     {
-      heading: "第8条　安全管理と事故への対応",
+      heading: "第8条　安全管理",
       blocks: [
         {
           type: "p",
@@ -369,12 +369,6 @@ const ja: PrivacyDocument = {
           type: "p",
           parts: [
             "主な措置として、情報を取り扱う者・管理アカウントの限定、認証情報の適切な管理、管理端末の保護、通信の暗号化、ソフトウェアの更新、不要な情報の収集・送信の抑制、外部サービスの設定および取扱状況の確認を行います。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "個人データの漏えい等が発生し、またはそのおそれを把握した場合には、影響の拡大防止、事実関係の調査および再発防止に取り組み、法令に従って必要な報告・本人への通知を行います。",
           ],
         },
       ],
@@ -808,7 +802,7 @@ const en: PrivacyDocument = {
       ],
     },
     {
-      heading: "Article 8. Security and incidents",
+      heading: "Article 8. Security management",
       blocks: [
         {
           type: "p",
@@ -820,12 +814,6 @@ const en: PrivacyDocument = {
           type: "p",
           parts: [
             "The main measures are limiting who handles the information and which admin accounts exist, managing credentials appropriately, protecting devices used for administration, encrypting communications, updating software, limiting collection and transmission of information that is not needed, and checking the settings and handling of external services.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "If personal data leaks or a similar incident occurs, or if the Operator learns of a risk of one, the Operator works to limit the effect, investigate what happened, and prevent it from happening again, and makes any report or notice to the person that the law requires.",
           ],
         },
       ],
@@ -1250,7 +1238,7 @@ const ko: PrivacyDocument = {
       ],
     },
     {
-      heading: "제8조 안전관리와 사고 대응",
+      heading: "제8조 안전관리",
       blocks: [
         {
           type: "p",
@@ -1262,12 +1250,6 @@ const ko: PrivacyDocument = {
           type: "p",
           parts: [
             "주요 조치로, 정보를 다루는 사람과 관리 계정의 제한, 인증 정보의 적절한 관리, 관리 단말의 보호, 통신의 암호화, 소프트웨어 업데이트, 불필요한 정보의 수집·전송 억제, 외부 서비스의 설정과 취급 상황 확인을 합니다.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "개인데이터의 유출 등이 발생하거나 그 우려를 파악한 경우에는, 영향의 확대 방지, 사실관계 조사, 재발 방지에 노력하고, 법령에 따라 필요한 보고와 본인에 대한 통지를 합니다.",
           ],
         },
       ],
@@ -1667,7 +1649,7 @@ const zh: PrivacyDocument = {
       ],
     },
     {
-      heading: "第8条　安全管理与事故应对",
+      heading: "第8条　安全管理",
       blocks: [
         {
           type: "p",
@@ -1677,12 +1659,6 @@ const zh: PrivacyDocument = {
           type: "p",
           parts: [
             "主要措施包括：限制处理信息的人员和管理者账号，适当管理认证信息，保护管理用终端，加密通信，更新软件，抑制不必要的信息收集和发送，确认外部服务的设置和处理状况。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "如果发生个人数据泄露等，或发现存在这种可能，运营者将努力防止影响扩大、调查事实并防止再次发生，并依法令进行必要的报告和对本人的通知。",
           ],
         },
       ],

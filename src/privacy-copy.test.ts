@@ -25,7 +25,7 @@ describe("privacy policy copy", () => {
       "第5条　外部サービスの利用と情報の外部送信",
       "第6条　第三者提供、委託および外国での取扱い",
       "第7条　保存期間と削除",
-      "第8条　安全管理と事故への対応",
+      "第8条　安全管理",
       "第9条　情報収集の制限",
       "第10条　開示等の請求",
       "第11条　お問い合わせ・苦情の窓口",
@@ -64,6 +64,8 @@ describe("privacy policy copy", () => {
     expect(privacyDocument("en").revisedValue).toBe("September 22, 2026");
     expect(text).not.toContain("お問い合わせにGitHubを利用した場合");
     expect(text).not.toContain("安全管理措置の概要に関するお問い合わせ");
+    expect(text).not.toContain("個人データの漏えい等が発生し");
+    expect(text).toContain("第8条　安全管理");
     expect(text).not.toContain("運営主体の氏名");
   });
 });
