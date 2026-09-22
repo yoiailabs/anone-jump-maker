@@ -208,14 +208,14 @@ export function createCompositor(options?: {
     character?: CharacterFrame,
     characterSize: CharacterSize = DEFAULT_CHARACTER_SIZE,
   ) => {
-    const { slots, slotPhotoOrder } = timeline;
+    const { slots } = timeline;
     const slot = slotForTime(time, slots);
     applyCanvasSize(canvas, mode, resolutionScale);
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle);
-    const plate = photoForSlot(photos, fx.plateSlot, slotPhotoOrder);
+    const plate = photoForSlot(photos, fx.plateSlot);
     const characterSource = resolveCharacterSource(video, character);
 
     composeMain(

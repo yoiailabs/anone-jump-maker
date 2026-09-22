@@ -634,11 +634,14 @@ function stubFailedHtmlDecode(): void {
   );
 }
 
-function stubPhotoGlobals(bitmap: ImageBitmap, beforeCreate?: (source: unknown) => void): void {
+function stubPhotoGlobals(
+  bitmap: ImageBitmap,
+  beforeCreate?: (source: unknown) => void | Promise<void>,
+): void {
   vi.stubGlobal(
     "createImageBitmap",
     vi.fn(async (source: unknown) => {
-      beforeCreate?.(source);
+      await beforeCreate?.(source);
       return bitmap;
     }),
   );
@@ -665,8 +668,8 @@ function heicFile(): File {
   return new File([header], "IMG_0001.HEIC", { type: "" });
 }
 
-function jpegFile(name: string, type: string): File {
-  return new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])], name, { type });
+function jpegFile(name: string, type: string, lastModified = 0): File {
+  return new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])], name, { type, lastModified });
 }
 
 function fakeBitmap(width: number, height: number): ImageBitmap {
