@@ -43,8 +43,8 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
   await page.route("**/template/vertical.mp4", (route) => route.fulfill(serveClip()));
   await page.route("**/template/landscape.mp4", (route) => route.fulfill(serveClip()));
 
-  await page.goto("/");
-  await page.locator("#picker").waitFor({ state: "attached" });
+  await page.goto("/make");
+  await page.locator('#app[data-controls-ready="1"]').waitFor({ state: "attached" });
   await expect(page.locator("#app[data-app-ready='1']")).toHaveCount(0);
 
   await page.locator("#copyHashtagsBtn").click();

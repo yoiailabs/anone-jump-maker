@@ -1,5 +1,7 @@
 import { pathForApp, t, type Locale } from "../i18n.ts";
 
+import { siteCopy } from "../site-copy";
+
 export function SiteFooter({
   locale,
   current,
@@ -9,7 +11,7 @@ export function SiteFooter({
 }) {
   return (
     <footer className="site-footer" id="siteFooter">
-      <p className="site-footer-notice">{t(locale, "termsNotice")}</p>
+      <p className="site-footer-notice">{siteCopy[locale].fan}</p>
       <div className="site-footer-links">
         <nav aria-label={t(locale, "footerNavAria")}>
           <a

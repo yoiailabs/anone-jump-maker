@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = 4173;
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 4173);
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
@@ -23,7 +23,7 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `pnpm build && pnpm preview --host 127.0.0.1 --port ${port}`,
+    command: `pnpm build && pnpm exec astro preview --host 127.0.0.1 --port ${port} --ignore-lock`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

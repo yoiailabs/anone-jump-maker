@@ -81,9 +81,9 @@ describe("worker fetch", () => {
     expect(response.headers.get("vary")).toBe("Cookie");
   });
 
-  it("keeps Japanese HTML on /community when Accept-Language is Korean", async () => {
+  it("keeps Japanese HTML on /make when Accept-Language is Korean", async () => {
     const response = await worker.fetch(
-      new Request("https://anone.yoiailabs.com/community?from=x", {
+      new Request("https://anone.yoiailabs.com/make?from=x", {
         headers: { "accept-language": "ko" },
       }),
       assetsEnv(),

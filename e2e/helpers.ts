@@ -1,9 +1,12 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 
-const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
+const fixturesDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "fixtures",
+);
 
 export const PHOTO_FILE = {
   name: "photo.jpg",
@@ -11,7 +14,9 @@ export const PHOTO_FILE = {
   path: path.join(fixturesDir, "photo.jpg"),
 } as const;
 
-export async function jpegInput(name: string): Promise<{ name: string; mimeType: string; buffer: Buffer }> {
+export async function jpegInput(
+  name: string,
+): Promise<{ name: string; mimeType: string; buffer: Buffer }> {
   return {
     name,
     mimeType: "image/jpeg",
@@ -30,25 +35,50 @@ const SHORT_CUTS = {
 /** WebKit on Linux often lacks H.264; Chromium bundled by Playwright often does too. VP8 WebM is the portable fixture. */
 export async function stubShortTemplate(page: Page): Promise<void> {
   const webm = await readFile(path.join(fixturesDir, "clip.webm"));
-  const serveClip = () => ({
-    body: webm,
-    contentType: "video/webm",
-    headers: {
-      "Cache-Control": "no-store",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
+  // Model byte-range responses so Chromium can seek the HTTP media fixture.
+  const serveClip = (route: Route) => {
+    const range = /^bytes=(\d+)-(\d*)$/.exec(
+      route.request().headers().range ?? "",
+    );
+    const start = range ? Number(range[1]) : 0;
+    const end = range?.[2]
+      ? Math.min(Number(range[2]), webm.length - 1)
+      : webm.length - 1;
+    return route.fulfill({
+      status: range ? 206 : 200,
+      body: webm.subarray(start, end + 1),
+      contentType: "video/webm",
+      headers: {
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*",
+        "Accept-Ranges": "bytes",
+        ...(range
+          ? { "Content-Range": `bytes ${start}-${end}/${webm.length}` }
+          : {}),
+      },
+    });
+  };
 
-  await page.route("**/template/cuts.json", (route) => route.fulfill({ json: SHORT_CUTS }));
-  await page.route("**/template/landscape-cuts.json", (route) => route.fulfill({ json: SHORT_CUTS }));
-  await page.route("**/template/vertical.mp4", (route) => route.fulfill(serveClip()));
-  await page.route("**/template/landscape.mp4", (route) => route.fulfill(serveClip()));
+  await page.route("**/template/cuts.json", (route) =>
+    route.fulfill({ json: SHORT_CUTS }),
+  );
+  await page.route("**/template/landscape-cuts.json", (route) =>
+    route.fulfill({ json: SHORT_CUTS }),
+  );
+  await page.route("**/template/vertical.mp4", serveClip);
+  await page.route("**/template/landscape.mp4", serveClip);
 }
 
 export async function blockAnalytics(page: Page): Promise<void> {
-  await page.route("https://www.googletagmanager.com/**", (route) => route.abort());
-  await page.route("https://www.google-analytics.com/**", (route) => route.abort());
-  await page.route("https://*.ingest.us.sentry.io/**", (route) => route.abort());
+  await page.route("https://www.googletagmanager.com/**", (route) =>
+    route.abort(),
+  );
+  await page.route("https://www.google-analytics.com/**", (route) =>
+    route.abort(),
+  );
+  await page.route("https://*.ingest.us.sentry.io/**", (route) =>
+    route.abort(),
+  );
   await page.route("https://platform.twitter.com/**", (route) => route.abort());
 }
 
@@ -57,7 +87,6 @@ export function stripZwsp(text: string): string {
 }
 
 export async function waitForAppReady(page: Page): Promise<void> {
-  await page.locator("#toCommunity").waitFor({ state: "attached" });
   await page.locator("#playBtn").waitFor({ state: "attached" });
   await page.locator("#app[data-app-ready='1']").waitFor({ state: "attached" });
 }

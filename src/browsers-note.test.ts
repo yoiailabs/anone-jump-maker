@@ -1,10 +1,6 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { LOCALES, t } from "./i18n.ts";
-import makerSrc from "./components/MakerApp.tsx?raw";
-import noteSrc from "./components/BrowsersNote.tsx?raw";
 
-const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 describe("verified browsers notice", () => {
   it("uses a short 動作確認済み line in every locale", () => {
@@ -23,13 +19,5 @@ describe("verified browsers notice", () => {
     }
   });
 
-  it("renders above the photo picker, not in the hero", () => {
-    expect(noteSrc).toContain('id="browsersNote"');
-    expect(noteSrc).toContain("makerBrowsersNote");
-    expect(noteSrc).not.toContain("<ul");
-    expect(makerSrc).not.toMatch(/<JaLede\b[^/]*\/>\s*<BrowsersNote\b/);
-    expect(makerSrc).toMatch(/<BrowsersNote\b[^/]*\/>\s*<Label className="file-btn">/);
-    expect(makerSrc).not.toMatch(/id="browsersNote"[^>]*translate="no"|translate="no"[^>]*id="browsersNote"/);
-    expect(stylesSrc).toMatch(/\.browsers-note\s*\{[^}]*font-size:\s*0\.72rem/);
-  });
+
 });

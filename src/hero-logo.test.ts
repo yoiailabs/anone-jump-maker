@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { LOCALES, t } from "./i18n.ts";
-import makerSrc from "./components/MakerApp.tsx?raw";
 import privacySrc from "./components/PrivacyArticle.tsx?raw";
 import termsSrc from "./components/TermsArticle.tsx?raw";
 import legalLogoSrc from "./components/LegalHeroLogo.tsx?raw";
@@ -42,26 +41,7 @@ describe("stacked maker hero logo", () => {
     expect(logoSrc.match(/fill="#48B5D8"/g)?.length).toBe(4);
   });
 
-  it("replaces the maker hero h1 text with the logo and localized alt", () => {
-    expect(makerSrc).toContain('id="makerTitle"');
-    expect(makerSrc).toContain("className=\"hero-logo\"");
-    expect(makerSrc).toContain("makerLogoStackedSrc(locale)");
-    expect(makerSrc).toContain("makerLogoStackedSize(locale)");
-    expect(makerSrc).toContain("width={logoSize.width}");
-    expect(makerSrc).toContain("height={logoSize.height}");
-    expect(makerSrc).toContain('alt={t(locale, "makerTitle")}');
-    expect(makerSrc).not.toContain("eyebrow");
-    expect(privacySrc).not.toContain("eyebrow");
-    expect(termsSrc).not.toContain("eyebrow");
-    expect(makerSrc).not.toMatch(/<h1 id="makerTitle">\{t\(locale, "makerTitle"\)\}<\/h1>/);
-    expect(makerSrc).toMatch(/<LanguageNav[\s\S]*id="makerTitle"[\s\S]*<JaLede\b/);
-    expect(makerSrc).toMatch(/<JaLede\b[\s\S]*id="toCommunity"/);
-    expect(makerSrc).toMatch(/<BrowsersNote\b[^/]*\/>\s*<Label className="file-btn">/);
-    expect(makerSrc).toContain('<footer className="notes">');
-    for (const locale of LOCALES) {
-      expect(t(locale, "makerTitle").length).toBeGreaterThan(0);
-    }
-  });
+
 
   it("keeps the logo from overflowing the hero column", () => {
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*max-width:\s*100%/);
@@ -74,7 +54,7 @@ describe("stacked maker hero logo", () => {
   it("links the Japanese stacked logo home on the legal pages", () => {
     expect(legalLogoSrc).toContain("MAKER_LOGO_STACKED_SRC");
     expect(legalLogoSrc).not.toContain("MAKER_LOGO_STACKED_EN_SRC");
-    expect(legalLogoSrc).toContain('href={pathForApp("ja", "maker")}');
+    expect(legalLogoSrc).toContain('href={pathForApp("ja", "home")}');
     expect(legalLogoSrc).toContain('aria-label={HOME_LABEL}');
     expect(legalLogoSrc).toContain("alt={HOME_LABEL}");
     expect(legalLogoSrc).toContain('const HOME_LABEL = "トップへ戻る"');

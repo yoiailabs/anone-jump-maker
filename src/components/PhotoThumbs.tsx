@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { t, type Locale } from "../i18n.ts";
 import { PHOTO_MAX_COUNT } from "../photo-list.ts";
@@ -97,7 +97,7 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
         onDragEnd={onDragEnd}
         onDragCancel={() => setActiveId(null)}
       >
-        <SortableContext items={ids} strategy={rectSortingStrategy}>
+        <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
           <div
             className="thumbs"
             id="thumbs"

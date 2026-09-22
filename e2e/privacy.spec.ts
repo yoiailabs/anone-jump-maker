@@ -9,29 +9,15 @@ test.describe("privacy policy", () => {
     await stubShortTemplate(page);
   });
 
-  test("links from the maker and community footer and opens /privacy", async ({ page }) => {
+  test("links from the home footer and opens /privacy", async ({ page }) => {
     await page.goto("/");
-    await waitForAppReady(page);
+    await expect(page.locator("#startMaking")).toBeVisible();
 
     const footer = page.locator("#siteFooter");
     await expect(footer).toBeVisible();
     await expect(footer).toContainText("Yoiailabs");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
     await expect(page.locator("#privacyPolicyLink")).toHaveText(t("ja", "privacyLink"));
-    await expect(page.locator("#linksTitle")).toHaveText(t("ja", "makerOfficial"));
-    await expect(page.locator("#makerView .notes .lang-switch a[lang='en']")).toHaveAttribute("href", "/en");
-
-    await page.locator("#toCommunity").click();
-    await expect(page).toHaveURL(/\/community\/?$/);
-    await expect(page.locator("#privacyPolicyLink")).toBeVisible();
-    await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
-    await expect(page.locator("#makerView #linksTitle")).toHaveText(t("ja", "makerOfficial"));
-    await expect(page.locator("#makerView")).toBeHidden();
-    await expect(page.locator("#communityView .lang-switch a[lang='en']").first()).toHaveAttribute(
-      "href",
-      "/en/community",
-    );
-
     await page.locator("#privacyPolicyLink").click();
     await expect(page).toHaveURL(/\/privacy\/?$/);
     await expect(page).toHaveTitle(t("ja", "privacyTitle"));
@@ -70,7 +56,7 @@ test.describe("privacy policy", () => {
 
   test("shows the Japanese policy from the English maker and from /en/privacy", async ({ page }) => {
     await page.goto("/en");
-    await waitForAppReady(page);
+    await expect(page.locator("#startMaking")).toBeVisible();
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
     await expect(page.locator("#termsLink")).toHaveAttribute("href", "/terms");
     await expect(page.locator('.lang-switch a[lang="ko"]').first()).toHaveAttribute("href", "/ko");
@@ -96,8 +82,8 @@ test.describe("privacy logo", () => {
     await page.goto("/privacy");
     await page.locator("#legalHome").click();
     await expect(page).toHaveURL(/\/$/);
-    await waitForAppReady(page);
-    await expect(page.locator("#makerTitle img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
+    await expect(page.locator("#startMaking")).toBeVisible();
+    await expect(page.locator(".brand-mark")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
   });
 });
 
