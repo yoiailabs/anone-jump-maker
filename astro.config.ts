@@ -37,7 +37,9 @@ export default defineConfig({
     build: {
       target: "es2022",
       assetsInlineLimit: 0,
-      sourcemap: true,
+      // dist は Workers の静的アセットとしてそのまま公開される。
+      // 開発サーバー (astro dev) のソースマップはこれとは別で、手元のデバッグには残る。
+      sourcemap: false,
     },
   },
 });
