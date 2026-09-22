@@ -135,12 +135,21 @@
         ko: "아노네 점프 메이커",
         zh: "あのね跳跃制作器",
       };
+      const logos = {
+        ja: "/brand/anone-logo-stacked.svg",
+        en: "/brand/anone-logo-stacked-en.svg",
+        ko: "/brand/anone-logo-stacked-en.svg",
+        zh: "/brand/anone-logo-stacked-en.svg",
+      };
       const locale = new URLSearchParams(location.search).get("locale");
       const title = locale && titles[locale] ? titles[locale] : titles.ja;
       const lang = locale && titles[locale] ? locale : "ja";
       document.documentElement.lang = lang;
       const logo = document.querySelector(".hero-logo");
-      if (logo instanceof HTMLImageElement) logo.alt = title;
+      if (logo instanceof HTMLImageElement) {
+        logo.src = logos[lang];
+        logo.alt = title;
+      }
     </script>
   </body>
 </html>

@@ -6,9 +6,12 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const htmlPath = path.join(root, "scripts", "og.html");
-const logoPath = path.join(root, "public", "brand", "anone-logo-stacked.svg");
+const brandDir = path.join(root, "public", "brand");
 const html = await readFile(htmlPath);
-const logoSvg = await readFile(logoPath);
+const brandFiles = {
+  "/brand/anone-logo-stacked.svg": await readFile(path.join(brandDir, "anone-logo-stacked.svg")),
+  "/brand/anone-logo-stacked-en.svg": await readFile(path.join(brandDir, "anone-logo-stacked-en.svg")),
+};
 const includeJa = process.argv.includes("--ja");
 const locales = includeJa ? ["ja", "en", "ko", "zh"] : ["en", "ko", "zh"];
 
@@ -22,12 +25,13 @@ const server = createServer((req, res) => {
     res.end(html);
     return;
   }
-  if (pathname === "/brand/anone-logo-stacked.svg") {
+  const brand = brandFiles[pathname];
+  if (brand) {
     res.writeHead(200, {
       "Content-Type": "image/svg+xml; charset=utf-8",
       "Cache-Control": "no-store",
     });
-    res.end(logoSvg);
+    res.end(brand);
     return;
   }
   res.writeHead(404);
@@ -47,8 +51,13 @@ try {
   for (const locale of locales) {
     const outName = locale === "ja" ? "og.png" : `og-${locale}.png`;
     const out = path.join(root, "public", outName);
+    const expectedLogo = locale === "ja" ? "anone-logo-stacked.svg" : "anone-logo-stacked-en.svg";
     await page.goto(`http://127.0.0.1:${port}/og.html?locale=${locale}`, { waitUntil: "networkidle" });
     await page.locator("img.hero-logo").waitFor();
+    await page.waitForFunction((name) => {
+      const img = document.querySelector("img.hero-logo");
+      return img instanceof HTMLImageElement && img.src.includes(name);
+    }, expectedLogo);
     await page.evaluate(async () => {
       await document.fonts.ready;
       const img = document.querySelector("img.hero-logo");
