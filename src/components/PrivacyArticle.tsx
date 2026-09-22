@@ -158,7 +158,7 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
             {t(locale, "communityBack")}
           </a>
         </p>
-        <SiteFooter locale={locale} current />
+        <SiteFooter locale={locale} current="privacy" />
       </div>
     </>
   );

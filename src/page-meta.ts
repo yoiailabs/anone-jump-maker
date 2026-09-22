@@ -44,6 +44,7 @@ const VIEW_COPY: Record<AppView, { title: MessageKey; description: MessageKey }>
   maker: { title: "makerTitle", description: "metaMakerDescription" },
   community: { title: "communityTitle", description: "metaCommunityDescription" },
   privacy: { title: "privacyTitle", description: "metaPrivacyDescription" },
+  terms: { title: "termsTitle", description: "metaTermsDescription" },
 };
 
 export function pageMeta(locale: Locale, view: AppView): PageMeta {

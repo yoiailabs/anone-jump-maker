@@ -14,7 +14,7 @@ routes = [
 enabled = true
 
 # Vite / Astro の dist を Workers 静的アセットとして配信する。
-# プレフィックスなしの `/` `/community` `/privacy` だけ Worker が先に受け、
+# プレフィックスなしの `/` `/community` `/privacy` `/terms` だけ Worker が先に受け、
 # Cookie があるときだけ /en /ko /zh へ寄せる。Accept-Language では寄せない
 # （クローラが日本語の title / OGP を掴むため。ブラウザはクライアント JS で寄せる）。
 [assets]
@@ -34,4 +34,8 @@ run_worker_first = [
   "/privacy/",
   "/ja/privacy",
   "/ja/privacy/",
+  "/terms",
+  "/terms/",
+  "/ja/terms",
+  "/ja/terms/",
 ]

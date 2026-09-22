@@ -18,6 +18,8 @@ describe("parseAppPath", () => {
     expect(parseAppPath("/community/")).toEqual({ locale: "ja", view: "community", prefixed: false });
     expect(parseAppPath("/privacy")).toEqual({ locale: "ja", view: "privacy", prefixed: false });
     expect(parseAppPath("/privacy/")).toEqual({ locale: "ja", view: "privacy", prefixed: false });
+    expect(parseAppPath("/terms")).toEqual({ locale: "ja", view: "terms", prefixed: false });
+    expect(parseAppPath("/terms/")).toEqual({ locale: "ja", view: "terms", prefixed: false });
   });
 
   it("reads locale prefixes and community subpaths", () => {
@@ -25,8 +27,10 @@ describe("parseAppPath", () => {
     expect(parseAppPath("/ko/community")).toEqual({ locale: "ko", view: "community", prefixed: true });
     expect(parseAppPath("/zh/community/")).toEqual({ locale: "zh", view: "community", prefixed: true });
     expect(parseAppPath("/en/privacy")).toEqual({ locale: "en", view: "privacy", prefixed: true });
+    expect(parseAppPath("/en/terms")).toEqual({ locale: "en", view: "terms", prefixed: true });
     expect(parseAppPath("/ja")).toEqual({ locale: "ja", view: "maker", prefixed: true });
     expect(parseAppPath("/ja/privacy")).toEqual({ locale: "ja", view: "privacy", prefixed: true });
+    expect(parseAppPath("/ja/terms")).toEqual({ locale: "ja", view: "terms", prefixed: true });
   });
 
   it("ignores static assets and unknown segments", () => {
@@ -44,9 +48,11 @@ describe("pathForApp", () => {
     expect(pathForApp("ja", "maker")).toBe("/");
     expect(pathForApp("ja", "community")).toBe("/community");
     expect(pathForApp("ja", "privacy")).toBe("/privacy");
+    expect(pathForApp("ja", "terms")).toBe("/terms");
     expect(pathForApp("en", "maker")).toBe("/en");
     expect(pathForApp("zh", "community")).toBe("/zh/community");
     expect(pathForApp("en", "privacy")).toBe("/en/privacy");
+    expect(pathForApp("ko", "terms")).toBe("/ko/terms");
   });
 });
 
@@ -72,6 +78,7 @@ describe("localeRedirectLocation", () => {
     expect(localeRedirectLocation("/", "", null, "en-US")).toBe("/en");
     expect(localeRedirectLocation("/community", "?from=x", null, "ko")).toBe("/ko/community?from=x");
     expect(localeRedirectLocation("/privacy", "", null, "en-US")).toBe("/en/privacy");
+    expect(localeRedirectLocation("/terms", "", null, "en-US")).toBe("/en/terms");
     expect(localeRedirectLocation("/", "", null, "ja-JP")).toBeNull();
     expect(localeRedirectLocation("/en", "", null, "ja")).toBeNull();
   });
@@ -80,6 +87,7 @@ describe("localeRedirectLocation", () => {
     expect(localeRedirectLocation("/ja", "", null, "en")).toBe("/");
     expect(localeRedirectLocation("/ja/community", "?q=1", null, null)).toBe("/community?q=1");
     expect(localeRedirectLocation("/ja/privacy", "", null, null)).toBe("/privacy");
+    expect(localeRedirectLocation("/ja/terms", "", null, null)).toBe("/terms");
   });
 
   it("honors a language cookie on unprefixed paths", () => {
@@ -164,7 +172,9 @@ describe("messages", () => {
 
   it("describes on-device video and names Yoiailabs", () => {
     expect(t("ja", "privacyTitle")).toBe("プライバシーポリシー");
+    expect(t("ja", "termsTitle")).toBe("利用規約");
     expect(t("en", "privacyTitle")).toBe("Privacy Policy");
+    expect(t("en", "termsTitle")).toBe("Terms of Use");
     expect(t("ko", "privacyTitle")).toBe("개인정보 처리방침");
     expect(t("zh", "privacyTitle")).toBe("隐私政策");
     expect(t("ja", "footerOperator")).toContain("Yoiailabs");

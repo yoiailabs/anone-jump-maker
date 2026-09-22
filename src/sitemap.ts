@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, LOCALES, type AppView } from "./i18n.ts";
 import { pageUrl } from "./page-meta.ts";
 
-const VIEWS: readonly AppView[] = ["maker", "community", "privacy"];
+const VIEWS: readonly AppView[] = ["maker", "community", "privacy", "terms"];
 
 export function sitemapXml(): string {
   const urls = VIEWS.flatMap((view) =>

@@ -24,7 +24,7 @@ export {
 export const LOCALE_COOKIE = "anone-locale";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export type AppView = "maker" | "community" | "privacy";
+export type AppView = "maker" | "community" | "privacy" | "terms";
 
 export type AppPath = {
   locale: Locale;
@@ -50,6 +50,7 @@ const UNPREFIXED_VIEWS: Record<string, AppView> = {
   "/": "maker",
   "/community": "community",
   "/privacy": "privacy",
+  "/terms": "terms",
 };
 
 export function parseAppPath(pathname: string): AppPath | null {
@@ -62,7 +63,7 @@ export function parseAppPath(pathname: string): AppPath | null {
   if (!isLocale(first)) return null;
   if (parts.length === 1) return { locale: first, view: "maker", prefixed: true };
   const segment = parts[1];
-  if (parts.length === 2 && (segment === "community" || segment === "privacy")) {
+  if (parts.length === 2 && (segment === "community" || segment === "privacy" || segment === "terms")) {
     return { locale: first, view: segment, prefixed: true };
   }
   return null;
@@ -164,7 +165,7 @@ export type LocaleRedirectOptions = {
 };
 
 /**
- * プレフィックスなしの `/` `/community` `/privacy` をブラウザ言語または Cookie で寄せる。
+ * プレフィックスなしの `/` `/community` `/privacy` `/terms` をブラウザ言語または Cookie で寄せる。
  * `/ja` はデフォルト言語の正規 URL へ戻す。既に正しい場所なら null。
  * 検索・SNS クローラは言語リダイレクトせず、hreflang で各言語を辿れるようにする。
  */

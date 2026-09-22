@@ -1,0 +1,79 @@
+import { expect, test } from "@playwright/test";
+import { t } from "../src/i18n.ts";
+import { blockAnalytics, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+
+test.describe("terms of use", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("links from the footer and opens /terms", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+
+    const footer = page.locator("#siteFooter");
+    await expect(footer).toContainText("非公式");
+    await expect(footer).toContainText("Yoiailabs");
+    await expect(page.locator("#termsLink")).toHaveAttribute("href", "/terms");
+    await expect(page.locator("#termsLink")).toHaveText(t("ja", "termsLink"));
+    await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
+
+    await page.locator("#termsLink").click();
+    await expect(page).toHaveURL(/\/terms\/?$/);
+    await expect(page).toHaveTitle(t("ja", "termsTitle"));
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("#termsTitle")).toHaveText(t("ja", "termsTitle"));
+    const article = page.locator("#termsOfUse");
+    await expect(article).toContainText("2026年9月22日");
+    await expect(article).toContainText("Yoiailabs（個人制作者）");
+    await expect(article).toContainText("第1条　本サービスの位置付け");
+    await expect(article).toContainText("第13条　お問い合わせ");
+    await expect(article).toContainText("非公式サービス");
+    await expect(article).toContainText("営利目的に使用する行為");
+    await expect(article).toContainText("個人情報や本人確認書類を投稿しないでください");
+    await expect(article).not.toContainText("【要記入】");
+    await expect(article).not.toContainText("編集者向け");
+    await expect(article.locator('a[href="/privacy"]')).toBeVisible();
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://anone.yoiailabs.com/terms",
+    );
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      t("ja", "metaTermsDescription"),
+    );
+    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute(
+      "href",
+      "https://anone.yoiailabs.com/en/terms",
+    );
+    await expect(page.locator("#playBtn")).toHaveCount(0);
+    await expect(page.locator("#termsBack")).toHaveAttribute("href", "/");
+    await expect(page.locator("#termsLink")).toHaveAttribute("aria-current", "page");
+    await expect(page.locator("#privacyPolicyLink")).not.toHaveAttribute("aria-current", "page");
+  });
+
+  test("serves the English terms at /en/terms", async ({ page }) => {
+    await page.goto("/en/terms");
+    await expect(page).toHaveTitle(t("en", "termsTitle"));
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("#termsTitle")).toHaveText(t("en", "termsTitle"));
+    await expect(page.locator("#termsOfUse")).toContainText("unofficial service");
+    await expect(page.locator("#termsOfUse")).toContainText("commercial purpose");
+    await expect(page.locator("#termsOfUse a[href='/en/privacy']")).toBeVisible();
+    await expect(page.locator("#termsLink")).toHaveAttribute("href", "/en/terms");
+    await expect(page.locator('.lang-switch a[lang="ko"]')).toHaveAttribute("href", "/ko/terms");
+  });
+});
+
+test.describe("terms language redirect", () => {
+  test.use({ locale: "en-US" });
+
+  test("sends an English browser from /terms to /en/terms", async ({ page }) => {
+    await blockAnalytics(page);
+    await page.goto("/terms");
+    await page.waitForURL(/\/en\/terms\/?$/);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("#termsTitle")).toHaveText(t("en", "termsTitle"));
+  });
+});

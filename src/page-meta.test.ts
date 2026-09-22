@@ -76,5 +76,8 @@ describe("locale page meta", () => {
     expect(pageMeta("ja", "privacy").url).toBe("https://anone.yoiailabs.com/privacy");
     expect(pageMeta("en", "privacy").url).toBe("https://anone.yoiailabs.com/en/privacy");
     expect(pageMeta("en", "privacy").siteName).toBe("Anone Jump Maker");
+    expect(pageMeta("ja", "terms").title).toBe("利用規約");
+    expect(pageMeta("ja", "terms").url).toBe("https://anone.yoiailabs.com/terms");
+    expect(pageMeta("ko", "terms").url).toBe("https://anone.yoiailabs.com/ko/terms");
   });
 });

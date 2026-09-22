@@ -9,8 +9,8 @@ import {
 } from "./i18n.ts";
 import { COMMUNITY_PATH } from "./page-meta.ts";
 
-/** パスで切り替える画面。プライバシーは別 HTML で、メーカー内では表示を切り替えない。 */
-export const APP_VIEWS = ["maker", "community", "privacy"] as const;
+/** パスで切り替える画面。プライバシーと利用規約は別 HTML で、メーカー内では表示を切り替えない。 */
+export const APP_VIEWS = ["maker", "community", "privacy", "terms"] as const;
 export type { AppView, AppPath, Locale };
 
 export { COMMUNITY_PATH };
@@ -54,6 +54,7 @@ export function parseAppView(input: string | Pick<Location, "pathname" | "hash">
 export function documentTitleForView(view: AppView, locale: Locale = DEFAULT_LOCALE): string {
   if (view === "community") return t(locale, "communityTitle");
   if (view === "privacy") return t(locale, "privacyTitle");
+  if (view === "terms") return t(locale, "termsTitle");
   return t(locale, "makerTitle");
 }
 

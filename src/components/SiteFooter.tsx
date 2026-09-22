@@ -2,23 +2,33 @@ import { pathForApp, t, type Locale } from "../i18n.ts";
 
 export function SiteFooter({
   locale,
-  current = false,
+  current,
 }: {
   locale: Locale;
-  current?: boolean;
+  current?: "privacy" | "terms";
 }) {
   return (
     <footer className="site-footer" id="siteFooter">
-      <nav aria-label={t(locale, "footerNavAria")}>
-        <a
-          id="privacyPolicyLink"
-          href={pathForApp(locale, "privacy")}
-          {...(current ? { "aria-current": "page" as const } : {})}
-        >
-          {t(locale, "privacyLink")}
-        </a>
-      </nav>
-      <p className="site-footer-credit">{t(locale, "footerOperator")}</p>
+      <p className="site-footer-notice">{t(locale, "termsNotice")}</p>
+      <div className="site-footer-links">
+        <nav aria-label={t(locale, "footerNavAria")}>
+          <a
+            id="privacyPolicyLink"
+            href={pathForApp(locale, "privacy")}
+            {...(current === "privacy" ? { "aria-current": "page" as const } : {})}
+          >
+            {t(locale, "privacyLink")}
+          </a>
+          <a
+            id="termsLink"
+            href={pathForApp(locale, "terms")}
+            {...(current === "terms" ? { "aria-current": "page" as const } : {})}
+          >
+            {t(locale, "termsLink")}
+          </a>
+        </nav>
+        <p className="site-footer-credit">{t(locale, "footerOperator")}</p>
+      </div>
     </footer>
   );
 }
