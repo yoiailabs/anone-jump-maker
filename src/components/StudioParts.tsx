@@ -105,14 +105,14 @@ export function Preview({ locale }: { locale: Locale }) {
         <button
           type="button"
           id="restartBtn"
-          className="control-button"
+          className="btn ghost"
           disabled={!ready}
           dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
         />
         <button
           type="button"
           id="playBtn"
-          className="control-button play-control"
+          className="btn"
           disabled={!ready}
           aria-label={playing ? copy.pause : copy.play}
         >
@@ -122,7 +122,7 @@ export function Preview({ locale }: { locale: Locale }) {
         <button
           type="button"
           id="muteBtn"
-          className="control-button notranslate"
+          className="btn ghost notranslate"
           translate="no"
           aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
           dangerouslySetInnerHTML={{
@@ -239,7 +239,11 @@ function RadioPills({
   options: string[][];
 }) {
   return (
-    <div className="aspect-toggle" role="radiogroup" aria-label={label}>
+    <div
+      className={options.length > 2 ? "aspect-toggle cols-3" : "aspect-toggle"}
+      role="radiogroup"
+      aria-label={label}
+    >
       {options.map(([value, text], index) => (
         <label key={value}>
           <input
@@ -283,15 +287,52 @@ export function Status({ locale }: { locale: Locale }) {
 }
 export function ShareControls({ locale }: { locale: Locale }) {
   return (
-    <div className="share-controls">
-      <p id="hashtagCopyHint">{SHARE_TEXT}</p>
-      <div>
-        <button type="button" id="copyHashtagsBtn" className="text-button">
+    <div className="share-wrap">
+      <button type="button" id="shareAppBtn" className="btn share-app">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M12 3v10M8.2 6.8 12 3l3.8 3.8M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {t(locale, "makerShare")}
+      </button>
+      <div className="hashtag-copy">
+        <button
+          type="button"
+          id="copyHashtagsBtn"
+          className="btn copy-hashtags"
+          aria-describedby="hashtagCopyHint"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect
+              x="8.2"
+              y="8.2"
+              width="11.5"
+              height="13"
+              rx="2"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.1"
+            />
+            <path
+              d="M15.8 8.2V6.4A1.8 1.8 0 0 0 14 4.6H6.4A1.8 1.8 0 0 0 4.6 6.4V18A1.8 1.8 0 0 0 6.4 19.8H8.2"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           {t(locale, "makerCopyHashtags")}
         </button>
-        <button type="button" id="shareAppBtn" className="text-button">
-          {t(locale, "makerShare")}
-        </button>
+        <p className="hashtag-copy-hint" id="hashtagCopyHint">
+          {SHARE_TEXT}
+        </p>
       </div>
     </div>
   );

@@ -104,30 +104,37 @@ function Playhead({ locale }: { locale: Locale }) {
 export default function MakerApp({ locale }: { locale: Locale }) {
   const error = useMakerBoot(locale);
   return (
-    <div className="timeline-shell" id="makerView">
-      <EditorHeader locale={locale} />
-      <main className="timeline-workspace">
-        <Preview locale={locale} />
-        <section
-          className="timeline-dock"
-          aria-label={siteCopy[locale].timeline}
-        >
-          <Playhead locale={locale} />
-          <Photos locale={locale} />
-          <div className="timeline-controls">
-            <Aspect locale={locale} />
-            <Settings locale={locale} />
-            <SaveButton locale={locale} />
-          </div>
-          <Status locale={locale} />
-          {error && <p role="alert">{error}</p>}
-        </section>
-      </main>
-      <div className="editor-footer">
-        <ShareControls locale={locale} />
-        <SiteFooter locale={locale} />
+    <>
+      <div className="sky" aria-hidden="true">
+        <span className="blob blob-lime" />
+        <span className="blob blob-teal" />
+        <span className="blob blob-coral" />
       </div>
-      <ExportDialog locale={locale} />
-    </div>
+      <div className="timeline-shell" id="makerView">
+        <EditorHeader locale={locale} />
+        <main className="timeline-workspace">
+          <Preview locale={locale} />
+          <section
+            className="timeline-dock"
+            aria-label={siteCopy[locale].timeline}
+          >
+            <Playhead locale={locale} />
+            <Photos locale={locale} />
+            <div className="timeline-controls">
+              <Aspect locale={locale} />
+              <Settings locale={locale} />
+              <SaveButton locale={locale} />
+            </div>
+            <Status locale={locale} />
+            {error && <p role="alert">{error}</p>}
+          </section>
+        </main>
+        <div className="editor-footer">
+          <ShareControls locale={locale} />
+          <SiteFooter locale={locale} />
+        </div>
+        <ExportDialog locale={locale} />
+      </div>
+    </>
   );
 }
