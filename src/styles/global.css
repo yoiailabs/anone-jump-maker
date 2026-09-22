@@ -80,3 +80,5 @@
   --sidebar-border: var(--line);
   --sidebar-ring: var(--teal);
 }
+
+@import "./site.css";

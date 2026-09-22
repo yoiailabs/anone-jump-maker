@@ -57,7 +57,6 @@ export function stripZwsp(text: string): string {
 }
 
 export async function waitForAppReady(page: Page): Promise<void> {
-  await page.locator("#toCommunity").waitFor({ state: "attached" });
   await page.locator("#playBtn").waitFor({ state: "attached" });
   await page.locator("#app[data-app-ready='1']").waitFor({ state: "attached" });
 }

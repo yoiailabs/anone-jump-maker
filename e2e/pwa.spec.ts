@@ -11,7 +11,7 @@ test.describe("PWA installability", () => {
 
   test("links a manifest, icons, and a controlling service worker", async ({ page }) => {
     await page.goto("/");
-    await waitForAppReady(page);
+    await expect(page.locator("#startMaking")).toBeVisible();
 
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
     await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute(
@@ -62,7 +62,7 @@ test.describe("PWA installability", () => {
 
   test("keeps the same install tags on a prefixed locale", async ({ page }) => {
     await page.goto("/en");
-    await waitForAppReady(page);
+    await expect(page.locator("#startMaking")).toBeVisible();
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
     await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute(
       "content",

@@ -23,7 +23,7 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `pnpm build && pnpm preview --host 127.0.0.1 --port ${port}`,
+    command: `pnpm build && pnpm preview --host 127.0.0.1 --port ${port} --ignore-lock`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

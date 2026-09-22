@@ -134,7 +134,7 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
           ))}
         </article>
         <p className="privacy-back">
-          <a id="privacyBack" className="page-link" href={pathForApp("ja", "maker")}>
+          <a id="privacyBack" className="page-link" href={pathForApp("ja", "home")}>
             {t("ja", "communityBack")}
           </a>
         </p>

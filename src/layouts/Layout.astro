@@ -95,7 +95,7 @@ const jsonLd = JSON.stringify({
     <link rel="alternate" hreflang="x-default" href={pageUrl("ja", view)} />
     <script type="application/ld+json" set:html={jsonLd} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    {view === "maker" ? <link rel="preload" as="image" href="/jump-loop-still.png" /> : null}
+    {view === "home" ? <link rel="preload" as="image" href="/jump-loop-still.png" /> : null}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href={fontHref} media="print" onload={activateStylesheet} />
@@ -109,6 +109,16 @@ const jsonLd = JSON.stringify({
     <script>
       import { registerPwa } from "../pwa.ts";
       registerPwa();
+      import { localeRedirectLocation, isLocale } from "../i18n.ts";
+      import { persistLocale } from "../i18n-client.ts";
+      const redirect = localeRedirectLocation(location.pathname, location.search, document.cookie, navigator.languages.join(","), navigator.userAgent);
+      if (redirect) location.replace(redirect);
+      if (location.hash === "#community") history.replaceState(null, "", location.pathname + location.search);
+      document.addEventListener("click", (event) => {
+        const anchor = event.target instanceof Element ? event.target.closest("a[data-locale]") : null;
+        const locale = anchor?.getAttribute("data-locale");
+        if (isLocale(locale)) persistLocale(locale);
+      });
     </script>
   </body>
 </html>

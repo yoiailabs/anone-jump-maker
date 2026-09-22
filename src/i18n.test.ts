@@ -13,22 +13,22 @@ import {
 
 describe("parseAppPath", () => {
   it("treats unprefixed paths as Japanese", () => {
-    expect(parseAppPath("/")).toEqual({ locale: "ja", view: "maker", prefixed: false });
-    expect(parseAppPath("/community")).toEqual({ locale: "ja", view: "community", prefixed: false });
-    expect(parseAppPath("/community/")).toEqual({ locale: "ja", view: "community", prefixed: false });
+    expect(parseAppPath("/")).toEqual({ locale: "ja", view: "home", prefixed: false });
+    expect(parseAppPath("/make")).toEqual({ locale: "ja", view: "maker", prefixed: false });
+    expect(parseAppPath("/make/")).toEqual({ locale: "ja", view: "maker", prefixed: false });
     expect(parseAppPath("/privacy")).toEqual({ locale: "ja", view: "privacy", prefixed: false });
     expect(parseAppPath("/privacy/")).toEqual({ locale: "ja", view: "privacy", prefixed: false });
     expect(parseAppPath("/terms")).toEqual({ locale: "ja", view: "terms", prefixed: false });
     expect(parseAppPath("/terms/")).toEqual({ locale: "ja", view: "terms", prefixed: false });
   });
 
-  it("reads locale prefixes and community subpaths", () => {
-    expect(parseAppPath("/en")).toEqual({ locale: "en", view: "maker", prefixed: true });
-    expect(parseAppPath("/ko/community")).toEqual({ locale: "ko", view: "community", prefixed: true });
-    expect(parseAppPath("/zh/community/")).toEqual({ locale: "zh", view: "community", prefixed: true });
+  it("reads locale prefixes and make subpaths", () => {
+    expect(parseAppPath("/en")).toEqual({ locale: "en", view: "home", prefixed: true });
+    expect(parseAppPath("/ko/make")).toEqual({ locale: "ko", view: "maker", prefixed: true });
+    expect(parseAppPath("/zh/make/")).toEqual({ locale: "zh", view: "maker", prefixed: true });
     expect(parseAppPath("/en/privacy")).toEqual({ locale: "en", view: "privacy", prefixed: true });
     expect(parseAppPath("/en/terms")).toEqual({ locale: "en", view: "terms", prefixed: true });
-    expect(parseAppPath("/ja")).toEqual({ locale: "ja", view: "maker", prefixed: true });
+    expect(parseAppPath("/ja")).toEqual({ locale: "ja", view: "home", prefixed: true });
     expect(parseAppPath("/ja/privacy")).toEqual({ locale: "ja", view: "privacy", prefixed: true });
     expect(parseAppPath("/ja/terms")).toEqual({ locale: "ja", view: "terms", prefixed: true });
   });
@@ -38,19 +38,19 @@ describe("parseAppPath", () => {
     expect(parseAppPath("/sw.js")).toBeNull();
     expect(parseAppPath("/manifest.webmanifest")).toBeNull();
     expect(parseAppPath("/icons/icon-192.png")).toBeNull();
-    expect(parseAppPath("/community-jumps")).toBeNull();
+    expect(parseAppPath("/make-jumps")).toBeNull();
     expect(parseAppPath("/en/template/cuts.json")).toBeNull();
   });
 });
 
 describe("pathForApp", () => {
   it("omits a prefix for Japanese and prefixes other locales", () => {
-    expect(pathForApp("ja", "maker")).toBe("/");
-    expect(pathForApp("ja", "community")).toBe("/community");
+    expect(pathForApp("ja", "home")).toBe("/");
+    expect(pathForApp("ja", "maker")).toBe("/make");
     expect(pathForApp("ja", "privacy")).toBe("/privacy");
     expect(pathForApp("ja", "terms")).toBe("/terms");
-    expect(pathForApp("en", "maker")).toBe("/en");
-    expect(pathForApp("zh", "community")).toBe("/zh/community");
+    expect(pathForApp("en", "home")).toBe("/en");
+    expect(pathForApp("zh", "maker")).toBe("/zh/make");
     expect(pathForApp("en", "privacy")).toBe("/privacy");
     expect(pathForApp("ko", "terms")).toBe("/terms");
   });
@@ -76,7 +76,7 @@ describe("localeFromAcceptLanguage", () => {
 describe("localeRedirectLocation", () => {
   it("redirects unprefixed paths when the browser language is not Japanese", () => {
     expect(localeRedirectLocation("/", "", null, "en-US")).toBe("/en");
-    expect(localeRedirectLocation("/community", "?from=x", null, "ko")).toBe("/ko/community?from=x");
+    expect(localeRedirectLocation("/make", "?from=x", null, "ko")).toBe("/ko/make?from=x");
     expect(localeRedirectLocation("/privacy", "", null, "en-US")).toBeNull();
     expect(localeRedirectLocation("/terms", "", null, "en-US")).toBeNull();
     expect(localeRedirectLocation("/privacy", "", "anone-locale=en", "ja")).toBeNull();
@@ -86,7 +86,7 @@ describe("localeRedirectLocation", () => {
 
   it("canonicalizes /ja onto the unprefixed default URLs", () => {
     expect(localeRedirectLocation("/ja", "", null, "en")).toBe("/");
-    expect(localeRedirectLocation("/ja/community", "?q=1", null, null)).toBe("/community?q=1");
+    expect(localeRedirectLocation("/ja/make", "?q=1", null, null)).toBe("/make?q=1");
     expect(localeRedirectLocation("/ja/privacy", "", null, null)).toBe("/privacy");
     expect(localeRedirectLocation("/ja/terms", "", null, null)).toBe("/terms");
   });
@@ -101,7 +101,7 @@ describe("localeRedirectLocation", () => {
       localeRedirectLocation("/", "", null, "en-US", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"),
     ).toBeNull();
     expect(
-      localeRedirectLocation("/community", "", null, "ko", "facebookexternalhit/1.1"),
+      localeRedirectLocation("/make", "", null, "ko", "facebookexternalhit/1.1"),
     ).toBeNull();
     expect(localeRedirectLocation("/ja", "", null, "en", "Googlebot/2.1")).toBe("/");
   });
@@ -109,7 +109,7 @@ describe("localeRedirectLocation", () => {
   it("ignores Accept-Language on the worker so unknown crawlers still get Japanese /", () => {
     expect(localeRedirectLocation("/", "", null, "en-US", "Chrome/128", { acceptLanguageRedirect: false })).toBeNull();
     expect(
-      localeRedirectLocation("/community", "?from=x", null, "ko", "Chrome/128", { acceptLanguageRedirect: false }),
+      localeRedirectLocation("/make", "?from=x", null, "ko", "Chrome/128", { acceptLanguageRedirect: false }),
     ).toBeNull();
     expect(
       localeRedirectLocation("/", "", "anone-locale=en", "ja", "Chrome/128", { acceptLanguageRedirect: false }),
