@@ -31,7 +31,8 @@ test.describe("terms of use", () => {
     await expect(article).toContainText("第13条　お問い合わせ");
     await expect(article).toContainText("非公式サービス");
     await expect(article).toContainText("営利目的に使用する行為");
-    await expect(article).toContainText("個人情報や本人確認書類を投稿しないでください");
+    await expect(article).toContainText("確認に必要な場合は追加の情報をお願いすることがあります。");
+    await expect(article).not.toContainText("GitHub Issues");
     await expect(article).not.toContainText("【要記入】");
     await expect(article).not.toContainText("編集者向け");
     await expect(article.locator('a[href="/privacy"]')).toBeVisible();

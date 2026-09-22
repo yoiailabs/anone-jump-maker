@@ -61,7 +61,8 @@ describe("terms of use copy", () => {
     expect(ja).toContain("非営利のファン活動");
     expect(ja).toContain("営利目的に使用する行為");
     expect(ja).toContain("運営名：Yoiailabs（個人制作者）");
-    expect(ja).toContain("公開GitHub Issues等には、個人情報や本人確認書類を投稿しないでください。");
+    expect(ja).toContain("確認に必要な場合は追加の情報をお願いすることがあります。");
+    expect(ja).not.toContain("GitHub Issues");
     expect(termsDocument("ja").enactedValue).toBe("2026年9月22日");
     expect(termsDocument("ja").revisedValue).toBe("2026年9月22日");
     expect(termsDocument("ja").effectiveValue).toBe("2026年9月22日");
@@ -74,18 +75,20 @@ describe("terms of use copy", () => {
     expect(en).toContain("non-commercial fan activity");
     expect(en).toContain("any other commercial purpose");
     expect(en).toContain("Operator name: Yoiailabs (individual creator)");
-    expect(en).toContain("Do not post personal information");
+    expect(en).not.toContain("GitHub Issues");
 
     const ko = JSON.stringify(termsDocument("ko"));
     expect(ko).toContain("비공식 서비스");
     expect(ko).toContain("비영리 팬 활동");
     expect(ko).toContain("영리 목적");
     expect(ko).toContain("운영 이름: Yoiailabs (개인 제작자)");
+    expect(ko).not.toContain("GitHub Issues");
 
     const zh = JSON.stringify(termsDocument("zh"));
     expect(zh).toContain("非官方服务");
     expect(zh).toContain("非营利粉丝活动");
     expect(zh).toContain("营利目的");
     expect(zh).toContain("运营名称：Yoiailabs（个人创作者）");
+    expect(zh).not.toContain("GitHub Issues");
   });
 });

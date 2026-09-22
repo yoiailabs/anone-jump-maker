@@ -202,7 +202,7 @@ const ja: TermsDocument = {
         p("本サービス、本規約、権利侵害のおそれ、素材・投稿の掲載停止等に関するお問い合わせは、次の窓口へご連絡ください。"),
         ul(["運営名：Yoiailabs（個人制作者）"]),
         p(
-          "権利に関する申出では、対象のURLまたは素材、申出の内容、返信先をお知らせください。確認に必要な場合は追加の情報をお願いすることがあります。公開GitHub Issues等には、個人情報や本人確認書類を投稿しないでください。",
+          "権利に関する申出では、対象のURLまたは素材、申出の内容、返信先をお知らせください。確認に必要な場合は追加の情報をお願いすることがあります。",
         ),
       ],
     },
@@ -377,7 +377,7 @@ const en: TermsDocument = {
         ),
         ul(["Operator name: Yoiailabs (individual creator)"]),
         p(
-          "For a request about rights, please tell us the URL or material, what you are asking, and an address for a reply. We may ask for more information if it is needed to check the request. Do not post personal information or identity documents on public GitHub Issues or similar places.",
+          "For a request about rights, please tell us the URL or material, what you are asking, and an address for a reply. We may ask for more information if it is needed to check the request.",
         ),
       ],
     },
@@ -550,7 +550,7 @@ const ko: TermsDocument = {
         p("본 서비스, 본 약관, 권리 침해의 우려, 소재·게시물의 게재 중지 등에 관한 문의는 다음 창구로 연락해 주세요."),
         ul(["운영 이름: Yoiailabs (개인 제작자)"]),
         p(
-          "권리에 관한 신청에서는 대상 URL 또는 소재, 신청 내용, 회신처를 알려 주세요. 확인에 필요하면 추가 정보를 부탁할 수 있습니다. 공개된 GitHub Issues 등에는 개인정보나 본인 확인 서류를 게시하지 마세요.",
+          "권리에 관한 신청에서는 대상 URL 또는 소재, 신청 내용, 회신처를 알려 주세요. 확인에 필요하면 추가 정보를 부탁할 수 있습니다.",
         ),
       ],
     },
@@ -723,7 +723,7 @@ const zh: TermsDocument = {
         p("有关本服务、本条款、可能的权利侵害，以及停止刊登素材或帖子等的询问，请通过下列联系方式联系。"),
         ul(["运营名称：Yoiailabs（个人创作者）"]),
         p(
-          "提出与权利有关的申请时，请告知对象的 URL 或素材、申请内容以及回复地址。确认所需要时，可能会请你补充信息。请不要在公开的 GitHub Issues 等处发布个人信息或身份证明文件。",
+          "提出与权利有关的申请时，请告知对象的 URL 或素材、申请内容以及回复地址。确认所需要时，可能会请你补充信息。",
         ),
       ],
     },

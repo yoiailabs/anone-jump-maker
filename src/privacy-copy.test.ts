@@ -40,6 +40,7 @@ describe("privacy policy copy", () => {
       expect(text).not.toContain("【要記入：実際の改定日】");
       expect(text).not.toContain("【要記入：実際の適用開始日】");
       expect(text).not.toContain("編集者向け");
+      expect(text).not.toContain("GitHub Issues");
       expect(text).not.toContain("2026年9月21日");
     }
   });
