@@ -518,16 +518,21 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     playbackBusy = false;
     playing = false;
     haltLoop();
-    video.pause();
+    // Avoid starting WebKit resource selection on a video with no source yet.
+    if (video.hasAttribute("src")) video.pause();
     if (!inPreview) {
       previewTracked = false;
     }
     mode = next;
+    setEditorState({ exported: false });
     compositor?.setAspect(mode);
     stage.dataset.aspect = mode;
     syncAspectRadios(mode);
     video.dataset.templateSrc = TEMPLATES[mode].video;
-    video.removeAttribute("src");
+    if (video.hasAttribute("src")) {
+      video.removeAttribute("src");
+      video.load();
+    }
     video.preload = "none";
     if (photos.length > 0 || recording) {
       beginTemplateVideoLoad(video);
@@ -538,6 +543,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const applySwap = (next: SwapStyle) => {
     if (next === swapStyle) return;
     swapStyle = next;
+    setEditorState({ exported: false });
     syncSwapRadios(swapStyle);
     paint();
   };
@@ -545,6 +551,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const applyFilter = (next: ImageFilter) => {
     if (next === imageFilter) return;
     imageFilter = next;
+    setEditorState({ exported: false });
     syncFilterRadios(imageFilter);
     paint();
   };
@@ -552,6 +559,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const applyCharacterSize = (next: CharacterSize) => {
     if (next === characterSize) return;
     characterSize = next;
+    setEditorState({ exported: false });
     syncCharacterRadios(characterSize);
     paint();
   };
