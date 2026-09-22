@@ -64,7 +64,7 @@ test.describe("privacy policy", () => {
     await expect(page).toHaveTitle(t("en", "privacyTitle"));
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#privacyTitle")).toHaveText(t("en", "privacyTitle"));
-    await expect(page.locator("#privacyPolicy")).toContainText("never leave the browser");
+    await expect(page.locator("#privacyPolicy")).toContainText("only on your device");
     await expect(page.locator("#siteFooter")).toContainText("Yoiailabs");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/en/privacy");
     await expect(page.locator('.lang-switch a[lang="ko"]')).toHaveAttribute("href", "/ko/privacy");

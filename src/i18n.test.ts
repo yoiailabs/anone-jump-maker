@@ -170,11 +170,14 @@ describe("messages", () => {
     expect(t("ja", "privacyOperatorBody")).toContain("Yoiailabs");
     expect(t("en", "footerOperator")).toContain("Yoiailabs");
     expect(t("ja", "privacyAboutBody")).toContain("外部のサーバーへ送られることはありません");
-    expect(t("en", "privacyAboutBody")).toContain("never leave the browser");
+    expect(t("en", "privacyAboutBody")).toContain("only on your device");
+    expect(t("ja", "privacyNotPhotos")).toContain("写真");
     expect(t("ja", "privacyAnalyticsEvents")).toContain("プレビュー");
     expect(t("ja", "privacyAnalyticsEvents")).toContain("保存");
     expect(t("en", "privacyAnalyticsEvents")).toContain("Previewing or saving");
-    expect(t("en", "privacyAnalyticsEvents")).toContain("Photo contents");
+    expect(t("en", "privacyAnalyticsEvents")).toContain("orientation");
+    expect(t("en", "privacyNotPhotos")).toContain("file names");
+    expect(t("ja", "privacyCookiesBody")).toContain("言語");
     expect(t("ja", "privacyUpdated")).toContain("2026年9月21日");
   });
 

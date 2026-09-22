@@ -46,6 +46,7 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
           <p className="lede">
             <time dateTime={PRIVACY_POLICY_UPDATED}>{t(locale, "privacyUpdated")}</time>
           </p>
+          <p className="lede">{t(locale, "privacyLede")}</p>
         </header>
         <article className="privacy" id="privacyPolicy">
           <section>
@@ -55,6 +56,14 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
           <section>
             <h2>{t(locale, "privacyAboutHeading")}</h2>
             <p>{t(locale, "privacyAboutBody")}</p>
+          </section>
+          <section>
+            <h2>{t(locale, "privacyNotHeading")}</h2>
+            <ul>
+              <li>{t(locale, "privacyNotPhotos")}</li>
+              <li>{t(locale, "privacyNotVideo")}</li>
+              <li>{t(locale, "privacyNotAccount")}</li>
+            </ul>
           </section>
           <section>
             <h2>{t(locale, "privacyAnalyticsHeading")}</h2>
