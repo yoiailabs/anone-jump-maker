@@ -209,6 +209,17 @@ body {
   line-height: 1.45;
 }
 
+.hero-logo-link {
+  display: inline-block;
+  margin: 0 auto 0.45rem;
+  line-height: 0;
+}
+
+.hero-logo-link:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
 .hero-logo {
   display: block;
   width: min(100%, 22rem);

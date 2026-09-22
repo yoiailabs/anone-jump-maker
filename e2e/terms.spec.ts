@@ -52,6 +52,8 @@ test.describe("terms of use", () => {
     await expect(page.locator('meta[property="og:locale:alternate"]')).toHaveCount(0);
     await expect(page.locator(".lang-switch")).toHaveCount(0);
     await expect(page.locator("#playBtn")).toHaveCount(0);
+    await expect(page.locator("#legalHome")).toHaveAttribute("href", "/");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
     await expect(page.locator("#termsBack")).toHaveAttribute("href", "/");
     await expect(page.locator("#termsLink")).toHaveAttribute("aria-current", "page");
     await expect(page.locator("#privacyPolicyLink")).not.toHaveAttribute("aria-current", "page");
@@ -70,6 +72,21 @@ test.describe("terms of use", () => {
     await expect(page.locator("#termsLink")).toHaveAttribute("href", "/terms");
     await expect(page.locator(".lang-switch")).toHaveCount(0);
     await expect(page.locator("#termsOfUse")).not.toContainText("GitHub Issues");
+  });
+});
+
+test.describe("terms logo", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("returns to the maker from the logo", async ({ page }) => {
+    await page.goto("/terms");
+    await page.locator("#legalHome").click();
+    await expect(page).toHaveURL(/\/$/);
+    await waitForAppReady(page);
+    await expect(page.locator("#makerTitle img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
   });
 });
 

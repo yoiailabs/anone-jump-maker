@@ -1,3 +1,4 @@
+import { LegalHeroLogo } from "@/components/LegalHeroLogo.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type Locale } from "../i18n.ts";
 import { privacyDocument, type Inline, type PrivacyBlock } from "../privacy-copy.ts";
@@ -111,6 +112,7 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
       </div>
       <div className="app privacy-app">
         <header className="hero">
+          <LegalHeroLogo />
           <p className="eyebrow">#あのねジャンプ</p>
           <h1 id="privacyTitle">{t("ja", "privacyTitle")}</h1>
         </header>

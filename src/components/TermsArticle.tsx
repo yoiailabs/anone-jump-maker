@@ -1,3 +1,4 @@
+import { LegalHeroLogo } from "@/components/LegalHeroLogo.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type Locale } from "../i18n.ts";
 import { termsDocument, type TermsBlock, type TermsPart } from "../terms-copy.ts";
@@ -54,6 +55,7 @@ export default function TermsArticle({ locale }: { locale: Locale }) {
       </div>
       <div className="app privacy-app">
         <header className="hero">
+          <LegalHeroLogo />
           <p className="eyebrow">#あのねジャンプ</p>
           <h1 id="termsTitle">{t("ja", "termsTitle")}</h1>
         </header>
