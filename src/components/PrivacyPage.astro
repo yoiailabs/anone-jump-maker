@@ -1,0 +1,17 @@
+---
+import Layout from "../layouts/Layout.astro";
+import PrivacyArticle from "./PrivacyArticle.tsx";
+import { pageMeta } from "../page-meta.ts";
+import type { Locale } from "../i18n.ts";
+
+type Props = {
+  locale: Locale;
+};
+
+const { locale } = Astro.props;
+const meta = pageMeta(locale, "privacy");
+---
+
+<Layout {...meta}>
+  <PrivacyArticle client:load locale={locale} />
+</Layout>

@@ -1,14 +1,18 @@
-import { DEFAULT_LOCALE, LOCALES, type AppView } from "./i18n.ts";
+import { DEFAULT_LOCALE, LOCALES, isJapaneseOnlyView, type AppView, type Locale } from "./i18n.ts";
 import { pageUrl } from "./page-meta.ts";
 
-const VIEWS: readonly AppView[] = ["maker", "community"];
+const VIEWS: readonly AppView[] = ["maker", "community", "privacy", "terms"];
+
+function localesFor(view: AppView): readonly Locale[] {
+  return isJapaneseOnlyView(view) ? [DEFAULT_LOCALE] : LOCALES;
+}
 
 export function sitemapXml(): string {
   const urls = VIEWS.flatMap((view) =>
-    LOCALES.map((locale) => {
+    localesFor(view).map((locale) => {
       const loc = pageUrl(locale, view);
       const links = [
-        ...LOCALES.map(
+        ...localesFor(view).map(
           (item) =>
             `    <xhtml:link rel="alternate" hreflang="${item}" href="${pageUrl(item, view)}"/>`,
         ),

@@ -9,8 +9,8 @@ import {
 } from "./i18n.ts";
 import { COMMUNITY_PATH } from "./page-meta.ts";
 
-/** メーカー本体とコミュニティページ。パスで切り替える。 */
-export const APP_VIEWS = ["maker", "community"] as const;
+/** パスで切り替える画面。プライバシーと利用規約は別 HTML で、メーカー内では表示を切り替えない。 */
+export const APP_VIEWS = ["maker", "community", "privacy", "terms"] as const;
 export type { AppView, AppPath, Locale };
 
 export { COMMUNITY_PATH };
@@ -52,7 +52,10 @@ export function parseAppView(input: string | Pick<Location, "pathname" | "hash">
 }
 
 export function documentTitleForView(view: AppView, locale: Locale = DEFAULT_LOCALE): string {
-  return view === "community" ? t(locale, "communityTitle") : t(locale, "makerTitle");
+  if (view === "community") return t(locale, "communityTitle");
+  if (view === "privacy") return t(DEFAULT_LOCALE, "privacyTitle");
+  if (view === "terms") return t(DEFAULT_LOCALE, "termsTitle");
+  return t(locale, "makerTitle");
 }
 
 /** 古い `#community` / `#maker`、末尾スラッシュ、`/ja` を実パスへ寄せる。既に正規なら null。 */

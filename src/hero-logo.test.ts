@@ -2,6 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { LOCALES, t } from "./i18n.ts";
 import makerSrc from "./components/MakerApp.tsx?raw";
+import privacySrc from "./components/PrivacyArticle.tsx?raw";
+import termsSrc from "./components/TermsArticle.tsx?raw";
+import legalLogoSrc from "./components/LegalHeroLogo.tsx?raw";
 import {
   MAKER_LOGO_STACKED_EN_SIZE,
   MAKER_LOGO_STACKED_EN_SRC,
@@ -63,6 +66,20 @@ describe("stacked maker hero logo", () => {
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*365/);
     expect(stylesSrc).toMatch(/\.hero-logo\[height="390"\]\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*390/);
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*width:\s*min\(100%,\s*22rem\)/);
+  });
+
+  it("links the Japanese stacked logo home on the legal pages", () => {
+    expect(legalLogoSrc).toContain("MAKER_LOGO_STACKED_SRC");
+    expect(legalLogoSrc).not.toContain("MAKER_LOGO_STACKED_EN_SRC");
+    expect(legalLogoSrc).toContain('href={pathForApp("ja", "maker")}');
+    expect(legalLogoSrc).toContain('aria-label={HOME_LABEL}');
+    expect(legalLogoSrc).toContain("alt={HOME_LABEL}");
+    expect(legalLogoSrc).toContain('const HOME_LABEL = "トップへ戻る"');
+    expect(legalLogoSrc).toContain('id="legalHome"');
+    expect(privacySrc).toContain("<LegalHeroLogo />");
+    expect(termsSrc).toContain("<LegalHeroLogo />");
+    expect(privacySrc).not.toContain("anone-logo-stacked-en");
+    expect(termsSrc).not.toContain("anone-logo-stacked-en");
   });
 
   it("uses the Japanese stacked mark on ja and the English mark on en/ko/zh", () => {

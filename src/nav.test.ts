@@ -31,6 +31,10 @@ describe("app view path", () => {
     expect(parseAppView("/en")).toBe("maker");
     expect(parseAppView("/en/community")).toBe("community");
     expect(parseAppView("/ko/community/")).toBe("community");
+    expect(parseAppView("/privacy")).toBe("privacy");
+    expect(parseAppView("/en/privacy")).toBe("privacy");
+    expect(parseAppView("/terms")).toBe("terms");
+    expect(parseAppView("/zh/terms")).toBe("terms");
     expect(parseAppView({ pathname: "/en", hash: "#community" })).toBe("community");
   });
 
@@ -39,8 +43,14 @@ describe("app view path", () => {
     expect(pathForView("community")).toBe("/community");
     expect(pathForView("maker", "en")).toBe("/en");
     expect(pathForView("community", "ko")).toBe("/ko/community");
+    expect(pathForView("privacy")).toBe("/privacy");
+    expect(pathForView("privacy", "ko")).toBe("/privacy");
+    expect(pathForView("terms")).toBe("/terms");
+    expect(pathForView("terms", "en")).toBe("/terms");
     expect(documentTitleForView("maker")).toBe(MAKER_DOCUMENT_TITLE);
     expect(documentTitleForView("community")).toBe("みんなの #あのねジャンプ");
+    expect(documentTitleForView("privacy")).toBe("プライバシーポリシー");
+    expect(documentTitleForView("terms")).toBe("利用規約");
     expect(documentTitleForView("maker", "en")).toBe("Anone Jump Maker");
   });
 
@@ -56,6 +66,10 @@ describe("app view path", () => {
     expect(canonicalAppUrl({ pathname: "/en", search: "", hash: "#community" })).toBe("/en/community");
     expect(canonicalAppUrl({ pathname: "/ja", search: "", hash: "" })).toBe("/");
     expect(canonicalAppUrl({ pathname: "/en/", search: "", hash: "" })).toBe("/en");
+    expect(canonicalAppUrl({ pathname: "/privacy", search: "", hash: "" })).toBeNull();
+    expect(canonicalAppUrl({ pathname: "/ja/privacy", search: "", hash: "" })).toBe("/privacy");
+    expect(canonicalAppUrl({ pathname: "/terms", search: "", hash: "" })).toBeNull();
+    expect(canonicalAppUrl({ pathname: "/ja/terms", search: "", hash: "" })).toBe("/terms");
   });
 
   it("renders Japanese in-site links to the real paths", () => {
@@ -82,6 +96,10 @@ describe("app view path", () => {
     expect(appViewFromClick({ href: `${origin}/`, target: "" }, origin)).toBe("maker");
     expect(appViewFromClick({ href: `${origin}/en/community`, target: "" }, origin)).toBe("community");
     expect(appViewFromClick({ href: `${origin}/zh`, target: "" }, origin)).toBe("maker");
+    expect(appViewFromClick({ href: `${origin}/privacy`, target: "" }, origin)).toBe("privacy");
+    expect(appViewFromClick({ href: `${origin}/en/privacy`, target: "" }, origin)).toBe("privacy");
+    expect(appViewFromClick({ href: `${origin}/terms`, target: "" }, origin)).toBe("terms");
+    expect(appViewFromClick({ href: `${origin}/en/terms`, target: "" }, origin)).toBe("terms");
     expect(appViewFromClick({ href: `${origin}/community`, target: "_blank" }, origin)).toBeNull();
     expect(
       appViewFromClick({ href: "https://x.com/search?q=%23test", target: "_blank" }, origin),

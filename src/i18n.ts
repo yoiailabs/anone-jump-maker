@@ -24,7 +24,7 @@ export {
 export const LOCALE_COOKIE = "anone-locale";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export type AppView = "maker" | "community";
+export type AppView = "maker" | "community" | "privacy" | "terms";
 
 export type AppPath = {
   locale: Locale;
@@ -46,25 +46,39 @@ export function normalizePathname(pathname: string): string {
   return path.replace(/\/+$/, "") || "/";
 }
 
+const UNPREFIXED_VIEWS: Record<string, AppView> = {
+  "/": "maker",
+  "/community": "community",
+  "/privacy": "privacy",
+  "/terms": "terms",
+};
+
 export function parseAppPath(pathname: string): AppPath | null {
   const path = normalizePathname(pathname);
-  if (path === "/") return { locale: DEFAULT_LOCALE, view: "maker", prefixed: false };
-  if (path === "/community") return { locale: DEFAULT_LOCALE, view: "community", prefixed: false };
+  const unprefixed = UNPREFIXED_VIEWS[path];
+  if (unprefixed) return { locale: DEFAULT_LOCALE, view: unprefixed, prefixed: false };
 
   const parts = path.slice(1).split("/");
   const first = parts[0];
   if (!isLocale(first)) return null;
   if (parts.length === 1) return { locale: first, view: "maker", prefixed: true };
-  if (parts.length === 2 && parts[1] === "community") {
-    return { locale: first, view: "community", prefixed: true };
+  const segment = parts[1];
+  if (parts.length === 2 && (segment === "community" || segment === "privacy" || segment === "terms")) {
+    return { locale: first, view: segment, prefixed: true };
   }
   return null;
 }
 
+/** 利用規約とプライバシーポリシーは日本語ページだけ。 */
+export function isJapaneseOnlyView(view: AppView): boolean {
+  return view === "privacy" || view === "terms";
+}
+
 export function pathForApp(locale: Locale, view: AppView): string {
+  if (isJapaneseOnlyView(view)) return `/${view}`;
   const prefix = locale === DEFAULT_LOCALE ? "" : `/${locale}`;
-  if (view === "community") return `${prefix}/community`;
-  return prefix || "/";
+  if (view === "maker") return prefix || "/";
+  return `${prefix}/${view}`;
 }
 
 export function t(locale: Locale, key: MessageKey, vars?: Record<string, string | number>): string {
@@ -158,6 +172,7 @@ export type LocaleRedirectOptions = {
 
 /**
  * プレフィックスなしの `/` `/community` をブラウザ言語または Cookie で寄せる。
+ * `/privacy` `/terms` は日本語固定で、言語では寄せない。
  * `/ja` はデフォルト言語の正規 URL へ戻す。既に正しい場所なら null。
  * 検索・SNS クローラは言語リダイレクトせず、hreflang で各言語を辿れるようにする。
  */

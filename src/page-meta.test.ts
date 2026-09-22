@@ -72,5 +72,14 @@ describe("locale page meta", () => {
     expect(pageMeta("en", "maker").siteName).toBe("Anone Jump Maker");
     expect(pageMeta("ko", "community").image).toBe("https://anone.yoiailabs.com/og-ko.png");
     expect(pageMeta("zh", "maker").url).toBe("https://anone.yoiailabs.com/zh");
+    expect(pageMeta("ja", "privacy").title).toBe("プライバシーポリシー");
+    expect(pageMeta("ja", "privacy").url).toBe("https://anone.yoiailabs.com/privacy");
+    expect(pageMeta("en", "privacy").url).toBe("https://anone.yoiailabs.com/privacy");
+    expect(pageMeta("en", "privacy").title).toBe("プライバシーポリシー");
+    expect(pageMeta("en", "privacy").lang).toBe("ja");
+    expect(pageMeta("en", "privacy").siteName).toBe("あのねジャンプメーカー");
+    expect(pageMeta("ja", "terms").title).toBe("利用規約");
+    expect(pageMeta("ja", "terms").url).toBe("https://anone.yoiailabs.com/terms");
+    expect(pageMeta("ko", "terms").url).toBe("https://anone.yoiailabs.com/terms");
   });
 });

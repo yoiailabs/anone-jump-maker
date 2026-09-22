@@ -163,6 +163,19 @@ const ja = {
   errorShrink: "画像を縮小できませんでした",
   errorThumb: "サムネを作れませんでした",
 
+  privacyTitle: "プライバシーポリシー",
+  metaPrivacyDescription:
+    "あのねジャンプメーカーのプライバシーポリシー。写真の取扱い、外部送信、Cookie について。運営名は Yoiailabs です。",
+  privacyLink: "プライバシーポリシー",
+  termsTitle: "利用規約",
+  metaTermsDescription:
+    "あのねジャンプメーカーの利用規約。非公式のファンメイド向けで、素材の転用や営利利用はできません。運営名は Yoiailabs です。",
+  termsLink: "利用規約",
+  termsNotice:
+    "本サービスは、ナナツカゼの「あのねジャンプ」を楽しむための非公式・ファンメイドサービスです。楽曲「あのね」、キャラクターおよび映像の著作権はナナツカゼに帰属します。素材の抜き出し・別用途への転用・販売や広告利用はできません。生成動画の公開に際しては、権利者の方針と投稿先の利用条件を確認し、権利や作品を尊重してご利用ください。本サービスは、権利者に代わって素材利用の許諾を与えるものではありません。",
+  footerOperator: "運営: Yoiailabs",
+  footerNavAria: "フッター",
+
   langNavAria: "言語",
 } as const;
 
@@ -306,6 +319,19 @@ const en: Record<MessageKey, string> = {
   errorShrink: "Couldn’t shrink the image",
   errorThumb: "Couldn’t make a thumbnail",
 
+  privacyTitle: "Privacy Policy",
+  metaPrivacyDescription:
+    "Privacy policy for Anone Jump Maker: photos, external transmissions, and cookies. The operator name is Yoiailabs.",
+  privacyLink: "Privacy Policy",
+  termsTitle: "Terms of Use",
+  metaTermsDescription:
+    "Terms of use for Anone Jump Maker. An unofficial fan-made service. Do not reuse the material for other purposes or for commercial use. The operator name is Yoiailabs.",
+  termsLink: "Terms of Use",
+  termsNotice:
+    "This service is an unofficial, fan-made way to enjoy Nanatsukaze’s “Anone Jump.” Copyright in the song “Anone,” the characters, and the video belongs to Nanatsukaze. You may not extract the material, reuse it for other purposes, sell it, or use it in advertising. Before you publish a generated video, check the rights holder’s policy and the destination’s terms, and respect those rights and the work. This service does not license the material on behalf of the rights holder.",
+  footerOperator: "Operated by Yoiailabs",
+  footerNavAria: "Footer",
+
   langNavAria: "Language",
 };
 
@@ -447,6 +473,19 @@ const ko: Record<MessageKey, string> = {
   errorShrink: "이미지를 축소하지 못했습니다",
   errorThumb: "썸네일을 만들지 못했습니다",
 
+  privacyTitle: "개인정보 처리방침",
+  metaPrivacyDescription:
+    "아노네 점프 메이커 개인정보 처리방침. 사진, 외부 전송, 쿠키에 대해. 운영 이름은 Yoiailabs입니다.",
+  privacyLink: "개인정보 처리방침",
+  termsTitle: "이용약관",
+  metaTermsDescription:
+    "아노네 점프 메이커 이용약관. 비공식 팬메이드 서비스이며, 소재를 다른 용도로 전용하거나 영리 목적으로 이용할 수 없습니다. 운영 이름은 Yoiailabs입니다.",
+  termsLink: "이용약관",
+  termsNotice:
+    "본 서비스는 Nanatsukaze의 「아노네 점프」를 즐기기 위한 비공식·팬메이드 서비스입니다. 악곡 「아노네」, 캐릭터 및 영상의 저작권은 Nanatsukaze에 있습니다. 소재를 추출하거나, 다른 용도로 전용하거나, 판매하거나, 광고에 이용할 수 없습니다. 생성 영상을 공개할 때는 권리자의 방침과 게시처의 이용 조건을 확인하고, 권리와 작품을 존중해 이용해 주세요. 본 서비스는 권리자를 대신해 소재 이용을 허락하지 않습니다.",
+  footerOperator: "운영: Yoiailabs",
+  footerNavAria: "바닥글",
+
   langNavAria: "언어",
 };
 
@@ -587,6 +626,19 @@ const zh: Record<MessageKey, string> = {
   errorExportBuffer: "生成缓冲区为空",
   errorShrink: "无法缩小图片",
   errorThumb: "无法生成缩略图",
+
+  privacyTitle: "隐私政策",
+  metaPrivacyDescription:
+    "あのね跳跃制作器的隐私政策。关于照片、对外发送和 Cookie。运营名称为 Yoiailabs。",
+  privacyLink: "隐私政策",
+  termsTitle: "使用条款",
+  metaTermsDescription:
+    "あのね跳跃制作器的使用条款。这是非官方的粉丝制作服务，不得将素材转用于其他用途或用于营利。运营名称为 Yoiailabs。",
+  termsLink: "使用条款",
+  termsNotice:
+    "本服务是为了欣赏 Nanatsukaze 的「あのね跳跃」而提供的非官方粉丝制作服务。乐曲「あのね」、角色及其影像的著作权归 Nanatsukaze 所有。不得提取素材、转用于其他用途、销售或用于广告。公开生成视频时，请确认权利人的方针和发布平台的使用条件，并尊重权利与作品。本服务不代表权利人许可使用素材。",
+  footerOperator: "运营：Yoiailabs",
+  footerNavAria: "页脚",
 
   langNavAria: "语言",
 };

@@ -555,6 +555,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     } as FocusOptions & { focusVisible?: boolean });
   };
   const applyView = async (view: AppView) => {
+    if (view === "privacy" || view === "terms") {
+      const next = `${pathForApp(locale, view)}${location.search}`;
+      if (`${location.pathname}${location.search}` !== next) location.assign(next);
+      return;
+    }
     const makerView = must(root, "#makerView");
     const communityView = must(root, "#communityView");
     makerView.hidden = view !== "maker";
@@ -988,6 +993,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       persistLocale(clicked.locale);
       return;
     }
+    // プライバシーと利用規約は別ページ。メーカー内の表示切替にはしない。
+    if (clicked.view === "privacy" || clicked.view === "terms") return;
     event.preventDefault();
     goToView(clicked.view);
   });
