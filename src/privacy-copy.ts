@@ -409,7 +409,7 @@ const ja: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "改定する場合は、本ページに変更後の内容、最終改定日および適用開始日を掲載します。利用者に重要な影響を及ぼす変更については、本サービス上の告知等により分かりやすく周知します。法令上、本人の同意その他の手続が必要な変更については、当該手続を行います。",
+            "改定する場合は、本ページに変更後の内容、最終改定日および適用開始日を掲載します。",
           ],
         },
       ],
@@ -795,7 +795,7 @@ const en: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "When it is revised, the updated text, the last revised date, and the effective date are published on this page. A change that materially affects users will be announced in a clear way on the Service. Where the law requires the person’s consent or another procedure, that procedure will be followed.",
+            "When it is revised, the updated text, the last revised date, and the effective date are published on this page.",
           ],
         },
       ],
@@ -1168,7 +1168,7 @@ const ko: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "개정하는 경우에는 본 페이지에 변경 후의 내용, 최종 개정일 및 적용 시작일을 게재합니다. 이용자에게 중요한 영향을 미치는 변경은 본 서비스상의 고지 등으로 알기 쉽게 알립니다. 법령상 본인의 동의나 그 밖의 절차가 필요한 변경은 해당 절차를 밟습니다.",
+            "개정하는 경우에는 본 페이지에 변경 후의 내용, 최종 개정일 및 적용 시작일을 게재합니다.",
           ],
         },
       ],
@@ -1517,7 +1517,7 @@ const zh: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "修订时，会在本页刊登变更后的内容、最后修订日和开始适用日。对使用者有重要影响的变更，将通过本服务上的告知等方式清楚地公布。法令上需要本人同意或其他手续的变更，将履行该手续。",
+            "修订时，会在本页刊登变更后的内容、最后修订日和开始适用日。",
           ],
         },
       ],

@@ -67,6 +67,9 @@ describe("privacy policy copy", () => {
     expect(text).not.toContain("お問い合わせ・苦情の窓口");
     expect(text).not.toContain("第11条");
     expect(text).toContain("第10条　本ポリシーの変更");
+    expect(text).toContain("最終改定日および適用開始日を掲載します。");
+    expect(text).not.toContain("重要な影響を及ぼす変更");
+    expect(text).not.toContain("本人の同意その他の手続");
     expect(text).not.toContain("運営主体の氏名");
   });
 });
