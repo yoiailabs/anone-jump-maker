@@ -446,7 +446,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#communitySortNewest")).toBeChecked();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2101803923954970918",
+    "2102200171975360714",
   );
   await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(50);
   await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
@@ -557,12 +557,12 @@ test("pages 50 community posts with prev/next only and resets to page 1 when sor
   await expect(page.locator("#communityPageNext")).toBeEnabled();
   await expect(page.locator(".community-page-num")).toHaveCount(0);
   await expect(page.locator("#communityPager [aria-current='page']")).toHaveCount(0);
-  await expect(items.first()).toHaveAttribute("data-post-id", "2101803923954970918");
+  await expect(items.first()).toHaveAttribute("data-post-id", "2102200171975360714");
 
   await page.locator("#communityPageNext").click();
   await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "2");
   await expect(items).toHaveCount(50);
-  await expect(items.first()).not.toHaveAttribute("data-post-id", "2101803923954970918");
+  await expect(items.first()).not.toHaveAttribute("data-post-id", "2102200171975360714");
   await expect(page.locator("#communityPagePrev")).toBeEnabled();
   await expect(page.locator("#communityPageNext")).toBeEnabled();
   await expect(page.locator(".community-page-num")).toHaveCount(0);
@@ -570,13 +570,13 @@ test("pages 50 community posts with prev/next only and resets to page 1 when sor
   while (await page.locator("#communityPageNext").isEnabled()) {
     await page.locator("#communityPageNext").click();
   }
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "11");
-  await expect(items).toHaveCount(15);
+  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "12");
+  await expect(items).toHaveCount(6);
   await expect(items.last()).toHaveAttribute("data-post-id", "2009475998488961327");
   await expect(page.locator("#communityPageNext")).toBeDisabled();
   await expect(page.locator("#communityPagePrev")).toBeEnabled();
   await page.locator("#toMakerBottom").scrollIntoViewIfNeeded();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(15);
+  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(6);
 
   await page.locator("#communitySort").scrollIntoViewIfNeeded();
   await page.locator("label:has(#communitySortPopular)").click();
@@ -600,7 +600,7 @@ test("uses three masonry columns on iPad-sized viewports and can sort by popular
   expect(firstBox && secondBox && secondBox.x > firstBox.x + 40).toBe(true);
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2101803923954970918",
+    "2102200171975360714",
   );
   await page.locator("#communityPageNext").click();
   await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "2");
@@ -615,7 +615,7 @@ test("uses three masonry columns on iPad-sized viewports and can sort by popular
   await page.locator("label:has(#communitySortNewest)").click();
   await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
     "data-post-id",
-    "2101803923954970918",
+    "2102200171975360714",
   );
   await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
 });

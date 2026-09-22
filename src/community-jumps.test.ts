@@ -9,10 +9,51 @@ import {
   sortCommunityJumpPosts,
 } from "./community-jumps.ts";
 
-const NEWEST_ID = "2101803923954970918";
+const NEWEST_ID = "2102200171975360714";
 const OLDEST_ID = "2009475998488961327";
 const MOST_LIKED_ID = "2084205622862725181";
 const APPENDED_IDS = [
+  "2102200171975360714",
+  "2102193633772622182",
+  "2102175646151749829",
+  "2102173448252559674",
+  "2102159725945409653",
+  "2102107519300898952",
+  "2102105570094506072",
+  "2102082996644069593",
+  "2102074565467967505",
+  "2102068194550964409",
+  "2102066526316798260",
+  "2102063122974671353",
+  "2102063116972597547",
+  "2102062682354708918",
+  "2102053146331857372",
+  "2102049021900812572",
+  "2102048568785932439",
+  "2102041089419120853",
+  "2102040552304951536",
+  "2102031803213385974",
+  "2102027526814183635",
+  "2102024597600366990",
+  "2102021903930347566",
+  "2102011723519856946",
+  "2102011374868254760",
+  "2102004693425922402",
+  "2102000777451728981",
+  "2101998361331318973",
+  "2101989826908090744",
+  "2101984910458441973",
+  "2101979410450858411",
+  "2101977837783912819",
+  "2101973419080487421",
+  "2101955727548178815",
+  "2101953639371911403",
+  "2101939980054778151",
+  "2101934538486423609",
+  "2101896326384665055",
+  "2101872393669247166",
+  "2101853576394154434",
+  "2101848560891552182",
   "2101803923954970918",
   "2101746140035363283",
   "2101715669175922922",
@@ -44,19 +85,19 @@ const OFFICIAL_IDS = [
 ] as const;
 
 describe("community jump posts", () => {
-  it("keeps 515 unique curated posts with likes and dates", () => {
-    expect(COMMUNITY_JUMP_POSTS).toHaveLength(515);
+  it("keeps 556 unique curated posts with likes and dates", () => {
+    expect(COMMUNITY_JUMP_POSTS).toHaveLength(556);
     expect(COMMUNITY_JUMP_POSTS.length).toBeLessThanOrEqual(COMMUNITY_JUMP_CAPACITY);
     expect(COMMUNITY_JUMP_CAPACITY).toBe(1024);
-    expect(new Set(COMMUNITY_JUMP_POSTS.map((post) => post.id)).size).toBe(515);
+    expect(new Set(COMMUNITY_JUMP_POSTS.map((post) => post.id)).size).toBe(556);
     expect(APPENDED_IDS.every((id) => COMMUNITY_JUMP_POSTS.some((post) => post.id === id))).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.every((post) => post.media === "video")).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.every((post) => post.createdAt && post.likes != null)).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === "2100797924125049167")).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === NEWEST_ID)).toBe(true);
     expect(COMMUNITY_JUMP_POSTS.some((post) => post.id === OLDEST_ID)).toBe(true);
-    expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === NEWEST_ID)?.createdAt).toBe("2026-09-21");
-    expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === NEWEST_ID)?.handle).toBe("namo_5G");
+    expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === NEWEST_ID)?.createdAt).toBe("2026-09-22");
+    expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === NEWEST_ID)?.handle).toBe("LocalToshimaen");
     expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === OLDEST_ID)?.createdAt).toBe("2026-01-09");
     expect(COMMUNITY_JUMP_POSTS.find((post) => post.id === MOST_LIKED_ID)?.likes).toBe(37005);
     expect(COMMUNITY_JUMP_POSTS.filter((post) => post.handle === "Nanatsukaze_ofc").map((post) => post.id).sort()).toEqual(
