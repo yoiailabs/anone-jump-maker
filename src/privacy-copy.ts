@@ -127,7 +127,7 @@ const ja: PrivacyDocument = {
             [
               "お問い合わせに関する情報",
               "連絡先、利用者が提供した氏名・アカウント名、問い合わせ内容、対応履歴、必要な本人確認情報等",
-              "お問い合わせ・苦情への対応、開示等の請求への対応、必要な事実確認",
+              "お問い合わせ・苦情への対応、必要な事実確認",
             ],
             [
               "本サービスで紹介する公開投稿の情報",
@@ -328,7 +328,7 @@ const ja: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "外部サービスの利用に伴い、情報が日本国外で取り扱われる場合があります。運営者による外国にある第三者への個人データの提供に該当する場合には、法令に従い、必要な情報提供および同意の取得、または法令で認められるその他の措置を講じます。外国での取扱いに関して、法令に基づき提供すべき情報を求められた場合は、第11条の窓口で受け付けます。",
+            "外部サービスの利用に伴い、情報が日本国外で取り扱われる場合があります。運営者による外国にある第三者への個人データの提供に該当する場合には、法令に従い、必要な情報提供および同意の取得、または法令で認められるその他の措置を講じます。外国での取扱いに関して、法令に基づき提供すべき情報を求められた場合は、第10条の窓口で受け付けます。",
           ],
         },
       ],
@@ -399,41 +399,12 @@ const ja: PrivacyDocument = {
       ],
     },
     {
-      heading: "第10条　開示等の請求",
+      heading: "第10条　お問い合わせ・苦情の窓口",
       blocks: [
         {
           type: "p",
           parts: [
-            "運営者が保有する本人の個人データについて、利用目的の通知、開示、訂正・追加・削除、利用停止・消去、第三者提供の停止、または第三者提供記録の開示を希望する場合は、第11条の窓口へご連絡ください。法令で認められる範囲で対応します。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "ご連絡の際は、希望する対応、対象となる情報、連絡先をお知らせください。運営者は、請求の内容に応じ、本人または正当な代理人であることを確認するため、必要最小限の情報の提供をお願いすることがあります。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "運営者は、必要な確認・調査を行ったうえで、法令に従い遅滞なく対応します。開示方法については、法令に従い、本人が希望する方法を踏まえて対応します。請求の全部または一部に応じられない場合には、その旨を通知し、理由の説明に努めます。これらの請求に関する手数料は無料です。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "端末内で処理され運営者が取得していない写真・動画、個人を識別できない集計情報等については、個別の情報を特定して開示・削除等を行うことができない場合があります。その場合も、確認した内容に応じてご案内します。",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "第11条　お問い合わせ・苦情の窓口",
-      blocks: [
-        {
-          type: "p",
-          parts: [
-            "本ポリシー、個人情報の取扱い、開示等の請求および苦情については、次の非公開窓口へご連絡ください。",
+            "本ポリシー、個人情報の取扱いおよび苦情については、次の非公開窓口へご連絡ください。",
           ],
         },
         {
@@ -458,7 +429,7 @@ const ja: PrivacyDocument = {
       ],
     },
     {
-      heading: "第12条　本ポリシーの変更",
+      heading: "第11条　本ポリシーの変更",
       blocks: [
         {
           type: "p",
@@ -567,7 +538,7 @@ const en: PrivacyDocument = {
             [
               "Inquiries",
               "Contact details, a name or account name you provide, the content of the inquiry, the history of the response, and identity information needed to respond",
-              "Responding to inquiries and complaints, responding to requests such as disclosure, and confirming the facts that are needed",
+              "Responding to inquiries and complaints, and confirming the facts that are needed",
             ],
             [
               "Public posts shown in the Service",
@@ -773,7 +744,7 @@ const en: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "Information may be handled outside Japan when an external service is used. Where the Operator’s provision of personal data to a third party in a foreign country applies, the Operator will, as the law requires, provide the necessary information and obtain consent, or take another measure the law allows. Requests for information that the law says should be provided about handling in a foreign country are accepted at the contact in Article 11.",
+            "Information may be handled outside Japan when an external service is used. Where the Operator’s provision of personal data to a third party in a foreign country applies, the Operator will, as the law requires, provide the necessary information and obtain consent, or take another measure the law allows. Requests for information that the law says should be provided about handling in a foreign country are accepted at the contact in Article 10.",
           ],
         },
       ],
@@ -844,41 +815,12 @@ const en: PrivacyDocument = {
       ],
     },
     {
-      heading: "Article 10. Requests for disclosure and other rights",
+      heading: "Article 10. Contact and complaints",
       blocks: [
         {
           type: "p",
           parts: [
-            "To ask for notice of the purpose of use, disclosure, correction, addition, or deletion, suspension of use or erasure, suspension of provision to a third party, or disclosure of records of provision to a third party, for personal data the Operator holds about you, please contact the desk in Article 11. The Operator responds within the scope the law allows.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "Please tell us the response you want, the information it concerns, and how to reach you. Depending on the request, the Operator may ask for the minimum information needed to confirm that you are the person or a rightful agent.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "After the necessary checks and investigation, the Operator responds without delay, as the law requires. The method of disclosure follows the law and takes into account the method you request. If the Operator cannot meet all or part of a request, the Operator will say so and try to explain why. There is no fee for these requests.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "For photos and video processed on the device that the Operator has not obtained, and for aggregated information that does not identify a person, it may not be possible to find a particular item and disclose or delete it. In that case the Operator will still explain what it was able to confirm.",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "Article 11. Contact and complaints",
-      blocks: [
-        {
-          type: "p",
-          parts: [
-            "For this Policy, the handling of personal information, requests such as disclosure, and complaints, please use the following non-public contact.",
+            "For this Policy, the handling of personal information, and complaints, please use the following non-public contact.",
           ],
         },
         {
@@ -903,7 +845,7 @@ const en: PrivacyDocument = {
       ],
     },
     {
-      heading: "Article 12. Changes to this Policy",
+      heading: "Article 11. Changes to this Policy",
       blocks: [
         {
           type: "p",
@@ -1012,7 +954,7 @@ const ko: PrivacyDocument = {
             [
               "문의에 관한 정보",
               "연락처, 이용자가 제공한 성명·계정 이름, 문의 내용, 대응 이력, 필요한 본인 확인 정보 등",
-              "문의·불만 대응, 열람 등 청구 대응, 필요한 사실 확인",
+              "문의·불만 대응, 필요한 사실 확인",
             ],
             [
               "본 서비스에서 소개하는 공개 게시물 정보",
@@ -1209,7 +1151,7 @@ const ko: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "외부 서비스 이용에 따라 정보가 일본 국외에서 취급될 수 있습니다. 운영자가 외국에 있는 제3자에게 개인데이터를 제공하는 경우에 해당하면, 법령에 따라 필요한 정보 제공과 동의 취득, 또는 법령에서 인정하는 그 밖의 조치를 합니다. 국외 취급에 관하여 법령에 따라 제공해야 할 정보를 요청받은 경우에는 제11조의 창구에서 접수합니다.",
+            "외부 서비스 이용에 따라 정보가 일본 국외에서 취급될 수 있습니다. 운영자가 외국에 있는 제3자에게 개인데이터를 제공하는 경우에 해당하면, 법령에 따라 필요한 정보 제공과 동의 취득, 또는 법령에서 인정하는 그 밖의 조치를 합니다. 국외 취급에 관하여 법령에 따라 제공해야 할 정보를 요청받은 경우에는 제10조의 창구에서 접수합니다.",
           ],
         },
       ],
@@ -1278,40 +1220,11 @@ const ko: PrivacyDocument = {
       ],
     },
     {
-      heading: "제10조 열람 등의 청구",
+      heading: "제10조 문의·불만 창구",
       blocks: [
         {
           type: "p",
-          parts: [
-            "운영자가 보유한 본인의 개인데이터에 대해 이용 목적의 통지, 열람, 정정·추가·삭제, 이용 정지·삭제, 제3자 제공의 정지, 또는 제3자 제공 기록의 열람을 원하는 경우에는 제11조의 창구로 연락해 주세요. 법령에서 인정되는 범위에서 대응합니다.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "연락하실 때는 원하는 대응, 대상 정보, 연락처를 알려 주세요. 운영자는 청구 내용에 따라, 본인 또는 정당한 대리인임을 확인하기 위해 필요한 최소한의 정보 제공을 부탁할 수 있습니다.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "운영자는 필요한 확인·조사를 한 뒤 법령에 따라 지체 없이 대응합니다. 열람 방법은 법령에 따르며, 본인이 희망하는 방법을 고려해 대응합니다. 청구의 전부 또는 일부에 응할 수 없는 경우에는 그 취지를 알리고 이유 설명에 노력합니다. 이러한 청구에 관한 수수료는 무료입니다.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "단말 안에서 처리되어 운영자가 취득하지 않은 사진·영상, 개인을 식별할 수 없는 집계 정보 등에 대해서는 개별 정보를 특정해 열람·삭제 등을 할 수 없는 경우가 있습니다. 그 경우에도 확인한 내용에 따라 안내합니다.",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "제11조 문의·불만 창구",
-      blocks: [
-        {
-          type: "p",
-          parts: ["본 방침, 개인정보의 취급, 열람 등의 청구 및 불만은 다음 비공개 창구로 연락해 주세요."],
+          parts: ["본 방침, 개인정보의 취급 및 불만은 다음 비공개 창구로 연락해 주세요."],
         },
         {
           type: "ul",
@@ -1332,7 +1245,7 @@ const ko: PrivacyDocument = {
       ],
     },
     {
-      heading: "제12조 본 방침의 변경",
+      heading: "제11조 본 방침의 변경",
       blocks: [
         {
           type: "p",
@@ -1437,7 +1350,7 @@ const zh: PrivacyDocument = {
             [
               "与咨询有关的信息",
               "联系方式、使用者提供的姓名或账号名、咨询内容、处理记录、必要的本人确认信息等",
-              "回应咨询和投诉，回应披露等请求，确认必要的事实",
+              "回应咨询和投诉，确认必要的事实",
             ],
             [
               "本服务所介绍的公开投稿信息",
@@ -1620,7 +1533,7 @@ const zh: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "因使用外部服务，信息可能在日本境外被处理。如果属于运营者向位于外国的第三方提供个人数据，运营者将依法令提供必要信息并取得同意，或采取法令允许的其他措施。如有人依法令要求提供与境外处理有关、法令规定应当提供的信息，由第11条的窗口受理。",
+            "因使用外部服务，信息可能在日本境外被处理。如果属于运营者向位于外国的第三方提供个人数据，运营者将依法令提供必要信息并取得同意，或采取法令允许的其他措施。如有人依法令要求提供与境外处理有关、法令规定应当提供的信息，由第10条的窗口受理。",
           ],
         },
       ],
@@ -1684,38 +1597,9 @@ const zh: PrivacyDocument = {
       ],
     },
     {
-      heading: "第10条　披露等请求",
+      heading: "第10条　咨询与投诉窗口",
       blocks: [
-        {
-          type: "p",
-          parts: [
-            "对于运营者持有的本人个人数据，如希望通知使用目的、披露、更正、追加或删除、停止使用或消除、停止向第三方提供，或披露向第三方提供的记录，请联系第11条的窗口。运营者在法令允许的范围内回应。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "联系时请告知希望的处理、对象信息以及联系方式。运营者可能根据请求内容，为确认是本人或正当代理人，请你提供必要的最低限度信息。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "运营者在进行必要的确认和调查后，依法令毫不迟延地回应。披露方式依法令，并考虑本人希望的方式。如果不能全部或部分满足请求，将告知此事并努力说明理由。这些请求不收取手续费。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "对于在终端内处理、运营者并未取得的照片和视频，以及无法识别个人的汇总信息等，有时无法确定个别信息并予以披露或删除。即便如此，也会根据所确认的内容进行说明。",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "第11条　咨询与投诉窗口",
-      blocks: [
-        { type: "p", parts: ["关于本政策、个人信息的处理、披露等请求以及投诉，请联系下列非公开窗口。"] },
+        { type: "p", parts: ["关于本政策、个人信息的处理以及投诉，请联系下列非公开窗口。"] },
         {
           type: "ul",
           items: ["窗口名称：あのね跳跃制作器 个人信息咨询窗口", `联系方式：${FILL_CONTACT}`],
@@ -1735,7 +1619,7 @@ const zh: PrivacyDocument = {
       ],
     },
     {
-      heading: "第12条　本政策的变更",
+      heading: "第11条　本政策的变更",
       blocks: [
         { type: "p", parts: ["运营者可能根据法令修订、本服务功能或信息处理的变更等，修订本政策。"] },
         {

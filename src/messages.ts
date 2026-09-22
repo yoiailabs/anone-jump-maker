@@ -165,7 +165,7 @@ const ja = {
 
   privacyTitle: "プライバシーポリシー",
   metaPrivacyDescription:
-    "あのねジャンプメーカーのプライバシーポリシー。写真の取扱い、外部送信、Cookie、開示等の請求について。運営名は Yoiailabs です。",
+    "あのねジャンプメーカーのプライバシーポリシー。写真の取扱い、外部送信、Cookie について。運営名は Yoiailabs です。",
   privacyLink: "プライバシーポリシー",
   footerOperator: "運営: Yoiailabs",
   footerNavAria: "フッター",
@@ -315,7 +315,7 @@ const en: Record<MessageKey, string> = {
 
   privacyTitle: "Privacy Policy",
   metaPrivacyDescription:
-    "Privacy policy for Anone Jump Maker: photos, external transmissions, cookies, and requests. The operator name is Yoiailabs.",
+    "Privacy policy for Anone Jump Maker: photos, external transmissions, and cookies. The operator name is Yoiailabs.",
   privacyLink: "Privacy Policy",
   footerOperator: "Operated by Yoiailabs",
   footerNavAria: "Footer",
@@ -463,7 +463,7 @@ const ko: Record<MessageKey, string> = {
 
   privacyTitle: "개인정보 처리방침",
   metaPrivacyDescription:
-    "아노네 점프 메이커 개인정보 처리방침. 사진, 외부 전송, 쿠키, 열람 등 청구에 대해. 운영 이름은 Yoiailabs입니다.",
+    "아노네 점프 메이커 개인정보 처리방침. 사진, 외부 전송, 쿠키에 대해. 운영 이름은 Yoiailabs입니다.",
   privacyLink: "개인정보 처리방침",
   footerOperator: "운영: Yoiailabs",
   footerNavAria: "바닥글",
@@ -611,7 +611,7 @@ const zh: Record<MessageKey, string> = {
 
   privacyTitle: "隐私政策",
   metaPrivacyDescription:
-    "あのね跳跃制作器的隐私政策。关于照片、对外发送、Cookie 以及披露等请求。运营名称为 Yoiailabs。",
+    "あのね跳跃制作器的隐私政策。关于照片、对外发送和 Cookie。运营名称为 Yoiailabs。",
   privacyLink: "隐私政策",
   footerOperator: "运营：Yoiailabs",
   footerNavAria: "页脚",

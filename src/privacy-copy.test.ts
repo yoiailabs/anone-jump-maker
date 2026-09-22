@@ -27,14 +27,13 @@ describe("privacy policy copy", () => {
       "第7条　保存期間と削除",
       "第8条　安全管理",
       "第9条　情報収集の制限",
-      "第10条　開示等の請求",
-      "第11条　お問い合わせ・苦情の窓口",
-      "第12条　本ポリシーの変更",
+      "第10条　お問い合わせ・苦情の窓口",
+      "第11条　本ポリシーの変更",
     ]);
     const jaShape = ja.sections.map((section) => shape(section.blocks));
     for (const locale of LOCALES) {
       const doc = privacyDocument(locale);
-      expect(doc.sections).toHaveLength(12);
+      expect(doc.sections).toHaveLength(11);
       expect(doc.sections.map((section) => shape(section.blocks))).toEqual(jaShape);
       const text = JSON.stringify(doc);
       expect(text).toContain("Yoiailabs");
@@ -66,6 +65,9 @@ describe("privacy policy copy", () => {
     expect(text).not.toContain("安全管理措置の概要に関するお問い合わせ");
     expect(text).not.toContain("個人データの漏えい等が発生し");
     expect(text).toContain("第8条　安全管理");
+    expect(text).not.toContain("開示等の請求");
+    expect(text).not.toContain("第12条");
+    expect(text).toContain("第10条の窓口");
     expect(text).not.toContain("運営主体の氏名");
   });
 });
