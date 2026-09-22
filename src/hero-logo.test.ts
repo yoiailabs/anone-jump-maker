@@ -15,6 +15,9 @@ describe("stacked maker hero logo", () => {
     expect(logoSrc).toContain("<title id=\"title\">あのねジャンプメーカー</title>");
     expect(logoSrc).toContain('fill="#BCE7F5"');
     expect(logoSrc).toContain('stroke="#000000"');
+    expect(logoSrc).toContain('stroke="#FFFFFF"');
+    expect(logoSrc).toContain('id="soft-shadow"');
+    expect(logoSrc).toContain("feGaussianBlur");
     expect(logoSrc).not.toContain("#777F83");
     expect(logoSrc).toContain('stroke="#72BEDB"');
     expect(logoSrc).toContain('fill="#244A62"');
