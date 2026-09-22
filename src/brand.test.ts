@@ -11,6 +11,11 @@ describe("maker brand mark", () => {
     const svg = await readFile(path.join(root, "public/brand/anone-logo-wide.svg"), "utf8");
     expect(svg).toContain('viewBox="0 0 600 245"');
     expect(svg).toContain("<title id=\"title\">あのねジャンプメーカー</title>");
+    expect(svg).toContain('stroke="#000000"');
+    expect(svg).not.toContain("#777F83");
+    expect(svg).toContain('fill="#BCE7F5"');
+    expect(svg).toContain("#72BEDB");
+    expect(svg).toContain('fill="#244A62"');
     expect(makerSrc).toContain('src="/brand/anone-logo-wide.svg"');
     expect(makerSrc).toContain('id="makerTitle"');
     expect(makerSrc).toContain('alt={t(locale, "makerTitle")}');
