@@ -1,5 +1,3 @@
-export const FILL_CONTACT = "【要記入：受信・対応可能なメールアドレスまたは非公開フォームURL】";
-
 export const GOOGLE_PRIVACY_POLICY_URL = "https://policies.google.com/privacy?hl=ja";
 export const GOOGLE_PARTNER_SITES_URL = "https://policies.google.com/technologies/partner-sites?hl=ja";
 export const GOOGLE_ANALYTICS_SAFEGUARDS_URL = "https://support.google.com/analytics/answer/6004245?hl=ja";

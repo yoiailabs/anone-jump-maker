@@ -40,7 +40,8 @@ test.describe("privacy policy", () => {
     await expect(page.locator("#privacyPolicy")).toContainText("Yoiailabs");
     await expect(page.locator("#privacyPolicy")).toContainText("第1条");
     await expect(page.locator("#privacyPolicy")).toContainText("アップロードすることはありません");
-    await expect(page.locator("#privacyPolicy")).toContainText("【要記入】");
+    await expect(page.locator("#privacyPolicy")).toContainText("第10条　本ポリシーの変更");
+    await expect(page.locator("#privacyPolicy")).not.toContainText("【要記入】");
     await expect(page.locator('a[href="' + GOOGLE_PRIVACY_POLICY_URL + '"]')).toBeVisible();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",

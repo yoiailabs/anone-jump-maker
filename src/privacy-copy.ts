@@ -1,7 +1,6 @@
 import type { Locale } from "./messages.ts";
 import {
   CLOUDFLARE_PRIVACY_URL,
-  FILL_CONTACT,
   GOOGLE_ANALYTICS_OPTOUT_URL,
   GOOGLE_ANALYTICS_SAFEGUARDS_URL,
   GOOGLE_PARTNER_SITES_URL,
@@ -328,7 +327,7 @@ const ja: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "外部サービスの利用に伴い、情報が日本国外で取り扱われる場合があります。運営者による外国にある第三者への個人データの提供に該当する場合には、法令に従い、必要な情報提供および同意の取得、または法令で認められるその他の措置を講じます。外国での取扱いに関して、法令に基づき提供すべき情報を求められた場合は、第10条の窓口で受け付けます。",
+            "外部サービスの利用に伴い、情報が日本国外で取り扱われる場合があります。運営者による外国にある第三者への個人データの提供に該当する場合には、法令に従い、必要な情報提供および同意の取得、または法令で認められるその他の措置を講じます。",
           ],
         },
       ],
@@ -399,37 +398,7 @@ const ja: PrivacyDocument = {
       ],
     },
     {
-      heading: "第10条　お問い合わせ・苦情の窓口",
-      blocks: [
-        {
-          type: "p",
-          parts: [
-            "本ポリシー、個人情報の取扱いおよび苦情については、次の非公開窓口へご連絡ください。",
-          ],
-        },
-        {
-          type: "ul",
-          items: [
-            "窓口名：あのねジャンプメーカー 個人情報お問い合わせ窓口",
-            `連絡先：${FILL_CONTACT}`,
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "公開されているGitHub Issuesには、氏名、住所、メールアドレス、本人確認書類、第三者の個人情報等を投稿しないでください。お問い合わせに当たっては、対応に必要な範囲を超える個人情報の送信をお控えください。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "本サービス内で紹介されている公開投稿に関するお問い合わせも、上記窓口で受け付けます。本サービス側の掲載について確認・対応しますが、元の投稿や外部サービス上の情報の削除は、当該サービスでの手続が必要となる場合があります。",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "第11条　本ポリシーの変更",
+      heading: "第10条　本ポリシーの変更",
       blocks: [
         {
           type: "p",
@@ -744,7 +713,7 @@ const en: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "Information may be handled outside Japan when an external service is used. Where the Operator’s provision of personal data to a third party in a foreign country applies, the Operator will, as the law requires, provide the necessary information and obtain consent, or take another measure the law allows. Requests for information that the law says should be provided about handling in a foreign country are accepted at the contact in Article 10.",
+            "Information may be handled outside Japan when an external service is used. Where the Operator’s provision of personal data to a third party in a foreign country applies, the Operator will, as the law requires, provide the necessary information and obtain consent, or take another measure the law allows.",
           ],
         },
       ],
@@ -815,37 +784,7 @@ const en: PrivacyDocument = {
       ],
     },
     {
-      heading: "Article 10. Contact and complaints",
-      blocks: [
-        {
-          type: "p",
-          parts: [
-            "For this Policy, the handling of personal information, and complaints, please use the following non-public contact.",
-          ],
-        },
-        {
-          type: "ul",
-          items: [
-            "Contact name: Anone Jump Maker personal information contact",
-            `Contact: ${FILL_CONTACT}`,
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "Please do not post your name, address, email address, identity documents, or another person’s personal information on a public GitHub Issue. When you contact us, please do not send personal information beyond what is needed for the response.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "Inquiries about public posts shown in the Service are also accepted at the contact above. The Operator will check and respond regarding the listing on the Service. Deleting the original post, or information on an external service, may require that service’s own procedure.",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "Article 11. Changes to this Policy",
+      heading: "Article 10. Changes to this Policy",
       blocks: [
         {
           type: "p",
@@ -1151,7 +1090,7 @@ const ko: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "외부 서비스 이용에 따라 정보가 일본 국외에서 취급될 수 있습니다. 운영자가 외국에 있는 제3자에게 개인데이터를 제공하는 경우에 해당하면, 법령에 따라 필요한 정보 제공과 동의 취득, 또는 법령에서 인정하는 그 밖의 조치를 합니다. 국외 취급에 관하여 법령에 따라 제공해야 할 정보를 요청받은 경우에는 제10조의 창구에서 접수합니다.",
+            "외부 서비스 이용에 따라 정보가 일본 국외에서 취급될 수 있습니다. 운영자가 외국에 있는 제3자에게 개인데이터를 제공하는 경우에 해당하면, 법령에 따라 필요한 정보 제공과 동의 취득, 또는 법령에서 인정하는 그 밖의 조치를 합니다.",
           ],
         },
       ],
@@ -1220,32 +1159,7 @@ const ko: PrivacyDocument = {
       ],
     },
     {
-      heading: "제10조 문의·불만 창구",
-      blocks: [
-        {
-          type: "p",
-          parts: ["본 방침, 개인정보의 취급 및 불만은 다음 비공개 창구로 연락해 주세요."],
-        },
-        {
-          type: "ul",
-          items: ["창구 이름: 아노네 점프 메이커 개인정보 문의 창구", `연락처: ${FILL_CONTACT}`],
-        },
-        {
-          type: "p",
-          parts: [
-            "공개된 GitHub Issues에는 성명, 주소, 이메일 주소, 본인 확인 서류, 제3자의 개인정보 등을 게시하지 마세요. 문의할 때는 대응에 필요한 범위를 넘는 개인정보 전송을 삼가 주세요.",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "본 서비스에서 소개된 공개 게시물에 관한 문의도 위 창구에서 접수합니다. 본 서비스 쪽의 게재에 대해 확인하고 대응하지만, 원래 게시물이나 외부 서비스상의 정보 삭제는 해당 서비스의 절차가 필요할 수 있습니다.",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "제11조 본 방침의 변경",
+      heading: "제10조 본 방침의 변경",
       blocks: [
         {
           type: "p",
@@ -1533,7 +1447,7 @@ const zh: PrivacyDocument = {
         {
           type: "p",
           parts: [
-            "因使用外部服务，信息可能在日本境外被处理。如果属于运营者向位于外国的第三方提供个人数据，运营者将依法令提供必要信息并取得同意，或采取法令允许的其他措施。如有人依法令要求提供与境外处理有关、法令规定应当提供的信息，由第10条的窗口受理。",
+            "因使用外部服务，信息可能在日本境外被处理。如果属于运营者向位于外国的第三方提供个人数据，运营者将依法令提供必要信息并取得同意，或采取法令允许的其他措施。",
           ],
         },
       ],
@@ -1597,29 +1511,7 @@ const zh: PrivacyDocument = {
       ],
     },
     {
-      heading: "第10条　咨询与投诉窗口",
-      blocks: [
-        { type: "p", parts: ["关于本政策、个人信息的处理以及投诉，请联系下列非公开窗口。"] },
-        {
-          type: "ul",
-          items: ["窗口名称：あのね跳跃制作器 个人信息咨询窗口", `联系方式：${FILL_CONTACT}`],
-        },
-        {
-          type: "p",
-          parts: [
-            "请不要在公开的 GitHub Issues 中投稿姓名、地址、电子邮箱、本人确认文件或第三方的个人信息等。咨询时，请避免发送超出处理所需范围的个人信息。",
-          ],
-        },
-        {
-          type: "p",
-          parts: [
-            "关于本服务中介绍的公开投稿的咨询，也由上述窗口受理。运营者会就本服务一侧的刊登进行确认和回应，但删除原始投稿或外部服务上的信息，有时需要按该服务的手续办理。",
-          ],
-        },
-      ],
-    },
-    {
-      heading: "第11条　本政策的变更",
+      heading: "第10条　本政策的变更",
       blocks: [
         { type: "p", parts: ["运营者可能根据法令修订、本服务功能或信息处理的变更等，修订本政策。"] },
         {
