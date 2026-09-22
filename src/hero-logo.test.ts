@@ -6,6 +6,8 @@ import { MAKER_LOGO_STACKED_SIZE, MAKER_LOGO_STACKED_SRC } from "./brand.ts";
 
 const logoSrc = readFileSync(new URL("../public/brand/anone-logo-stacked.svg", import.meta.url), "utf8");
 const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+const ogHtml = readFileSync(new URL("../scripts/og.html", import.meta.url), "utf8");
+const renderOg = readFileSync(new URL("../scripts/render-og.mjs", import.meta.url), "utf8");
 
 describe("stacked maker hero logo", () => {
   it("ships the stacked wordmark only (640×365)", () => {
@@ -49,5 +51,23 @@ describe("stacked maker hero logo", () => {
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*height:\s*auto/);
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*365/);
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*width:\s*min\(100%,\s*22rem\)/);
+  });
+});
+
+describe("stacked OGP wordmark", () => {
+  it("uses the production stacked SVG as the OGP title, not a text heading", () => {
+    expect(ogHtml).toContain(`src="${MAKER_LOGO_STACKED_SRC}"`);
+    expect(ogHtml).toContain('class="hero-logo"');
+    expect(ogHtml).toContain(`width="${MAKER_LOGO_STACKED_SIZE.width}"`);
+    expect(ogHtml).toContain(`height="${MAKER_LOGO_STACKED_SIZE.height}"`);
+    expect(ogHtml).toMatch(/\.hero-logo\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*365/);
+    expect(ogHtml).not.toMatch(/<h1 id="ogTitle">[^<]*<\/h1>/);
+    expect(ogHtml).not.toContain("document.getElementById(\"ogTitle\").textContent");
+    expect(renderOg).toContain('pathname === "/brand/anone-logo-stacked.svg"');
+    expect(renderOg).toContain("public");
+    expect(renderOg).toContain("anone-logo-stacked.svg");
+    for (const locale of LOCALES) {
+      expect(ogHtml).toContain(t(locale, "makerTitle"));
+    }
   });
 });

@@ -92,20 +92,21 @@
       .eyebrow {
         font-size: 24px;
         letter-spacing: 0.16em;
-        margin-bottom: 16px;
+        margin-bottom: 8px;
       }
 
       h1 {
-        font-size: 64px;
-        font-weight: 400;
-        letter-spacing: 0.045em;
-        line-height: 1.3;
+        display: flex;
+        justify-content: center;
         max-width: 1040px;
       }
 
-      html[lang="ko"] h1,
-      html[lang="zh"] h1 {
-        font-size: 56px;
+      .hero-logo {
+        display: block;
+        width: 800px;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 640 / 365;
       }
     </style>
   </head>
@@ -117,7 +118,15 @@
     </div>
     <div class="hero">
       <p class="eyebrow">#あのねジャンプ</p>
-      <h1 id="ogTitle">あのねジャンプメーカー</h1>
+      <h1 id="ogTitle">
+        <img
+          class="hero-logo"
+          src="/brand/anone-logo-stacked.svg"
+          width="640"
+          height="365"
+          alt="あのねジャンプメーカー"
+        />
+      </h1>
     </div>
     <script>
       const titles = {
@@ -130,7 +139,8 @@
       const title = locale && titles[locale] ? titles[locale] : titles.ja;
       const lang = locale && titles[locale] ? locale : "ja";
       document.documentElement.lang = lang;
-      document.getElementById("ogTitle").textContent = title;
+      const logo = document.querySelector(".hero-logo");
+      if (logo instanceof HTMLImageElement) logo.alt = title;
     </script>
   </body>
 </html>
