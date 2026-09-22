@@ -28,6 +28,7 @@ import {
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
 import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { ensureSeekableTemplate } from "./seekable-template.ts";
 import { setEditorState, setEditorHandlers } from "./editor-store.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
@@ -91,6 +92,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let photosBusy = false;
   let playing = false;
   let recording = false;
+  let seeking = false;
   let exportAbort: AbortController | null = null;
   let pendingExport: { blob: Blob; filename: string } | null = null;
   let previewTracked = false;
@@ -222,7 +224,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  const photosLocked = () => recording || photosBusy;
+  const photosLocked = () => recording || photosBusy || seeking;
 
   const syncPickerLabel = () => {
     if (photos.length === 0) {
@@ -248,7 +250,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
 
   const refreshButtons = () => {
-    const ready = canUse();
+    const ready = canUse() && !seeking;
     const locked = photosLocked();
     playBtn.disabled = recording || !ready;
     const saveDisabled = recording || !ready;
@@ -262,16 +264,16 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const active = isPreviewPlaying();
     stage.setAttribute("aria-pressed", active ? "true" : "false");
     for (const input of aspectInputs) {
-      input.disabled = recording;
+      input.disabled = recording || seeking;
     }
     for (const input of swapInputs) {
-      input.disabled = recording;
+      input.disabled = recording || seeking;
     }
     for (const input of filterInputs) {
-      input.disabled = recording;
+      input.disabled = recording || seeking;
     }
     for (const input of characterInputs) {
-      input.disabled = recording;
+      input.disabled = recording || seeking;
     }
   };
 
@@ -845,15 +847,18 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   setEditorHandlers({ pause: pausePlayback, seek: async (time) => {
-    if (recording || !canUse()) return;
+    if (recording || seeking || !canUse()) return;
+    seeking = true;
     pausePlayback();
     try {
+      await ensureSeekableTemplate(video, time);
       await seekVideo(video, Math.max(0, Math.min(time, video.duration)));
       paint();
       setEditorState({ time: video.currentTime });
     } catch (error) {
       setErrorStatus(error, "statusPreviewResumeFailed");
     } finally {
+      seeking = false;
       refreshButtons();
     }
   } });
@@ -907,8 +912,9 @@ export function beginTemplateVideoLoad(video: HTMLVideoElement): void {
   const src = video.dataset.templateSrc;
   if (!src) return;
   const current = video.getAttribute("src");
-  if (video.preload === "auto" && current === src) return;
+  if (video.preload === "auto" && (current === src || (current?.startsWith("blob:") && video.dataset.loadedTemplate === src))) return;
   video.preload = "auto";
+  video.dataset.loadedTemplate = src;
   video.src = src;
   video.load();
 }

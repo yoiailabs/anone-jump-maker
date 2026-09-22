@@ -47,3 +47,42 @@ test("seeks without playing and keeps a long photo timeline inside the viewport"
   );
   await expect(page.locator("#saveBtn")).toBeEnabled();
 });
+
+test("seeks a template served without Range support and retains it when adding photos", async ({
+  page,
+}) => {
+  await blockAnalytics(page);
+  await stubShortTemplate(page);
+  const { readFile } = await import("node:fs/promises");
+  const clip = await readFile(new URL("./fixtures/clip.webm", import.meta.url));
+  await page.route("**/template/*.mp4", (route) =>
+    route.fulfill({ body: clip, contentType: "video/webm" }),
+  );
+  await page.goto("/make");
+  await waitForAppReady(page);
+  await page.locator("#picker").setInputFiles(await jpegInput("first.jpg"));
+  await expect(page.locator("#playhead")).toBeEnabled();
+  await page.locator("#playhead").press("ArrowRight");
+  await expect
+    .poll(() =>
+      page
+        .locator("video.offscreen-video")
+        .evaluate((v: HTMLVideoElement) => v.currentTime),
+    )
+    .toBeGreaterThan(0);
+  await page.locator("#picker").setInputFiles(await jpegInput("second.jpg"));
+  await expect(page.locator("#thumbs img")).toHaveCount(2);
+  await expect(page.locator("#playhead")).toBeEnabled();
+  await page.locator("#playhead").press("ArrowRight");
+  await expect
+    .poll(() =>
+      page
+        .locator("video.offscreen-video")
+        .evaluate((v: HTMLVideoElement) => v.currentTime),
+    )
+    .toBeGreaterThan(0.1);
+  await expect(page.locator("#status")).not.toHaveAttribute(
+    "data-kind",
+    "error",
+  );
+});
