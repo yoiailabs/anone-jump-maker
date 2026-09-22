@@ -85,7 +85,16 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           <header className="hero">
             <LanguageNav locale={locale} view="maker" />
             <p className="eyebrow">#あのねジャンプ</p>
-            <h1 id="makerTitle">{t(locale, "makerTitle")}</h1>
+            <h1 id="makerTitle">
+              <img
+                className="hero-logo"
+                src="/brand/anone-logo-wide.svg"
+                width={600}
+                height={245}
+                alt={t(locale, "makerTitle")}
+                decoding="async"
+              />
+            </h1>
             <JaLede locale={locale} />
             <p className="hero-more">
               <Button

@@ -26,6 +26,17 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
   await expect(page.getByRole("radio", { name: "横" }).first()).toBeChecked();
   await expect(page.locator("#makerTitle")).toBeVisible();
+  const makerLogo = page.locator("#makerTitle img.hero-logo");
+  await expect(makerLogo).toBeVisible();
+  await expect(makerLogo).toHaveAttribute("src", "/brand/anone-logo-wide.svg");
+  await expect(makerLogo).toHaveAttribute("alt", "あのねジャンプメーカー");
+  await expect(makerLogo).toHaveJSProperty("naturalWidth", 600);
+  const logoBox = await makerLogo.boundingBox();
+  const appBox = await page.locator(".app").boundingBox();
+  expect(logoBox).not.toBeNull();
+  expect(appBox).not.toBeNull();
+  expect(logoBox!.width).toBeGreaterThan(80);
+  expect(logoBox!.width).toBeLessThanOrEqual(appBox!.width + 1);
   expect(await page.evaluate(() => document.activeElement?.id ?? "")).not.toBe("makerTitle");
   await expect
     .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))

@@ -207,6 +207,20 @@ body {
   line-height: 1.45;
 }
 
+.hero h1:has(.hero-logo) {
+  font-size: 0;
+  line-height: 0;
+  letter-spacing: 0;
+}
+
+.hero-logo {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
 /* applyView の heading.focus() は :focus だけ。Tab のときだけ輪郭を出す。 */
 .hero h1:focus:not(:focus-visible) {
   outline: none;
