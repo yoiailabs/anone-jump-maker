@@ -29,6 +29,7 @@ import {
   type LoadedPhoto,
 } from "./photos.ts";
 import { reportError } from "./sentry.ts";
+import { photoForSlot } from "./timeline.ts";
 
 describe("photoFitSize", () => {
   it("does not upscale a small photo", () => {
@@ -76,6 +77,18 @@ describe("mapLimit", () => {
     });
     expect(out).toEqual([11, 21, 31, 41]);
     expect(seen).toHaveLength(4);
+  });
+
+  it("keeps input order when later items resolve first", async () => {
+    const out = await mapLimit(
+      Array.from({ length: 32 }, (_, index) => index),
+      2,
+      async (value) => {
+        await new Promise((resolve) => setTimeout(resolve, value % 2 === 0 ? 15 : 0));
+        return `p${value}`;
+      },
+    );
+    expect(out).toEqual(Array.from({ length: 32 }, (_, index) => `p${index}`));
   });
 
   it("returns empty for an empty list", async () => {
@@ -596,6 +609,27 @@ describe("loadPhotos", () => {
     }
   });
 
+  it("keeps picker order through async decode and the playback frame list", async () => {
+    const files = Array.from({ length: 32 }, (_, index) =>
+      jpegFile(`roll-${String(32 - index).padStart(2, "0")}.jpg`, "image/jpeg", (index * 17) % 32),
+    );
+    stubPhotoGlobals(fakeBitmap(16, 16), (source) => {
+      if (!(source instanceof File)) return;
+      const index = files.findIndex((file) => file.name === source.name);
+      return new Promise<void>((resolve) => setTimeout(resolve, index % 2 === 0 ? 12 : 0));
+    });
+    try {
+      const photos = await loadPhotos(files);
+      expect(photos.map((photo) => photo.name)).toEqual(files.map((file) => file.name));
+      const sortedByName = [...photos].map((photo) => photo.name).sort((a, b) => a.localeCompare(b));
+      expect(photos.map((photo) => photo.name)).not.toEqual(sortedByName);
+      const frames = Array.from({ length: 32 }, (_, slot) => photoForSlot(photos, slot)?.name);
+      expect(frames).toEqual(files.map((file) => file.name));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("loads a camera HEIC after converting it to JPEG", async () => {
     const heic = heicFile();
     const jpeg = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "x.jpg", { type: "image/jpeg" });
@@ -634,11 +668,14 @@ function stubFailedHtmlDecode(): void {
   );
 }
 
-function stubPhotoGlobals(bitmap: ImageBitmap, beforeCreate?: (source: unknown) => void): void {
+function stubPhotoGlobals(
+  bitmap: ImageBitmap,
+  beforeCreate?: (source: unknown) => void | Promise<void>,
+): void {
   vi.stubGlobal(
     "createImageBitmap",
     vi.fn(async (source: unknown) => {
-      beforeCreate?.(source);
+      await beforeCreate?.(source);
       return bitmap;
     }),
   );
@@ -665,8 +702,8 @@ function heicFile(): File {
   return new File([header], "IMG_0001.HEIC", { type: "" });
 }
 
-function jpegFile(name: string, type: string): File {
-  return new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])], name, { type });
+function jpegFile(name: string, type: string, lastModified = 0): File {
+  return new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])], name, { type, lastModified });
 }
 
 function fakeBitmap(width: number, height: number): ImageBitmap {

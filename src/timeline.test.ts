@@ -23,45 +23,76 @@ describe("slotForTime", () => {
   });
 });
 
+/** ユーザー報告の 32 枚再生（1 始まり）。テンプレの再登場枠に後ろの写真を詰めた並び。 */
+const REPORTED_SCRAMBLED_PLAYBACK = [
+  1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 8, 14, 15, 9, 16, 17, 18, 19, 20, 21, 22, 23, 10, 24, 25, 26, 27,
+  28, 29, 30, 31, 32,
+];
+
+function playbackNames(photoCount: number, slots = TEMPLATE_SLOT_PHOTO_ORDER.length): string[] {
+  const photos = [...Array(photoCount).keys()].map((i) => `p${i}`);
+  return Array.from({ length: slots }, (_, slot) => photoForSlot(photos, slot)!);
+}
+
 describe("template photo order (colour-coded Short utNIG60-li0)", () => {
-  it("uses 10 photos over 32 slots in the measured sequence", () => {
+  it("records 10 colours over 32 slots in the measured reference sequence", () => {
     expect(TEMPLATE_PHOTO_COUNT).toBe(10);
     expect(TEMPLATE_SLOT_PHOTO_ORDER).toHaveLength(32);
     expect(PHOTO_MAX_COUNT).toBe(TEMPLATE_SLOT_PHOTO_ORDER.length);
     expect(new Set(TEMPLATE_SLOT_PHOTO_ORDER).size).toBe(10);
     const letters = TEMPLATE_SLOT_PHOTO_ORDER.map((i) => "ABCDEFGHIJ"[i]).join("");
     expect(letters).toBe("ABCDEFGBEAHBAIFIBDHIGHJCHFIJGDAI");
-    // no photo is shown twice in a row in the reference
     for (let i = 1; i < TEMPLATE_SLOT_PHOTO_ORDER.length; i += 1) {
       expect(TEMPLATE_SLOT_PHOTO_ORDER[i]).not.toBe(TEMPLATE_SLOT_PHOTO_ORDER[i - 1]);
     }
   });
 
-  it("follows the template exactly with 10 photos", () => {
-    const photos = [...Array(10).keys()].map((i) => `p${i}`);
-    const seq = TEMPLATE_SLOT_PHOTO_ORDER.map((_, slot) => photoForSlot(photos, slot));
-    expect(seq).toEqual(TEMPLATE_SLOT_PHOTO_ORDER.map((i) => `p${i}`));
-    expect(photoForSlot(photos, 7)).toBe("p1"); // slot 8 shows photo 2 again (B)
+  it("plays selected photos in order for every count, including the 10-colour case", () => {
+    expect(playbackNames(10).slice(0, 12)).toEqual([
+      "p0",
+      "p1",
+      "p2",
+      "p3",
+      "p4",
+      "p5",
+      "p6",
+      "p7",
+      "p8",
+      "p9",
+      "p0",
+      "p1",
+    ]);
+    expect(photoForSlot(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"], 7)).toBe("h");
   });
 
-  it("puts extra photos where the template repeats one, keeping first appearances", () => {
-    const photos = [...Array(12).keys()].map((i) => `p${i}`);
-    // first 7 slots are distinct photos in order
-    for (let slot = 0; slot < 7; slot += 1) expect(photoForSlot(photos, slot)).toBe(`p${slot}`);
-    // slot 8 (B again) takes the 11th photo, slot 9 (E again) the 12th
-    expect(photoForSlot(photos, 7)).toBe("p10");
-    expect(photoForSlot(photos, 8)).toBe("p11");
-    // slot 10 (A again) has no extra left -> template repeat
-    expect(photoForSlot(photos, 9)).toBe("p0");
-    // first appearances of H/I/J are untouched
-    expect(photoForSlot(photos, 10)).toBe("p7");
-    expect(photoForSlot(photos, 13)).toBe("p8");
-    expect(photoForSlot(photos, 22)).toBe("p9");
-    const shown = new Set(TEMPLATE_SLOT_PHOTO_ORDER.map((_, slot) => photoForSlot(photos, slot)));
-    expect(shown.size).toBe(12);
+  it("does not pull later photos forward when there are more than 10", () => {
+    const seq = playbackNames(12);
+    expect(seq.slice(0, 14)).toEqual([
+      "p0",
+      "p1",
+      "p2",
+      "p3",
+      "p4",
+      "p5",
+      "p6",
+      "p7",
+      "p8",
+      "p9",
+      "p10",
+      "p11",
+      "p0",
+      "p1",
+    ]);
+    expect(new Set(seq).size).toBe(12);
   });
 
-  it("cycles in slot order with fewer than 10 photos so cuts never show the same photo twice in a row", () => {
+  it("plays 32 photos once each in selection order, not the reported scramble", () => {
+    const oneIndexed = playbackNames(32).map((name) => Number(name.slice(1)) + 1);
+    expect(oneIndexed).toEqual([...Array(32).keys()].map((i) => i + 1));
+    expect(oneIndexed).not.toEqual(REPORTED_SCRAMBLED_PLAYBACK);
+  });
+
+  it("cycles in selection order when there are fewer photos than cuts", () => {
     const photos = ["a", "b", "c"];
     const seq = TEMPLATE_SLOT_PHOTO_ORDER.map((_, slot) => photoForSlot(photos, slot));
     expect(seq.slice(0, 6)).toEqual(["a", "b", "c", "a", "b", "c"]);
@@ -70,11 +101,12 @@ describe("template photo order (colour-coded Short utNIG60-li0)", () => {
     expect(photoIndexForSlot(33, 3)).toBe(0);
   });
 
-  it("falls back to cycling past the template order or without one", () => {
+  it("wraps past the cut list and treats an empty selection as photo 0", () => {
     expect(photoIndexForSlot(40, 10)).toBe(0);
-    expect(photoIndexForSlot(5, 10, [])).toBe(5);
-    expect(photoIndexForSlot(11, 10, [])).toBe(1);
+    expect(photoIndexForSlot(5, 10)).toBe(5);
+    expect(photoIndexForSlot(11, 10)).toBe(1);
     expect(photoIndexForSlot(3, 0)).toBe(0);
+    expect(photoIndexForSlot(-1, 4)).toBe(0);
   });
 
   it("returns undefined when empty", () => {
