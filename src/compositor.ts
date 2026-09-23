@@ -120,6 +120,8 @@ export type Compositor = {
   setResolutionScale: (scale: number) => void;
   resolutionScale: () => number;
   aspect: () => AspectMode;
+  /** 前の再生・書き出しで残ったキャラテクスチャ（最終ポーズ）を捨てる。 */
+  resetCharacter: () => void;
   destroy: () => void;
   kind: "2d";
   keying: KeyingBackend;
@@ -265,6 +267,12 @@ export function createCompositor(options?: {
     },
     aspect() {
       return mode;
+    },
+    resetCharacter() {
+      dropGpuKeyer();
+      gpuKeyer = (options?.createKeyer ?? createGpuKeyer)();
+      keying = pickKeyingBackend(gpuKeyer);
+      keyingDebug = describeKeying(keying, gpuKeyer?.debug);
     },
     destroy() {
       dropGpuKeyer();

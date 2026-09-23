@@ -35,6 +35,8 @@ import {
   hasWebCodecsVideoEncoder,
   isAbortError,
   putRgbaOnCanvas,
+  markCharacterVideoUsed,
+  rewindCharacterVideo,
   seekVideo,
   templateFrameMatchesTime,
   throwIfAborted,
@@ -109,6 +111,8 @@ export async function encodeOffline(options: {
   video.pause();
   video.muted = true;
   try {
+    await rewindCharacterVideo(video);
+    throwIfAborted(signal);
     const frameSink = template ? await openTemplateFrameSink(template) : null;
     throwIfAborted(signal);
     const characterPath = frameSink
@@ -152,6 +156,7 @@ export async function encodeOffline(options: {
     }
     throw error;
   } finally {
+    markCharacterVideoUsed(video);
     template?.dispose();
   }
 

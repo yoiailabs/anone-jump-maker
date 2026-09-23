@@ -238,6 +238,9 @@ describe("seekVideo / exportJumpVideo", () => {
     expect(canvas.width).toBe(1);
     expect(canvas.height).toBe(1);
     expect([...ctx!.getImageData(0, 0, 1, 1).data]).toEqual([12, 34, 56, 255]);
+    const next = new Uint8ClampedArray([7, 8, 9, 255]);
+    putRgbaOnCanvas(canvas, ctx!, { data: next, width: 1, height: 1 });
+    expect([...ctx!.getImageData(0, 0, 1, 1).data]).toEqual([7, 8, 9, 255]);
   });
 });
 

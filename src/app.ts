@@ -15,7 +15,16 @@ import {
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
 import type { CharacterFrame, Compositor } from "./compositor.ts";
 import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
-import { EXPORT_FPS, exportJumpVideo, exportProgressPercent, isAbortError, seekVideo, throwIfAborted } from "./export.ts";
+import {
+  EXPORT_FPS,
+  exportJumpVideo,
+  exportProgressPercent,
+  isAbortError,
+  markCharacterVideoUsed,
+  rewindCharacterVideo,
+  seekVideo,
+  throwIfAborted,
+} from "./export.ts";
 import {
   DEFAULT_ASPECT,
   DEFAULT_CHARACTER_SIZE,
@@ -483,8 +492,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
           duration: Number.isFinite(video.duration) ? video.duration : 0,
         })
       ) {
-        await seekVideo(video, 0);
+        compositor?.resetCharacter();
+        await rewindCharacterVideo(video);
       }
+      markCharacterVideoUsed(video);
       if (gen !== playGen) return;
       playing = true;
       clearFeedback("preview");
@@ -804,6 +815,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   video.addEventListener("loadeddata", () => {
     void (async () => {
+      if (recording) return;
       await ensureTimelines();
       paint();
       refreshButtons();
@@ -837,7 +849,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const gen = playGen;
     void (async () => {
       try {
-        await seekVideo(video, 0);
+        compositor?.resetCharacter();
+        await rewindCharacterVideo(video);
+        markCharacterVideoUsed(video);
         if (gen !== playGen || !shouldLoopPreviewPlayback({ recording, playing })) return;
         paint();
         await video.play();
@@ -1052,6 +1066,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
       const comp = await ensureCompositor();
       throwIfAborted(controller.signal);
+      comp.resetCharacter();
       comp.setResolutionScale(1);
       const result = await exportJumpVideo({
         video,

@@ -102,6 +102,68 @@ export type SeekVideoOptions = {
   waitForPresented?: boolean;
 };
 
+/**
+ * 一度再生・シークしたテンプレ video は、currentTime を 0 に戻しても
+ * 画面に出ている画素が最終ポーズ（ウインク）のまま残ることがある。
+ * 写真カットは論理時刻で進むので背景だけ動き、キャラが固まる。
+ * 次の書き出し／頭出しの前に要素を作り直すための印。
+ */
+export function shouldReloadCharacterVideo(video: {
+  ended: boolean;
+  currentTime: number;
+  dataset?: { characterArmed?: string };
+}): boolean {
+  if (video.dataset?.characterArmed === "1") return true;
+  if (video.ended) return true;
+  return Number.isFinite(video.currentTime) && video.currentTime > 0.05;
+}
+
+export function markCharacterVideoUsed(video: { dataset: { characterArmed?: string } }): void {
+  video.dataset.characterArmed = "1";
+}
+
+/**
+ * キャラの提示フレームを先頭へ戻す。
+ * すでに末尾まで進んだ要素は load し直し、最終ポーズの画素を捨てる。
+ */
+export async function rewindCharacterVideo(video: HTMLVideoElement): Promise<void> {
+  video.pause();
+  const src = video.currentSrc || video.src;
+  if (shouldReloadCharacterVideo(video) && src) {
+    video.dataset.characterArmed = "";
+    await reloadCharacterVideo(video, src);
+  }
+  await seekVideo(video, 0, { waitForPresented: true });
+}
+
+async function reloadCharacterVideo(video: HTMLVideoElement, src: string): Promise<void> {
+  video.removeAttribute("src");
+  video.load();
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("error", onError);
+    };
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("テンプレ動画を読み込めませんでした"));
+    };
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("テンプレ動画を読み込めませんでした"));
+    }, 8000);
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("error", onError);
+    video.src = src;
+    video.load();
+  });
+}
+
 export async function seekVideo(
   video: HTMLVideoElement,
   time: number,
@@ -289,10 +351,10 @@ export function putRgbaOnCanvas(
   if (typeof ImageData !== "function") {
     throw new Error(TEMPLATE_DECODE_MESSAGE);
   }
-  if (canvas.width !== frame.width || canvas.height !== frame.height) {
-    canvas.width = frame.width;
-    canvas.height = frame.height;
-  }
+  // 同じサイズでも width 代入でビットマップを捨てる。putImageData だけだと
+  // 次の書き出しで WebGL が前の最終ポーズを掴んだままになることがある。
+  canvas.width = frame.width;
+  canvas.height = frame.height;
   const pixels = new Uint8ClampedArray(frame.data.length);
   pixels.set(frame.data);
   ctx.putImageData(new ImageData(pixels, frame.width, frame.height), 0, 0);
