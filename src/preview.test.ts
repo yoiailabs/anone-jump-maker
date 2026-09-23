@@ -57,6 +57,8 @@ describe("preview control markup", () => {
     expect(playPauseButtonHtml(false)).toContain('translate="no"');
     expect(playPauseButtonHtml(false)).not.toBe(playPauseButtonHtml(true));
     expect(restartButtonHtml()).toContain("<svg");
+    expect(restartButtonHtml()).toContain("M21 3v5h-5");
+    expect(restartButtonHtml()).not.toContain("M7 6.4v11.2");
     expect(restartButtonHtml()).toContain("最初から");
     expect(restartButtonHtml()).not.toContain("最初から再生");
     expect(muteButtonHtml(false)).toContain('data-preview-icon="sound-on"');

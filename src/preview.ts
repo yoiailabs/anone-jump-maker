@@ -14,8 +14,9 @@ const ICON_PLAY =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 6.2 18.2 12 8 17.8Z" fill="currentColor"/></svg>';
 const ICON_PAUSE =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 6.2h2.7v11.6H8Zm5.3 0H16v11.6h-2.7Z" fill="currentColor"/></svg>';
+/** Lucide RefreshCw。最初から再生の回る矢印。 */
 const ICON_RESTART =
-  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 6.4v11.2M11 12 19.2 6.6v10.8Z" fill="currentColor"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_SOUND_ON =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.8 9.2h3.1L12.4 6v12l-4.5-3.2H4.8Z" fill="currentColor"/><path d="M15.4 9.1a3.5 3.5 0 0 1 0 5.8M17.7 6.8a6.2 6.2 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const ICON_SOUND_OFF =

@@ -69,6 +69,9 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain('id="modalPlayBtn"');
     expect(makerSrc).not.toContain('id="previewState"');
     expect(makerSrc).not.toContain('id="slotMeter"');
+    expect(makerSrc.indexOf('id="playBtn"')).toBeLessThan(makerSrc.indexOf('id="previewSeek"'));
+    expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('id="previewTime"'));
+    expect(makerSrc.indexOf('id="previewTime"')).toBeLessThan(makerSrc.indexOf('id="restartBtn"'));
     expect(makerSrc.indexOf('id="stage"')).toBeLessThan(makerSrc.indexOf('id="restartBtn"'));
     expect(makerSrc.indexOf('id="restartBtn"')).toBeLessThan(makerSrc.indexOf('id="muteBtn"'));
     expect(makerSrc).not.toContain('id="previewMuteHint"');

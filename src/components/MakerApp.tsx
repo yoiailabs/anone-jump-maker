@@ -236,6 +236,22 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                   disabled
                   dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
                 />
+              </div>
+              <input
+                id="previewSeek"
+                className="preview-seek"
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                defaultValue={0}
+                disabled
+                aria-label={t(locale, "previewSeekAria")}
+              />
+              <span className="preview-time" id="previewTime" aria-hidden="true">
+                0.0
+              </span>
+              <div className="preview-actions">
                 <Button
                   variant="site"
                   type="button"
@@ -253,20 +269,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                   dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
                 />
               </div>
-              <input
-                id="previewSeek"
-                className="preview-seek"
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                defaultValue={0}
-                disabled
-                aria-label={t(locale, "previewSeekAria")}
-              />
-              <span className="preview-time" id="previewTime" aria-hidden="true">
-                0.0
-              </span>
             </div>
             <section className="studio-options" aria-labelledby="studioOptionsTitle">
               <h2 id="studioOptionsTitle" className="studio-options-heading">
