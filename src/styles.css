@@ -890,7 +890,6 @@ html[lang="ja"] .lede {
   align-items: flex-end;
   gap: 0.2rem;
   width: 100%;
-  border-top: 3px solid var(--ink);
   border-bottom: 3px solid var(--ink);
 }
 
@@ -906,6 +905,7 @@ html[lang="ja"] .lede {
   margin: 0;
   padding: 0 0.12rem 0.45rem;
   border: 0;
+  border-top: 3px solid var(--ink);
   border-radius: 0.8rem 0.8rem 0 0;
   background: transparent;
   color: color-mix(in srgb, var(--mute) 88%, var(--ink));
