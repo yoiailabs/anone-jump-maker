@@ -788,9 +788,10 @@ html[lang="ja"] .lede {
   gap: 0.35rem;
 }
 
+/* 縦だけ一段大きく。横は下の landscape 指定のまま。画面の約 55svh、幅は列を超えない。 */
 #studioView .stage {
-  width: min(72vw, 15rem, calc(46svh * 608 / 1080));
-  max-height: none;
+  width: min(100%, 86vw, 18rem, calc(55svh * 608 / 1080));
+  max-height: 55svh;
 }
 
 #studioView .stage[data-aspect="landscape"] {
