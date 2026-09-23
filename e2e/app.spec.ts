@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, expectVisibleText, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -152,7 +152,8 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#saveBtn")).toBeVisible();
   await expect(page.locator("#saveBtn")).toHaveText("動画を保存");
-  await expect(page.locator("#previewSaveHint")).toHaveText(
+  await expectVisibleText(
+    page.locator("#previewSaveHint"),
     "端末上で動画を生成します。数十秒かかることがあります。",
   );
   await expect(page.locator("#previewTransport")).toBeVisible();
@@ -233,7 +234,8 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
   await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
   await expect(page.locator("#exportProgressLabel")).toContainText("%");
   await expect(page.locator("#exportKeepOpen")).toBeVisible();
-  await expect(page.locator("#exportKeepOpen")).toHaveText(
+  await expectVisibleText(
+    page.locator("#exportKeepOpen"),
     "端末上で動画を生成します。数十秒かかることがあります。",
   );
   await expect(page.locator("#cancelExportBtn")).toBeEnabled();
@@ -249,7 +251,7 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
 
   await uploadPhoto(page);
   await expect(page.locator("#pickerLabel")).toHaveText("写真を追加");
-  await expect(page.locator("#thumbsHint")).toHaveText("長押しして画像の順序を変更できます。");
+  await expectVisibleText(page.locator("#thumbsHint"), "長押しして画像の順序を変更できます。");
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
   await expect(page.locator(".thumb-add")).toBeVisible();
 
@@ -292,7 +294,9 @@ test("keeps at most 32 photos and disables adding at the cap", async ({ page }) 
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(32, { timeout: 45_000 });
   await expect(page.locator(".thumb-add")).toBeDisabled();
   await expect(page.locator("#pickerLabel")).toHaveText("32枚まで");
-  await expect(page.locator("#thumbsHint")).toContainText("32枚が上限");
+  await expect
+    .poll(async () => stripZwsp((await page.locator("#thumbsHint").textContent()) ?? ""))
+    .toContain("32枚が上限");
   await expect(page.locator("#photoFeedback")).not.toContainText("失敗");
 });
 
@@ -372,7 +376,8 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   await expect(exportDialog).toBeHidden();
   await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
   await expect(page.locator("#cancelExportBtn")).toHaveText("キャンセル");
-  await expect(page.locator("#exportKeepOpen")).toHaveText(
+  await expectVisibleText(
+    page.locator("#exportKeepOpen"),
     "端末上で動画を生成します。数十秒かかることがあります。",
   );
   await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
@@ -579,10 +584,11 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(makerText).not.toContain("※ファン制作の非公式アプリです。");
   expect(makerText).not.toContain("※ファン制作の非公式サイトです");
   await expect(page.locator("#fanNote")).toHaveCount(0);
-  expect(makerText).not.toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
+  expect(makerText).not.toContain("動画生成は端末内で行われます。外部に画像が送信されることはありません。");
   expect(makerText).not.toContain("ダウンロードを押すと共有シートが開きます");
-  await expect(page.locator("#studioView #onDeviceNote")).toHaveText(
-    "端末上で動画を生成します。数十秒かかることがあります。",
+  await expectVisibleText(
+    page.locator("#studioView #onDeviceNote"),
+    "動画生成は端末内で行われます。外部に画像が送信されることはありません。",
   );
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
   await expect(toCommunity).toHaveClass(/\bbtn\b/);

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } fro
 import { initSentry, reportError } from "../sentry.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
+import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
@@ -226,9 +227,12 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           </header>
           <div className="studio-photos">
             <div className="make-cta">
-              <p className="make-note" id="onDeviceNote">
-                {t(locale, "makerOnDevice")}
-              </p>
+              <JaPhrase
+                id="onDeviceNote"
+                className="make-note"
+                locale={locale}
+                text={t(locale, "makerOnDevice")}
+              />
               <Label className="file-btn">
                 <input
                   id="picker"
@@ -396,9 +400,12 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               >
                 {t(locale, "makerSave")}
               </Button>
-              <p className="preview-save-hint" id="previewSaveHint">
-                {t(locale, "previewSaveHint")}
-              </p>
+              <JaPhrase
+                id="previewSaveHint"
+                className="preview-save-hint"
+                locale={locale}
+                text={t(locale, "previewSaveHint")}
+              />
             </div>
             <section
               className="export-panel export-sheet"
@@ -426,9 +433,12 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                   {t(locale, "exportPercent", { percent: 0 })}
                 </span>
               </div>
-              <p className="export-keep-open" id="exportKeepOpen">
-                {t(locale, "exportKeepOpen")}
-              </p>
+              <JaPhrase
+                id="exportKeepOpen"
+                className="export-keep-open"
+                locale={locale}
+                text={t(locale, "exportKeepOpen")}
+              />
               <Button variant="site" type="button" id="cancelExportBtn" className="btn ghost">
                 {t(locale, "exportCancel")}
               </Button>

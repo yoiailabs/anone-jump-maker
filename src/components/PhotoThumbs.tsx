@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { t, type Locale } from "../i18n.ts";
 import { PHOTO_MAX_COUNT } from "../photo-list.ts";
 import {
@@ -135,9 +136,13 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
           ) : null}
         </DragOverlay>
       </DndContext>
-      <p className="thumbs-hint" id="thumbsHint" hidden={empty}>
-        {atCap ? t(locale, "makerThumbsHintFull", { n: PHOTO_MAX_COUNT }) : t(locale, "makerThumbsHint")}
-      </p>
+      <JaPhrase
+        id="thumbsHint"
+        className="thumbs-hint"
+        locale={locale}
+        hidden={empty}
+        text={atCap ? t(locale, "makerThumbsHintFull", { n: PHOTO_MAX_COUNT }) : t(locale, "makerThumbsHint")}
+      />
     </>
   );
 }

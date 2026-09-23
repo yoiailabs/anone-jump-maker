@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { t } from "../src/i18n.ts";
 import { MORE_JUMPS_HREF } from "../src/share.ts";
-import { blockAnalytics, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, expectVisibleText, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 test.describe("language routing", () => {
   test.use({ locale: "en-US" });
@@ -270,7 +270,7 @@ test.describe("maker intro copy", () => {
     await page.locator("#toStudio").click();
     await expect(page).toHaveURL(/\/make\/?$/);
     await expect(page.locator("#studioEmpty")).toHaveText("");
-    await expect(page.locator("#onDeviceNote")).toHaveText(t("ja", "makerOnDevice"));
+    await expectVisibleText(page.locator("#onDeviceNote"), t("ja", "makerOnDevice"));
     const text = (await page.locator("#makerView").innerText()).replaceAll("\u200b", "");
     expect(text).not.toContain("写真を何枚か選択するだけで");
     expect(text).not.toContain("動画生成はすべて端末内で完結するため");
@@ -286,6 +286,41 @@ test.describe("maker intro copy", () => {
     expect(en).not.toContain("Unofficial fan-made app.");
     expect(en).not.toContain("unofficial fan-made site");
     await expect(page.locator("#fanNote")).toHaveCount(0);
+  });
+});
+
+test.describe("on-device note phrase wrapping", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("wraps the Japanese on-device note at phrase boundaries and leaves English unchanged", async ({ page }) => {
+    await page.goto("/make");
+    await waitForAppReady(page);
+    const jaExpected = t("ja", "makerOnDevice");
+    await expect
+      .poll(async () =>
+        page.locator("#onDeviceNote").evaluate((el) => {
+          const text = el.textContent ?? "";
+          const wordBreak = getComputedStyle(el).wordBreak;
+          return {
+            visible: text.replaceAll("\u200b", ""),
+            hasBreaks: text.includes("\u200b") || wordBreak === "auto-phrase",
+          };
+        }),
+      )
+      .toEqual({ visible: jaExpected, hasBreaks: true });
+
+    await page.goto("/en/make");
+    await waitForAppReady(page);
+    const en = await page.locator("#onDeviceNote").evaluate((el) => ({
+      text: el.textContent ?? "",
+      wordBreak: getComputedStyle(el).wordBreak,
+    }));
+    expect(en.text).toBe(t("en", "makerOnDevice"));
+    expect(en.text).not.toContain("\u200b");
+    expect(en.wordBreak).not.toBe("auto-phrase");
   });
 });
 

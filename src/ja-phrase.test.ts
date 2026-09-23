@@ -11,6 +11,8 @@ import {
 import { t } from "./i18n.ts";
 import jaParserSrc from "./ja-parser.ts?raw";
 import jaPhraseSrc from "./ja-phrase.ts?raw";
+import jaPhraseComponentSrc from "./components/JaPhrase.tsx?raw";
+import makerSrc from "./components/MakerApp.tsx?raw";
 
 const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
@@ -55,9 +57,11 @@ describe("Japanese phrase breaks", () => {
 
   it("scopes auto-phrase CSS to Japanese and keep-all to the polyfill class", () => {
     expect(stylesSrc).toMatch(/\.lede\s*\{[^}]*text-wrap:\s*pretty/);
-    expect(stylesSrc).toMatch(/html\[lang="ja"\]\s*\.lede\s*\{[^}]*word-break:\s*auto-phrase/);
+    expect(stylesSrc).toMatch(/html\[lang="ja"\]\s*\.lede,[\s\S]*word-break:\s*auto-phrase/);
+    expect(stylesSrc).toMatch(/html\[lang="ja"\]\s*\.ja-phrase\s*\{[^}]*word-break:\s*auto-phrase/);
     expect(stylesSrc).toMatch(/@supports not \(word-break:\s*auto-phrase\)/);
-    expect(stylesSrc).toMatch(/html\[lang="ja"\]\s*\.lede\.lede-phrased\s*\{[^}]*word-break:\s*keep-all/);
+    expect(stylesSrc).toMatch(/html\[lang="ja"\]\s*\.lede\.lede-phrased,/);
+    expect(stylesSrc).toMatch(/html\[lang="ja"\]\s*\.ja-phrase\.lede-phrased\s*\{[^}]*word-break:\s*keep-all/);
     expect(stylesSrc).toMatch(/overflow-wrap:\s*anywhere/);
   });
 
@@ -68,5 +72,17 @@ describe("Japanese phrase breaks", () => {
     expect(jaParserSrc).not.toContain("loadDefaultThaiParser");
     expect(jaPhraseSrc).toContain('import("./ja-parser.ts")');
     expect(jaPhraseSrc).not.toContain("from \"budoux\"");
+    expect(jaPhraseSrc).toContain('".lede, .ja-phrase"');
+  });
+
+  it("phrases Japanese prose on the make screen through the shared helper", () => {
+    expect(jaPhraseComponentSrc).toContain("insertJaPhraseBreaks");
+    expect(jaPhraseComponentSrc).toContain("needsJaPhrasePolyfill");
+    expect(jaPhraseComponentSrc).toContain("loadJaPhraseParser");
+    expect(jaPhraseComponentSrc).not.toContain("from \"budoux\"");
+    expect(makerSrc).toContain('id="onDeviceNote"');
+    expect(makerSrc).toContain('id="previewSaveHint"');
+    expect(makerSrc).toContain('id="exportKeepOpen"');
+    expect(makerSrc).toContain("<JaPhrase");
   });
 });

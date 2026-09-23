@@ -266,7 +266,8 @@ body {
 }
 
 /* Chromium 119+: native BudouX-backed phrase wrapping. lang=ja is required. */
-html[lang="ja"] .lede {
+html[lang="ja"] .lede,
+html[lang="ja"] .ja-phrase {
   word-break: auto-phrase;
 }
 
@@ -275,7 +276,8 @@ html[lang="ja"] .lede {
  * ZWSP polyfill (.lede-phrased) so the first paint keeps normal CJK wrapping.
  */
 @supports not (word-break: auto-phrase) {
-  html[lang="ja"] .lede.lede-phrased {
+  html[lang="ja"] .lede.lede-phrased,
+  html[lang="ja"] .ja-phrase.lede-phrased {
     word-break: keep-all;
     overflow-wrap: anywhere;
   }
