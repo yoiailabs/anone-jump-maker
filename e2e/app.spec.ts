@@ -902,8 +902,8 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   expect(studioAlign.titleMarginLeft).toBe(termsAlign.titleMarginLeft);
   expect(studioAlign.titleMarginRight).toBe(termsAlign.titleMarginRight);
   expect(studioAlign.titleMarginBottom).toBeLessThan(termsAlign.titleMarginBottom);
-  expect(studioAlign.titleMarginBottom).toBeGreaterThan(termsAlign.titleMarginBottom * 0.65);
-  expect(studioAlign.titleMarginBottom).toBeLessThan(termsAlign.titleMarginBottom * 0.85);
+  expect(studioAlign.titleMarginBottom).toBeGreaterThan(termsAlign.titleMarginBottom * 0.35);
+  expect(studioAlign.titleMarginBottom).toBeLessThan(termsAlign.titleMarginBottom * 0.55);
   expect(Math.abs(studioAlign.headMid - studioAlign.markMid)).toBeLessThan(2);
   expect(Math.abs(termsAlign.headMid - termsAlign.markMid)).toBeLessThan(2);
   await page.goto("/make");
