@@ -13,6 +13,8 @@ const HASHTAG_ANONE =
   "https://x.com/hashtag/%E3%81%82%E3%81%AE%E3%81%AD%E3%82%B8%E3%83%A3%E3%83%B3%E3%83%97?src=hash&amp;ref_src=twsrc%5Etfw";
 const HASHTAG_MAKER =
   "https://x.com/hashtag/%E3%81%82%E3%81%AE%E3%81%AD%E3%82%B8%E3%83%A3%E3%83%B3%E3%83%97%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC?src=hash&amp;ref_src=twsrc%5Etfw";
+const HASHTAG_YANE =
+  "https://x.com/hashtag/%E3%82%84%E3%81%AD%E3%81%8B%E3%82%89%E8%A6%8B%E3%81%A6%E3%82%8B%E3%82%88?src=hash&amp;ref_src=twsrc%5Etfw";
 
 /** 上から順に表示する。先頭が公式ナナツカゼ。 */
 export const REACTION_POSTS: readonly ReactionPost[] = [
@@ -39,6 +41,54 @@ export const REACTION_POSTS: readonly ReactionPost[] = [
     href: "https://x.com/_nakotanmaru/status/2100880092864122959",
     dateLabel: "2026年9月18日",
     bodyHtml: `僕の好きな空の写真でやってみた<br>同じ空は二度と見れないんだよ<br> <a href="${HASHTAG_ANONE}">#あのねジャンプ</a> <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/ocpFNsQRb9">pic.twitter.com/ocpFNsQRb9</a>`,
+  },
+  {
+    id: "2100797924125049167",
+    handle: "02_ZERO_Ni",
+    author: "ZERO-2",
+    href: "https://x.com/02_ZERO_Ni/status/2100797924125049167",
+    dateLabel: "2026年9月18日",
+    bodyHtml: `普通にこれ神すぎてやばい<br>元々好きだった曲だったからさらにすごく感じる<a href="${HASHTAG_ANONE}">#あのねジャンプ</a> <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/xpr62SnAh4">https://t.co/xpr62SnAh4</a> <a href="https://t.co/0PgRlAQJq1">pic.twitter.com/0PgRlAQJq1</a>`,
+  },
+  {
+    id: "2100906505587626344",
+    handle: "_yofukasi_3150",
+    author: "よふかしぐみ☘️🍊💫🗝♠︎",
+    href: "https://x.com/_yofukasi_3150/status/2100906505587626344",
+    dateLabel: "2026年9月18日",
+    bodyHtml: `神すぎるだろこのサイトwww<br>たのしぃ！！！<a href="${HASHTAG_ANONE}">#あのねジャンプ</a> <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/UmwnlmmOOU">pic.twitter.com/UmwnlmmOOU</a>`,
+  },
+  {
+    id: "2100928096262344908",
+    handle: "habotan_bloom",
+    author: "はりきりぼたん☪",
+    href: "https://x.com/habotan_bloom/status/2100928096262344908",
+    dateLabel: "2026年9月18日",
+    bodyHtml: `ファンメイドのこれ楽しい〜〜〜<a href="${HASHTAG_ANONE}">#あのねジャンプ</a> <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/RnOlIWRcEZ">https://t.co/RnOlIWRcEZ</a> <a href="https://t.co/qRvJ6onkgS">pic.twitter.com/qRvJ6onkgS</a>`,
+  },
+  {
+    id: "2100921962474389924",
+    handle: "Black_umya",
+    author: "さくぱん🏖️🫶",
+    href: "https://x.com/Black_umya/status/2100921962474389924",
+    dateLabel: "2026年9月18日",
+    bodyHtml: `大好きな曲の神メーカーをお借りしました🫶<a href="${HASHTAG_ANONE}">#あのねジャンプ</a> <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a><a href="${HASHTAG_YANE}">#やねから見てるよ</a> <a href="https://t.co/dkH3fvKaBj">pic.twitter.com/dkH3fvKaBj</a>`,
+  },
+  {
+    id: "2100613865503588831",
+    handle: "iihhlc",
+    author: "ホットむぎ茶",
+    href: "https://x.com/iihhlc/status/2100613865503588831",
+    dateLabel: "2026年9月17日",
+    bodyHtml: `めっちゃ簡単に作れた！<br>今まで撮った景色がこんな所で役に立つとは…<br> <a href="${HASHTAG_ANONE}">#あのねジャンプ</a>  <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/henwREGxWS">https://t.co/henwREGxWS</a> <a href="https://t.co/yg2zdnDTJn">pic.twitter.com/yg2zdnDTJn</a>`,
+  },
+  {
+    id: "2100897848061784121",
+    handle: "VfLcPI4qES19291",
+    author: "スルメ　ᗦ↞︎◃︎",
+    href: "https://x.com/VfLcPI4qES19291/status/2100897848061784121",
+    dateLabel: "2026年9月18日",
+    bodyHtml: `すごい、あっという間作れる！<br>2026の春と夏の思い出を詰めてみた。<a href="${HASHTAG_ANONE}">#あのねジャンプ</a> <a href="${HASHTAG_MAKER}">#あのねジャンプメーカー</a> <a href="https://t.co/OEIkiFOg1C">pic.twitter.com/OEIkiFOg1C</a>`,
   },
 ];
 
