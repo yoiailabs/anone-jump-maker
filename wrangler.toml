@@ -14,9 +14,9 @@ routes = [
 enabled = true
 
 # Vite / Astro の dist を Workers 静的アセットとして配信する。
-# プレフィックスなしの `/` `/community` `/privacy` `/terms` と、
+# プレフィックスなしの `/` `/make` `/community` `/privacy` `/terms` と、
 # 規約・ポリシーの言語付き URL だけ Worker が先に受ける。
-# Cookie があるとき `/` と `/community` を /en /ko /zh へ寄せる。
+# Cookie があるとき `/` `/make` `/community` を /en /ko /zh へ寄せる。
 # `/privacy` `/terms` は日本語のまま。言語付き URL は日本語へ 302 する。
 # Accept-Language では寄せない
 # （クローラが日本語の title / OGP を掴むため。ブラウザはクライアント JS で寄せる）。
@@ -27,10 +27,14 @@ not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
 run_worker_first = [
   "/",
+  "/make",
+  "/make/",
   "/community",
   "/community/",
   "/ja",
   "/ja/",
+  "/ja/make",
+  "/ja/make/",
   "/ja/community",
   "/ja/community/",
   "/privacy",

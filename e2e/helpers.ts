@@ -58,6 +58,13 @@ export function stripZwsp(text: string): string {
 
 export async function waitForAppReady(page: Page): Promise<void> {
   await page.locator("#toCommunity").waitFor({ state: "attached" });
-  await page.locator("#playBtn").waitFor({ state: "attached" });
+  await page.locator("#toStudio").waitFor({ state: "attached" });
   await page.locator("#app[data-app-ready='1']").waitFor({ state: "attached" });
+}
+
+export async function openStudio(page: Page): Promise<void> {
+  const studio = page.locator("#studioView");
+  if (await studio.isVisible()) return;
+  await page.locator("#toStudio").click();
+  await studio.waitFor({ state: "visible" });
 }

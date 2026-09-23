@@ -2,6 +2,7 @@ import {
   GENERATE_CANCEL_EVENT,
   GENERATE_FAIL_EVENT,
   GENERATE_START_EVENT,
+  MAKE_OPEN_EVENT,
   generateFailReason,
   PHOTO_PICKER_OPEN_EVENT,
   PHOTOS_REJECTED_EVENT,
@@ -59,6 +60,7 @@ import {
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
   syncMuteControl,
+  syncPlayPauseControl,
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
@@ -138,11 +140,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const statusEl = must(root, "#status");
   const playBtn = must(root, "#playBtn") as HTMLButtonElement;
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
-  const previewSaveBtn = must(root, "#previewSaveBtn") as HTMLButtonElement;
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
-  const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
+  const previewSeek = must(root, "#previewSeek") as HTMLInputElement;
+  const studioEmpty = must(root, "#studioEmpty");
   const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
   const exportTitle = must(root, "#exportTitle");
   const exportStatus = must(root, "#exportStatus");
@@ -153,7 +155,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
   const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
   const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
-  const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
   const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
   const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const benchFlag = document.createElement("p");
@@ -161,16 +162,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   benchFlag.hidden = !benchFlags.bench;
   benchFlag.style.cssText = "margin:0.4rem 0 0;font-size:0.78rem;color:#5c5146";
   muteBtn.closest(".preview-actions")?.after(benchFlag);
-  const aspectInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
-  ];
-  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
-  const filterInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="filter"], input[name="preview-filter"]'),
-  ];
-  const characterInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="character"], input[name="preview-character"]'),
-  ];
+  const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
+  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
+  const filterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="filter"]')];
+  const characterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="character"]')];
 
   const aspectValue = checkedNamedValue(aspectInputs, "aspect");
   const swapValue = checkedNamedValue(swapInputs, "swap");
@@ -274,6 +269,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       photos: photos.map((photo) => ({ id: photo.id, name: photo.name, thumbUrl: photo.thumbUrl })),
       locked: photosLocked(),
     });
+    studioEmpty.hidden = photos.length > 0;
     syncPickerLabel();
   };
 
@@ -287,9 +283,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     playBtn.disabled = recording || !ready;
     const saveDisabled = recording || sharingExport || !ready;
     saveBtn.disabled = saveDisabled;
-    previewSaveBtn.disabled = saveDisabled;
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
+    syncPlayPauseControl(playBtn, isPreviewPlaying(), locale);
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
@@ -487,10 +483,26 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  const closePreview = () => {
-    if (previewDialog.open) {
-      previewDialog.close();
-    }
+  const syncSeek = () => {
+    if (seeking) return;
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+    previewSeek.max = String(duration > 0 ? duration : 1);
+    previewSeek.disabled = recording || duration <= 0;
+    const time = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    previewSeek.value = String(duration > 0 ? Math.min(duration, Math.max(0, time)) : 0);
+  };
+
+  let seeking = false;
+  let seekGen = 0;
+  const scrubTo = (time: number) => {
+    if (recording || !Number.isFinite(time)) return;
+    if (isPreviewPlaying() || playbackBusy) pausePlayback();
+    const gen = ++seekGen;
+    void seekVideo(video, time).then(() => {
+      if (gen !== seekGen) return;
+      paint();
+      refreshButtons();
+    });
   };
 
   const setExportProgress = (percent: number, statusText: string) => {
@@ -622,24 +634,16 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  let openingPreview = false;
-  const openPreview = async () => {
-    if (recording || !canUse() || previewDialog.open || openingPreview) return;
-    openingPreview = true;
-    try {
-      await ensureCompositor();
-      await ensureTimelines();
-      if (recording || previewDialog.open) return;
-      previewDialog.showModal();
-      paint();
-    } catch (error) {
-      closePreview();
-      setErrorStatus(error, "statusPreviewOpenFailed");
-      return;
-    } finally {
-      openingPreview = false;
-    }
-    await startPlayback(true);
+  const armStudio = () => {
+    beginTemplateVideoLoad(video);
+    void ensureCompositor()
+      .then(() => {
+        paint();
+        syncSeek();
+      })
+      .catch((error: unknown) => {
+        setErrorStatus(error, "statusPreviewOpenFailed");
+      });
   };
 
   let communityMounted = false;
@@ -650,7 +654,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const heading =
       view === "community"
         ? root.querySelector<HTMLElement>("#communityJumpsTitle")
-        : root.querySelector<HTMLElement>("#makerTitle");
+        : view === "studio"
+          ? root.querySelector<HTMLElement>("#studioTitle")
+          : root.querySelector<HTMLElement>("#makerTitle");
     heading?.setAttribute("tabindex", "-1");
     heading?.focus({
       preventScroll: true,
@@ -664,22 +670,26 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       return;
     }
     const makerView = must(root, "#makerView");
+    const studioView = must(root, "#studioView");
     const communityView = must(root, "#communityView");
     makerView.hidden = view !== "maker";
+    studioView.hidden = view !== "studio";
     communityView.hidden = view !== "community";
     document.title = documentTitleForView(view, locale);
     syncLanguageNav(root, locale, view);
-    if (view !== "maker") {
-      closePreview();
+    if (view !== "studio") {
+      stopPlayback();
       cancelExport();
       closeExportDialog();
     }
     const firstPaint = activeView === null;
     if (activeView !== view) {
+      const enterStudio = view === "studio";
       activeView = view;
       window.scrollTo(0, 0);
-      if (!firstPaint && view === "maker") {
-        focusViewHeading("maker");
+      if (enterStudio) trackEvent(MAKE_OPEN_EVENT);
+      if (!firstPaint && (view === "maker" || view === "studio")) {
+        focusViewHeading(view);
       }
     }
     const paintGen = ++embedPaintGen;
@@ -708,6 +718,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       });
       return;
     }
+    if (view === "studio") {
+      armStudio();
+      return;
+    }
     const embed = must(root, "#reactionsEmbed");
     whenEmbedHostVisible(makerView, () => {
       if (paintGen !== embedPaintGen) return;
@@ -726,7 +740,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
-    const inPreview = previewDialog.open;
+    const inPreview = activeView === "studio";
     aspectResume = inPreview
       ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
       : null;
@@ -745,7 +759,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     video.dataset.templateSrc = TEMPLATES[mode].video;
     video.removeAttribute("src");
     video.preload = "none";
-    if (photos.length > 0 || previewDialog.open || recording) {
+    if (photos.length > 0 || activeView === "studio" || recording) {
       beginTemplateVideoLoad(video);
     }
     refreshButtons();
@@ -777,12 +791,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await ensureTimelines();
       paint();
       refreshButtons();
-      if (!recording && photos.length === 0) {
-        setStatus(msg("statusTemplateReady", { n: timeline().slots.length }));
-      }
+      if (!recording && photos.length === 0) syncSeek();
       const resume = aspectResume;
       aspectResume = null;
-      if (!resume || !previewDialog.open || recording) return;
+      if (!resume || activeView !== "studio" || recording) return;
       previewTracked = resume.tracked;
       try {
         await seekVideo(video, resume.time);
@@ -913,10 +925,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     void ingestPhotoFiles(files);
   });
 
-  playBtn.addEventListener("click", () => {
-    void openPreview();
-  });
-
   const togglePreviewPlay = () => {
     if (isPreviewPlaying() || playbackBusy) {
       pausePlayback();
@@ -925,17 +933,32 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     void startPlayback(false);
   };
 
-  previewDialog.addEventListener(
-    "click",
-    (event) => {
-      const target = event.target;
-      if (!(target instanceof Node) || !stage.contains(target)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      togglePreviewPlay();
-    },
-    true,
-  );
+  playBtn.addEventListener("click", () => {
+    togglePreviewPlay();
+  });
+
+  stage.addEventListener("click", (event) => {
+    event.preventDefault();
+    togglePreviewPlay();
+  });
+
+  const endSeek = () => {
+    seeking = false;
+    syncSeek();
+  };
+  previewSeek.addEventListener("pointerdown", () => {
+    seeking = true;
+  });
+  previewSeek.addEventListener("pointerup", endSeek);
+  previewSeek.addEventListener("pointercancel", endSeek);
+  previewSeek.addEventListener("change", endSeek);
+  previewSeek.addEventListener("input", () => {
+    seeking = true;
+    scrubTo(Number(previewSeek.value));
+  });
+  video.addEventListener("timeupdate", syncSeek);
+  video.addEventListener("durationchange", syncSeek);
+  video.addEventListener("loadedmetadata", syncSeek);
 
   restartBtn.addEventListener("click", (event) => {
     event.preventDefault();
@@ -948,10 +971,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     event.stopPropagation();
     previewMuted = !previewMuted;
     applyPreviewMute();
-  });
-
-  closePreviewBtn.addEventListener("click", () => {
-    closePreview();
   });
 
   cancelExportBtn.addEventListener("click", () => {
@@ -985,23 +1004,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     event.returnValue = "";
   });
 
-  previewDialog.addEventListener("click", (event) => {
-    if (event.target !== previewDialog) return;
-    const rect = previewDialog.getBoundingClientRect();
-    const { clientX: x, clientY: y } = event;
-    const inside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-    if (!inside) closePreview();
-  });
-
-  previewDialog.addEventListener("close", () => {
-    stopPlayback();
-    video.muted = true;
-  });
-
   const startSave = async () => {
     if (recording || sharingExport || photos.length === 0) return;
-    closePreview();
     recording = true;
+    stopPlayback();
+    video.muted = false;
     playing = false;
     previewTracked = false;
     video.pause();
@@ -1055,7 +1062,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       previewTracked = false;
       haltLoop();
       video.pause();
-      video.muted = true;
+      applyPreviewMute();
       if (!pendingExport) closeExportDialog();
       refreshButtons();
       paint();
@@ -1063,9 +1070,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   saveBtn.addEventListener("click", () => {
-    void startSave();
-  });
-  previewSaveBtn.addEventListener("click", () => {
     void startSave();
   });
 

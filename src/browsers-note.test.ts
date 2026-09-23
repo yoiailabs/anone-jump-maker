@@ -27,9 +27,11 @@ describe("verified browsers notice", () => {
     expect(noteSrc).toContain('id="browsersNote"');
     expect(noteSrc).toContain("makerBrowsersNote");
     expect(noteSrc).not.toContain("<ul");
+    const studio = makerSrc.slice(makerSrc.indexOf('id="studioView"'), makerSrc.indexOf('id="communityView"'));
+    const landing = makerSrc.slice(makerSrc.indexOf('id="makerView"'), makerSrc.indexOf('id="studioView"'));
     expect(makerSrc).not.toContain("<JaLede");
-    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf("<BrowsersNote"));
-    expect(makerSrc.indexOf("<BrowsersNote")).toBeLessThan(makerSrc.indexOf('id="toCommunity"'));
+    expect(landing).not.toContain("<BrowsersNote");
+    expect(studio.indexOf('id="picker"')).toBeLessThan(studio.indexOf("<BrowsersNote"));
     expect(makerSrc).not.toMatch(/id="browsersNote"[^>]*translate="no"|translate="no"[^>]*id="browsersNote"/);
     expect(stylesSrc).toMatch(/\.browsers-note,\s*\.make-note\s*\{[^}]*font-size:\s*0\.72rem/);
   });

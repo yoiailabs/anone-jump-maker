@@ -10,7 +10,7 @@ import {
 import { COMMUNITY_PATH } from "./page-meta.ts";
 
 /** パスで切り替える画面。プライバシーと利用規約は別 HTML で、メーカー内では表示を切り替えない。 */
-export const APP_VIEWS = ["maker", "community", "privacy", "terms"] as const;
+export const APP_VIEWS = ["maker", "studio", "community", "privacy", "terms"] as const;
 export type { AppView, AppPath, Locale };
 
 export { COMMUNITY_PATH };
@@ -53,6 +53,7 @@ export function parseAppView(input: string | Pick<Location, "pathname" | "hash">
 
 export function documentTitleForView(view: AppView, locale: Locale = DEFAULT_LOCALE): string {
   if (view === "community") return t(locale, "communityTitle");
+  if (view === "studio") return t(locale, "studioTitle");
   if (view === "privacy") return t(DEFAULT_LOCALE, "privacyTitle");
   if (view === "terms") return t(DEFAULT_LOCALE, "termsTitle");
   return t(locale, "makerTitle");

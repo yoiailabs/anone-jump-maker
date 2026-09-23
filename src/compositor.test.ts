@@ -251,7 +251,7 @@ describe("character size draw path", () => {
 
   it("exposes maker and preview radios that feed the shared compositor draw", () => {
     expect(makerSrc).toContain('name="character"');
-    expect(makerSrc).toContain('name="preview-character"');
+    expect(makerSrc).not.toContain('name="preview-character"');
     expect(makerSrc).toContain('value: "standard"');
     expect(makerSrc).toContain('value: "1.2"');
     expect(makerSrc).toContain('value: "1.4"');
@@ -260,7 +260,7 @@ describe("character size draw path", () => {
     expect(makerSrc).not.toContain("makerCharacterX13");
     expect(makerSrc).not.toContain('value: "large"');
     expect(makerSrc).not.toContain("makerCharacterNone");
-    expect(appSrc).toContain('input[name="character"], input[name="preview-character"]');
+    expect(appSrc).toContain('input[name="character"]');
     expect(appSrc).toContain("characterSize");
     expect(appSrc).toContain("applyCharacterSize");
   });

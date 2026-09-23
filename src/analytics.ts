@@ -23,6 +23,7 @@ import { MESSAGES } from "./messages.ts";
  * - generate_start … 書き出しを開始した（count）
  * - generate_fail … 書き出しが失敗した（reason。短いコードのみ）
  * - generate_cancel … 書き出しをキャンセルした
+ * - make_open … ランディングから制作画面を開いた（直リンクの初回表示も含む）
  */
 export const VIDEO_PREVIEW_EVENT = "video_preview";
 export const VIDEO_SAVE_EVENT = "video_save";
@@ -32,6 +33,7 @@ export const PHOTOS_REJECTED_EVENT = "photos_rejected";
 export const GENERATE_START_EVENT = "generate_start";
 export const GENERATE_FAIL_EVENT = "generate_fail";
 export const GENERATE_CANCEL_EVENT = "generate_cancel";
+export const MAKE_OPEN_EVENT = "make_open";
 
 export type AnalyticsEventName =
   | typeof VIDEO_PREVIEW_EVENT
@@ -41,7 +43,8 @@ export type AnalyticsEventName =
   | typeof PHOTOS_REJECTED_EVENT
   | typeof GENERATE_START_EVENT
   | typeof GENERATE_FAIL_EVENT
-  | typeof GENERATE_CANCEL_EVENT;
+  | typeof GENERATE_CANCEL_EVENT
+  | typeof MAKE_OPEN_EVENT;
 
 /** 向きとエフェクトだけ。写真名やファイルは載せない。 */
 export type AnalyticsEventParams = {

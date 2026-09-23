@@ -43,6 +43,7 @@ export function ogImageUrl(locale: Locale): string {
 
 const VIEW_COPY: Record<AppView, { title: MessageKey; description: MessageKey }> = {
   maker: { title: "makerTitle", description: "metaMakerDescription" },
+  studio: { title: "studioTitle", description: "metaMakerDescription" },
   community: { title: "communityTitle", description: "metaCommunityDescription" },
   privacy: { title: "privacyTitle", description: "metaPrivacyDescription" },
   terms: { title: "termsTitle", description: "metaTermsDescription" },

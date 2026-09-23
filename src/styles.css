@@ -739,6 +739,94 @@ html[lang="ja"] .lede {
   aspect-ratio: 16 / 9;
 }
 
+.studio-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.studio-back-wrap {
+  margin: 0;
+}
+
+.studio-title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+
+.studio-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+#studioView .stage {
+  width: min(72vw, 15rem, calc(46svh * 608 / 1080));
+  max-height: none;
+}
+
+#studioView .stage[data-aspect="landscape"] {
+  width: min(100%, calc(36svh * 16 / 9));
+  max-height: 36svh;
+}
+
+.studio-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  color: var(--ink);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.studio-empty[hidden] {
+  display: none !important;
+}
+
+.stage:has(.studio-empty:not([hidden])) .stage-play-hint {
+  display: none;
+}
+
+.preview-seek {
+  width: min(100%, 22rem);
+  height: 2.75rem;
+  margin: 0;
+  accent-color: var(--teal);
+  touch-action: pan-x;
+}
+
+#studioView .preview-actions {
+  width: min(100%, 22rem);
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.studio-tools {
+  gap: 0.95rem;
+}
+
+.studio-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.studio-options h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+}
+
 /* 内部ビットマップは PREVIEW_RESOLUTION_SCALE。表示は .stage の大きさへ拡大する。 */
 .stage-canvas {
   display: block;

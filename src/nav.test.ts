@@ -16,6 +16,8 @@ describe("app view path", () => {
   it("treats / and leftover hashes as the maker, /community as the community page", () => {
     expect(parseAppView("/")).toBe("maker");
     expect(parseAppView("/?bench=1")).toBe("maker");
+    expect(parseAppView("/make")).toBe("studio");
+    expect(parseAppView("/en/make")).toBe("studio");
     expect(parseAppView("/community")).toBe("community");
     expect(parseAppView("/community/")).toBe("community");
     expect(parseAppView("/community?from=x")).toBe("community");
@@ -40,6 +42,8 @@ describe("app view path", () => {
 
   it("writes stable paths and titles", () => {
     expect(pathForView("maker")).toBe("/");
+    expect(pathForView("studio")).toBe("/make");
+    expect(pathForView("studio", "zh")).toBe("/zh/make");
     expect(pathForView("community")).toBe("/community");
     expect(pathForView("maker", "en")).toBe("/en");
     expect(pathForView("community", "ko")).toBe("/ko/community");

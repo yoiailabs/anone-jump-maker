@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, jpegInput, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -18,13 +18,13 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
     "content",
     "https://anone.yoiailabs.com/",
   );
-  await expect(page.locator("#playBtn")).toBeDisabled();
-  await expect(page.locator("#saveBtn")).toBeDisabled();
-  await expect(page.locator("#previewSaveBtn")).toBeDisabled();
+  await expect(page.locator("#toStudio")).toBeVisible();
+  await expect(page.locator("#toStudio")).toHaveText("動画をつくる");
+  await expect(page.locator("#makerView #picker")).toHaveCount(0);
+  await expect(page.locator("#studioView")).toBeHidden();
   await expect(page.locator("#shareAppBtn")).toBeEnabled();
   await expect(page.locator("#copyHashtagsBtn")).toBeEnabled();
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
-  await expect(page.getByRole("radio", { name: "横" }).first()).toBeChecked();
   await expect(page.locator("#makerTitle")).toBeVisible();
   const heroLogo = page.locator("#makerTitle .hero-logo");
   await expect(heroLogo).toBeVisible();
@@ -44,27 +44,20 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
     "/jump-loop-still.png",
   );
   await expect(page.locator("#samplePhotosBtn")).toHaveCount(0);
-  const pickerLabel = page.locator("label.file-btn");
+  const makeCta = page.locator("#toStudio");
   const loop = page.locator("#makerView .loop-wrap");
-  await expect(pickerLabel).toBeVisible();
+  await expect(makeCta).toBeVisible();
   await expect(loop).toBeVisible();
-  await expect(pickerLabel).toHaveText("写真を選ぶ");
-  const onDevice = page.locator("#onDeviceNote");
-  await expect(onDevice).toHaveText("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
   const viewport = page.viewportSize();
-  const pickerBoxOnBoot = await pickerLabel.boundingBox();
+  const ctaBoxOnBoot = await makeCta.boundingBox();
   const loopBoxOnBoot = await loop.boundingBox();
-  const noteBoxOnBoot = await onDevice.boundingBox();
-  expect(pickerBoxOnBoot && noteBoxOnBoot && pickerBoxOnBoot.y + pickerBoxOnBoot.height <= noteBoxOnBoot.y + 1).toBe(
-    true,
-  );
   expect(
-    viewport && pickerBoxOnBoot && pickerBoxOnBoot.y >= 0 && pickerBoxOnBoot.y + pickerBoxOnBoot.height <= viewport.height,
+    viewport && ctaBoxOnBoot && ctaBoxOnBoot.y >= 0 && ctaBoxOnBoot.y + ctaBoxOnBoot.height <= viewport.height,
   ).toBe(true);
   expect(
     viewport && loopBoxOnBoot && loopBoxOnBoot.y >= 0 && loopBoxOnBoot.y + loopBoxOnBoot.height <= viewport.height,
   ).toBe(true);
-  expect(loopBoxOnBoot && pickerBoxOnBoot && loopBoxOnBoot.y + loopBoxOnBoot.height <= pickerBoxOnBoot.y + 1).toBe(true);
+  expect(loopBoxOnBoot && ctaBoxOnBoot && loopBoxOnBoot.y + loopBoxOnBoot.height <= ctaBoxOnBoot.y + 1).toBe(true);
   const html = await page.request.get("/").then((response) => response.text());
   expect(html).not.toMatch(/<script[^>]+src="https:\/\/www\.googletagmanager\.com/);
   expect(html).toContain("Zen+Maru+Gothic");
@@ -103,7 +96,7 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#thumbs img")).toHaveCount(1);
   await expect(page.locator("#playBtn")).toBeEnabled();
   await expect(page.locator("#saveBtn")).toBeEnabled();
-  await expect(page.locator("#previewSaveBtn")).toBeEnabled();
+  await expect(page.locator("#previewSeek")).toBeEnabled();
   expect(
     await page.evaluate(() =>
       performance.getEntriesByType("resource").some((entry) => /\/template\/(landscape|vertical)\.mp4/.test(entry.name)),
@@ -111,13 +104,12 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   ).toBe(true);
 
   await page.locator("#playBtn").click();
-  const dialog = page.locator("#previewDialog");
-  await expect(dialog).toBeVisible();
+  await expect(page.locator("#previewDialog")).toHaveCount(0);
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 
   await settlePreviewPlayback(page);
-  await expect(page.locator("#previewSaveBtn")).toBeVisible();
-  await expect(page.locator("#previewSaveBtn")).toHaveText("動画を保存");
+  await expect(page.locator("#saveBtn")).toBeVisible();
+  await expect(page.locator("#saveBtn")).toHaveText("動画を保存");
   await expect(page.locator("#previewSaveHint")).toHaveText("端末内で生成します。数十秒かかることがあります。");
   await expect(page.locator("#restartBtn")).toBeVisible();
   await expect(page.locator("#muteBtn")).toBeVisible();
@@ -130,27 +122,23 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await mute.click();
   await expect(mute).toContainText(/音声オフ|音声オン/);
 
-  await page.locator('#previewDialog label:has(input[name="preview-aspect"][value="portrait"])').click();
+  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
-  await page.locator('#previewDialog label:has(input[name="preview-swap"][value="zoom"])').click();
-  await page.locator('#previewDialog label:has(input[name="preview-filter"][value="blur-weak"])').click();
-  await page.locator('#previewDialog label:has(input[name="preview-character"][value="1.2"])').click();
-  await expect(page.locator('#previewDialog input[name="preview-character"][value="1.2"]')).toBeChecked();
+  await page.locator('#studioView label:has(input[name="swap"][value="zoom"])').click();
+  await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
+  await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
+  await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
 
-  await page.locator("#closePreviewBtn").click();
-  await expect(dialog).toBeHidden();
+  await page.locator("#playBtn").click();
+  await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
 });
 
 test("opens a generation modal from the preview save button", async ({ page }) => {
   await uploadPhoto(page);
-  await page.locator("#playBtn").click();
-  const preview = page.locator("#previewDialog");
-  await expect(preview).toBeVisible();
-  await expect(page.locator("#previewSaveBtn")).toBeEnabled();
+  await expect(page.locator("#saveBtn")).toBeEnabled();
 
   const exportDialog = page.locator("#exportDialog");
-  await page.locator("#previewSaveBtn").click();
-  await expect(preview).toBeHidden();
+  await page.locator("#saveBtn").click();
   try {
     await expect(exportDialog).toBeVisible({ timeout: 3_000 });
   } catch {
@@ -236,6 +224,7 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
 });
 
 test("keeps at most 32 photos and disables adding at the cap", async ({ page }) => {
+  await openStudio(page);
   const files = await Promise.all(Array.from({ length: 33 }, (_, i) => jpegInput(`p${i}.jpg`)));
   await page.locator("#picker").setInputFiles(files);
   await expect(page.locator("#status")).toContainText("32 枚を読み込みました", { timeout: 45_000 });
@@ -483,7 +472,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#makerView")).toBeVisible();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#communityJumpsTitle")).toBeHidden();
-  await expect(page.locator("#playBtn")).toBeVisible();
+  await expect(page.locator("#toStudio")).toBeVisible();
+  await expect(page.locator("#makerView #picker")).toHaveCount(0);
   await expect(page.locator("#reactionsTitle")).toBeVisible();
   await expect(page.locator("#officialMvTitle")).toHaveText("「あのね」MV");
   await expect(page.locator("#makerView .loop-link")).toHaveAttribute(
@@ -512,20 +502,21 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(makerText).not.toContain("写真を何枚か選択するだけで");
   expect(makerText).not.toContain("動画生成はすべて端末内で完結するため");
   expect(makerText).not.toContain("※ファン制作の非公式アプリです。");
-  expect(makerText).toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
+  expect(makerText).not.toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
+  await expect(page.locator("#studioView #onDeviceNote")).toHaveText(
+    "動画生成は端末内で行われ、外部に画像が送信されることはありません。",
+  );
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
   await expect(toCommunity).toHaveClass(/\bbtn\b/);
 
-  const browsersNote = page.locator("#browsersNote");
+  const browsersNote = page.locator("#studioView #browsersNote");
   await expect(browsersNote).toHaveText("動作確認済みブラウザ: Safari, Chrome");
   await expect(browsersNote).not.toContainText("サポート");
   await expect(browsersNote).not.toContainText("iOS");
-  const pickerBox = await page.locator("#picker").evaluate((el) => el.closest("label")?.getBoundingClientRect());
-  const browsersBox = await browsersNote.boundingBox();
+  await expect(page.locator("#makerView #browsersNote")).toHaveCount(0);
   const heroBox = await page.locator("#makerView .hero").boundingBox();
-  expect(heroBox && pickerBox && pickerBox.y >= heroBox.y && pickerBox.y < heroBox.y + heroBox.height).toBe(true);
-  expect(heroBox && browsersBox && heroBox.y + heroBox.height < browsersBox.y).toBe(true);
-  expect(pickerBox && browsersBox && pickerBox.y < browsersBox.y).toBe(true);
+  const ctaBox = await page.locator("#toStudio").boundingBox();
+  expect(heroBox && ctaBox && ctaBox.y >= heroBox.y && ctaBox.y < heroBox.y + heroBox.height).toBe(true);
 
   await expect(toCommunity).toHaveAttribute("href", "/community");
   await toCommunity.click();
@@ -663,7 +654,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page).not.toHaveURL(/\/community/);
   expect(new URL(page.url()).pathname).toBe("/");
   await expect(page.locator("#makerView")).toBeVisible();
-  await expect(page.locator("#playBtn")).toBeVisible();
+  await expect(page.locator("#toStudio")).toBeVisible();
+  await expect(page.locator("#playBtn")).toBeHidden();
   if ((page.viewportSize()?.width ?? 0) >= 640) {
     const makerAppWidth = await page.locator(".app").evaluate((el) => el.getBoundingClientRect().width);
     expect(makerAppWidth).toBeLessThanOrEqual(28 * 16 + 2);
@@ -848,6 +840,7 @@ test("share fallback copies hashtags instead of a URL", async ({ page, context, 
 });
 
 async function uploadPhoto(page: Page): Promise<void> {
+  await openStudio(page);
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
   await expect(page.locator("#status")).toContainText("1 枚を読み込みました", { timeout: 20_000 });
   await expect(page.locator("#playBtn")).toBeEnabled({ timeout: 20_000 });

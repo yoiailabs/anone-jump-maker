@@ -10,7 +10,7 @@ import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
-import { muteButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
+import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
   }, [locale]);
 
   const makerHidden = initialView !== "maker";
+  const studioHidden = initialView !== "studio";
   const communityHidden = initialView !== "community";
   const logoSize = makerLogoStackedSize(locale);
 
@@ -103,84 +104,15 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               />
             </div>
             <div className="make-cta">
-              <Label className="file-btn">
-                <input
-                  id="picker"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/*"
-                  multiple
-                />
-                <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
-              </Label>
-              <p className="make-note" id="onDeviceNote">
-                {t(locale, "makerOnDevice")}
-              </p>
+              <Button
+                variant="site"
+                nativeButton={false}
+                render={<a id="toStudio" className="btn" href={pathForApp(locale, "studio")} />}
+              >
+                {t(locale, "makerMakeVideo")}
+              </Button>
             </div>
-            <PhotoThumbsSlot locale={locale} />
           </header>
-
-          <section className="panel">
-            <fieldset className="aspect-field">
-              <legend>{t(locale, "makerAspectLegend")}</legend>
-              <RadioPills
-                name="aspect"
-                ariaLabel={t(locale, "makerAspectLegend")}
-                options={[
-                  { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                  { value: "portrait", label: t(locale, "makerPortrait") },
-                ]}
-              />
-            </fieldset>
-            <fieldset className="aspect-field" id="swapField">
-              <legend>{t(locale, "makerEffectLegend")}</legend>
-              <RadioPills
-                name="swap"
-                ariaLabel={t(locale, "makerEffectLegend")}
-                options={[
-                  { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
-                  { value: "zoom", label: t(locale, "makerZoom") },
-                ]}
-              />
-            </fieldset>
-            <fieldset className="aspect-field" id="filterField">
-              <legend>{t(locale, "makerFilterLegend")}</legend>
-              <RadioPills
-                name="filter"
-                ariaLabel={t(locale, "makerFilterLegend")}
-                className="aspect-toggle cols-3"
-                options={[
-                  { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                  { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
-                  { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
-                ]}
-              />
-            </fieldset>
-            <fieldset className="aspect-field" id="characterField">
-              <legend>{t(locale, "makerCharacterLegend")}</legend>
-              <RadioPills
-                name="character"
-                ariaLabel={t(locale, "makerCharacterLegend")}
-                className="aspect-toggle cols-3"
-                options={[
-                  { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                  { value: "1.2", label: t(locale, "makerCharacter12") },
-                  { value: "1.4", label: t(locale, "makerCharacter14") },
-                ]}
-              />
-            </fieldset>
-            <div className="actions">
-              <Button variant="site" type="button" id="playBtn" className="btn ghost" disabled>
-                {t(locale, "makerPreview")}
-              </Button>
-              <Button variant="site" type="button" id="saveBtn" className="btn" disabled>
-                {t(locale, "makerSave")}
-              </Button>
-            </div>
-            <p className="status notranslate" id="status" data-kind="idle" translate="no">
-              {t(locale, "makerStatusIdle")}
-            </p>
-            <BrowsersNote locale={locale} />
-          </section>
 
           <section className="maker-story">
             <p className="hero-more">
@@ -265,6 +197,160 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <LanguageNav locale={locale} view="maker" />
           </footer>
         </div>
+        <div className="app-view" id="studioView" hidden={studioHidden}>
+          <header className="studio-top">
+            <LanguageNav locale={locale} view="studio" />
+            <p className="studio-back-wrap">
+              <a id="toLanding" className="page-link" href={pathForApp(locale, "maker")}>
+                {t(locale, "studioBack")}
+              </a>
+            </p>
+            <h1 id="studioTitle" className="studio-title">
+              {t(locale, "studioTitle")}
+            </h1>
+          </header>
+          <section className="studio-stage" aria-label={t(locale, "previewTitle")}>
+            <div className="stage-wrap">
+              <button
+                type="button"
+                className="stage"
+                id="stage"
+                data-aspect={DEFAULT_ASPECT}
+                aria-pressed="false"
+                aria-label={t(locale, "previewStageAria")}
+              >
+                <span className="studio-empty" id="studioEmpty">
+                  {t(locale, "studioEmpty")}
+                </span>
+                <span className="stage-play-hint" aria-hidden="true" />
+              </button>
+            </div>
+            <input
+              id="previewSeek"
+              className="preview-seek"
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              defaultValue={0}
+              disabled
+              aria-label={t(locale, "previewSeekAria")}
+            />
+            <div className="preview-actions">
+              <Button
+                variant="site"
+                type="button"
+                id="playBtn"
+                className="btn ghost"
+                disabled
+                dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
+              />
+              <Button
+                variant="site"
+                type="button"
+                id="restartBtn"
+                className="btn ghost"
+                dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
+              />
+              <Button
+                variant="site"
+                type="button"
+                id="muteBtn"
+                className="btn ghost notranslate"
+                translate="no"
+                aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
+                dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
+              />
+            </div>
+          </section>
+          <section className="panel studio-tools">
+            <div className="make-cta">
+              <Label className="file-btn">
+                <input
+                  id="picker"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+                  multiple
+                />
+                <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
+              </Label>
+              <p className="make-note" id="onDeviceNote">
+                {t(locale, "makerOnDevice")}
+              </p>
+            </div>
+            <PhotoThumbsSlot locale={locale} />
+            <section className="studio-options" aria-labelledby="studioOptionsTitle">
+              <h2 id="studioOptionsTitle">{t(locale, "studioOptions")}</h2>
+              <fieldset className="aspect-field">
+                <legend>{t(locale, "makerAspectLegend")}</legend>
+                <RadioPills
+                  name="aspect"
+                  ariaLabel={t(locale, "makerAspectLegend")}
+                  options={[
+                    { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+                    { value: "portrait", label: t(locale, "makerPortrait") },
+                  ]}
+                />
+              </fieldset>
+              <fieldset className="aspect-field" id="swapField">
+                <legend>{t(locale, "makerEffectLegend")}</legend>
+                <RadioPills
+                  name="swap"
+                  ariaLabel={t(locale, "makerEffectLegend")}
+                  options={[
+                    { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
+                    { value: "zoom", label: t(locale, "makerZoom") },
+                  ]}
+                />
+              </fieldset>
+              <fieldset className="aspect-field" id="filterField">
+                <legend>{t(locale, "makerFilterLegend")}</legend>
+                <RadioPills
+                  name="filter"
+                  ariaLabel={t(locale, "makerFilterLegend")}
+                  className="aspect-toggle cols-3"
+                  options={[
+                    { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+                    { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
+                    { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
+                  ]}
+                />
+              </fieldset>
+              <fieldset className="aspect-field" id="characterField">
+                <legend>{t(locale, "makerCharacterLegend")}</legend>
+                <RadioPills
+                  name="character"
+                  ariaLabel={t(locale, "makerCharacterLegend")}
+                  className="aspect-toggle cols-3"
+                  options={[
+                    { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+                    { value: "1.2", label: t(locale, "makerCharacter12") },
+                    { value: "1.4", label: t(locale, "makerCharacter14") },
+                  ]}
+                />
+              </fieldset>
+            </section>
+            <div className="preview-save">
+              <Button
+                variant="site"
+                type="button"
+                id="saveBtn"
+                className="btn preview-save-btn"
+                disabled
+                aria-describedby="previewSaveHint"
+              >
+                {t(locale, "makerSave")}
+              </Button>
+              <p className="preview-save-hint" id="previewSaveHint">
+                {t(locale, "previewSaveHint")}
+              </p>
+            </div>
+            <p className="status notranslate" id="status" data-kind="idle" translate="no">
+              {t(locale, "makerStatusIdle")}
+            </p>
+            <BrowsersNote locale={locale} />
+          </section>
+        </div>
         <div
           className="app-view"
           id="communityView"
@@ -273,119 +359,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         />
         <SiteFooter locale={locale} />
       </div>
-      <dialog className="preview-dialog" id="previewDialog" aria-labelledby="previewTitle">
-        <div className="preview-sheet">
-          <header className="preview-head">
-            <h2 id="previewTitle">{t(locale, "previewTitle")}</h2>
-            <Button
-              variant="site"
-              type="button"
-              id="closePreviewBtn"
-              className="preview-close"
-              aria-label={t(locale, "previewClose")}
-            >
-              ×
-            </Button>
-          </header>
-          <div className="preview-options">
-            <fieldset className="aspect-field preview-field">
-              <legend>{t(locale, "previewOrientation")}</legend>
-              <RadioPills
-                name="preview-aspect"
-                ariaLabel={t(locale, "previewOrientationAria")}
-                className="aspect-toggle preview-toggle"
-                options={[
-                  { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                  { value: "portrait", label: t(locale, "makerPortrait") },
-                ]}
-              />
-            </fieldset>
-            <fieldset className="aspect-field preview-field">
-              <legend>{t(locale, "makerEffectLegend")}</legend>
-              <RadioPills
-                name="preview-swap"
-                ariaLabel={t(locale, "previewEffectAria")}
-                className="aspect-toggle preview-toggle"
-                options={[
-                  { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
-                  { value: "zoom", label: t(locale, "makerZoom") },
-                ]}
-              />
-            </fieldset>
-            <fieldset className="aspect-field preview-field preview-field-span">
-              <legend>{t(locale, "makerFilterLegend")}</legend>
-              <RadioPills
-                name="preview-filter"
-                ariaLabel={t(locale, "previewFilterAria")}
-                className="aspect-toggle preview-toggle cols-3"
-                options={[
-                  { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                  { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
-                  { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
-                ]}
-              />
-            </fieldset>
-            <fieldset className="aspect-field preview-field preview-field-span">
-              <legend>{t(locale, "makerCharacterLegend")}</legend>
-              <RadioPills
-                name="preview-character"
-                ariaLabel={t(locale, "previewCharacterAria")}
-                className="aspect-toggle preview-toggle cols-3"
-                options={[
-                  { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                  { value: "1.2", label: t(locale, "makerCharacter12") },
-                  { value: "1.4", label: t(locale, "makerCharacter14") },
-                ]}
-              />
-            </fieldset>
-          </div>
-          <div className="stage-wrap">
-            <button
-              type="button"
-              className="stage"
-              id="stage"
-              data-aspect={DEFAULT_ASPECT}
-              aria-pressed="false"
-              aria-label={t(locale, "previewStageAria")}
-            >
-              <span className="stage-play-hint" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="preview-actions">
-            <Button
-              variant="site"
-              type="button"
-              id="restartBtn"
-              className="btn ghost"
-              dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
-            />
-            <Button
-              variant="site"
-              type="button"
-              id="muteBtn"
-              className="btn ghost notranslate"
-              translate="no"
-              aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
-              dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
-            />
-          </div>
-          <div className="preview-save">
-            <Button
-              variant="site"
-              type="button"
-              id="previewSaveBtn"
-              className="btn preview-save-btn"
-              disabled
-              aria-describedby="previewSaveHint"
-            >
-              {t(locale, "makerSave")}
-            </Button>
-            <p className="preview-save-hint" id="previewSaveHint">
-              {t(locale, "previewSaveHint")}
-            </p>
-          </div>
-        </div>
-      </dialog>
       <dialog
         className="preview-dialog export-dialog"
         id="exportDialog"

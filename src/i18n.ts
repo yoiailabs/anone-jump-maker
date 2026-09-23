@@ -24,7 +24,7 @@ export {
 export const LOCALE_COOKIE = "anone-locale";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export type AppView = "maker" | "community" | "privacy" | "terms";
+export type AppView = "maker" | "studio" | "community" | "privacy" | "terms";
 
 export type AppPath = {
   locale: Locale;
@@ -48,6 +48,7 @@ export function normalizePathname(pathname: string): string {
 
 const UNPREFIXED_VIEWS: Record<string, AppView> = {
   "/": "maker",
+  "/make": "studio",
   "/community": "community",
   "/privacy": "privacy",
   "/terms": "terms",
@@ -63,6 +64,9 @@ export function parseAppPath(pathname: string): AppPath | null {
   if (!isLocale(first)) return null;
   if (parts.length === 1) return { locale: first, view: "maker", prefixed: true };
   const segment = parts[1];
+  if (parts.length === 2 && segment === "make") {
+    return { locale: first, view: "studio", prefixed: true };
+  }
   if (parts.length === 2 && (segment === "community" || segment === "privacy" || segment === "terms")) {
     return { locale: first, view: segment, prefixed: true };
   }
@@ -78,6 +82,7 @@ export function pathForApp(locale: Locale, view: AppView): string {
   if (isJapaneseOnlyView(view)) return `/${view}`;
   const prefix = locale === DEFAULT_LOCALE ? "" : `/${locale}`;
   if (view === "maker") return prefix || "/";
+  if (view === "studio") return `${prefix}/make`;
   return `${prefix}/${view}`;
 }
 
