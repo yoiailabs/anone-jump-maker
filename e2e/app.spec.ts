@@ -580,10 +580,19 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(makerText).toContain("※ファン制作の非公式サイトです");
   expect(makerText).not.toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
   expect(makerText).not.toContain("ダウンロードを押すと共有シートが開きます");
+  const hashBox = await page.locator("#landingHashtags").boundingBox();
   const fanBox = await page.locator("#fanNote").boundingBox();
   const linksTitleBox = await page.locator("#linksTitle").boundingBox();
+  expect(hashBox && fanBox && fanBox.y > hashBox.y + hashBox.height - 1).toBe(true);
+  expect(hashBox && fanBox && fanBox.y - (hashBox.y + hashBox.height) < 20).toBe(true);
   expect(fanBox && linksTitleBox && fanBox.y < linksTitleBox.y).toBe(true);
   await expect(page.locator("#fanNote")).toHaveText("※ファン制作の非公式サイトです");
+  const fanStyle = await page.locator("#fanNote").evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { align: style.textAlign, size: Number.parseFloat(style.fontSize) };
+  });
+  expect(fanStyle.align).toBe("center");
+  expect(fanStyle.size).toBeGreaterThan(12);
   await expect(page.locator("#studioView #onDeviceNote")).toHaveText(
     "端末上で動画を生成します。数十秒かかることがあります。",
   );

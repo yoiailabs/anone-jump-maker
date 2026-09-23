@@ -49,7 +49,9 @@ describe("official Anone MV embed", () => {
       /className="link-banners"[^/]*\/>\s*<OfficialMvEmbed\b/,
     );
     expect(makerSrc).toMatch(/<OfficialMvEmbed\b[^/]*\/>\s*<\/nav>/);
-    expect(makerSrc).toMatch(/<\/nav>\s*<\/div>\s*<section className="reactions"/);
+    expect(makerSrc).toMatch(/<\/nav>\s*<section className="reactions"/);
+    expect(makerSrc.indexOf('id="landingHashtags"')).toBeLessThan(makerSrc.indexOf('id="fanNote"'));
+    expect(makerSrc.indexOf('id="fanNote"')).toBeLessThan(makerSrc.indexOf('id="linksTitle"'));
     expect(makerSrc).toMatch(/id="fanNote"/);
     expect(OFFICIAL_LINKS.map((link) => link.id)).toEqual([
       "x",
