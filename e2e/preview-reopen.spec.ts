@@ -26,11 +26,12 @@ test("reopens preview immediately after close during playback start", async ({ p
   await openStudio(page);
 
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
-  await expect(page.locator("#status")).toContainText("1 枚を読み込みました", { timeout: 20_000 });
-  await expect(page.locator("#playBtn")).toBeEnabled({ timeout: 20_000 });
+  await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.locator("#restartBtn")).toBeEnabled({ timeout: 20_000 });
 
-  const playBtn = page.locator("#playBtn");
-  await playBtn.click();
+  const stage = page.locator("#stage");
+  await stage.click();
+  await stage.click();
   await expect
     .poll(() =>
       page.evaluate(
@@ -39,10 +40,10 @@ test("reopens preview immediately after close during playback start", async ({ p
     )
     .toBeGreaterThan(0);
 
-  await playBtn.click();
+  await stage.click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
 
-  await playBtn.click();
+  await stage.click();
 
   await page.evaluate(() => {
     const release = (window as Window & { __releaseHeldMediaPlay?: () => void }).__releaseHeldMediaPlay;

@@ -21,11 +21,12 @@ import {
 
 describe("formatPreviewClock", () => {
   it("shows the current second, and the duration when the clip length is known", () => {
-    expect(formatPreviewClock(0, 0)).toBe("0.0");
-    expect(formatPreviewClock(Number.NaN, Number.NaN)).toBe("0.0");
-    expect(formatPreviewClock(1.26, 8)).toBe("1.3 / 8.0");
-    expect(formatPreviewClock(-1, 4)).toBe("0.0 / 4.0");
-    expect(formatPreviewClock(9, 4)).toBe("4.0 / 4.0");
+    expect(formatPreviewClock(0, 0)).toBe("0:00");
+    expect(formatPreviewClock(Number.NaN, Number.NaN)).toBe("0:00");
+    expect(formatPreviewClock(1.26, 8)).toBe("0:01 / 0:08");
+    expect(formatPreviewClock(65.9, 90)).toBe("1:05 / 1:30");
+    expect(formatPreviewClock(-1, 4)).toBe("0:00 / 0:04");
+    expect(formatPreviewClock(9, 4)).toBe("0:04 / 0:04");
   });
 });
 
@@ -57,8 +58,10 @@ describe("preview control markup", () => {
     expect(playPauseButtonHtml(false)).toContain('translate="no"');
     expect(playPauseButtonHtml(false)).not.toBe(playPauseButtonHtml(true));
     expect(restartButtonHtml()).toContain("<svg");
-    expect(restartButtonHtml()).toContain("M21 3v5h-5");
-    expect(restartButtonHtml()).not.toContain("M7 6.4v11.2");
+    expect(restartButtonHtml()).toContain("M19 20 9 12 19 4");
+    expect(restartButtonHtml()).toContain("M5 5v14");
+    expect(restartButtonHtml()).not.toContain("M21 3v5h-5");
+    expect(restartButtonHtml()).not.toContain("M3 12a9");
     expect(restartButtonHtml()).toContain("最初から");
     expect(restartButtonHtml()).not.toContain("最初から再生");
     expect(muteButtonHtml(false)).toContain('data-preview-icon="sound-on"');

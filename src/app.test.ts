@@ -61,15 +61,35 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('role="tab"');
     expect(makerSrc).toContain('id={`${id}Tab`}');
     expect(makerSrc).not.toContain("popoverTarget");
+    expect(makerSrc.indexOf('id="onDeviceNote"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
     expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf('id="stage"'));
     expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('name="aspect"'));
     expect(appSrc).toContain("formatPreviewClock");
     expect(makerSrc).toContain('id="restartBtn"');
     expect(makerSrc).toContain('id="muteBtn"');
+    expect(makerSrc).not.toContain('id="playBtn"');
     expect(makerSrc).not.toContain('id="modalPlayBtn"');
     expect(makerSrc).not.toContain('id="previewState"');
     expect(makerSrc).not.toContain('id="slotMeter"');
-    expect(makerSrc.indexOf('id="playBtn"')).toBeLessThan(makerSrc.indexOf('id="previewSeek"'));
+    expect(makerSrc).not.toContain("makerStatusIdle");
+    expect(makerSrc).toContain('id="photoFeedback"');
+    expect(makerSrc).toContain('id="previewFeedback"');
+    expect(makerSrc).toContain('id="saveFeedback"');
+    expect(makerSrc).toContain('id="shareFeedback"');
+    expect(makerSrc).toContain('useState<OptionTab>("swap")');
+    expect(makerSrc.indexOf('["swap", "studioTabEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioTabFilter"'));
+    expect(makerSrc.indexOf('["filter", "studioTabFilter"')).toBeLessThan(
+      makerSrc.indexOf('["character", "studioTabCharacter"'),
+    );
+    expect(makerSrc.indexOf('["character", "studioTabCharacter"')).toBeLessThan(
+      makerSrc.indexOf('["aspect", "studioTabAspect"'),
+    );
+    expect(appSrc).not.toContain('msg("statusPaused")');
+    expect(appSrc).not.toContain('msg("statusPreviewing")');
+    expect(appSrc).not.toContain('msg("statusPreviewEnded")');
+    expect(appSrc).not.toContain('msg("statusPhotoRemoved"');
+    expect(appSrc).not.toContain('msg("statusPhotosCleared"');
+    expect(appSrc).not.toContain('msg("statusPhotosLoaded"');
     expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('id="previewTime"'));
     expect(makerSrc.indexOf('id="previewTime"')).toBeLessThan(makerSrc.indexOf('id="restartBtn"'));
     expect(makerSrc.indexOf('id="stage"')).toBeLessThan(makerSrc.indexOf('id="restartBtn"'));
@@ -81,7 +101,7 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain("<BrowsersNote");
     expect(makerSrc).not.toContain('id="browsersNote"');
     expect(makerSrc).not.toContain("previewStageAria");
-    expect(appSrc).not.toContain("stage.addEventListener");
+    expect(appSrc).toContain('stage.addEventListener("click"');
     expect(makerSrc).toContain('<button type="button" className="studio-empty" id="studioEmpty"');
     expect(appSrc).toContain('studioEmpty.addEventListener("click"');
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");

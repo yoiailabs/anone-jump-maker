@@ -9,8 +9,9 @@ import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
-import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
+import { muteButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
+import { getFeedback, subscribeFeedback, type FeedbackPlace } from "../feedback-store.ts";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -41,17 +42,17 @@ type MakerAppProps = {
 };
 
 const OPTION_TABS = [
-  ["aspect", "studioTabAspect", "makerAspectLegend"],
   ["swap", "studioTabEffect", "makerEffectLegend"],
   ["filter", "studioTabFilter", "makerFilterLegend"],
   ["character", "studioTabCharacter", "makerCharacterLegend"],
+  ["aspect", "studioTabAspect", "makerAspectLegend"],
 ] as const;
 
 type OptionTab = (typeof OPTION_TABS)[number][0];
 
 export default function MakerApp({ initialView, locale, communityHtml = "" }: MakerAppProps) {
   const started = useRef(false);
-  const [optionTab, setOptionTab] = useState<OptionTab>("aspect");
+  const [optionTab, setOptionTab] = useState<OptionTab>("swap");
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
@@ -183,6 +184,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 {SHARE_TEXT}
               </p>
             </div>
+            <LiveFeedback id="shareFeedback" place="share" />
           </div>
 
           <footer className="notes">
@@ -220,6 +222,9 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           </header>
           <div className="studio-photos">
             <div className="make-cta">
+              <p className="make-note" id="onDeviceNote">
+                {t(locale, "makerOnDevice")}
+              </p>
               <Label className="file-btn">
                 <input
                   id="picker"
@@ -229,9 +234,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 />
                 <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
               </Label>
-              <p className="make-note" id="onDeviceNote">
-                {t(locale, "makerOnDevice")}
-              </p>
+              <LiveFeedback id="photoFeedback" place="photo" />
             </div>
             <PhotoThumbsSlot locale={locale} />
           </div>
@@ -241,52 +244,43 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 <button type="button" className="studio-empty" id="studioEmpty">
                   {t(locale, "studioEmpty")}
                 </button>
+                <div className="preview-transport" id="previewTransport">
+                  <input
+                    id="previewSeek"
+                    className="preview-seek"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    defaultValue={0}
+                    disabled
+                    aria-label={t(locale, "previewSeekAria")}
+                  />
+                  <span className="preview-time" id="previewTime" aria-hidden="true">
+                    0:00
+                  </span>
+                  <div className="preview-actions">
+                      <Button
+                        variant="site"
+                        type="button"
+                        id="restartBtn"
+                        className="btn ghost"
+                        dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
+                      />
+                      <Button
+                        variant="site"
+                        type="button"
+                        id="muteBtn"
+                        className="btn ghost notranslate"
+                        translate="no"
+                        aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
+                        dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
+                      />
+                    </div>
+                </div>
               </div>
             </div>
-            <div className="preview-transport">
-              <div className="preview-actions">
-                <Button
-                  variant="site"
-                  type="button"
-                  id="playBtn"
-                  className="btn ghost"
-                  disabled
-                  dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
-                />
-              </div>
-              <input
-                id="previewSeek"
-                className="preview-seek"
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                defaultValue={0}
-                disabled
-                aria-label={t(locale, "previewSeekAria")}
-              />
-              <span className="preview-time" id="previewTime" aria-hidden="true">
-                0.0
-              </span>
-              <div className="preview-actions">
-                <Button
-                  variant="site"
-                  type="button"
-                  id="restartBtn"
-                  className="btn ghost"
-                  dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
-                />
-                <Button
-                  variant="site"
-                  type="button"
-                  id="muteBtn"
-                  className="btn ghost notranslate"
-                  translate="no"
-                  aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
-                  dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
-                />
-              </div>
-            </div>
+            <LiveFeedback id="previewFeedback" place="preview" />
             <section className="studio-options" aria-labelledby="studioOptionsTitle">
               <h2 id="studioOptionsTitle" className="studio-options-heading">
                 {t(locale, "studioOptions")}
@@ -409,9 +403,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 {t(locale, "previewSaveHint")}
               </p>
             </div>
-            <p className="status notranslate" id="status" data-kind="idle" translate="no">
-              {t(locale, "makerStatusIdle")}
-            </p>
+            <LiveFeedback id="saveFeedback" place="save" />
           </section>
         </div>
         <div
@@ -466,6 +458,26 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
       </dialog>
     </>
+  );
+}
+
+function LiveFeedback({ id, place }: { id: string; place: FeedbackPlace }) {
+  const snap = useSyncExternalStore(
+    subscribeFeedback,
+    () => getFeedback(place),
+    () => getFeedback(place),
+  );
+  return (
+    <p
+      className="status feedback notranslate"
+      id={id}
+      data-kind={snap.kind}
+      translate="no"
+      aria-live="polite"
+      hidden={snap.text.length === 0}
+    >
+      {snap.text}
+    </p>
   );
 }
 

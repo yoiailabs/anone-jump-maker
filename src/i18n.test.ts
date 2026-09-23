@@ -158,6 +158,8 @@ describe("messages", () => {
     expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
     expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");
     expect(t("ja", "statusPhotoRemoved", { n: 2 })).toBe("写真を外しました（残り 2 枚）");
+    expect(t("ja", "makerThumbsHint")).toBe("長押しして画像の順序を変更できます。");
+    expect(t("en", "makerThumbsHint")).toBe("Press and hold to reorder.");
     expect(t("ja", "statusShared")).toBe("ハッシュタグを共有先に渡しました");
     expect(t("en", "statusShared")).toBe("Sent the hashtags to the share target");
     expect(t("ja", "statusShareUnsupported", { text: "#あのねジャンプ #あのねジャンプメーカー" })).toBe(

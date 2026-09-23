@@ -50,12 +50,13 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
   await expect
     .poll(async () => {
       await page.locator("#copyHashtagsBtn").click();
-      return (await page.locator("#status").textContent()) ?? "";
+      return (await page.locator("#shareFeedback").textContent()) ?? "";
     })
     .toMatch(/コピーしました|コピーできません/);
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
 
   await openStudio(page);
+  await page.locator("#aspectTab").click();
   await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
 
@@ -63,6 +64,6 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
   await waitForAppReady(page);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
   await expect(page.locator('#studioView input[name="aspect"][value="portrait"]')).toBeChecked();
-  await expect(page.locator("#playBtn")).toBeEnabled();
-  await expect(page.locator("#status")).toContainText("1 枚を読み込みました");
+  await expect(page.locator("#restartBtn")).toBeEnabled();
+  await expect(page.locator("#photoFeedback")).toHaveText("");
 });

@@ -61,7 +61,6 @@ import {
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
   syncMuteControl,
-  syncPlayPauseControl,
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
@@ -74,6 +73,7 @@ import {
   shareVideoFile,
   videoFileForShare,
 } from "./share.ts";
+import { setFeedbackState, type FeedbackPlace } from "./feedback-store.ts";
 import { isolateVolatileChrome, setTextIfChanged } from "./translate-guard.ts";
 import type { CutTimeline } from "./timeline.ts";
 
@@ -122,6 +122,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let compositor: Compositor | null = null;
   let compositorPromise: Promise<Compositor> | null = null;
   let photos: LoadedPhoto[] = [];
+  let chromeOpen = false;
+  let chromeTimer = 0;
   let photosBusy = false;
   let playing = false;
   let recording = false;
@@ -137,9 +139,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   const stage = must(root, "#stage");
+  const previewTransport = must(root, "#previewTransport");
   const pickerLabel = must(root, "#pickerLabel");
-  const statusEl = must(root, "#status");
-  const playBtn = must(root, "#playBtn") as HTMLButtonElement;
+  const photoFeedback = must(root, "#photoFeedback");
+  const previewFeedback = must(root, "#previewFeedback");
+  const saveFeedback = must(root, "#saveFeedback");
+  const shareFeedback = must(root, "#shareFeedback");
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
@@ -163,7 +168,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   benchFlag.id = "benchFlag";
   benchFlag.hidden = !benchFlags.bench;
   benchFlag.style.cssText = "margin:0.4rem 0 0;font-size:0.78rem;color:#5c5146";
-  muteBtn.closest(".preview-transport")?.after(benchFlag);
+  stage.closest(".studio-stage")?.after(benchFlag);
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
   const filterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="filter"]')];
@@ -209,7 +214,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     return compositorPromise;
   };
 
-  isolateVolatileChrome(statusEl);
+  isolateVolatileChrome(photoFeedback);
+  isolateVolatileChrome(previewFeedback);
+  isolateVolatileChrome(saveFeedback);
+  isolateVolatileChrome(shareFeedback);
   isolateVolatileChrome(benchFlag);
   isolateVolatileChrome(exportStatus);
   isolateVolatileChrome(exportProgressLabel);
@@ -219,14 +227,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     return timelines[mode];
   };
 
-  const setStatus = (text: string, kind: StatusKind = "idle") => {
-    setTextIfChanged(statusEl, text);
-    statusEl.dataset.kind = kind;
+  const setFeedback = (place: FeedbackPlace, text: string, kind: StatusKind = "idle") => {
+    setFeedbackState(place, { text, kind });
   };
 
-  const setErrorStatus = (error: unknown, fallback: Parameters<typeof t>[1]) => {
+  const clearFeedback = (place: FeedbackPlace) => {
+    setFeedback(place, "");
+  };
+
+  const setErrorFeedback = (place: FeedbackPlace, error: unknown, fallback: Parameters<typeof t>[1]) => {
     reportError(error);
-    setStatus(messageFromError(locale, error, fallback), "error");
+    setFeedback(place, messageFromError(locale, error, fallback), "error");
   };
 
   const syncAspectRadios = (value: AspectMode) => {
@@ -274,21 +285,43 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     studioEmpty.hidden = photos.length > 0;
     studioEmpty.disabled = picker.disabled;
     syncPickerLabel();
+    if (photos.length === 0) {
+      chromeOpen = false;
+      window.clearTimeout(chromeTimer);
+      chromeTimer = 0;
+      stage.removeAttribute("data-chrome");
+    }
   };
 
   const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 
   const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
 
+  const armChromeTimer = () => {
+    window.clearTimeout(chromeTimer);
+    chromeTimer = 0;
+    if (!chromeOpen || !isPreviewPlaying()) return;
+    chromeTimer = window.setTimeout(() => {
+      if (!chromeOpen || !isPreviewPlaying()) return;
+      chromeOpen = false;
+      stage.removeAttribute("data-chrome");
+    }, 4000);
+  };
+
+  const setChromeOpen = (open: boolean) => {
+    chromeOpen = open && photos.length > 0;
+    if (chromeOpen) stage.setAttribute("data-chrome", "open");
+    else stage.removeAttribute("data-chrome");
+    armChromeTimer();
+  };
+
   const refreshButtons = () => {
     const ready = canUse();
     const locked = photosLocked();
-    playBtn.disabled = recording || !ready;
     const saveDisabled = recording || sharingExport || !ready;
     saveBtn.disabled = saveDisabled;
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
-    syncPlayPauseControl(playBtn, isPreviewPlaying(), locale);
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
@@ -305,6 +338,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     for (const input of characterInputs) {
       input.disabled = recording;
     }
+    armChromeTimer();
   };
 
   const paintSamples: number[] = [];
@@ -339,11 +373,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     renderThumbs();
     paint();
     refreshButtons();
-    if (photos.length === 0) {
-      setStatus(msg("statusPhotosCleared"));
-      return;
-    }
-    setStatus(msg("statusPhotoRemoved", { n: photos.length }));
+    clearFeedback("photo");
   };
 
   setPhotoThumbsHandlers({
@@ -441,7 +471,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     video.pause();
     paint();
     refreshButtons();
-    setStatus(msg("statusPaused"));
   };
 
   const startPlayback = async (fromStart: boolean) => {
@@ -466,8 +495,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       }
       if (gen !== playGen) return;
       playing = true;
+      clearFeedback("preview");
       refreshButtons();
-      setStatus(msg("statusPreviewing"));
       await startLoop();
       if (gen !== playGen) return;
       await video.play();
@@ -482,7 +511,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       previewTracked = false;
       haltLoop();
       refreshButtons();
-      setErrorStatus(error, "statusPlayFailed");
+      setErrorFeedback("preview", error, "statusPlayFailed");
     } finally {
       if (gen === playGen) playbackBusy = false;
     }
@@ -518,7 +547,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     exportProgress.value = value;
     setTextIfChanged(exportProgressLabel, msg("exportPercent", { percent: value }));
     setTextIfChanged(exportStatus, statusText);
-    setStatus(statusText, "busy");
   };
 
   const fileShareAvailable = () => {
@@ -549,6 +577,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const openExportDialog = () => {
+    clearFeedback("save");
     pendingExport = null;
     cancelExportBtn.disabled = false;
     setExportPhase("busy");
@@ -583,13 +612,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const markExportSaved = (extension: string) => {
     const text = savedStatus(extension);
     setExportProgress(100, text);
-    setStatus(text);
   };
 
   const showExportReady = () => {
     const text = msg("statusExportReadyDownload");
     setExportProgress(100, text);
-    setStatus(text);
     setExportPhase("done");
   };
 
@@ -611,7 +638,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     downloadExportBtn.disabled = true;
     try {
       setExportProgress(100, msg("statusExportSharing"));
-      setStatus(msg("statusExportSharing"), "busy");
       const outcome = await shareVideoFile({
         blob: pending.blob,
         filename: pending.filename,
@@ -622,13 +648,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         if (pendingExport === pending) {
           const text = msg("statusExportShareCancelled");
           setExportProgress(100, text);
-          setStatus(text);
         }
         return;
       }
       if (outcome === "shared") {
         if (pendingExport === pending) markExportSaved(pending.extension);
-        else setStatus(savedStatus(pending.extension));
+        else setFeedback("save", savedStatus(pending.extension));
         trackExportSaved();
         return;
       }
@@ -650,7 +675,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         syncSeek();
       })
       .catch((error: unknown) => {
-        setErrorStatus(error, "statusPreviewOpenFailed");
+        setErrorFeedback("preview", error, "statusPreviewOpenFailed");
       });
   };
 
@@ -815,7 +840,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       } catch (error) {
         paint();
         refreshButtons();
-        setErrorStatus(error, "statusPreviewResumeFailed");
+        setErrorFeedback("preview", error, "statusPreviewResumeFailed");
       }
     })();
   });
@@ -823,13 +848,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (!recording) {
       stopPlayback();
       paint();
-      setStatus(msg("statusPreviewEnded"));
     }
   });
   video.addEventListener("error", () => {
     if (recording) return;
     const code = video.error?.code;
-    setErrorStatus(
+    setErrorFeedback(
+      "preview",
       new Error(code != null ? msg("statusTemplateLoadFailedCode", { code }) : msg("statusTemplateLoadFailed")),
       "statusTemplateLoadFailed",
     );
@@ -874,25 +899,24 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const capped = takeUpToPhotoCap(photos.length, incoming);
     if (capped.length === 0) {
       rejectPhotos("at_cap");
-      setStatus(msg("makerPhotosAtCap", { n: PHOTO_MAX_COUNT }), "error");
+      setFeedback("photo", msg("makerPhotosAtCap", { n: PHOTO_MAX_COUNT }), "error");
       return;
     }
     const imageFiles = selectImageFiles(capped);
     if (imageFiles.length === 0) {
       rejectPhotos("not_image");
-      setStatus(msg("statusPickImages"), "error");
+      setFeedback("photo", msg("statusPickImages"), "error");
       return;
     }
     beginTemplateVideoLoad(video);
-    const hadPhotos = photos.length > 0;
     photosBusy = true;
     refreshButtons();
-    setStatus(msg("statusPhotosLoading"), "busy");
+    setFeedback("photo", msg("statusPhotosLoading"), "busy");
     try {
       const compositorReady = ensureCompositor();
       const added = await loadPhotos(imageFiles, {
         onProgress: (current, total) => {
-          setStatus(msg("statusPhotosLoadingProgress", { current, total }), "busy");
+          setFeedback("photo", msg("statusPhotosLoadingProgress", { current, total }), "busy");
         },
       });
       photos = appendAll(photos, added);
@@ -902,20 +926,16 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       paint();
       if (added.length === 0) {
         rejectPhotos("decode");
-        setStatus(msg("statusPickImages"), "error");
+        setFeedback("photo", msg("statusPickImages"), "error");
         return;
       }
       trackEvent(PHOTOS_SELECTED_EVENT, { count: added.length });
-      setStatus(
-        hadPhotos
-          ? msg("statusPhotosAdded", { n: added.length, total: photos.length })
-          : msg("statusPhotosLoaded", { n: photos.length }),
-      );
+      clearFeedback("photo");
     } catch (error) {
       renderThumbs();
       paint();
       rejectPhotos(error instanceof Error && error.message === HEIC_UNSUPPORTED_MESSAGE ? "heic" : "decode");
-      setErrorStatus(error, "statusLoadFailed");
+      setErrorFeedback("photo", error, "statusLoadFailed");
     } finally {
       photosBusy = false;
       refreshButtons();
@@ -946,7 +966,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     void startPlayback(false);
   };
 
-  playBtn.addEventListener("click", () => {
+  stage.addEventListener("click", (event) => {
+    if (!studioEmpty.hidden || photos.length === 0) return;
+    const target = event.target;
+    if (target instanceof Node && previewTransport.contains(target)) return;
+    if (!chromeOpen) {
+      setChromeOpen(true);
+      return;
+    }
     togglePreviewPlay();
   });
 
@@ -1058,10 +1085,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
         trackEvent(GENERATE_CANCEL_EVENT);
-        setStatus(msg("statusExportCancelled"));
+        setFeedback("save", msg("statusExportCancelled"));
       } else {
         trackEvent(GENERATE_FAIL_EVENT, { reason: generateFailReason(error) });
-        setErrorStatus(error, "statusSaveFailed");
+        setErrorFeedback("save", error, "statusSaveFailed");
       }
     } finally {
       exportAbort = null;
@@ -1088,9 +1115,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       typeof navigator === "undefined" ? undefined : navigator.clipboard,
     );
     if (copied) {
-      setStatus(msg("statusHashtagsCopied"));
+      setFeedback("share", msg("statusHashtagsCopied"));
     } else {
-      setStatus(msg("statusCopyUnsupported", { text: SHARE_TEXT }), "error");
+      setFeedback("share", msg("statusCopyUnsupported", { text: SHARE_TEXT }), "error");
     }
   });
 
@@ -1104,13 +1131,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         ),
     });
     if (outcome === "shared") {
-      setStatus(msg("statusShared"));
+      setFeedback("share", msg("statusShared"));
     } else if (outcome === "copied") {
-      setStatus(msg("statusHashtagsCopied"));
+      setFeedback("share", msg("statusHashtagsCopied"));
     } else if (outcome === "cancelled") {
-      setStatus(msg("statusShareCancelled"));
+      setFeedback("share", msg("statusShareCancelled"));
     } else {
-      setStatus(msg("statusShareUnsupported", { text: SHARE_TEXT }), "error");
+      setFeedback("share", msg("statusShareUnsupported", { text: SHARE_TEXT }), "error");
     }
   });
 

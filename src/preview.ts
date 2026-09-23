@@ -14,9 +14,9 @@ const ICON_PLAY =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 6.2 18.2 12 8 17.8Z" fill="currentColor"/></svg>';
 const ICON_PAUSE =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 6.2h2.7v11.6H8Zm5.3 0H16v11.6h-2.7Z" fill="currentColor"/></svg>';
-/** Lucide RefreshCw。最初から再生の回る矢印。 */
+/** Lucide SkipBack。最初へ戻す（縦棒＋左向き三角）。 */
 const ICON_RESTART =
-  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 20 9 12 19 4Z" fill="currentColor"/><path d="M5 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 const ICON_SOUND_ON =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.8 9.2h3.1L12.4 6v12l-4.5-3.2H4.8Z" fill="currentColor"/><path d="M15.4 9.1a3.5 3.5 0 0 1 0 5.8M17.7 6.8a6.2 6.2 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const ICON_SOUND_OFF =
@@ -30,17 +30,20 @@ export function previewSoundLabel(muted: boolean, locale: Locale = DEFAULT_LOCAL
   return t(locale, muted ? "previewSoundOff" : "previewSoundOn");
 }
 
-function formatPreviewSeconds(value: number): string {
-  if (!Number.isFinite(value) || value < 0) return "0.0";
-  return value.toFixed(1);
+function formatClockPart(value: number): string {
+  const whole = Math.floor(Math.max(0, Number.isFinite(value) ? value : 0));
+  const minutes = Math.floor(whole / 60);
+  const seconds = whole % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-/** シーク横の秒表示。長さが分かるときは「現在 / 全体」。 */
+/** シーク横の時間。小数は出さず、長さが分かるときは「現在 / 全体」。 */
 export function formatPreviewClock(time: number, duration: number): string {
   const hasDuration = Number.isFinite(duration) && duration > 0;
-  const current = formatPreviewSeconds(hasDuration ? Math.min(duration, Math.max(0, time)) : time);
+  const clamped = hasDuration ? Math.min(duration, Math.max(0, Number.isFinite(time) ? time : 0)) : time;
+  const current = formatClockPart(clamped);
   if (!hasDuration) return current;
-  return `${current} / ${formatPreviewSeconds(duration)}`;
+  return `${current} / ${formatClockPart(duration)}`;
 }
 
 function controlIcon(name: string, svg: string, visible: boolean): string {
