@@ -140,13 +140,9 @@ describe("messages", () => {
     expect(t("en", "exportKeepOpen")).toBe("Video is generated on this device. It can take several tens of seconds.");
     expect(t("ko", "exportKeepOpen")).toBe("이 기기에서 영상을 만들어요. 수십 초 걸릴 수 있어요.");
     expect(t("zh", "exportKeepOpen")).toBe("视频会在这台设备上生成，可能需要几十秒。");
-    expect(t("ja", "statusExportReadyDownload")).toBe("ダウンロードボタンで保存してください。");
-    expect(t("en", "statusExportReadyDownload")).toBe("Save it with the Download button.");
-    expect(t("ko", "statusExportReadyDownload")).toBe("다운로드 버튼으로 저장하세요.");
-    expect(t("zh", "statusExportReadyDownload")).toBe("请点「下载」保存。");
-    expect(t("ja", "statusExportShareCancelled")).toBe("共有をやめました。もう一度ダウンロードを押せます。");
     expect(t("en", "exportDownload")).toBe("Download");
-    expect(t("ko", "statusExportCancelled")).toBe("생성을 취소했습니다");
+    expect(t("ja", "statusSaveFailed")).toBe("保存に失敗しました");
+    expect(t("en", "statusSaveFailed")).toBe("Couldn’t save");
     expect(t("zh", "exportTitle")).toBe("正在生成视频");
     expect(t("ja", "makerOnDevice")).toBe("動画生成は端末内で行われます。外部に画像が送信されることはありません。");
     expect(t("en", "makerOnDevice")).toBe("Video is generated on this device. Images are never sent outside.");
@@ -158,14 +154,6 @@ describe("messages", () => {
     expect(t("ja", "statusPhotoRemoved", { n: 2 })).toBe("写真を外しました（残り 2 枚）");
     expect(t("ja", "makerThumbsHint")).toBe("長押しして画像の順序を変更できます。");
     expect(t("en", "makerThumbsHint")).toBe("Press and hold to reorder.");
-    expect(t("ja", "statusShared")).toBe("ハッシュタグを共有先に渡しました");
-    expect(t("en", "statusShared")).toBe("Sent the hashtags to the share target");
-    expect(t("ja", "statusShareUnsupported", { text: "#あのねジャンプ #あのねジャンプメーカー" })).toBe(
-      "このブラウザでは共有できません。#あのねジャンプ #あのねジャンプメーカー をコピーしてください。",
-    );
-    expect(t("en", "statusShareUnsupported", { text: "#あのねジャンプ #あのねジャンプメーカー" })).not.toMatch(
-      /https?:\/\//,
-    );
     expect(t("ja", "makerOfficialMv")).toBe("「あのね」MV");
     expect(t("en", "makerOfficialMv")).toBe("“Connect the World” MV");
     expect(t("ja", "studioOptions")).toBe("オプション");

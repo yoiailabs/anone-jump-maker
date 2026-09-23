@@ -418,9 +418,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <header className="preview-head">
                 <h2 id="exportTitle">{t(locale, "exportTitle")}</h2>
               </header>
-              <p className="export-status notranslate" id="exportStatus" translate="no" aria-live="polite">
-                {t(locale, "statusExportPreparing")}
-              </p>
+              <p className="export-status notranslate" id="exportStatus" translate="no" aria-live="polite" hidden />
               <div className="export-progress">
                 <progress
                   id="exportProgress"

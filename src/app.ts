@@ -545,11 +545,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     });
   };
 
-  const setExportProgress = (percent: number, statusText: string) => {
+  const setExportProgress = (percent: number) => {
     const value = Math.min(100, Math.max(0, percent));
     exportProgress.value = value;
     setTextIfChanged(exportProgressLabel, msg("exportPercent", { percent: value }));
-    setTextIfChanged(exportStatus, statusText);
+    setTextIfChanged(exportStatus, "");
+    exportStatus.hidden = true;
   };
 
   const fileShareAvailable = () => {
@@ -580,7 +581,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     pendingExport = null;
     cancelExportBtn.disabled = false;
     setExportPhase("busy");
-    setExportProgress(0, msg("statusExportPreparing"));
+    setExportProgress(0);
     revealExportPanel();
     exportPanel.focus({ preventScroll: true });
   };
@@ -603,22 +604,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
   };
 
-  const savedStatus = (extension: string) => msg("statusSaved", { ext: extension.toUpperCase() });
-
-  const markExportSaved = (extension: string) => {
-    const text = savedStatus(extension);
-    setExportProgress(100, text);
-  };
-
   const showExportReady = () => {
-    const text = msg("statusExportReadyDownload");
-    setExportProgress(100, text);
+    setExportProgress(100);
     setExportPhase("done");
   };
 
   const downloadPendingExport = (pending: NonNullable<typeof pendingExport>) => {
     downloadBlob(pending.blob, pending.filename);
-    markExportSaved(pending.extension);
     trackExportSaved();
   };
 
@@ -639,15 +631,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         mime: pending.mime,
         navigator: typeof navigator === "undefined" ? undefined : navigator,
       });
-      if (outcome === "cancelled") {
-        if (pendingExport === pending) {
-          setExportProgress(100, msg("statusExportReadyDownload"));
-        }
-        return;
-      }
+      if (outcome === "cancelled") return;
       if (outcome === "shared") {
-        if (pendingExport === pending) markExportSaved(pending.extension);
-        else setFeedback("save", savedStatus(pending.extension));
         trackExportSaved();
         return;
       }
@@ -1076,10 +1061,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         fps,
         signal: controller.signal,
         onProgress: (progress) => {
-          setExportProgress(
-            exportProgressPercent(progress.current, progress.total),
-            msg("statusGenerating", { current: progress.current, total: progress.total }),
-          );
+          setExportProgress(exportProgressPercent(progress.current, progress.total));
         },
       });
       const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
@@ -1091,7 +1073,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
         trackEvent(GENERATE_CANCEL_EVENT);
-        setFeedback("save", msg("statusExportCancelled"));
       } else {
         trackEvent(GENERATE_FAIL_EVENT, { reason: generateFailReason(error) });
         setErrorFeedback("save", error, "statusSaveFailed");

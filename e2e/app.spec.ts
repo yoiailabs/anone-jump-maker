@@ -239,9 +239,13 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
     "端末上で動画を生成します。数十秒かかることがあります。",
   );
   await expect(page.locator("#cancelExportBtn")).toBeEnabled();
+  await expect(page.locator("#exportStatus")).toBeHidden();
+  await expect(page.locator("#exportStatus")).toHaveText("");
+  await expect(page.locator("#exportProgress")).toBeVisible();
   await page.locator("#cancelExportBtn").click();
   await expect(dialog).toBeHidden({ timeout: 15_000 });
-  await expect(page.locator("#saveFeedback")).toHaveText("生成をキャンセルしました");
+  await expect(page.locator("#saveFeedback")).toBeHidden();
+  await expect(page.locator("#saveFeedback")).not.toContainText("生成をキャンセルしました");
 });
 
 test("adds, reorders, and removes photos after the first pick", async ({ page }) => {
@@ -395,15 +399,14 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   if (await exportDialog.isVisible()) {
     await expect(page.locator("#exportProgressLabel")).toContainText("%");
   }
-  const statusText = await waitForExportNotice(
-    page,
-    new RegExp(`ダウンロードボタンで保存してください|${UNSUPPORTED_EXPORT_MESSAGE}`),
-  );
+  const outcome = await waitForExportOutcome(page);
   expect(autoDownloaded).toBe(false);
-  if (statusText.includes("ダウンロードボタンで保存してください")) {
+  if (outcome === "ready") {
     await expect(exportDialog).toBeVisible();
     await expect(page.locator("#exportDownloadHint")).toHaveCount(0);
-    await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
+    await expect(page.locator("#exportStatus")).toBeHidden();
+    await expect(page.locator("#exportStatus")).toHaveText("");
+    await expect(page.locator("#exportProgressLabel")).toHaveText("100%");
     await expect(page.locator("#downloadExportBtn")).toBeVisible();
     await expect(page.locator("#downloadExportBtn")).toHaveText("ダウンロード");
     await expect(page.locator("#shareExportBtn")).toHaveCount(0);
@@ -412,13 +415,15 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
-    await expect(page.locator("#exportStatus")).toContainText("保存しました");
+    await expect(page.locator("#exportStatus")).toBeHidden();
+    await expect(page.locator("#exportStatus")).toHaveText("");
+    await expect(page.locator("#saveFeedback")).toBeHidden();
     await page.locator("#closeExportBtn").click();
     await expect(exportDialog).toBeHidden();
     return;
   }
   await expect(exportDialog).toBeHidden();
-  expect(statusText).toContain(UNSUPPORTED_EXPORT_MESSAGE);
+  await expect(page.locator("#saveFeedback")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
 });
 
 test("download opens a file share sheet when the browser can share files", async ({ page }) => {
@@ -464,13 +469,11 @@ test("download opens a file share sheet when the browser can share files", async
     downloaded = true;
   });
   await page.locator("#saveBtn").click();
-  const statusText = await waitForExportNotice(
-    page,
-    new RegExp(`ダウンロードボタンで保存してください|${UNSUPPORTED_EXPORT_MESSAGE}`),
-  );
+  const outcome = await waitForExportOutcome(page);
   expect(downloaded).toBe(false);
-  if (!statusText.includes("ダウンロードボタンで保存してください")) {
+  if (outcome !== "ready") {
     await expect(page.locator("#exportPanel")).toBeHidden();
+    await expect(page.locator("#saveFeedback")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
     return;
   }
 
@@ -479,7 +482,8 @@ test("download opens a file share sheet when the browser can share files", async
   await expect(page.locator("#downloadExportBtn")).toHaveText("ダウンロード");
   await expect(page.locator("#downloadExportBtn")).not.toHaveClass(/ghost/);
   await expect(page.locator("#exportDownloadHint")).toHaveCount(0);
-  await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
+  await expect(page.locator("#exportStatus")).toBeHidden();
+  await expect(page.locator("#exportStatus")).toHaveText("");
   expect(
     await page.evaluate(() => (window as unknown as { __fileShareCalls: unknown[] }).__fileShareCalls.length),
   ).toBe(0);
@@ -490,8 +494,9 @@ test("download opens a file share sheet when the browser can share files", async
       page.evaluate(() => (window as unknown as { __fileShareCalls: unknown[] }).__fileShareCalls.length),
     )
     .toBe(1);
-  await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
-  await expect(page.locator("#exportStatus")).not.toContainText("共有シートを開いています");
+  await expect(page.locator("#exportStatus")).toBeHidden();
+  await expect(page.locator("#exportStatus")).toHaveText("");
+  await expect(page.locator("#saveFeedback")).toBeHidden();
   await page.evaluate(() => (window as unknown as { __releaseFileShare: () => void }).__releaseFileShare());
   expect(downloaded).toBe(false);
   const payload = await page.evaluate(
@@ -508,7 +513,9 @@ test("download opens a file share sheet when the browser can share files", async
   expect(payload?.text).toBe(SHARE_TEXT);
   expect(payload?.keys).not.toContain("url");
   expect(payload?.keys).not.toContain("title");
-  await expect(page.locator("#exportStatus")).toContainText("保存しました");
+  await expect(page.locator("#exportStatus")).toBeHidden();
+  await expect(page.locator("#exportStatus")).toHaveText("");
+  await expect(page.locator("#saveFeedback")).toBeHidden();
   await expect(page.locator("#exportPanel")).toBeVisible();
 });
 
@@ -533,15 +540,14 @@ test("cancelling the share sheet stays on the export dialog", async ({ page }) =
     downloaded = true;
   });
   await page.locator("#saveBtn").click();
-  const statusText = await waitForExportNotice(
-    page,
-    new RegExp(`ダウンロードボタンで保存してください|${UNSUPPORTED_EXPORT_MESSAGE}`),
-  );
-  if (!statusText.includes("ダウンロードボタンで保存してください")) return;
+  const outcome = await waitForExportOutcome(page);
+  if (outcome !== "ready") return;
   expect(downloaded).toBe(false);
   await page.locator("#downloadExportBtn").click();
-  await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
-  await expect(page.locator("#exportStatus")).not.toContainText("共有をやめました");
+  await expect(page.locator("#exportStatus")).toBeHidden();
+  await expect(page.locator("#exportStatus")).toHaveText("");
+  await expect(page.locator("#saveFeedback")).toBeHidden();
+  await expect(page.locator("#saveFeedback")).not.toContainText("共有をやめました");
   expect(downloaded).toBe(false);
   await expect(page.locator("#exportPanel")).toBeVisible();
   await expect(page.locator("#downloadExportBtn")).toBeEnabled();
@@ -980,17 +986,25 @@ async function settlePreviewPlayback(page: Page): Promise<void> {
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 }
 
-async function waitForExportNotice(page: Page, pattern: RegExp): Promise<string> {
-  let text = "";
+async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"> {
+  let outcome: "ready" | "unsupported" | "" = "";
   await expect
     .poll(
       async () => {
-        const dialogOpen = await page.locator("#exportPanel").isVisible();
-        text = ((await page.locator(dialogOpen ? "#exportStatus" : "#saveFeedback").textContent()) ?? "").trim();
-        return pattern.test(text);
+        if (await page.locator("#downloadExportBtn").isVisible()) {
+          outcome = "ready";
+          return outcome;
+        }
+        const feedback = ((await page.locator("#saveFeedback").textContent()) ?? "").trim();
+        if (feedback.includes(UNSUPPORTED_EXPORT_MESSAGE)) {
+          outcome = "unsupported";
+          return outcome;
+        }
+        return "";
       },
       { timeout: 45_000 },
     )
-    .toBe(true);
-  return text;
+    .not.toBe("");
+  if (outcome === "") throw new Error("export outcome was empty");
+  return outcome;
 }
