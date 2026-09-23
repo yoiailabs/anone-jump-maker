@@ -886,10 +886,47 @@ test("studio header uses the horizontal wordmark and keeps language links at the
   const langBox = await page.locator("#studioView .lang-switch").boundingBox();
   expect(lockupBox && lockupBox.height >= 28 && lockupBox.height <= 40).toBe(true);
   expect(lockupBox && langBox && langBox.y > lockupBox.y + lockupBox.height).toBe(true);
+  const studioAlign = await headerAlign(page, ".studio-top", "#studioHome", "#studioTitle");
+  await page.goto("/terms");
+  const termsAlign = await headerAlign(page, "header.hero", "#legalHome", "#termsTitle");
+  expect(studioAlign.headAlign).toBe("center");
+  expect(studioAlign.titleAlign).toBe("center");
+  expect(studioAlign.headAlign).toBe(termsAlign.headAlign);
+  expect(studioAlign.titleAlign).toBe(termsAlign.titleAlign);
+  expect(studioAlign.markMargin).toBe(termsAlign.markMargin);
+  expect(studioAlign.titleMargin).toBe(termsAlign.titleMargin);
+  expect(Math.abs(studioAlign.headMid - studioAlign.markMid)).toBeLessThan(2);
+  expect(Math.abs(termsAlign.headMid - termsAlign.markMid)).toBeLessThan(2);
+  await page.goto("/make");
+  await waitForAppReady(page);
   await lockup.click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
 });
+
+async function headerAlign(page: Page, header: string, lockupSel: string, titleSel: string) {
+  const metrics = await page.evaluate(
+    ({ header, lockupSel, titleSel }) => {
+      const head = document.querySelector(header);
+      const mark = document.querySelector(lockupSel);
+      const title = document.querySelector(titleSel);
+      if (!head || !mark || !title) return null;
+      const headBox = head.getBoundingClientRect();
+      const markBox = mark.getBoundingClientRect();
+      return {
+        headAlign: getComputedStyle(head).textAlign,
+        titleAlign: getComputedStyle(title).textAlign,
+        markMargin: getComputedStyle(mark).margin,
+        titleMargin: getComputedStyle(title).margin,
+        headMid: headBox.left + headBox.width / 2,
+        markMid: markBox.left + markBox.width / 2,
+      };
+    },
+    { header, lockupSel, titleSel },
+  );
+  expect(metrics).not.toBeNull();
+  return metrics!;
+}
 
 async function openCommunityInApp(page: Page): Promise<void> {
   await page.evaluate(() => {

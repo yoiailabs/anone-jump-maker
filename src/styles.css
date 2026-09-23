@@ -157,7 +157,8 @@ body {
   z-index: 1;
 }
 
-.hero {
+.hero,
+.studio-top {
   text-align: center;
 }
 
@@ -736,14 +737,9 @@ html[lang="ja"] .lede {
   max-width: 100%;
 }
 
-.hero .header-lockup {
+.hero .header-lockup,
+.studio-top .header-lockup {
   margin: 0.15rem auto 0.2rem;
-}
-
-.studio-top {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
 }
 
 #studioView .lang-switch {

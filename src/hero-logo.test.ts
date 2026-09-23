@@ -143,6 +143,8 @@ describe("stacked maker hero logo", () => {
     expect(termsSrc).not.toContain("anone-logo-stacked");
     expect(stylesSrc).toMatch(/\.header-lockup\s*\{[^}]*display:\s*inline-flex/);
     expect(stylesSrc).toMatch(/\.header-lockup-logo\s*\{[^}]*height:\s*2\.15rem/);
+    expect(stylesSrc).toMatch(/\.hero,\s*\.studio-top\s*\{[^}]*text-align:\s*center/);
+    expect(stylesSrc).toMatch(/\.studio-top \.header-lockup\s*\{[^}]*margin:\s*0\.15rem auto 0\.2rem/);
   });
 
   it("uses the Japanese stacked mark on ja and the English mark on en/ko/zh", () => {
