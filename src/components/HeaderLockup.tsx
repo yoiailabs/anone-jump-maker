@@ -1,7 +1,7 @@
-import { HEADER_MARK_SRC } from "../brand.ts";
+import { makerLogoHorizontalSize, makerLogoHorizontalSrc } from "../brand.ts";
 import { pathForApp, t, type Locale } from "../i18n.ts";
 
-/** アイコンとメーカー名を横に並べた仮のヘッダーロックアップ。トップへ戻る。 */
+/** 横並びワードマーク。トップへ戻る。 */
 export function HeaderLockup({
   locale,
   id,
@@ -11,17 +11,17 @@ export function HeaderLockup({
   id: string;
   label?: string;
 }) {
+  const size = makerLogoHorizontalSize(locale);
   return (
     <a id={id} className="header-lockup" href={pathForApp(locale, "maker")} aria-label={label}>
       <img
-        className="header-lockup-mark"
-        src={HEADER_MARK_SRC}
-        width={64}
-        height={64}
-        alt=""
+        className="header-lockup-logo"
+        src={makerLogoHorizontalSrc(locale)}
+        width={size.width}
+        height={size.height}
+        alt={t(locale, "makerTitle")}
         decoding="async"
       />
-      <span className="header-lockup-title">{t(locale, "makerTitle")}</span>
     </a>
   );
 }

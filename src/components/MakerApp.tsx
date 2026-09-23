@@ -211,13 +211,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
         <div className="app-view" id="studioView" hidden={studioHidden}>
           <header className="studio-top">
-            <div className="studio-bar">
-              <HeaderLockup id="studioHome" locale={locale} />
-              <a id="toLanding" className="page-link studio-back" href={pathForApp(locale, "maker")}>
-                {t(locale, "studioBack")}
-              </a>
-              <LanguageNav locale={locale} view="studio" />
-            </div>
+            <HeaderLockup id="studioHome" locale={locale} />
             <h1 id="studioTitle" className="studio-title">
               {t(locale, "studioTitle")}
             </h1>
@@ -442,6 +436,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             </section>
             <LiveFeedback id="saveFeedback" place="save" />
           </section>
+          <LanguageNav locale={locale} view="studio" />
         </div>
         <div
           className="app-view"

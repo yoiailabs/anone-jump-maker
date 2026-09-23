@@ -1,5 +1,18 @@
-/** 横並びワードマークが無いあいだ、ヘッダーに置く小さいマーク。 */
-export const HEADER_MARK_SRC = "/icons/icon.svg";
+export const MAKER_LOGO_HORIZONTAL_SRC = "/brand/anone-logo-horizontal.svg";
+export const MAKER_LOGO_HORIZONTAL_EN_SRC = "/brand/anone-logo-horizontal-en.svg";
+export const MAKER_LOGO_HORIZONTAL_SIZE = { width: 720, height: 165 } as const;
+export const MAKER_LOGO_HORIZONTAL_EN_SIZE = { width: 720, height: 176 } as const;
+
+export function makerLogoHorizontalSrc(locale: "ja" | "en" | "ko" | "zh"): string {
+  return locale === "ja" ? MAKER_LOGO_HORIZONTAL_SRC : MAKER_LOGO_HORIZONTAL_EN_SRC;
+}
+
+export function makerLogoHorizontalSize(locale: "ja" | "en" | "ko" | "zh"): {
+  width: 720;
+  height: 165 | 176;
+} {
+  return locale === "ja" ? MAKER_LOGO_HORIZONTAL_SIZE : MAKER_LOGO_HORIZONTAL_EN_SIZE;
+}
 
 export const MAKER_LOGO_STACKED_SRC = "/brand/anone-logo-stacked.svg";
 export const MAKER_LOGO_STACKED_EN_SRC = "/brand/anone-logo-stacked-en.svg";

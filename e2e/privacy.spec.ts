@@ -63,9 +63,8 @@ test.describe("privacy policy", () => {
     await expect(page.locator("#playBtn")).toHaveCount(0);
     await expect(page.locator("#legalHome")).toHaveAttribute("href", "/");
     await expect(page.locator("#legalHome")).toHaveAttribute("aria-label", "トップへ戻る");
-    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/icons/icon.svg");
-    await expect(page.locator("#legalHome img")).toHaveAttribute("alt", "");
-    await expect(page.locator("#legalHome")).toContainText("あのねジャンプメーカー");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/brand/anone-logo-horizontal.svg");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("alt", "あのねジャンプメーカー");
     await expect(page.locator("#legalHome .hero-logo")).toHaveCount(0);
     await expect(page.locator("#privacyBack")).toHaveAttribute("href", "/");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("aria-current", "page");

@@ -33,7 +33,11 @@ test.describe("language routing", () => {
     await expect(page.locator("#muteBtn .preview-mute-hint")).toHaveText(t("en", "previewMuteHint"));
     await expect(page.locator("#browsersNote")).toHaveCount(0);
     await expect(page.locator("#onDeviceNote")).toHaveText(t("en", "makerOnDevice"));
-    await page.locator("#toLanding").click();
+    await expect(page.locator("#studioHome img")).toHaveAttribute("src", "/brand/anone-logo-horizontal-en.svg");
+    await expect(page.locator("#toLanding")).toHaveCount(0);
+    await expect(page.locator("#studioView .studio-top .lang-switch")).toHaveCount(0);
+    await expect(page.locator("#studioView .lang-switch")).toHaveCount(1);
+    await page.locator("#studioHome").click();
     await expect(page).toHaveURL(/\/en\/?$/);
     await expect(page.locator("#browsersNote")).toHaveCount(0);
     await expect(page.locator("#linksTitle")).toHaveText(t("en", "makerOfficial"));

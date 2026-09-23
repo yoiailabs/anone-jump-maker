@@ -836,28 +836,22 @@ test("opens /community directly and moves leftover hashes onto the path", async 
   await expect(page.locator("#communityView")).toBeVisible();
 });
 
-test("studio header uses a compact lockup back to the top", async ({ page }) => {
+test("studio header uses the horizontal wordmark and keeps language links at the bottom", async ({ page }) => {
   await page.goto("/make");
   await waitForAppReady(page);
   const lockup = page.locator("#studioHome");
   await expect(lockup).toBeVisible();
   await expect(lockup).toHaveAttribute("href", "/");
-  await expect(lockup.locator("img")).toHaveAttribute("src", "/icons/icon.svg");
-  await expect(lockup.locator("img")).toHaveAttribute("alt", "");
-  await expect(lockup).toContainText("あのねジャンプメーカー");
+  await expect(lockup.locator("img")).toHaveAttribute("src", "/brand/anone-logo-horizontal.svg");
+  await expect(lockup.locator("img")).toHaveAttribute("alt", "あのねジャンプメーカー");
   await expect(page.locator("#studioView .hero-logo")).toHaveCount(0);
-  await expect(page.locator("#toLanding")).toBeVisible();
-  await expect(page.locator("#studioView .lang-switch")).toBeVisible();
+  await expect(page.locator("#toLanding")).toHaveCount(0);
+  await expect(page.locator("#studioView .studio-top .lang-switch")).toHaveCount(0);
+  await expect(page.locator("#studioView .lang-switch")).toHaveCount(1);
   const lockupBox = await lockup.boundingBox();
-  const backBox = await page.locator("#toLanding").boundingBox();
   const langBox = await page.locator("#studioView .lang-switch").boundingBox();
-  expect(lockupBox && lockupBox.height < 48).toBe(true);
-  expect(
-    lockupBox &&
-      backBox &&
-      Math.abs(lockupBox.y + lockupBox.height / 2 - (backBox.y + backBox.height / 2)) < 12,
-  ).toBe(true);
-  expect(lockupBox && langBox && langBox.y < lockupBox.y + lockupBox.height + 24).toBe(true);
+  expect(lockupBox && lockupBox.height >= 28 && lockupBox.height <= 40).toBe(true);
+  expect(lockupBox && langBox && langBox.y > lockupBox.y + lockupBox.height).toBe(true);
   await lockup.click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");

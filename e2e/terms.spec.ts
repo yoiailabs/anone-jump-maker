@@ -54,8 +54,8 @@ test.describe("terms of use", () => {
     await expect(page.locator(".lang-switch")).toHaveCount(0);
     await expect(page.locator("#playBtn")).toHaveCount(0);
     await expect(page.locator("#legalHome")).toHaveAttribute("href", "/");
-    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/icons/icon.svg");
-    await expect(page.locator("#legalHome")).toContainText("あのねジャンプメーカー");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/brand/anone-logo-horizontal.svg");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("alt", "あのねジャンプメーカー");
     await expect(page.locator("#legalHome .hero-logo")).toHaveCount(0);
     await expect(page.locator("#termsBack")).toHaveAttribute("href", "/");
     await expect(page.locator("#termsLink")).toHaveAttribute("aria-current", "page");
