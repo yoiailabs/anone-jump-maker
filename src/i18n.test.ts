@@ -168,6 +168,12 @@ describe("messages", () => {
     );
     expect(t("ja", "makerOfficialMv")).toBe("「あのね」MV");
     expect(t("en", "makerOfficialMv")).toBe("“Anone” MV");
+    expect(t("ja", "makerLandscape")).toBe("横");
+    expect(t("ja", "makerFilterBlurWeak")).toBe("弱");
+    expect(t("ja", "makerFilterBlurStrong")).toBe("強");
+    expect(t("ja", "makerFilterBlurWeakAria")).toBe("ブラー(弱)");
+    expect(t("en", "makerLandscape")).toBe("Horz");
+    expect(t("en", "makerLandscapeAria")).toBe("Landscape");
     expect(t("ja", "makerCharacterLegend")).toBe("キャラサイズ");
     expect(t("ja", "makerCharacterStandard")).toBe("標準");
     expect(t("ja", "makerCharacter12")).toBe("1.2");

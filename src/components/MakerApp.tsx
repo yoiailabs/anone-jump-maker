@@ -258,15 +258,20 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 0.0
               </span>
             </div>
-            <section className="studio-options">
+            <section className="studio-options" aria-label={t(locale, "studioOptions")}>
               <fieldset className="aspect-field">
                 <legend>{t(locale, "makerAspectLegend")}</legend>
                 <RadioPills
                   name="aspect"
                   ariaLabel={t(locale, "makerAspectLegend")}
                   options={[
-                    { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                    { value: "portrait", label: t(locale, "makerPortrait") },
+                    {
+                      value: "landscape",
+                      label: t(locale, "makerLandscape"),
+                      ariaLabel: t(locale, "makerLandscapeAria"),
+                      defaultChecked: true,
+                    },
+                    { value: "portrait", label: t(locale, "makerPortrait"), ariaLabel: t(locale, "makerPortraitAria") },
                   ]}
                 />
               </fieldset>
@@ -286,11 +291,23 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 <RadioPills
                   name="filter"
                   ariaLabel={t(locale, "makerFilterLegend")}
-                  className="aspect-toggle cols-3"
                   options={[
-                    { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                    { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
-                    { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
+                    {
+                      value: "none",
+                      label: t(locale, "makerFilterNone"),
+                      ariaLabel: t(locale, "makerFilterNoneAria"),
+                      defaultChecked: true,
+                    },
+                    {
+                      value: "blur-weak",
+                      label: t(locale, "makerFilterBlurWeak"),
+                      ariaLabel: t(locale, "makerFilterBlurWeakAria"),
+                    },
+                    {
+                      value: "blur-strong",
+                      label: t(locale, "makerFilterBlurStrong"),
+                      ariaLabel: t(locale, "makerFilterBlurStrongAria"),
+                    },
                   ]}
                 />
               </fieldset>
@@ -299,7 +316,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 <RadioPills
                   name="character"
                   ariaLabel={t(locale, "makerCharacterLegend")}
-                  className="aspect-toggle cols-3"
                   options={[
                     { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
                     { value: "1.2", label: t(locale, "makerCharacter12") },
@@ -409,14 +425,14 @@ function RadioPills({
   name: string;
   ariaLabel: string;
   className?: string;
-  options: readonly { value: string; label: string; defaultChecked?: boolean }[];
+  options: readonly { value: string; label: string; ariaLabel?: string; defaultChecked?: boolean }[];
 }) {
   return (
     <div className={className} role="radiogroup" aria-label={ariaLabel}>
       {options.map((option) => (
-        <label key={`${name}-${option.value}`}>
+        <label key={`${name}-${option.value}`} aria-label={option.ariaLabel}>
           <input type="radio" name={name} value={option.value} defaultChecked={option.defaultChecked} />
-          <span>{option.label}</span>
+          <span aria-hidden={option.ariaLabel ? true : undefined}>{option.label}</span>
         </label>
       ))}
     </div>
