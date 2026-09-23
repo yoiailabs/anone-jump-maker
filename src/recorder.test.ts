@@ -26,7 +26,7 @@ describe("downloadBlob", () => {
     const anchor = { href: "", download: "", rel: "", click, remove };
     const createElement = vi.fn(() => anchor);
     const append = vi.fn();
-    const createObjectURL = vi.fn(() => "blob:download");
+    const createObjectURL = vi.fn((_blob: Blob) => "blob:download");
     const revokeObjectURL = vi.fn();
 
     vi.stubGlobal("document", {
@@ -40,9 +40,9 @@ describe("downloadBlob", () => {
       const source = new Blob(["x"], { type: "video/mp4" });
       downloadBlob(source, "anone-jump-16x9.mp4");
       expect(createObjectURL).toHaveBeenCalledOnce();
-      const offered = createObjectURL.mock.calls[0]?.[0] as Blob;
-      expect(offered.type).toBe("application/octet-stream");
-      expect(offered.size).toBe(source.size);
+      const offered = createObjectURL.mock.calls[0]?.[0];
+      expect(offered?.type).toBe("application/octet-stream");
+      expect(offered?.size).toBe(source.size);
       expect(source.type).toBe("video/mp4");
       expect(anchor.download).toBe("anone-jump-16x9.mp4");
       expect(anchor.rel).toBe("noopener");
@@ -61,7 +61,7 @@ describe("downloadBlob", () => {
   it("keeps a webm filename while serving octet-stream", () => {
     const click = vi.fn();
     const anchor = { href: "", download: "", rel: "", click, remove: vi.fn() };
-    const createObjectURL = vi.fn(() => "blob:webm");
+    const createObjectURL = vi.fn((_blob: Blob) => "blob:webm");
 
     vi.stubGlobal("document", {
       createElement: () => anchor,
@@ -72,8 +72,8 @@ describe("downloadBlob", () => {
 
     try {
       downloadBlob(new Blob(["wm"], { type: "video/webm" }), "anone-jump.webm");
-      const offered = createObjectURL.mock.calls[0]?.[0] as Blob;
-      expect(offered.type).toBe("application/octet-stream");
+      const offered = createObjectURL.mock.calls[0]?.[0];
+      expect(offered?.type).toBe("application/octet-stream");
       expect(anchor.download).toBe("anone-jump.webm");
     } finally {
       vi.unstubAllGlobals();
