@@ -61,8 +61,8 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('role="tab"');
     expect(makerSrc).toContain('id={`${id}Tab`}');
     expect(makerSrc).not.toContain("popoverTarget");
+    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf('id="stage"'));
     expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('name="aspect"'));
-    expect(makerSrc.indexOf('name="aspect"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
     expect(appSrc).toContain("formatPreviewClock");
     expect(makerSrc).toContain('id="restartBtn"');
     expect(makerSrc).toContain('id="muteBtn"');

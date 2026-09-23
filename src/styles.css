@@ -856,6 +856,14 @@ html[lang="ja"] .lede {
   touch-action: pan-x;
 }
 
+.studio-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+}
+
 .studio-tools {
   display: flex;
   flex-direction: column;
@@ -1194,9 +1202,15 @@ a.btn:focus-visible {
   --thumb-size: 6rem;
   --thumb-radius: 0.9rem;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.7rem;
-  padding: 0.55rem 0.15rem 0.45rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  padding: 0.35rem 0.4rem 0.7rem 0.15rem;
   margin: 0;
 }
 
@@ -1210,8 +1224,8 @@ a.btn:focus-visible {
   flex: 0 0 auto;
   width: var(--thumb-size);
   height: var(--thumb-size);
-  touch-action: pan-y;
   cursor: grab;
+  touch-action: pan-x;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

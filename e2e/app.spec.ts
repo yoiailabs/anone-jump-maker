@@ -287,11 +287,11 @@ test("reorders photos by drag and drop", async ({ page }) => {
     const style = getComputedStyle(el);
     return { wrap: style.flexWrap, overflowX: style.overflowX };
   });
-  expect(thumbsStyle.wrap).toBe("wrap");
-  expect(thumbsStyle.overflowX).not.toBe("auto");
+  expect(thumbsStyle.wrap).toBe("nowrap");
+  expect(thumbsStyle.overflowX).toBe("auto");
   await expect
     .poll(async () => page.locator(".thumb").first().evaluate((el) => getComputedStyle(el).touchAction))
-    .toBe("pan-y");
+    .toBe("pan-x");
 });
 
 test("a touch swipe does not reorder photos without a long press", async ({ page }) => {

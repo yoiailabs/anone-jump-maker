@@ -60,9 +60,9 @@ describe("stacked maker hero logo", () => {
     expect(landing.indexOf("<JumpLoop")).toBeLessThan(landing.indexOf('id="toStudio"'));
     expect(landing.indexOf('id="toStudio"')).toBeLessThan(landing.indexOf('id="toCommunity"'));
     expect(landing).not.toContain('id="picker"');
-    expect(studio.indexOf('id="stage"')).toBeLessThan(studio.indexOf('id="previewSeek"'));
-    expect(studio.indexOf('id="previewSeek"')).toBeLessThan(studio.indexOf('id="picker"'));
     expect(studio.indexOf('id="picker"')).toBeLessThan(studio.indexOf('id="onDeviceNote"'));
+    expect(studio.indexOf('id="onDeviceNote"')).toBeLessThan(studio.indexOf('id="stage"'));
+    expect(studio.indexOf('id="stage"')).toBeLessThan(studio.indexOf('id="previewSeek"'));
     expect(studio).toContain('id="studioEmpty"');
     expect(makerSrc).not.toContain("samplePhotosBtn");
     expect(makerSrc).not.toContain("makerTrySamples");

@@ -218,6 +218,23 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               {t(locale, "studioTitle")}
             </h1>
           </header>
+          <div className="studio-photos">
+            <div className="make-cta">
+              <Label className="file-btn">
+                <input
+                  id="picker"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+                  multiple
+                />
+                <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
+              </Label>
+              <p className="make-note" id="onDeviceNote">
+                {t(locale, "makerOnDevice")}
+              </p>
+            </div>
+            <PhotoThumbsSlot locale={locale} />
+          </div>
           <section className="studio-stage" aria-label={t(locale, "previewTitle")}>
             <div className="stage-wrap">
               <div className="stage" id="stage" data-aspect={DEFAULT_ASPECT} aria-pressed="false">
@@ -377,21 +394,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             </section>
           </section>
           <section className="studio-tools">
-            <div className="make-cta">
-              <Label className="file-btn">
-                <input
-                  id="picker"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/*"
-                  multiple
-                />
-                <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
-              </Label>
-              <p className="make-note" id="onDeviceNote">
-                {t(locale, "makerOnDevice")}
-              </p>
-            </div>
-            <PhotoThumbsSlot locale={locale} />
             <div className="preview-save">
               <Button
                 variant="site"
