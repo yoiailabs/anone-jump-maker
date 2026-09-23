@@ -74,9 +74,10 @@ describe("stacked maker hero logo", () => {
     expect(studio.indexOf('id="stage"')).toBeLessThan(studio.indexOf('id="previewSeek"'));
     expect(studio).toContain('id="studioEmpty"');
     expect(studio).toContain('id="studioHome"');
-    expect(studio).toContain("<HeaderLockup");
-    expect(studio).not.toContain("hero-logo");
-    expect(studio).not.toContain("anone-logo-stacked");
+    expect(studio).toContain('className="hero-logo"');
+    expect(studio).toContain("makerLogoStackedSrc(locale)");
+    expect(studio).not.toContain("<HeaderLockup");
+    expect(studio).not.toContain("anone-logo-horizontal");
     expect(studio).not.toContain('id="toLanding"');
     expect(studio).not.toContain("studioBack");
     expect(studio.indexOf('id="studioTitle"')).toBeLessThan(studio.indexOf("<LanguageNav"));
@@ -100,7 +101,7 @@ describe("stacked maker hero logo", () => {
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*width:\s*min\(100%,\s*22rem\)/);
   });
 
-  it("uses the horizontal wordmark on studio and legal headers", () => {
+  it("uses the horizontal wordmark on legal headers and the stacked hero on studio", () => {
     expect(MAKER_LOGO_HORIZONTAL_SRC).toBe("/brand/anone-logo-horizontal.svg");
     expect(MAKER_LOGO_HORIZONTAL_EN_SRC).toBe("/brand/anone-logo-horizontal-en.svg");
     expect(MAKER_LOGO_HORIZONTAL_SIZE).toEqual({ width: 720, height: 165 });
@@ -144,7 +145,9 @@ describe("stacked maker hero logo", () => {
     expect(stylesSrc).toMatch(/\.header-lockup\s*\{[^}]*display:\s*inline-flex/);
     expect(stylesSrc).toMatch(/\.header-lockup-logo\s*\{[^}]*height:\s*2\.15rem/);
     expect(stylesSrc).toMatch(/\.hero,\s*\.studio-top\s*\{[^}]*text-align:\s*center/);
-    expect(stylesSrc).toMatch(/\.studio-top \.header-lockup\s*\{[^}]*margin:\s*0\.15rem auto 0\.2rem/);
+    expect(stylesSrc).toMatch(/\.hero \.header-lockup\s*\{[^}]*margin:\s*0\.15rem auto 0\.2rem/);
+    expect(stylesSrc).not.toMatch(/\.studio-top \.header-lockup/);
+    expect(stylesSrc).toMatch(/\.studio-title\s*\{[^}]*margin-bottom:\s*0\.5rem/);
   });
 
   it("uses the Japanese stacked mark on ja and the English mark on en/ko/zh", () => {

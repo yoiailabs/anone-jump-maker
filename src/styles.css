@@ -210,6 +210,10 @@ body {
   color: var(--ink);
 }
 
+.studio-title {
+  margin-bottom: 0.5rem;
+}
+
 .hero-logo-link {
   display: inline-block;
   margin: 0 auto 0.45rem;
@@ -232,7 +236,8 @@ body {
 
 /* スマホの最初の画面はロゴより「写真を選ぶ」を主役にする。 */
 @media (max-width: 40rem) {
-  #makerView .hero-logo {
+  #makerView .hero-logo,
+  #studioView .hero-logo {
     width: min(100%, 16rem);
   }
 
@@ -737,9 +742,19 @@ html[lang="ja"] .lede {
   max-width: 100%;
 }
 
-.hero .header-lockup,
-.studio-top .header-lockup {
+.hero .header-lockup {
   margin: 0.15rem auto 0.2rem;
+}
+
+#studioHome {
+  display: block;
+  margin: 0;
+  line-height: 0;
+}
+
+#studioHome:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 #studioView .lang-switch {

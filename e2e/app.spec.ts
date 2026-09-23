@@ -870,31 +870,40 @@ test("opens /community directly and moves leftover hashes onto the path", async 
   await expect(page.locator("#communityView")).toBeVisible();
 });
 
-test("studio header uses the horizontal wordmark and keeps language links at the bottom", async ({ page }) => {
+test("studio header uses the stacked hero logo and keeps language links at the bottom", async ({ page }) => {
   await page.goto("/make");
   await waitForAppReady(page);
   const lockup = page.locator("#studioHome");
+  const landingLogo = page.locator("#makerTitle .hero-logo");
   await expect(lockup).toBeVisible();
   await expect(lockup).toHaveAttribute("href", "/");
-  await expect(lockup.locator("img")).toHaveAttribute("src", "/brand/anone-logo-horizontal.svg");
+  await expect(lockup.locator("img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
+  await expect(lockup.locator("img")).toHaveAttribute("src", (await landingLogo.getAttribute("src")) ?? "");
+  await expect(lockup.locator("img")).toHaveAttribute("width", (await landingLogo.getAttribute("width")) ?? "");
+  await expect(lockup.locator("img")).toHaveAttribute("height", (await landingLogo.getAttribute("height")) ?? "");
+  await expect(lockup.locator("img")).toHaveClass(/hero-logo/);
   await expect(lockup.locator("img")).toHaveAttribute("alt", "あのねジャンプメーカー");
-  await expect(page.locator("#studioView .hero-logo")).toHaveCount(0);
+  await expect(page.locator("#studioView .header-lockup")).toHaveCount(0);
   await expect(page.locator("#toLanding")).toHaveCount(0);
   await expect(page.locator("#studioView .studio-top .lang-switch")).toHaveCount(0);
   await expect(page.locator("#studioView .lang-switch")).toHaveCount(1);
   const lockupBox = await lockup.boundingBox();
   const langBox = await page.locator("#studioView .lang-switch").boundingBox();
-  expect(lockupBox && lockupBox.height >= 28 && lockupBox.height <= 40).toBe(true);
+  expect(lockupBox && lockupBox.width > 200).toBe(true);
   expect(lockupBox && langBox && langBox.y > lockupBox.y + lockupBox.height).toBe(true);
-  const studioAlign = await headerAlign(page, ".studio-top", "#studioHome", "#studioTitle");
+  const studioAlign = await headerAlign(page, ".studio-top", "#studioHome img", "#studioTitle");
   await page.goto("/terms");
   const termsAlign = await headerAlign(page, "header.hero", "#legalHome", "#termsTitle");
   expect(studioAlign.headAlign).toBe("center");
   expect(studioAlign.titleAlign).toBe("center");
   expect(studioAlign.headAlign).toBe(termsAlign.headAlign);
   expect(studioAlign.titleAlign).toBe(termsAlign.titleAlign);
-  expect(studioAlign.markMargin).toBe(termsAlign.markMargin);
-  expect(studioAlign.titleMargin).toBe(termsAlign.titleMargin);
+  expect(studioAlign.titleMarginTop).toBe(termsAlign.titleMarginTop);
+  expect(studioAlign.titleMarginLeft).toBe(termsAlign.titleMarginLeft);
+  expect(studioAlign.titleMarginRight).toBe(termsAlign.titleMarginRight);
+  expect(studioAlign.titleMarginBottom).toBeLessThan(termsAlign.titleMarginBottom);
+  expect(studioAlign.titleMarginBottom).toBeGreaterThan(termsAlign.titleMarginBottom * 0.65);
+  expect(studioAlign.titleMarginBottom).toBeLessThan(termsAlign.titleMarginBottom * 0.85);
   expect(Math.abs(studioAlign.headMid - studioAlign.markMid)).toBeLessThan(2);
   expect(Math.abs(termsAlign.headMid - termsAlign.markMid)).toBeLessThan(2);
   await page.goto("/make");
@@ -917,7 +926,10 @@ async function headerAlign(page: Page, header: string, lockupSel: string, titleS
         headAlign: getComputedStyle(head).textAlign,
         titleAlign: getComputedStyle(title).textAlign,
         markMargin: getComputedStyle(mark).margin,
-        titleMargin: getComputedStyle(title).margin,
+        titleMarginTop: Number.parseFloat(getComputedStyle(title).marginTop),
+        titleMarginRight: Number.parseFloat(getComputedStyle(title).marginRight),
+        titleMarginBottom: Number.parseFloat(getComputedStyle(title).marginBottom),
+        titleMarginLeft: Number.parseFloat(getComputedStyle(title).marginLeft),
         headMid: headBox.left + headBox.width / 2,
         markMid: markBox.left + markBox.width / 2,
       };

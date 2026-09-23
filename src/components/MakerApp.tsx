@@ -13,7 +13,6 @@ import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT } from "../p
 import { getPreviewChrome, subscribePreviewChrome } from "../preview-chrome-store.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { getFeedback, subscribeFeedback, type FeedbackPlace } from "../feedback-store.ts";
-import { HeaderLockup } from "@/components/HeaderLockup.tsx";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -216,7 +215,16 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
         <div className="app-view" id="studioView" hidden={studioHidden}>
           <header className="studio-top">
-            <HeaderLockup id="studioHome" locale={locale} />
+            <a id="studioHome" href={pathForApp(locale, "maker")}>
+              <img
+                className="hero-logo"
+                src={makerLogoStackedSrc(locale)}
+                width={logoSize.width}
+                height={logoSize.height}
+                alt={t(locale, "makerTitle")}
+                decoding="async"
+              />
+            </a>
             <h1 id="studioTitle" className="studio-title">
               {t(locale, "studioTitle")}
             </h1>
