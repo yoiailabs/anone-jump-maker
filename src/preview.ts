@@ -101,6 +101,20 @@ export function syncMuteControl(
   if (label) setTextIfChanged(label, previewSoundLabel(muted, locale));
 }
 
+/** プレビューが使えるのに止まっているときは、操作を出しておく。再生中の自動非表示は別経路。 */
+export function shouldRevealPreviewChrome(input: {
+  ready: boolean;
+  playing: boolean;
+  recording: boolean;
+}): boolean {
+  return input.ready && !input.playing && !input.recording;
+}
+
+/** スタジオのプレビューだけ末尾で先頭へ戻す。書き出し中はループしない。 */
+export function shouldLoopPreviewPlayback(input: { recording: boolean; playing: boolean }): boolean {
+  return input.playing && !input.recording;
+}
+
 /** 最初から再生、またはクリップ末尾では 0 へシークする。一時停止からの再開は現在位置のまま。 */
 export function shouldSeekPreviewToStart(input: {
   fromStart: boolean;

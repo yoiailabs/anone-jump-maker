@@ -58,10 +58,13 @@ import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
   formatPreviewClock,
   PREVIEW_MUTED_DEFAULT,
+  shouldLoopPreviewPlayback,
+  shouldRevealPreviewChrome,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
   syncMuteControl,
 } from "./preview.ts";
+import { setPreviewChromeState } from "./preview-chrome-store.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
 import {
@@ -162,7 +165,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
   const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
   const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
-  const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
+  const previewToggle = must(root, "#previewToggle") as HTMLButtonElement;
   const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const benchFlag = document.createElement("p");
   benchFlag.id = "benchFlag";
@@ -320,12 +323,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const locked = photosLocked();
     const saveDisabled = recording || sharingExport || !ready;
     saveBtn.disabled = saveDisabled;
-    restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
     stage.setAttribute("aria-pressed", active ? "true" : "false");
+    setPreviewChromeState({ playing: active, enabled: ready && !recording });
+    if (shouldRevealPreviewChrome({ ready, playing: active, recording })) setChromeOpen(true);
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -845,10 +849,31 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     })();
   });
   video.addEventListener("ended", () => {
-    if (!recording) {
+    if (recording) return;
+    if (!shouldLoopPreviewPlayback({ recording, playing })) {
       stopPlayback();
       paint();
+      return;
     }
+    const gen = playGen;
+    void (async () => {
+      try {
+        await seekVideo(video, 0);
+        if (gen !== playGen || !shouldLoopPreviewPlayback({ recording, playing })) return;
+        paint();
+        await video.play();
+        if (gen !== playGen) video.pause();
+      } catch (error) {
+        if (gen !== playGen) return;
+        playing = false;
+        previewTracked = false;
+        haltLoop();
+        video.pause();
+        paint();
+        refreshButtons();
+        setErrorFeedback("preview", error, "statusPlayFailed");
+      }
+    })();
   });
   video.addEventListener("error", () => {
     if (recording) return;
@@ -996,10 +1021,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   video.addEventListener("durationchange", syncSeek);
   video.addEventListener("loadedmetadata", syncSeek);
 
-  restartBtn.addEventListener("click", (event) => {
+  previewToggle.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    void startPlayback(true);
+    if (previewToggle.disabled) return;
+    togglePreviewPlay();
   });
 
   muteBtn.addEventListener("click", (event) => {

@@ -27,10 +27,9 @@ test("reopens preview immediately after close during playback start", async ({ p
 
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
-  await expect(page.locator("#restartBtn")).toBeEnabled({ timeout: 20_000 });
+  await expect(page.locator("#previewToggle")).toBeEnabled({ timeout: 20_000 });
 
-  const stage = page.locator("#stage");
-  await stage.click();
+  const stage = page.locator("#previewToggle");
   await stage.click();
   await expect
     .poll(() =>

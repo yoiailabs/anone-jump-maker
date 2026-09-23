@@ -115,7 +115,11 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#saveBtn")).toBeEnabled();
   await expect(page.locator("#previewSeek")).toBeEnabled();
   await expect(page.locator("#previewTime")).toHaveText(/\d+:\d{2}/);
-  await expect(page.locator("#previewTransport")).toBeHidden();
+  await expect(page.locator("#previewTransport")).toBeVisible();
+  await expect(page.locator("#previewDim")).toBeVisible();
+  await expect(page.locator("#previewToggle")).toBeVisible();
+  await expect(page.locator("#previewStatusLabel")).toHaveText("停止中");
+  await expect(page.locator("#restartBtn")).toHaveCount(0);
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeVisible();
   await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
@@ -124,24 +128,21 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
     ),
   ).toBe(true);
 
-  await page.locator("#stage").click();
-  await expect(page.locator("#previewTransport")).toBeVisible();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
-  const restartLabel = await page.locator("#restartBtn .preview-ctrl-label").boundingBox();
-  expect(restartLabel && restartLabel.width <= 2 && restartLabel.height <= 2).toBe(true);
-  await page.locator("#stage").click();
+  await page.locator("#previewToggle").click();
   await expect(page.locator("#previewDialog")).toHaveCount(0);
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 
   await settlePreviewPlayback(page);
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
   await showPreviewChrome(page);
-  await page.locator("#stage").click();
+  await page.locator("#previewToggle").click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#saveBtn")).toBeVisible();
   await expect(page.locator("#saveBtn")).toHaveText("動画を保存");
   await expect(page.locator("#previewSaveHint")).toHaveText("端末内で生成します。数十秒かかることがあります。");
-  await expect(page.locator("#restartBtn")).toBeVisible();
+  await expect(page.locator("#previewTransport")).toBeVisible();
+  await expect(page.locator("#previewStatusLabel")).toHaveText("停止中");
   await expect(page.locator("#muteBtn")).toBeVisible();
   await expect(page.locator("#muteBtn .preview-mute-hint")).toHaveText("プレビュー時のみ");
   await expect(page.locator("#modalPlayBtn")).toHaveCount(0);
@@ -246,14 +247,15 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
   await expect(page.locator(".thumb-add")).toBeVisible();
   await expect(page.locator("#thumbs img")).toHaveAttribute("alt", "photo.jpg");
-  await expect(page.locator("#restartBtn")).toBeEnabled();
+  await expect(page.locator("#previewTransport")).toBeVisible();
+  await expect(page.locator("#previewSeek")).toBeEnabled();
 
   await page.locator(".thumb-remove").click();
   await expect(page.locator("#photoFeedback")).toHaveText("");
   await expect(page.locator("#thumbs")).toBeHidden();
   await expect(page.locator(".thumb-add")).toBeHidden();
   await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
-  await expect(page.locator("#restartBtn")).toBeDisabled();
+  await expect(page.locator("#previewTransport")).toBeHidden();
 });
 
 test("keeps at most 32 photos and disables adding at the cap", async ({ page }) => {
@@ -860,7 +862,8 @@ async function uploadPhoto(page: Page): Promise<void> {
   await openStudio(page);
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
-  await expect(page.locator("#restartBtn")).toBeEnabled({ timeout: 20_000 });
+  await expect(page.locator("#previewSeek")).toBeEnabled({ timeout: 20_000 });
+  await expect(page.locator("#previewTransport")).toBeVisible();
 }
 
 async function showPreviewChrome(page: Page): Promise<void> {
@@ -875,7 +878,7 @@ async function settlePreviewPlayback(page: Page): Promise<void> {
   if ((await page.locator("#previewFeedback").textContent())?.includes("再生できませんでした")) {
     await showPreviewChrome(page);
     await page.locator("#muteBtn").click();
-    await page.locator("#stage").click();
+    await page.locator("#previewToggle").click();
   }
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 }

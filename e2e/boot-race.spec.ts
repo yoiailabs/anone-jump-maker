@@ -64,6 +64,7 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
   await waitForAppReady(page);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
   await expect(page.locator('#studioView input[name="aspect"][value="portrait"]')).toBeChecked();
-  await expect(page.locator("#restartBtn")).toBeEnabled();
+  await expect(page.locator("#previewSeek")).toBeEnabled();
+  await expect(page.locator("#previewTransport")).toBeVisible();
   await expect(page.locator("#photoFeedback")).toHaveText("");
 });

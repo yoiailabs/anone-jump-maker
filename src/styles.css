@@ -781,6 +781,60 @@ html[lang="ja"] .lede {
   display: none !important;
 }
 
+.preview-dim {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: rgba(20, 16, 12, 0.45);
+  pointer-events: none;
+}
+
+.preview-toggle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 3.9rem);
+  z-index: 4;
+  width: 4.25rem;
+  height: 4.25rem;
+  min-width: 4.25rem;
+  margin-inline: auto;
+  border-width: 3px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.preview-toggle svg {
+  width: 2.15rem;
+  height: 2.15rem;
+}
+
+.preview-toggle .preview-ctrl-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.preview-toggle:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.stage[data-chrome="open"] .preview-dim {
+  display: block;
+}
+
+.stage:has(#studioEmpty:not([hidden])) .preview-dim,
+.stage:has(#studioEmpty:not([hidden])) .preview-toggle {
+  display: none !important;
+}
+
 .preview-transport {
   display: none;
   position: absolute;
@@ -895,6 +949,34 @@ html[lang="ja"] .lede {
   border-radius: 999px;
   background: #fff8ee;
   border: 2.5px solid var(--ink);
+}
+
+.preview-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.18rem;
+  max-width: 4.4rem;
+  color: #fff8ee;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.preview-status-icon {
+  width: 0.72rem;
+  height: 0.72rem;
+  flex: 0 0 auto;
+}
+
+.preview-status-icon[hidden] {
+  display: none !important;
+}
+
+.preview-status-label {
+  white-space: nowrap;
 }
 
 .preview-time {
@@ -1215,6 +1297,23 @@ a.btn:focus-visible {
 .btn.ghost {
   background: var(--card);
   color: var(--ink);
+}
+
+.preview-toggle.btn {
+  display: none;
+  min-height: 4.25rem;
+  padding: 0;
+  border-radius: 999px;
+  background: #fff8ee;
+  color: var(--ink);
+}
+
+.stage[data-chrome="open"] .preview-toggle.btn {
+  display: inline-flex;
+}
+
+.preview-toggle.btn:hover:not(:disabled) {
+  transform: none;
 }
 
 /* ハッシュタグコピーとアプリ共有は操作パネルの枠の外に置く */

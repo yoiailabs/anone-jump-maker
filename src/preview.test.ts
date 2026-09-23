@@ -13,6 +13,8 @@ import {
   playPauseLabel,
   previewSoundLabel,
   restartButtonHtml,
+  shouldLoopPreviewPlayback,
+  shouldRevealPreviewChrome,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
   syncMuteControl,
@@ -158,6 +160,19 @@ describe("syncMuteControl", () => {
 });
 
 describe("shouldSeekPreviewToStart", () => {
+  it("shows the player chrome when the preview is ready and stopped", () => {
+    expect(shouldRevealPreviewChrome({ ready: true, playing: false, recording: false })).toBe(true);
+    expect(shouldRevealPreviewChrome({ ready: true, playing: true, recording: false })).toBe(false);
+    expect(shouldRevealPreviewChrome({ ready: false, playing: false, recording: false })).toBe(false);
+    expect(shouldRevealPreviewChrome({ ready: true, playing: false, recording: true })).toBe(false);
+  });
+
+  it("loops studio preview playback and leaves export alone", () => {
+    expect(shouldLoopPreviewPlayback({ playing: true, recording: false })).toBe(true);
+    expect(shouldLoopPreviewPlayback({ playing: false, recording: false })).toBe(false);
+    expect(shouldLoopPreviewPlayback({ playing: true, recording: true })).toBe(false);
+  });
+
   it("seeks when the caller asked to restart or the clip already ended", () => {
     expect(
       shouldSeekPreviewToStart({ fromStart: true, ended: false, currentTime: 1.2, duration: 8 }),

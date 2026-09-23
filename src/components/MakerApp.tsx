@@ -9,7 +9,8 @@ import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { SHARE_TEXT } from "../share.ts";
-import { muteButtonHtml, PREVIEW_MUTED_DEFAULT, restartButtonHtml } from "../preview.ts";
+import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT } from "../preview.ts";
+import { getPreviewChrome, subscribePreviewChrome } from "../preview-chrome-store.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { getFeedback, subscribeFeedback, type FeedbackPlace } from "../feedback-store.ts";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
@@ -20,6 +21,42 @@ const PhotoThumbs = lazy(async () => {
   const { PhotoThumbs: Thumbs } = await import("@/components/PhotoThumbs.tsx");
   return { default: Thumbs };
 });
+
+function PreviewChrome({ locale }: { locale: Locale }) {
+  const { playing, enabled } = useSyncExternalStore(subscribePreviewChrome, getPreviewChrome, getPreviewChrome);
+  return (
+    <>
+      <div className="preview-dim" id="previewDim" />
+      <Button
+        variant="site"
+        type="button"
+        id="previewToggle"
+        className="preview-toggle btn ghost"
+        disabled={!enabled}
+        aria-pressed={playing ? "true" : "false"}
+        aria-label={t(locale, playing ? "previewPause" : "previewPlay")}
+        dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(playing, locale) }}
+      />
+    </>
+  );
+}
+
+function PreviewStatus({ locale }: { locale: Locale }) {
+  const { playing } = useSyncExternalStore(subscribePreviewChrome, getPreviewChrome, getPreviewChrome);
+  return (
+    <span className="preview-status" id="previewStatus" data-state={playing ? "playing" : "stopped"}>
+      <svg className="preview-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" hidden={playing}>
+        <path d="M8 6.2 18.2 12 8 17.8Z" fill="currentColor" />
+      </svg>
+      <svg className="preview-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" hidden={!playing}>
+        <path d="M8 6.2h2.7v11.6H8Zm5.3 0H16v11.6h-2.7Z" fill="currentColor" />
+      </svg>
+      <span className="preview-status-label notranslate" id="previewStatusLabel" translate="no">
+        {t(locale, playing ? "previewPlaying" : "previewStopped")}
+      </span>
+    </span>
+  );
+}
 
 function PhotoThumbsSlot({ locale }: { locale: Locale }) {
   const { photos } = useSyncExternalStore(
@@ -242,7 +279,9 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <div className="stage-wrap">
               <div className="stage" id="stage" data-aspect={DEFAULT_ASPECT} aria-pressed="false">
                 <button type="button" className="studio-empty" id="studioEmpty" aria-label={t(locale, "studioEmpty")} />
+                <PreviewChrome locale={locale} />
                 <div className="preview-transport" id="previewTransport">
+                  <PreviewStatus locale={locale} />
                   <input
                     id="previewSeek"
                     className="preview-seek"
@@ -258,13 +297,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                     0:00
                   </span>
                   <div className="preview-actions">
-                      <Button
-                        variant="site"
-                        type="button"
-                        id="restartBtn"
-                        className="btn ghost"
-                        dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
-                      />
                       <Button
                         variant="site"
                         type="button"
