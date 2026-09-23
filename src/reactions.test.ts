@@ -14,11 +14,17 @@ afterEach(() => {
 });
 
 describe("reaction embeds", () => {
-  it("lists official Nanatsukaze first, then PIKASONIC, then nakotanmaru last", () => {
+  it("lists official Nanatsukaze first, then PIKASONIC, then nakotanmaru, then later fan posts", () => {
     expect(REACTION_POSTS.map((post) => post.id)).toEqual([
       "2100840133016912147",
       "2100570924915548571",
       "2100880092864122959",
+      "2100797924125049167",
+      "2100906505587626344",
+      "2100928096262344908",
+      "2100921962474389924",
+      "2100613865503588831",
+      "2100897848061784121",
     ]);
     expect(REACTION_POSTS[0]?.href).toBe(
       "https://x.com/Nanatsukaze_ofc/status/2100840133016912147",
@@ -26,20 +32,33 @@ describe("reaction embeds", () => {
     expect(REACTION_POSTS[1]?.href).toBe(
       "https://x.com/PIKASONIC_ofc/status/2100570924915548571",
     );
-    expect(REACTION_POSTS.at(-1)?.href).toBe(
+    expect(REACTION_POSTS[2]?.href).toBe(
       "https://x.com/_nakotanmaru/status/2100880092864122959",
     );
-    expect(REACTION_POSTS.at(-1)?.handle).toBe("_nakotanmaru");
+    expect(REACTION_POSTS[2]?.handle).toBe("_nakotanmaru");
+    expect(REACTION_POSTS.at(-1)?.href).toBe(
+      "https://x.com/VfLcPI4qES19291/status/2100897848061784121",
+    );
   });
 
-  it("embeds Nanatsukaze above PIKASONIC, then nakotanmaru last in the HTML", () => {
+  it("embeds Nanatsukaze above PIKASONIC, then nakotanmaru, then the added posts", () => {
     const html = reactionEmbedHtml();
     const nanatsukaze = html.indexOf("2100840133016912147");
     const pikasonic = html.indexOf("2100570924915548571");
     const nakotanmaru = html.indexOf("2100880092864122959");
+    const added = [
+      "2100797924125049167",
+      "2100906505587626344",
+      "2100928096262344908",
+      "2100921962474389924",
+      "2100613865503588831",
+      "2100897848061784121",
+    ].map((id) => html.indexOf(id));
     expect(nanatsukaze).toBeGreaterThan(-1);
     expect(pikasonic).toBeGreaterThan(nanatsukaze);
     expect(nakotanmaru).toBeGreaterThan(pikasonic);
+    expect(added.every((index) => index > nakotanmaru)).toBe(true);
+    expect(added).toEqual([...added].sort((a, b) => a - b));
     expect(html).toContain("@Nanatsukaze_ofc");
     expect(html).toContain("ナナツカゼ");
     expect(html).toContain("簡単に作れるようになったﾆｬ!");
@@ -55,17 +74,43 @@ describe("reaction embeds", () => {
     expect(html).toContain("2026年9月17日");
   });
 
-  it("appends the nakotanmaru post last from the official URL", () => {
+  it("keeps the nakotanmaru post third from the official URL", () => {
     const html = reactionEmbedHtml();
-    const last = REACTION_POSTS.at(-1);
-    expect(last?.id).toBe("2100880092864122959");
-    expect(html).toContain(`href="${last?.href}?ref_src=twsrc%5Etfw"`);
+    const post = REACTION_POSTS[2];
+    expect(post?.id).toBe("2100880092864122959");
+    expect(html).toContain(`href="${post?.href}?ref_src=twsrc%5Etfw"`);
     expect(html).toContain("僕の好きな空の写真でやってみた");
     expect(html).toContain("同じ空は二度と見れないんだよ");
     expect(html).toContain("@_nakotanmaru");
     expect(html).toContain("nakotanmaru");
     expect(html).toContain("pic.twitter.com/ocpFNsQRb9");
     expect(html).toContain("https://t.co/ocpFNsQRb9");
+  });
+
+  it("appends the six fan posts under the existing reactions", () => {
+    const html = reactionEmbedHtml();
+    const added = REACTION_POSTS.slice(3);
+    expect(added.map((post) => post.href)).toEqual([
+      "https://x.com/02_ZERO_Ni/status/2100797924125049167",
+      "https://x.com/_yofukasi_3150/status/2100906505587626344",
+      "https://x.com/habotan_bloom/status/2100928096262344908",
+      "https://x.com/Black_umya/status/2100921962474389924",
+      "https://x.com/iihhlc/status/2100613865503588831",
+      "https://x.com/VfLcPI4qES19291/status/2100897848061784121",
+    ]);
+    for (const post of added) {
+      expect(html).toContain(`href="${post.href}?ref_src=twsrc%5Etfw"`);
+      expect(html).toContain(`@${post.handle}`);
+      expect(html).toContain(post.author);
+      expect(html).toContain(post.dateLabel);
+    }
+    expect(html).toContain("普通にこれ神すぎてやばい");
+    expect(html).toContain("神すぎるだろこのサイトwww");
+    expect(html).toContain("ファンメイドのこれ楽しい〜〜〜");
+    expect(html).toContain("大好きな曲の神メーカーをお借りしました🫶");
+    expect(html).toContain("#やねから見てるよ");
+    expect(html).toContain("めっちゃ簡単に作れた！");
+    expect(html).toContain("すごい、あっという間作れる！");
   });
 
   it("renders official twitter-tweet blockquotes for widgets.js", () => {

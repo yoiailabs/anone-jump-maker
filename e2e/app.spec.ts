@@ -719,7 +719,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await page.evaluate(() => {
     const reactions = document.querySelector("#reactionsEmbed");
     if (reactions) {
-      reactions.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`.repeat(3);
+      reactions.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`.repeat(9);
     }
     for (const card of document.querySelectorAll<HTMLElement>(".community-jumps-card[data-hydrated='1']")) {
       card.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`;
@@ -739,7 +739,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
   await expect(page.locator("#communityView")).toBeHidden();
   await expect(page.locator("#reactionsTitle")).toBeVisible();
-  await expect(page.locator("#reactionsEmbed blockquote.twitter-tweet")).toHaveCount(3);
+  await expect(page.locator("#reactionsEmbed blockquote.twitter-tweet")).toHaveCount(9);
   await expect(page.locator("#reactionsEmbed iframe.twitter-tweet-rendered")).toHaveCount(0);
 
   await openCommunityInApp(page);
