@@ -582,7 +582,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(makerText).not.toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
   expect(makerText).not.toContain("ダウンロードを押すと共有シートが開きます");
   await expect(page.locator("#studioView #onDeviceNote")).toHaveText(
-    "端末上で動画を生成します。数十秒かかることがあります。",
+    "動画生成は端末内で行われ、外部に画像が送信されることはありません。",
   );
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
   await expect(toCommunity).toHaveClass(/\bbtn\b/);
