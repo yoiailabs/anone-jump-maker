@@ -146,8 +146,11 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
 
   await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+  await page.locator("#swapTab").click();
   await page.locator('#studioView label:has(input[name="swap"][value="zoom"])').click();
+  await page.locator("#filterTab").click();
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
+  await page.locator("#characterTab").click();
   await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
   await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
   await expect(page.locator("#stage")).toBeVisible();

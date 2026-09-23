@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
@@ -40,8 +40,18 @@ type MakerAppProps = {
   communityHtml?: string;
 };
 
+const OPTION_TABS = [
+  ["aspect", "studioTabAspect", "makerAspectLegend"],
+  ["swap", "studioTabEffect", "makerEffectLegend"],
+  ["filter", "studioTabFilter", "makerFilterLegend"],
+  ["character", "studioTabCharacter", "makerCharacterLegend"],
+] as const;
+
+type OptionTab = (typeof OPTION_TABS)[number][0];
+
 export default function MakerApp({ initialView, locale, communityHtml = "" }: MakerAppProps) {
   const started = useRef(false);
+  const [optionTab, setOptionTab] = useState<OptionTab>("aspect");
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
@@ -259,23 +269,47 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               </span>
             </div>
             <section className="studio-options" aria-label={t(locale, "studioOptions")}>
-              <fieldset className="aspect-field">
+              <div className="studio-option-tabs" role="tablist" aria-label={t(locale, "studioOptions")}>
+                {OPTION_TABS.map(([id, labelKey, legendKey]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="studio-option-tab"
+                    id={`${id}Tab`}
+                    role="tab"
+                    aria-selected={optionTab === id}
+                    aria-controls={`${id}Panel`}
+                    aria-label={t(locale, legendKey)}
+                    onClick={() => setOptionTab(id)}
+                  >
+                    {t(locale, labelKey)}
+                  </button>
+                ))}
+              </div>
+              <fieldset
+                className="aspect-field"
+                id="aspectPanel"
+                role="tabpanel"
+                aria-labelledby="aspectTab"
+                hidden={optionTab !== "aspect"}
+              >
                 <legend>{t(locale, "makerAspectLegend")}</legend>
                 <RadioPills
                   name="aspect"
                   ariaLabel={t(locale, "makerAspectLegend")}
                   options={[
-                    {
-                      value: "landscape",
-                      label: t(locale, "makerLandscape"),
-                      ariaLabel: t(locale, "makerLandscapeAria"),
-                      defaultChecked: true,
-                    },
-                    { value: "portrait", label: t(locale, "makerPortrait"), ariaLabel: t(locale, "makerPortraitAria") },
+                    { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+                    { value: "portrait", label: t(locale, "makerPortrait") },
                   ]}
                 />
               </fieldset>
-              <fieldset className="aspect-field" id="swapField">
+              <fieldset
+                className="aspect-field"
+                id="swapPanel"
+                role="tabpanel"
+                aria-labelledby="swapTab"
+                hidden={optionTab !== "swap"}
+              >
                 <legend>{t(locale, "makerEffectLegend")}</legend>
                 <RadioPills
                   name="swap"
@@ -286,35 +320,36 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                   ]}
                 />
               </fieldset>
-              <fieldset className="aspect-field" id="filterField">
+              <fieldset
+                className="aspect-field"
+                id="filterPanel"
+                role="tabpanel"
+                aria-labelledby="filterTab"
+                hidden={optionTab !== "filter"}
+              >
                 <legend>{t(locale, "makerFilterLegend")}</legend>
                 <RadioPills
                   name="filter"
+                  className="aspect-toggle cols-3"
                   ariaLabel={t(locale, "makerFilterLegend")}
                   options={[
-                    {
-                      value: "none",
-                      label: t(locale, "makerFilterNone"),
-                      ariaLabel: t(locale, "makerFilterNoneAria"),
-                      defaultChecked: true,
-                    },
-                    {
-                      value: "blur-weak",
-                      label: t(locale, "makerFilterBlurWeak"),
-                      ariaLabel: t(locale, "makerFilterBlurWeakAria"),
-                    },
-                    {
-                      value: "blur-strong",
-                      label: t(locale, "makerFilterBlurStrong"),
-                      ariaLabel: t(locale, "makerFilterBlurStrongAria"),
-                    },
+                    { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+                    { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
+                    { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
                   ]}
                 />
               </fieldset>
-              <fieldset className="aspect-field" id="characterField">
+              <fieldset
+                className="aspect-field"
+                id="characterPanel"
+                role="tabpanel"
+                aria-labelledby="characterTab"
+                hidden={optionTab !== "character"}
+              >
                 <legend>{t(locale, "makerCharacterLegend")}</legend>
                 <RadioPills
                   name="character"
+                  className="aspect-toggle cols-3"
                   ariaLabel={t(locale, "makerCharacterLegend")}
                   options={[
                     { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
@@ -425,14 +460,14 @@ function RadioPills({
   name: string;
   ariaLabel: string;
   className?: string;
-  options: readonly { value: string; label: string; ariaLabel?: string; defaultChecked?: boolean }[];
+  options: readonly { value: string; label: string; defaultChecked?: boolean }[];
 }) {
   return (
     <div className={className} role="radiogroup" aria-label={ariaLabel}>
       {options.map((option) => (
-        <label key={`${name}-${option.value}`} aria-label={option.ariaLabel}>
+        <label key={`${name}-${option.value}`}>
           <input type="radio" name={name} value={option.value} defaultChecked={option.defaultChecked} />
-          <span aria-hidden={option.ariaLabel ? true : undefined}>{option.label}</span>
+          <span>{option.label}</span>
         </label>
       ))}
     </div>

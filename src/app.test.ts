@@ -56,6 +56,8 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="previewSeek"');
     expect(makerSrc).toContain('id="previewTime"');
     expect(makerSrc).toContain('className="studio-options"');
+    expect(makerSrc).toContain('role="tab"');
+    expect(makerSrc).toContain('id={`${id}Tab`}');
     expect(makerSrc).not.toContain("popoverTarget");
     expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('name="aspect"'));
     expect(makerSrc.indexOf('name="aspect"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
