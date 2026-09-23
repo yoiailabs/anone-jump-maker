@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, chooseStudioOption, openStudio, PHOTO_FILE, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, openStudio, PHOTO_FILE, waitForAppReady } from "./helpers.ts";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -56,7 +56,7 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
 
   await openStudio(page);
-  await chooseStudioOption(page, "aspect", "portrait");
+  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
 
   releaseCuts();

@@ -1,16 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { SHARE_TEXT } from "../src/share.ts";
-import {
-  blockAnalytics,
-  chooseStudioOption,
-  jpegInput,
-  openStudio,
-  PHOTO_FILE,
-  stubShortTemplate,
-  stripZwsp,
-  waitForAppReady,
-} from "./helpers.ts";
+import { blockAnalytics, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -100,6 +91,20 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
     .toBe(true);
 });
 
+test("empty preview opens the photo picker and does not start playback", async ({ page }) => {
+  await openStudio(page);
+  const empty = page.locator("#studioEmpty");
+  await expect(empty).toBeVisible();
+  await expect(empty).toHaveText("写真を選んでね");
+  await empty.focus();
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.keyboard.press("Enter")]);
+  expect(chooser.isMultiple()).toBe(true);
+  await chooser.setFiles(PHOTO_FILE.path);
+  await expect(page.locator("#status")).toContainText("1 枚を読み込みました", { timeout: 20_000 });
+  await expect(empty).toBeHidden();
+  await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
+});
+
 test("loads a photo then previews, mutes, and switches aspect in Chromium and WebKit", async ({ page }) => {
   await uploadPhoto(page);
   await expect(page.locator("#thumbs img")).toHaveCount(1);
@@ -109,8 +114,8 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#previewTime")).toHaveText(/\d+\.\d/);
   const playLabel = await page.locator("#playBtn .preview-ctrl-label").boundingBox();
   expect(playLabel && playLabel.width <= 2 && playLabel.height <= 2).toBe(true);
-  await expect(page.locator("#aspectPopoverTrigger")).toBeVisible();
-  await expect(page.locator("#studioOptionsTitle")).toHaveCount(0);
+  await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeVisible();
+  await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
     await page.evaluate(() =>
       performance.getEntriesByType("resource").some((entry) => /\/template\/(landscape|vertical)\.mp4/.test(entry.name)),
@@ -139,11 +144,11 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await mute.click();
   await expect(mute).toContainText(/音声オフ|音声オン/);
 
-  await chooseStudioOption(page, "aspect", "portrait");
+  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
-  await chooseStudioOption(page, "swap", "zoom");
-  await chooseStudioOption(page, "filter", "blur-weak");
-  await chooseStudioOption(page, "character", "1.2");
+  await page.locator('#studioView label:has(input[name="swap"][value="zoom"])').click();
+  await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
+  await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
   await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
   await expect(page.locator("#stage")).toBeVisible();
   await expect(page.locator("#saveBtn")).toBeEnabled();

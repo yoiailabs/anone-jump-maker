@@ -55,8 +55,10 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain('id="previewDialog"');
     expect(makerSrc).toContain('id="previewSeek"');
     expect(makerSrc).toContain('id="previewTime"');
-    expect(makerSrc).toContain('popoverId="aspectPopover"');
-    expect(makerSrc).toContain("popoverTarget={popoverId}");
+    expect(makerSrc).toContain('className="studio-options"');
+    expect(makerSrc).not.toContain("popoverTarget");
+    expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('name="aspect"'));
+    expect(makerSrc.indexOf('name="aspect"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
     expect(appSrc).toContain("formatPreviewClock");
     expect(makerSrc).toContain('id="restartBtn"');
     expect(makerSrc).toContain('id="muteBtn"');
@@ -73,6 +75,8 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain('id="browsersNote"');
     expect(makerSrc).not.toContain("previewStageAria");
     expect(appSrc).not.toContain("stage.addEventListener");
+    expect(makerSrc).toContain('<button type="button" className="studio-empty" id="studioEmpty"');
+    expect(appSrc).toContain('studioEmpty.addEventListener("click"');
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");
     expect(appSrc).toContain("trackEvent(MAKE_OPEN_EVENT");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(1);

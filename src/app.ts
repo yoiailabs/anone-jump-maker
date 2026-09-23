@@ -146,7 +146,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const picker = must(root, "#picker") as HTMLInputElement;
   const previewSeek = must(root, "#previewSeek") as HTMLInputElement;
   const previewTime = must(root, "#previewTime");
-  const studioEmpty = must(root, "#studioEmpty");
+  const studioEmpty = must(root, "#studioEmpty") as HTMLButtonElement;
   const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
   const exportTitle = must(root, "#exportTitle");
   const exportStatus = must(root, "#exportStatus");
@@ -272,6 +272,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       locked: photosLocked(),
     });
     studioEmpty.hidden = photos.length > 0;
+    studioEmpty.disabled = picker.disabled;
     syncPickerLabel();
   };
 
@@ -924,6 +925,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   picker.addEventListener("click", () => {
     if (picker.disabled) return;
     trackEvent(PHOTO_PICKER_OPEN_EVENT, undefined, { debounceMs: 600 });
+  });
+
+  studioEmpty.addEventListener("click", () => {
+    if (studioEmpty.hidden || studioEmpty.disabled || picker.disabled) return;
+    picker.click();
   });
 
   picker.addEventListener("change", () => {

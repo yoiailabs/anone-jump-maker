@@ -755,11 +755,26 @@ html[lang="ja"] .lede {
   padding: 1rem;
   background: color-mix(in srgb, var(--paper) 78%, transparent);
   color: var(--ink);
+  width: 100%;
+  height: 100%;
+  border: 0;
+  font: inherit;
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: center;
-  pointer-events: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.studio-empty:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: -6px;
+}
+
+.studio-empty:disabled {
+  cursor: default;
 }
 
 .studio-empty[hidden] {
@@ -833,104 +848,6 @@ html[lang="ja"] .lede {
   color: var(--ink);
 }
 
-.option-triggers {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.4rem;
-  width: min(100%, 22rem);
-}
-
-.option-slot {
-  min-width: 0;
-}
-
-.option-trigger {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.05rem;
-  width: 100%;
-  min-height: 2.55rem;
-  padding: 0.28rem 0.55rem;
-  border: 2.5px solid var(--ink);
-  border-radius: 0.85rem;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: left;
-  cursor: pointer;
-}
-
-.option-trigger-value {
-  max-width: 100%;
-  overflow: hidden;
-  font-weight: 400;
-  font-size: 0.68rem;
-  color: var(--mute);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.option-popover {
-  border: 3px solid var(--ink);
-  border-radius: 1rem;
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 4px 5px 0 var(--teal);
-  padding: 0.7rem 0.75rem 0.8rem;
-  width: min(22rem, calc(100vw - 1.5rem));
-}
-
-.option-popover .aspect-toggle {
-  width: 100%;
-}
-
-@supports (anchor-name: --aspect-trigger) {
-  #aspectPopoverTrigger {
-    anchor-name: --aspect-trigger;
-  }
-
-  #swapPopoverTrigger {
-    anchor-name: --swap-trigger;
-  }
-
-  #filterPopoverTrigger {
-    anchor-name: --filter-trigger;
-  }
-
-  #characterPopoverTrigger {
-    anchor-name: --character-trigger;
-  }
-
-  #aspectPopover {
-    position-anchor: --aspect-trigger;
-  }
-
-  #swapPopover {
-    position-anchor: --swap-trigger;
-  }
-
-  #filterPopover {
-    position-anchor: --filter-trigger;
-  }
-
-  #characterPopover {
-    position-anchor: --character-trigger;
-  }
-
-  .option-popover {
-    inset: unset;
-    top: anchor(bottom);
-    left: anchor(left);
-    margin: 0.35rem 0 0;
-    position-try-fallbacks: flip-block, flip-inline;
-  }
-}
-
 .preview-seek {
   width: min(100%, 22rem);
   height: 2.75rem;
@@ -948,7 +865,8 @@ html[lang="ja"] .lede {
 .studio-options {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.7rem;
+  width: min(100%, 22rem);
 }
 
 .studio-options h2 {

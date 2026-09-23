@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
@@ -211,9 +211,9 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           <section className="studio-stage" aria-label={t(locale, "previewTitle")}>
             <div className="stage-wrap">
               <div className="stage" id="stage" data-aspect={DEFAULT_ASPECT} aria-pressed="false">
-                <span className="studio-empty" id="studioEmpty">
+                <button type="button" className="studio-empty" id="studioEmpty">
                   {t(locale, "studioEmpty")}
-                </span>
+                </button>
               </div>
             </div>
             <div className="preview-transport">
@@ -258,68 +258,56 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 0.0
               </span>
             </div>
-            <div className="option-triggers">
-              <OptionSlot popoverId="aspectPopover" legend={t(locale, "makerAspectLegend")} defaultValue={t(locale, "makerLandscape")}>
-                <fieldset className="aspect-field">
-                  <legend>{t(locale, "makerAspectLegend")}</legend>
-                  <RadioPills
-                    name="aspect"
-                    ariaLabel={t(locale, "makerAspectLegend")}
-                    options={[
-                      { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                      { value: "portrait", label: t(locale, "makerPortrait") },
-                    ]}
-                  />
-                </fieldset>
-              </OptionSlot>
-              <OptionSlot popoverId="swapPopover" legend={t(locale, "makerEffectLegend")} defaultValue={t(locale, "makerJump")}>
-                <fieldset className="aspect-field" id="swapField">
-                  <legend>{t(locale, "makerEffectLegend")}</legend>
-                  <RadioPills
-                    name="swap"
-                    ariaLabel={t(locale, "makerEffectLegend")}
-                    options={[
-                      { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
-                      { value: "zoom", label: t(locale, "makerZoom") },
-                    ]}
-                  />
-                </fieldset>
-              </OptionSlot>
-              <OptionSlot popoverId="filterPopover" legend={t(locale, "makerFilterLegend")} defaultValue={t(locale, "makerFilterNone")}>
-                <fieldset className="aspect-field" id="filterField">
-                  <legend>{t(locale, "makerFilterLegend")}</legend>
-                  <RadioPills
-                    name="filter"
-                    ariaLabel={t(locale, "makerFilterLegend")}
-                    className="aspect-toggle cols-3"
-                    options={[
-                      { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                      { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
-                      { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
-                    ]}
-                  />
-                </fieldset>
-              </OptionSlot>
-              <OptionSlot
-                popoverId="characterPopover"
-                legend={t(locale, "makerCharacterLegend")}
-                defaultValue={t(locale, "makerCharacterStandard")}
-              >
-                <fieldset className="aspect-field" id="characterField">
-                  <legend>{t(locale, "makerCharacterLegend")}</legend>
-                  <RadioPills
-                    name="character"
-                    ariaLabel={t(locale, "makerCharacterLegend")}
-                    className="aspect-toggle cols-3"
-                    options={[
-                      { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                      { value: "1.2", label: t(locale, "makerCharacter12") },
-                      { value: "1.4", label: t(locale, "makerCharacter14") },
-                    ]}
-                  />
-                </fieldset>
-              </OptionSlot>
-            </div>
+            <section className="studio-options">
+              <fieldset className="aspect-field">
+                <legend>{t(locale, "makerAspectLegend")}</legend>
+                <RadioPills
+                  name="aspect"
+                  ariaLabel={t(locale, "makerAspectLegend")}
+                  options={[
+                    { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+                    { value: "portrait", label: t(locale, "makerPortrait") },
+                  ]}
+                />
+              </fieldset>
+              <fieldset className="aspect-field" id="swapField">
+                <legend>{t(locale, "makerEffectLegend")}</legend>
+                <RadioPills
+                  name="swap"
+                  ariaLabel={t(locale, "makerEffectLegend")}
+                  options={[
+                    { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
+                    { value: "zoom", label: t(locale, "makerZoom") },
+                  ]}
+                />
+              </fieldset>
+              <fieldset className="aspect-field" id="filterField">
+                <legend>{t(locale, "makerFilterLegend")}</legend>
+                <RadioPills
+                  name="filter"
+                  ariaLabel={t(locale, "makerFilterLegend")}
+                  className="aspect-toggle cols-3"
+                  options={[
+                    { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+                    { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
+                    { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
+                  ]}
+                />
+              </fieldset>
+              <fieldset className="aspect-field" id="characterField">
+                <legend>{t(locale, "makerCharacterLegend")}</legend>
+                <RadioPills
+                  name="character"
+                  ariaLabel={t(locale, "makerCharacterLegend")}
+                  className="aspect-toggle cols-3"
+                  options={[
+                    { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+                    { value: "1.2", label: t(locale, "makerCharacter12") },
+                    { value: "1.4", label: t(locale, "makerCharacter14") },
+                  ]}
+                />
+              </fieldset>
+            </section>
           </section>
           <section className="studio-tools">
             <div className="make-cta">
@@ -409,43 +397,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
       </dialog>
     </>
-  );
-}
-
-function OptionSlot({
-  popoverId,
-  legend,
-  defaultValue,
-  children,
-}: {
-  popoverId: string;
-  legend: string;
-  defaultValue: string;
-  children: ReactNode;
-}) {
-  const [current, setCurrent] = useState(defaultValue);
-  useEffect(() => {
-    const popover = document.getElementById(popoverId);
-    if (!popover) return;
-    const sync = () => {
-      const checked = popover.querySelector<HTMLInputElement>("input:checked");
-      const text = checked?.closest("label")?.querySelector("span")?.textContent?.trim();
-      if (text) setCurrent(text);
-    };
-    sync();
-    popover.addEventListener("change", sync);
-    return () => popover.removeEventListener("change", sync);
-  }, [popoverId]);
-  return (
-    <div className="option-slot">
-      <button type="button" className="option-trigger" id={`${popoverId}Trigger`} popoverTarget={popoverId}>
-        <span className="option-trigger-name">{legend}</span>
-        <span className="option-trigger-value">{current}</span>
-      </button>
-      <div id={popoverId} popover="auto" className="option-popover">
-        {children}
-      </div>
-    </div>
   );
 }
 
