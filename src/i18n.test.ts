@@ -148,10 +148,10 @@ describe("messages", () => {
     expect(t("en", "exportDownload")).toBe("Download");
     expect(t("ko", "statusExportCancelled")).toBe("생성을 취소했습니다");
     expect(t("zh", "exportTitle")).toBe("正在生成视频");
-    expect(t("ja", "makerOnDevice")).toBe("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
-    expect(t("en", "makerOnDevice")).toBe("Video is generated on this device, and images are never sent outside.");
-    expect(t("ko", "makerOnDevice")).toBe("영상 생성은 기기 안에서 이루어지며, 이미지가 외부로 전송되지 않습니다.");
-    expect(t("zh", "makerOnDevice")).toBe("视频在本设备内生成，图片不会发送到外部。");
+    expect(t("ja", "makerOnDevice")).toBe("動画生成は端末内で行われます。外部に画像が送信されることはありません。");
+    expect(t("en", "makerOnDevice")).toBe("Video is generated on this device. Images are never sent outside.");
+    expect(t("ko", "makerOnDevice")).toBe("영상 생성은 기기 안에서 이루어집니다. 이미지가 외부로 전송되지 않습니다.");
+    expect(t("zh", "makerOnDevice")).toBe("视频在本设备内生成。图片不会发送到外部。");
     expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
     expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
     expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");

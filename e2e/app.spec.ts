@@ -579,10 +579,10 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(makerText).not.toContain("※ファン制作の非公式アプリです。");
   expect(makerText).not.toContain("※ファン制作の非公式サイトです");
   await expect(page.locator("#fanNote")).toHaveCount(0);
-  expect(makerText).not.toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
+  expect(makerText).not.toContain("動画生成は端末内で行われます。外部に画像が送信されることはありません。");
   expect(makerText).not.toContain("ダウンロードを押すと共有シートが開きます");
   await expect(page.locator("#studioView #onDeviceNote")).toHaveText(
-    "動画生成は端末内で行われ、外部に画像が送信されることはありません。",
+    "動画生成は端末内で行われます。外部に画像が送信されることはありません。",
   );
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
   await expect(toCommunity).toHaveClass(/\bbtn\b/);
