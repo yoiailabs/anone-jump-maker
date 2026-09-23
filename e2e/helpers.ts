@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -54,6 +54,11 @@ export async function blockAnalytics(page: Page): Promise<void> {
 
 export function stripZwsp(text: string): string {
   return text.replaceAll("\u200b", "");
+}
+
+/** Visible copy, ignoring BudouX zero-width phrase breaks. */
+export async function expectVisibleText(locator: Locator, expected: string): Promise<void> {
+  await expect.poll(async () => stripZwsp((await locator.textContent()) ?? "")).toBe(expected);
 }
 
 export async function waitForAppReady(page: Page): Promise<void> {

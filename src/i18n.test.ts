@@ -223,10 +223,10 @@ describe("messages", () => {
     expect(t("en", "songTitle")).toBe("Connect the World");
     expect(t("en", "artistName")).toBe("Nanatsukaze");
     expect(songCreditLine("en")).toBe("♪ Connect the World - Nanatsukaze");
-    expect(t("ko", "songTitle")).toBe("있잖아");
-    expect(songCreditLine("ko")).toBe("♪ 있잖아 - Nanatsukaze");
+    expect(t("ko", "songTitle")).toBe("Connect the World");
+    expect(songCreditLine("ko")).toBe(songCreditLine("en"));
     expect(t("zh", "songTitle")).toBe("Connect the World");
-    expect(songCreditLine("zh")).toBe("♪ Connect the World - Nanatsukaze");
+    expect(songCreditLine("zh")).toBe(songCreditLine("en"));
   });
 });
 

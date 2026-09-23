@@ -1,3 +1,4 @@
+import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { pathForApp, t, type Locale } from "../i18n.ts";
 
 export function SiteFooter({
@@ -9,7 +10,7 @@ export function SiteFooter({
 }) {
   return (
     <footer className="site-footer" id="siteFooter">
-      <p className="site-footer-notice">{t(locale, "termsNotice")}</p>
+      <JaPhrase className="site-footer-notice" locale={locale} text={t(locale, "termsNotice")} />
       <div className="site-footer-links">
         <nav aria-label={t(locale, "footerNavAria")}>
           <a

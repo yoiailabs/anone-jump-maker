@@ -122,7 +122,9 @@ describe("PhotoThumbs", () => {
     expect(add.classList.contains("is-cap")).toBe(true);
     expect(add.getAttribute("aria-label")).toBe("これ以上追加できません（32枚まで）");
     expect(add.textContent).toContain("32");
-    expect(document.querySelector("#thumbsHint")?.textContent).toBe("32枚が上限です。×で外すと追加できます。");
+    expect(document.querySelector("#thumbsHint")?.textContent?.replaceAll("\u200b", "")).toBe(
+      "32枚が上限です。×で外すと追加できます。",
+    );
     act(() => {
       add.click();
     });

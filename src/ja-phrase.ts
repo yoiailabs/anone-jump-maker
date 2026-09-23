@@ -56,7 +56,7 @@ export function phraseBreakElement(el: ParentNode, parse: (text: string) => stri
 
 export async function applyJaPhrasePolyfill(root: ParentNode, locale: Locale): Promise<void> {
   if (!needsJaPhrasePolyfill(locale)) return;
-  const targets = [...root.querySelectorAll<HTMLElement>(".lede")];
+  const targets = [...root.querySelectorAll<HTMLElement>(".lede, .ja-phrase")];
   if (targets.length === 0) return;
   const parse = await loadJaPhraseParser();
   for (const el of targets) {
