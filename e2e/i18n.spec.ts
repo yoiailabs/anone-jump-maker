@@ -275,7 +275,8 @@ test.describe("maker intro copy", () => {
     expect(text).not.toContain("写真を何枚か選択するだけで");
     expect(text).not.toContain("動画生成はすべて端末内で完結するため");
     expect(text).not.toContain("※ファン制作の非公式アプリです。");
-    await expect(page.locator("#fanNote")).toHaveText(t("ja", "makerFanNote"));
+    expect(text).not.toContain("※ファン制作の非公式サイトです");
+    await expect(page.locator("#fanNote")).toHaveCount(0);
 
     await page.goto("/en");
     await waitForAppReady(page);
@@ -283,7 +284,8 @@ test.describe("maker intro copy", () => {
     const en = (await page.locator("#makerView").innerText()).replaceAll("\u200b", "");
     expect(en).not.toContain("Pick a few photos to make an Anone Jump video");
     expect(en).not.toContain("Unofficial fan-made app.");
-    await expect(page.locator("#fanNote")).toHaveText(t("en", "makerFanNote"));
+    expect(en).not.toContain("unofficial fan-made site");
+    await expect(page.locator("#fanNote")).toHaveCount(0);
   });
 });
 

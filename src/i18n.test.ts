@@ -152,10 +152,6 @@ describe("messages", () => {
     expect(t("en", "makerOnDevice")).toBe("Video is generated on this device. It can take several tens of seconds.");
     expect(t("ko", "makerOnDevice")).toBe("이 기기에서 영상을 만들어요. 수십 초 걸릴 수 있어요.");
     expect(t("zh", "makerOnDevice")).toBe("视频会在这台设备上生成，可能需要几十秒。");
-    expect(t("ja", "makerFanNote")).toBe("※ファン制作の非公式サイトです");
-    expect(t("en", "makerFanNote")).toBe("※This is an unofficial fan-made site.");
-    expect(t("ko", "makerFanNote")).toBe("※팬이 만든 비공식 사이트입니다.");
-    expect(t("zh", "makerFanNote")).toBe("※这是粉丝制作的非官方网站。");
     expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
     expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
     expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");

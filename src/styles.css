@@ -210,10 +210,6 @@ body {
   color: var(--ink);
 }
 
-.studio-title {
-  margin-bottom: 0.3rem;
-}
-
 .hero-logo-link {
   display: inline-block;
   margin: 0 auto 0.45rem;
@@ -1046,6 +1042,11 @@ html[lang="ja"] .lede {
   min-width: 0;
 }
 
+/* 見出しの margin はそのまま。セクション間隔だけ生成案内の上で詰める。 */
+#studioView .studio-photos {
+  margin-top: calc(0.2rem - var(--section-gap));
+}
+
 .studio-tools {
   display: flex;
   flex-direction: column;
@@ -1565,16 +1566,6 @@ a.btn:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-}
-
-.fan-note {
-  margin: 0;
-  color: var(--mute);
-  font-size: 0.84rem;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-  text-align: center;
 }
 
 /* 公式見出しが正。MV と反応の見出しも同じタイポ・ウェイト・余白。 */

@@ -185,9 +185,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <p className="hero-hashtags" id="landingHashtags">
               {SHARE_TEXT}
             </p>
-            <p className="fan-note" id="fanNote">
-              {t(locale, "makerFanNote")}
-            </p>
           </section>
 
           <footer className="notes">

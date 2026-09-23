@@ -577,22 +577,10 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(makerText).not.toContain("写真を何枚か選択するだけで");
   expect(makerText).not.toContain("動画生成はすべて端末内で完結するため");
   expect(makerText).not.toContain("※ファン制作の非公式アプリです。");
-  expect(makerText).toContain("※ファン制作の非公式サイトです");
+  expect(makerText).not.toContain("※ファン制作の非公式サイトです");
+  await expect(page.locator("#fanNote")).toHaveCount(0);
   expect(makerText).not.toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
   expect(makerText).not.toContain("ダウンロードを押すと共有シートが開きます");
-  const hashBox = await page.locator("#landingHashtags").boundingBox();
-  const fanBox = await page.locator("#fanNote").boundingBox();
-  const linksTitleBox = await page.locator("#linksTitle").boundingBox();
-  expect(hashBox && fanBox && fanBox.y > hashBox.y + hashBox.height - 1).toBe(true);
-  expect(hashBox && fanBox && fanBox.y - (hashBox.y + hashBox.height) < 20).toBe(true);
-  expect(fanBox && linksTitleBox && fanBox.y < linksTitleBox.y).toBe(true);
-  await expect(page.locator("#fanNote")).toHaveText("※ファン制作の非公式サイトです");
-  const fanStyle = await page.locator("#fanNote").evaluate((el) => {
-    const style = getComputedStyle(el);
-    return { align: style.textAlign, size: Number.parseFloat(style.fontSize) };
-  });
-  expect(fanStyle.align).toBe("center");
-  expect(fanStyle.size).toBeGreaterThan(12);
   await expect(page.locator("#studioView #onDeviceNote")).toHaveText(
     "端末上で動画を生成します。数十秒かかることがあります。",
   );
@@ -901,6 +889,11 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   expect(lockupBox && lockupBox.width > 200).toBe(true);
   expect(lockupBox && langBox && langBox.y > lockupBox.y + lockupBox.height).toBe(true);
   const studioAlign = await headerAlign(page, ".studio-top", "#studioHome img", "#studioTitle");
+  const noteBox = await page.locator("#onDeviceNote").boundingBox();
+  const titleBox = await page.locator("#studioTitle").boundingBox();
+  const noteGap = (noteBox?.y ?? 0) - ((titleBox?.y ?? 0) + (titleBox?.height ?? 0));
+  expect(noteGap).toBeGreaterThan(0);
+  expect(noteGap).toBeLessThan(22);
   await page.goto("/terms");
   const termsAlign = await headerAlign(page, "header.hero", "#legalHome", "#termsTitle");
   expect(studioAlign.headAlign).toBe("center");
@@ -910,9 +903,7 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   expect(studioAlign.titleMarginTop).toBe(termsAlign.titleMarginTop);
   expect(studioAlign.titleMarginLeft).toBe(termsAlign.titleMarginLeft);
   expect(studioAlign.titleMarginRight).toBe(termsAlign.titleMarginRight);
-  expect(studioAlign.titleMarginBottom).toBeLessThan(termsAlign.titleMarginBottom);
-  expect(studioAlign.titleMarginBottom).toBeGreaterThan(termsAlign.titleMarginBottom * 0.35);
-  expect(studioAlign.titleMarginBottom).toBeLessThan(termsAlign.titleMarginBottom * 0.55);
+  expect(studioAlign.titleMarginBottom).toBe(termsAlign.titleMarginBottom);
   expect(Math.abs(studioAlign.headMid - studioAlign.markMid)).toBeLessThan(2);
   expect(Math.abs(termsAlign.headMid - termsAlign.markMid)).toBeLessThan(2);
   await page.goto("/make");
