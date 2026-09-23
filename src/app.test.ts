@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { TEMPLATES } from "./layout.ts";
 import { loadTimeline, loadTimelines } from "./app.ts";
 import appSrc from "./app.ts?raw";
+import compositorSrc from "./compositor.ts?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
+import offlineSrc from "./offline-encode.ts?raw";
 
 describe("loadTimeline", () => {
   it("parses a cuts table", async () => {
@@ -155,5 +157,16 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("downloadBlob(pending.blob, pending.filename)");
     expect(appSrc).not.toContain("downloadBlob(result.blob, filename)");
     expect(appSrc).not.toContain("sharePendingExport");
+  });
+
+  it("rewinds the character and drops the keyed texture before another export or preview", () => {
+    expect(appSrc).toContain("compositor?.resetCharacter()");
+    expect(appSrc).toContain("await rewindCharacterVideo(video)");
+    expect(appSrc).toContain("comp.resetCharacter()");
+    expect(appSrc).toContain("if (recording) return;");
+    expect(offlineSrc).toContain("await rewindCharacterVideo(video)");
+    expect(offlineSrc).toContain("markCharacterVideoUsed(video)");
+    expect(compositorSrc).toContain("resetCharacter()");
+    expect(compositorSrc).toContain("dropGpuKeyer()");
   });
 });

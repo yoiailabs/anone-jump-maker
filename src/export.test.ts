@@ -31,7 +31,11 @@ import {
   isAbortError,
   packedRgba,
   paintDecodedExportFrame,
+  markCharacterVideoUsed,
+  putRgbaOnCanvas,
+  rewindCharacterVideo,
   seekVideo,
+  shouldReloadCharacterVideo,
   templateFrameMatchesTime,
   throwIfAborted,
 } from "./export.ts";
@@ -223,8 +227,90 @@ function createVideo(init?: Partial<Pick<VideoStub, "currentTime" | "duration" |
   };
 }
 
-function asVideo(video: VideoStub): HTMLVideoElement {
+function asVideo(video: VideoStub | ReloadVideo): HTMLVideoElement {
   return video as unknown as HTMLVideoElement;
+}
+
+type ReloadVideo = VideoStub & {
+  loadCount: number;
+  pose: number;
+  ended: boolean;
+  src: string;
+  currentSrc: string;
+  dataset: { characterArmed?: string };
+  removeAttribute: (name: string) => void;
+  load: () => void;
+};
+
+function createReloadVideo(): ReloadVideo {
+  const listeners = new Map<string, Set<() => void>>();
+  let time = 0;
+  let src = "/template/vertical.mp4";
+  let pose = 0;
+  const dispatch = (type: string) => {
+    for (const fn of [...(listeners.get(type) ?? [])]) fn();
+  };
+  const video: ReloadVideo = {
+    events: [],
+    loadCount: 0,
+    ended: false,
+    duration: 16,
+    readyState: 2,
+    dataset: {},
+    get pose() {
+      return pose;
+    },
+    set pose(value: number) {
+      pose = value;
+    },
+    get src() {
+      return src;
+    },
+    set src(value: string) {
+      src = value;
+    },
+    get currentSrc() {
+      return src;
+    },
+    get currentTime() {
+      return time;
+    },
+    set currentTime(value: number) {
+      video.events.push("seek");
+      time = value;
+      dispatch("seeked");
+    },
+    pause() {},
+    removeAttribute(name: string) {
+      if (name === "src") src = "";
+    },
+    load() {
+      video.loadCount += 1;
+      if (!src) {
+        video.readyState = 0;
+        return;
+      }
+      pose = 0;
+      time = 0;
+      video.readyState = 2;
+      dispatch("loadeddata");
+    },
+    addEventListener(type, fn) {
+      const set = listeners.get(type) ?? new Set();
+      set.add(fn);
+      listeners.set(type, set);
+    },
+    removeEventListener(type, fn) {
+      listeners.get(type)?.delete(fn);
+    },
+    requestVideoFrameCallback() {
+      return 1;
+    },
+    cancelVideoFrameCallback() {},
+    dispatch,
+    present() {},
+  };
+  return video;
 }
 
 describe("decoded export frames", () => {
@@ -372,6 +458,108 @@ describe("seekVideo", () => {
       await pending;
     } finally {
       vi.useRealTimers();
+    }
+  });
+});
+
+describe("character video rewind", () => {
+  beforeEach(() => {
+    if (!("HTMLMediaElement" in globalThis)) {
+      Object.assign(globalThis, { HTMLMediaElement: { HAVE_CURRENT_DATA: 2 } });
+    }
+    if (!("window" in globalThis)) {
+      Object.assign(globalThis, { window: globalThis });
+    }
+  });
+
+  it("keeps a fresh template that is still on the first frame", () => {
+    expect(shouldReloadCharacterVideo({ ended: false, currentTime: 0, dataset: {} })).toBe(false);
+    expect(shouldReloadCharacterVideo({ ended: false, currentTime: 0.05, dataset: {} })).toBe(false);
+  });
+
+  it("reloads once the element has played, ended, or already been used", () => {
+    expect(shouldReloadCharacterVideo({ ended: true, currentTime: 0, dataset: {} })).toBe(true);
+    expect(shouldReloadCharacterVideo({ ended: false, currentTime: 0.2, dataset: {} })).toBe(true);
+    expect(
+      shouldReloadCharacterVideo({ ended: false, currentTime: 0, dataset: { characterArmed: "1" } }),
+    ).toBe(true);
+  });
+
+  it("resets a stuck final pose before the next pass even when the clock is already 0", async () => {
+    const video = createReloadVideo();
+    await rewindCharacterVideo(asVideo(video));
+    expect(video.loadCount).toBe(0);
+    expect(video.pose).toBe(0);
+
+    video.pose = 9;
+    video.currentTime = 0;
+    markCharacterVideoUsed(video);
+    await rewindCharacterVideo(asVideo(video));
+    expect(video.loadCount).toBeGreaterThan(0);
+    expect(video.pose).toBe(0);
+    expect(video.currentTime).toBe(0);
+    expect(video.dataset.characterArmed).not.toBe("1");
+  });
+});
+
+describe("putRgbaOnCanvas", () => {
+  it("drops the previous bitmap on every frame even when the size is unchanged", () => {
+    const original = globalThis.ImageData;
+    class FakeImageData {
+      data: Uint8ClampedArray;
+      width: number;
+      height: number;
+      constructor(data: Uint8ClampedArray, width: number, height: number) {
+        this.data = data;
+        this.width = width;
+        this.height = height;
+      }
+    }
+    Object.assign(globalThis, { ImageData: FakeImageData });
+    try {
+      let widthWrites = 0;
+      let heightWrites = 0;
+      const canvas = {
+        _w: 2,
+        _h: 1,
+        get width() {
+          return this._w;
+        },
+        set width(value: number) {
+          widthWrites += 1;
+          this._w = value;
+        },
+        get height() {
+          return this._h;
+        },
+        set height(value: number) {
+          heightWrites += 1;
+          this._h = value;
+        },
+      };
+      const puts: Uint8ClampedArray[] = [];
+      const ctx = {
+        putImageData(image: { data: Uint8ClampedArray }) {
+          puts.push(image.data);
+        },
+      };
+      const first = new Uint8ClampedArray([1, 2, 3, 255, 4, 5, 6, 255]);
+      const last = new Uint8ClampedArray([9, 9, 9, 255, 8, 8, 8, 255]);
+      const frame = { width: 2, height: 1 };
+      putRgbaOnCanvas(canvas as unknown as HTMLCanvasElement, ctx as unknown as CanvasRenderingContext2D, {
+        ...frame,
+        data: first,
+      });
+      putRgbaOnCanvas(canvas as unknown as HTMLCanvasElement, ctx as unknown as CanvasRenderingContext2D, {
+        ...frame,
+        data: last,
+      });
+      expect(widthWrites).toBe(2);
+      expect(heightWrites).toBe(2);
+      expect([...(puts[1] ?? [])]).toEqual([...last]);
+    } finally {
+      if (original) Object.assign(globalThis, { ImageData: original });
+      else Reflect.deleteProperty(globalThis, "ImageData");
     }
   });
 });
