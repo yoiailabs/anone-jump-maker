@@ -82,6 +82,11 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain('id="shareFeedback"');
     expect(makerSrc).not.toContain('id="shareAppBtn"');
     expect(makerSrc).not.toContain('id="copyHashtagsBtn"');
+    expect(appSrc).not.toContain('msg("statusExportSharing")');
+    expect(appSrc).not.toContain('msg("exportShareHint")');
+    expect(appSrc).not.toContain('msg("exportDownloadHint")');
+    expect(makerSrc).not.toContain('id="exportDownloadHint"');
+    expect(makerSrc).toContain('id="fanNote"');
     expect(appSrc).not.toContain('msg("statusShareCancelled")');
     expect(appSrc).not.toContain('msg("statusExportShareCancelled")');
     expect(appSrc).not.toContain('msg("statusHashtagsCopied")');

@@ -196,7 +196,8 @@ body {
   outline-offset: 3px;
 }
 
-.hero h1 {
+.hero h1,
+.studio-title {
   margin: 0.3rem 0 0.7rem;
   font-family: "Zen Maru Gothic", "Noto Sans KR", "Noto Sans SC",
     "Hiragino Maru Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo",
@@ -205,6 +206,7 @@ body {
   font-weight: 400;
   letter-spacing: 0.04em;
   line-height: 1.45;
+  color: var(--ink);
 }
 
 .hero-logo-link {
@@ -243,7 +245,8 @@ body {
 }
 
 /* applyView の heading.focus() は :focus だけ。Tab のときだけ輪郭を出す。 */
-.hero h1:focus:not(:focus-visible) {
+.hero h1:focus:not(:focus-visible),
+.studio-title:focus:not(:focus-visible) {
   outline: none;
 }
 
@@ -497,8 +500,7 @@ html[lang="ja"] .lede {
   text-align: right;
 }
 
-.export-keep-open,
-.export-download-hint {
+.export-keep-open {
   margin: 0;
   font-size: 0.72rem;
   line-height: 1.55;
@@ -746,13 +748,6 @@ html[lang="ja"] .lede {
 
 #studioView .lang-switch {
   margin: 0.85rem 0 0;
-}
-
-.studio-title {
-  margin: 0;
-  font-size: 1.35rem;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
 }
 
 .studio-stage {
@@ -1561,11 +1556,32 @@ a.btn:focus-visible {
   gap: 0.7rem;
 }
 
-.links-title {
+.official-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.notes .fan-note {
   margin: 0;
   color: var(--mute);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
+/* 公式見出しが正。MV と反応の見出しも同じタイポ・ウェイト・余白。 */
+.notes .links-title,
+.notes .official-mv-title,
+.notes .reactions-title {
+  margin: 0;
+  color: var(--mute);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 400;
   letter-spacing: 0.1em;
+  line-height: 1.75;
 }
 
 .link-banners {
@@ -1645,14 +1661,7 @@ a.btn:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-  margin: 0.15rem 0 0;
-}
-
-.official-mv-title {
   margin: 0;
-  color: var(--mute);
-  font-size: 0.74rem;
-  letter-spacing: 0.1em;
 }
 
 .official-mv-frame {
@@ -1849,14 +1858,6 @@ a.btn:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-}
-
-.reactions-title {
-  margin: 0;
-  color: var(--mute);
-  font-size: 0.74rem;
-  font-weight: 400;
-  letter-spacing: 0.1em;
 }
 
 .reactions-embed {

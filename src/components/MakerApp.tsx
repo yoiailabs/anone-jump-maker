@@ -189,13 +189,18 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           </section>
 
           <footer className="notes">
-            <nav className="links" aria-labelledby="linksTitle">
-              <p className="links-title" id="linksTitle">
-                {t(locale, "makerOfficial")}
+            <div className="official-block">
+              <p className="fan-note" id="fanNote">
+                {t(locale, "makerFanNote")}
               </p>
-              <ul className="link-banners" dangerouslySetInnerHTML={{ __html: linksHtml }} />
-              <OfficialMvEmbed locale={locale} />
-            </nav>
+              <nav className="links" aria-labelledby="linksTitle">
+                <p className="links-title" id="linksTitle">
+                  {t(locale, "makerOfficial")}
+                </p>
+                <ul className="link-banners" dangerouslySetInnerHTML={{ __html: linksHtml }} />
+                <OfficialMvEmbed locale={locale} />
+              </nav>
+            </div>
             <section className="reactions" aria-labelledby="reactionsTitle">
               <h2 className="reactions-title" id="reactionsTitle">
                 {t(locale, "makerReactions")}
@@ -420,9 +425,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               </div>
               <p className="export-keep-open" id="exportKeepOpen">
                 {t(locale, "exportKeepOpen")}
-              </p>
-              <p className="export-download-hint" id="exportDownloadHint" hidden>
-                {t(locale, "exportDownloadHint")}
               </p>
               <Button variant="site" type="button" id="cancelExportBtn" className="btn ghost">
                 {t(locale, "exportCancel")}

@@ -152,7 +152,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#saveBtn")).toBeVisible();
   await expect(page.locator("#saveBtn")).toHaveText("動画を保存");
-  await expect(page.locator("#previewSaveHint")).toHaveText("端末内で生成します。数十秒かかることがあります。");
+  await expect(page.locator("#previewSaveHint")).toHaveText(
+    "端末上で動画を生成します。数十秒かかることがあります。",
+  );
   await expect(page.locator("#previewTransport")).toBeVisible();
   await expect(page.locator("#previewStatus")).toHaveAttribute("data-state", "stopped");
   await expect(page.locator("#previewStatus")).toHaveAttribute("aria-label", "停止中");
@@ -231,7 +233,9 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
   await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
   await expect(page.locator("#exportProgressLabel")).toContainText("%");
   await expect(page.locator("#exportKeepOpen")).toBeVisible();
-  await expect(page.locator("#exportKeepOpen")).toContainText("タブを閉じたり");
+  await expect(page.locator("#exportKeepOpen")).toHaveText(
+    "端末上で動画を生成します。数十秒かかることがあります。",
+  );
   await expect(page.locator("#cancelExportBtn")).toBeEnabled();
   await page.locator("#cancelExportBtn").click();
   await expect(dialog).toBeHidden({ timeout: 15_000 });
@@ -368,7 +372,9 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   await expect(exportDialog).toBeHidden();
   await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
   await expect(page.locator("#cancelExportBtn")).toHaveText("キャンセル");
-  await expect(page.locator("#exportKeepOpen")).toContainText("タブを閉じたり");
+  await expect(page.locator("#exportKeepOpen")).toHaveText(
+    "端末上で動画を生成します。数十秒かかることがあります。",
+  );
   await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
   await expect(page.locator("#exportProgressLabel")).toHaveText("0%");
 
@@ -384,11 +390,15 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   if (await exportDialog.isVisible()) {
     await expect(page.locator("#exportProgressLabel")).toContainText("%");
   }
-  const statusText = await waitForExportNotice(page, new RegExp(`生成できました|${UNSUPPORTED_EXPORT_MESSAGE}`));
+  const statusText = await waitForExportNotice(
+    page,
+    new RegExp(`ダウンロードボタンで保存してください|${UNSUPPORTED_EXPORT_MESSAGE}`),
+  );
   expect(autoDownloaded).toBe(false);
-  if (statusText.includes("生成できました")) {
+  if (statusText.includes("ダウンロードボタンで保存してください")) {
     await expect(exportDialog).toBeVisible();
-    await expect(page.locator("#exportDownloadHint")).toHaveText("ダウンロードボタンで端末に保存できます。");
+    await expect(page.locator("#exportDownloadHint")).toHaveCount(0);
+    await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
     await expect(page.locator("#downloadExportBtn")).toBeVisible();
     await expect(page.locator("#downloadExportBtn")).toHaveText("ダウンロード");
     await expect(page.locator("#shareExportBtn")).toHaveCount(0);
@@ -410,9 +420,18 @@ test("download opens a file share sheet when the browser can share files", async
   await page.addInitScript(() => {
     const calls: { text?: string; name?: string; type?: string; size?: number; keys: string[] }[] = [];
     Object.assign(window, { __fileShareCalls: calls });
+    let releaseShare: () => void = () => {};
+    Object.assign(window, {
+      __releaseFileShare: () => {
+        releaseShare();
+      },
+    });
     Object.defineProperty(navigator, "share", {
       configurable: true,
       value: async (data: ShareData) => {
+        const pending = new Promise<void>((resolve) => {
+          releaseShare = resolve;
+        });
         const file = data.files?.[0];
         calls.push({
           text: data.text,
@@ -421,6 +440,7 @@ test("download opens a file share sheet when the browser can share files", async
           size: file?.size,
           keys: Object.keys(data),
         });
+        await pending;
       },
     });
     Object.defineProperty(navigator, "canShare", {
@@ -439,9 +459,12 @@ test("download opens a file share sheet when the browser can share files", async
     downloaded = true;
   });
   await page.locator("#saveBtn").click();
-  const statusText = await waitForExportNotice(page, new RegExp(`生成できました|${UNSUPPORTED_EXPORT_MESSAGE}`));
+  const statusText = await waitForExportNotice(
+    page,
+    new RegExp(`ダウンロードボタンで保存してください|${UNSUPPORTED_EXPORT_MESSAGE}`),
+  );
   expect(downloaded).toBe(false);
-  if (!statusText.includes("生成できました")) {
+  if (!statusText.includes("ダウンロードボタンで保存してください")) {
     await expect(page.locator("#exportPanel")).toBeHidden();
     return;
   }
@@ -450,9 +473,8 @@ test("download opens a file share sheet when the browser can share files", async
   await expect(page.locator("#downloadExportBtn")).toBeVisible();
   await expect(page.locator("#downloadExportBtn")).toHaveText("ダウンロード");
   await expect(page.locator("#downloadExportBtn")).not.toHaveClass(/ghost/);
-  await expect(page.locator("#exportDownloadHint")).toHaveText(
-    "ダウンロードを押すと共有シートが開きます。「ビデオを保存」やファイルから保存できます。",
-  );
+  await expect(page.locator("#exportDownloadHint")).toHaveCount(0);
+  await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
   expect(
     await page.evaluate(() => (window as unknown as { __fileShareCalls: unknown[] }).__fileShareCalls.length),
   ).toBe(0);
@@ -463,6 +485,9 @@ test("download opens a file share sheet when the browser can share files", async
       page.evaluate(() => (window as unknown as { __fileShareCalls: unknown[] }).__fileShareCalls.length),
     )
     .toBe(1);
+  await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
+  await expect(page.locator("#exportStatus")).not.toContainText("共有シートを開いています");
+  await page.evaluate(() => (window as unknown as { __releaseFileShare: () => void }).__releaseFileShare());
   expect(downloaded).toBe(false);
   const payload = await page.evaluate(
     () =>
@@ -503,11 +528,14 @@ test("cancelling the share sheet stays on the export dialog", async ({ page }) =
     downloaded = true;
   });
   await page.locator("#saveBtn").click();
-  const statusText = await waitForExportNotice(page, new RegExp(`生成できました|${UNSUPPORTED_EXPORT_MESSAGE}`));
-  if (!statusText.includes("生成できました")) return;
+  const statusText = await waitForExportNotice(
+    page,
+    new RegExp(`ダウンロードボタンで保存してください|${UNSUPPORTED_EXPORT_MESSAGE}`),
+  );
+  if (!statusText.includes("ダウンロードボタンで保存してください")) return;
   expect(downloaded).toBe(false);
   await page.locator("#downloadExportBtn").click();
-  await expect(page.locator("#exportStatus")).toContainText("生成できました。ダウンロードボタンで保存してください。");
+  await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
   await expect(page.locator("#exportStatus")).not.toContainText("共有をやめました");
   expect(downloaded).toBe(false);
   await expect(page.locator("#exportPanel")).toBeVisible();
@@ -549,9 +577,15 @@ test("opens community jumps from the disclaimer link and returns via the back li
   expect(makerText).not.toContain("写真を何枚か選択するだけで");
   expect(makerText).not.toContain("動画生成はすべて端末内で完結するため");
   expect(makerText).not.toContain("※ファン制作の非公式アプリです。");
+  expect(makerText).toContain("※ファン制作の非公式サイトです");
   expect(makerText).not.toContain("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
+  expect(makerText).not.toContain("ダウンロードを押すと共有シートが開きます");
+  const fanBox = await page.locator("#fanNote").boundingBox();
+  const linksTitleBox = await page.locator("#linksTitle").boundingBox();
+  expect(fanBox && linksTitleBox && fanBox.y < linksTitleBox.y).toBe(true);
+  await expect(page.locator("#fanNote")).toHaveText("※ファン制作の非公式サイトです");
   await expect(page.locator("#studioView #onDeviceNote")).toHaveText(
-    "動画生成は端末内で行われ、外部に画像が送信されることはありません。",
+    "端末上で動画を生成します。数十秒かかることがあります。",
   );
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
   await expect(toCommunity).toHaveClass(/\bbtn\b/);

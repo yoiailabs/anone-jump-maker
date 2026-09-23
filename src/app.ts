@@ -68,12 +68,7 @@ import {
 import { setPreviewChromeState } from "./preview-chrome-store.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
-import {
-  canShareFiles,
-  isXInAppBrowser,
-  shareVideoFile,
-  videoFileForShare,
-} from "./share.ts";
+import { canShareFiles, shareVideoFile, videoFileForShare } from "./share.ts";
 import { setFeedbackState, type FeedbackPlace } from "./feedback-store.ts";
 import { isolateVolatileChrome, setTextIfChanged } from "./translate-guard.ts";
 import type { CutTimeline } from "./timeline.ts";
@@ -156,7 +151,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const exportProgress = must(root, "#exportProgress") as HTMLProgressElement;
   const exportProgressLabel = must(root, "#exportProgressLabel");
   const exportKeepOpen = must(root, "#exportKeepOpen");
-  const exportDownloadHint = must(root, "#exportDownloadHint");
   const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
   const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
   const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
@@ -557,21 +551,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     exportPanel.dataset.exportPhase = phase;
     exportTitle.textContent = phase === "done" ? msg("exportDoneTitle") : msg("exportTitle");
     exportKeepOpen.hidden = phase !== "busy";
-    exportDownloadHint.hidden = phase !== "done";
-    if (phase === "done") {
-      const shareReady = fileShareAvailable();
-      const hintKey = !shareReady
-        ? "exportDownloadHint"
-        : isXInAppBrowser(typeof navigator === "undefined" ? "" : navigator.userAgent)
-          ? "exportShareHintX"
-          : "exportShareHint";
-      setTextIfChanged(exportDownloadHint, msg(hintKey));
-    }
     cancelExportBtn.hidden = phase !== "busy";
     downloadExportBtn.hidden = phase !== "done";
     downloadExportBtn.classList.remove("ghost");
     closeExportBtn.hidden = phase !== "done";
-    exportPanel.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
+    if (phase === "done") exportPanel.removeAttribute("aria-describedby");
+    else exportPanel.setAttribute("aria-describedby", "exportKeepOpen");
   };
 
   const revealExportPanel = () => {
@@ -637,7 +622,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     refreshButtons();
     downloadExportBtn.disabled = true;
     try {
-      setExportProgress(100, msg("statusExportSharing"));
       const outcome = await shareVideoFile({
         blob: pending.blob,
         filename: pending.filename,
