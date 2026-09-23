@@ -168,6 +168,10 @@ describe("messages", () => {
     );
     expect(t("ja", "makerOfficialMv")).toBe("「あのね」MV");
     expect(t("en", "makerOfficialMv")).toBe("“Anone” MV");
+    expect(t("ja", "studioOptions")).toBe("オプション");
+    expect(t("en", "studioOptions")).toBe("Options");
+    expect(t("ko", "studioOptions")).toBe("옵션");
+    expect(t("zh", "studioOptions")).toBe("选项");
     expect(t("ja", "studioTabAspect")).toBe("向き");
     expect(t("ja", "studioTabEffect")).toBe("エフェクト");
     expect(t("ja", "studioTabFilter")).toBe("フィルター");

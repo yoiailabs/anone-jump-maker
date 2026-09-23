@@ -56,6 +56,8 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="previewSeek"');
     expect(makerSrc).toContain('id="previewTime"');
     expect(makerSrc).toContain('className="studio-options"');
+    expect(makerSrc).toContain('id="studioOptionsTitle"');
+    expect(makerSrc).toContain('className="studio-option-panels"');
     expect(makerSrc).toContain('role="tab"');
     expect(makerSrc).toContain('id={`${id}Tab`}');
     expect(makerSrc).not.toContain("popoverTarget");

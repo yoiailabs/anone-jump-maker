@@ -268,96 +268,103 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 0.0
               </span>
             </div>
-            <section className="studio-options" aria-label={t(locale, "studioOptions")}>
-              <div className="studio-option-tabs" role="tablist" aria-label={t(locale, "studioOptions")}>
-                {OPTION_TABS.map(([id, labelKey, legendKey]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className="studio-option-tab"
-                    id={`${id}Tab`}
-                    role="tab"
-                    aria-selected={optionTab === id}
-                    aria-controls={`${id}Panel`}
-                    aria-label={t(locale, legendKey)}
-                    onClick={() => setOptionTab(id)}
+            <section className="studio-options" aria-labelledby="studioOptionsTitle">
+              <h2 id="studioOptionsTitle" className="studio-options-heading">
+                {t(locale, "studioOptions")}
+              </h2>
+              <div className="studio-option-sheet">
+                <div className="studio-option-tabs" role="tablist" aria-labelledby="studioOptionsTitle">
+                  {OPTION_TABS.map(([id, labelKey, legendKey]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className="studio-option-tab"
+                      id={`${id}Tab`}
+                      role="tab"
+                      aria-selected={optionTab === id}
+                      aria-controls={`${id}Panel`}
+                      aria-label={t(locale, legendKey)}
+                      onClick={() => setOptionTab(id)}
+                    >
+                      {t(locale, labelKey)}
+                    </button>
+                  ))}
+                </div>
+                <div className="studio-option-panels">
+                  <fieldset
+                    className="aspect-field"
+                    id="aspectPanel"
+                    role="tabpanel"
+                    aria-labelledby="aspectTab"
+                    hidden={optionTab !== "aspect"}
                   >
-                    {t(locale, labelKey)}
-                  </button>
-                ))}
+                    <legend>{t(locale, "makerAspectLegend")}</legend>
+                    <RadioPills
+                      name="aspect"
+                      ariaLabel={t(locale, "makerAspectLegend")}
+                      options={[
+                        { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+                        { value: "portrait", label: t(locale, "makerPortrait") },
+                      ]}
+                    />
+                  </fieldset>
+                  <fieldset
+                    className="aspect-field"
+                    id="swapPanel"
+                    role="tabpanel"
+                    aria-labelledby="swapTab"
+                    hidden={optionTab !== "swap"}
+                  >
+                    <legend>{t(locale, "makerEffectLegend")}</legend>
+                    <RadioPills
+                      name="swap"
+                      ariaLabel={t(locale, "makerEffectLegend")}
+                      options={[
+                        { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
+                        { value: "zoom", label: t(locale, "makerZoom") },
+                      ]}
+                    />
+                  </fieldset>
+                  <fieldset
+                    className="aspect-field"
+                    id="filterPanel"
+                    role="tabpanel"
+                    aria-labelledby="filterTab"
+                    hidden={optionTab !== "filter"}
+                  >
+                    <legend>{t(locale, "makerFilterLegend")}</legend>
+                    <RadioPills
+                      name="filter"
+                      className="aspect-toggle cols-3"
+                      ariaLabel={t(locale, "makerFilterLegend")}
+                      options={[
+                        { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+                        { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
+                        { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
+                      ]}
+                    />
+                  </fieldset>
+                  <fieldset
+                    className="aspect-field"
+                    id="characterPanel"
+                    role="tabpanel"
+                    aria-labelledby="characterTab"
+                    hidden={optionTab !== "character"}
+                  >
+                    <legend>{t(locale, "makerCharacterLegend")}</legend>
+                    <RadioPills
+                      name="character"
+                      className="aspect-toggle cols-3"
+                      ariaLabel={t(locale, "makerCharacterLegend")}
+                      options={[
+                        { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+                        { value: "1.2", label: t(locale, "makerCharacter12") },
+                        { value: "1.4", label: t(locale, "makerCharacter14") },
+                      ]}
+                    />
+                  </fieldset>
+                </div>
               </div>
-              <fieldset
-                className="aspect-field"
-                id="aspectPanel"
-                role="tabpanel"
-                aria-labelledby="aspectTab"
-                hidden={optionTab !== "aspect"}
-              >
-                <legend>{t(locale, "makerAspectLegend")}</legend>
-                <RadioPills
-                  name="aspect"
-                  ariaLabel={t(locale, "makerAspectLegend")}
-                  options={[
-                    { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                    { value: "portrait", label: t(locale, "makerPortrait") },
-                  ]}
-                />
-              </fieldset>
-              <fieldset
-                className="aspect-field"
-                id="swapPanel"
-                role="tabpanel"
-                aria-labelledby="swapTab"
-                hidden={optionTab !== "swap"}
-              >
-                <legend>{t(locale, "makerEffectLegend")}</legend>
-                <RadioPills
-                  name="swap"
-                  ariaLabel={t(locale, "makerEffectLegend")}
-                  options={[
-                    { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
-                    { value: "zoom", label: t(locale, "makerZoom") },
-                  ]}
-                />
-              </fieldset>
-              <fieldset
-                className="aspect-field"
-                id="filterPanel"
-                role="tabpanel"
-                aria-labelledby="filterTab"
-                hidden={optionTab !== "filter"}
-              >
-                <legend>{t(locale, "makerFilterLegend")}</legend>
-                <RadioPills
-                  name="filter"
-                  className="aspect-toggle cols-3"
-                  ariaLabel={t(locale, "makerFilterLegend")}
-                  options={[
-                    { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                    { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
-                    { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
-                  ]}
-                />
-              </fieldset>
-              <fieldset
-                className="aspect-field"
-                id="characterPanel"
-                role="tabpanel"
-                aria-labelledby="characterTab"
-                hidden={optionTab !== "character"}
-              >
-                <legend>{t(locale, "makerCharacterLegend")}</legend>
-                <RadioPills
-                  name="character"
-                  className="aspect-toggle cols-3"
-                  ariaLabel={t(locale, "makerCharacterLegend")}
-                  options={[
-                    { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                    { value: "1.2", label: t(locale, "makerCharacter12") },
-                    { value: "1.4", label: t(locale, "makerCharacter14") },
-                  ]}
-                />
-              </fieldset>
             </section>
           </section>
           <section className="studio-tools">
