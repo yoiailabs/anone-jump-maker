@@ -8,6 +8,7 @@ import {
   type Locale,
 } from "./i18n.ts";
 import { COMMUNITY_PATH } from "./page-meta.ts";
+import { MORE_JUMPS_HREF } from "./share.ts";
 
 /** パスで切り替える画面。プライバシーと利用規約は別 HTML で、メーカー内では表示を切り替えない。 */
 export const APP_VIEWS = ["maker", "studio", "community", "privacy", "terms"] as const;
@@ -93,7 +94,7 @@ export function appViewFromClick(
 }
 
 export function toCommunityLinkHtml(locale: Locale = DEFAULT_LOCALE): string {
-  return `<p class="hero-more"><a id="toCommunity" class="btn" href="${pathForApp(locale, "community")}">${t(locale, "communityToCommunity")}</a></p>`;
+  return `<p class="hero-more"><a id="toCommunity" class="btn" href="${MORE_JUMPS_HREF}" target="_blank" rel="noopener noreferrer">${t(locale, "communityToCommunity")}</a></p>`;
 }
 
 export function toMakerLinkHtml(id = "toMaker", locale: Locale = DEFAULT_LOCALE): string {

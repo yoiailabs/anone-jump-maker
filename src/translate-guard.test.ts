@@ -128,7 +128,7 @@ describe("volatile chrome in the maker markup", () => {
   it("isolates status chrome", () => {
     expect(makerSrc).toContain('id="photoFeedback"');
     expect(makerSrc).toContain('id="saveFeedback"');
-    expect(makerSrc).toContain('id="shareFeedback"');
+    expect(makerSrc).not.toContain('id="shareFeedback"');
     expect(makerSrc).toMatch(/className="status feedback notranslate"[\s\S]*translate="no"/);
     expect(makerSrc).not.toMatch(/id="slotMeter"/);
     expect(makerSrc).not.toMatch(/id="previewState"/);

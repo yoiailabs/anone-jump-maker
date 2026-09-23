@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
-import { SHARE_TEXT } from "../src/share.ts";
+import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
 import { blockAnalytics, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 
 test("boots the maker with preview and save disabled until a photo is chosen", async ({ page }) => {
   await expect(page.locator("html")).not.toHaveAttribute("translate", "no");
-  await expect(page.locator("#shareFeedback")).toHaveAttribute("translate", "no");
+  await expect(page.locator("#shareFeedback")).toHaveCount(0);
   await expect(page.locator("#saveFeedback")).toHaveAttribute("translate", "no");
   await expect(page.locator("#photoFeedback")).toHaveAttribute("translate", "no");
   await expect(page).toHaveTitle("あのねジャンプメーカー");
@@ -24,9 +24,9 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect(page.locator("#toStudio")).toHaveText("動画をつくる");
   await expect(page.locator("#makerView #picker")).toHaveCount(0);
   await expect(page.locator("#studioView")).toBeHidden();
-  await expect(page.locator("#shareAppBtn")).toBeEnabled();
-  await expect(page.locator("#copyHashtagsBtn")).toBeEnabled();
-  await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
+  await expect(page.locator("#shareAppBtn")).toHaveCount(0);
+  await expect(page.locator("#copyHashtagsBtn")).toHaveCount(0);
+  await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
   await expect(page.locator("#makerTitle")).toBeVisible();
   const heroLogo = page.locator("#makerTitle .hero-logo");
   await expect(heroLogo).toBeVisible();
@@ -507,7 +507,8 @@ test("cancelling the share sheet stays on the export dialog", async ({ page }) =
   if (!statusText.includes("生成できました")) return;
   expect(downloaded).toBe(false);
   await page.locator("#downloadExportBtn").click();
-  await expect(page.locator("#exportStatus")).toContainText("共有をやめました");
+  await expect(page.locator("#exportStatus")).toContainText("生成できました。ダウンロードボタンで保存してください。");
+  await expect(page.locator("#exportStatus")).not.toContainText("共有をやめました");
   expect(downloaded).toBe(false);
   await expect(page.locator("#exportPanel")).toBeVisible();
   await expect(page.locator("#downloadExportBtn")).toBeEnabled();
@@ -560,8 +561,12 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const ctaBox = await page.locator("#toStudio").boundingBox();
   expect(heroBox && ctaBox && ctaBox.y >= heroBox.y && ctaBox.y < heroBox.y + heroBox.height).toBe(true);
 
-  await expect(toCommunity).toHaveAttribute("href", "/community");
-  await toCommunity.click();
+  await expect(toCommunity).toHaveAttribute("href", MORE_JUMPS_HREF);
+  await expect(toCommunity).toHaveAttribute("target", "_blank");
+  await expect(toCommunity).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
+  await page.goto("/community");
+  await waitForAppReady(page);
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page).not.toHaveURL(/#community/);
   await expect(page).toHaveTitle("みんなの #あのねジャンプ");
@@ -708,7 +713,8 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#reactionsEmbed blockquote.twitter-tweet")).toHaveCount(3);
   await expect(page.locator("#reactionsEmbed iframe.twitter-tweet-rendered")).toHaveCount(0);
 
-  await page.locator("#toCommunity").click();
+  await page.goto("/community");
+  await waitForAppReady(page);
   await expect(page).toHaveURL(/\/community\/?$/);
   await expect(page.locator("#communityView")).toBeVisible();
   await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(50);
@@ -835,50 +841,31 @@ test("opens /community directly and moves leftover hashes onto the path", async 
   await expect(page.locator("#communityView")).toBeVisible();
 });
 
-test("copies hashtags from the panel", async ({ page, context, browserName }) => {
-  if (browserName === "chromium") {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  }
-  await page.locator("#copyHashtagsBtn").click();
-  await expect(page.locator("#shareFeedback")).toContainText(/コピーしました|コピーできません/);
-});
-
-test("share button sends hashtag text only", async ({ page }) => {
-  await page.evaluate(() => {
-    const calls: ShareData[] = [];
-    Object.assign(window, { __shareCalls: calls });
-    Object.defineProperty(navigator, "share", {
-      configurable: true,
-      value: async (data: ShareData) => {
-        calls.push(data);
-      },
-    });
-    Object.defineProperty(navigator, "canShare", {
-      configurable: true,
-      value: () => true,
-    });
-  });
-  await page.locator("#shareAppBtn").click();
-  await expect(page.locator("#shareFeedback")).toContainText("ハッシュタグを共有先に渡しました");
-  const payload = await page.evaluate(() => (window as unknown as { __shareCalls: ShareData[] }).__shareCalls[0]);
-  expect(payload).toEqual({ text: SHARE_TEXT });
-  expect(payload).not.toHaveProperty("url");
-  expect(payload).not.toHaveProperty("title");
-});
-
-test("share fallback copies hashtags instead of a URL", async ({ page, context, browserName }) => {
-  if (browserName === "chromium") {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  }
-  await page.evaluate(() => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
-    Object.defineProperty(navigator, "canShare", { configurable: true, value: undefined });
-  });
-  await page.locator("#shareAppBtn").click();
-  await expect(page.locator("#shareFeedback")).toContainText(/ハッシュタグをコピーしました|コピーしてください|コピーできません/);
-  if (browserName === "chromium") {
-    await expect.poll(async () => page.evaluate(() => navigator.clipboard.readText())).toBe(SHARE_TEXT);
-  }
+test("studio header uses a compact lockup back to the top", async ({ page }) => {
+  await page.goto("/make");
+  await waitForAppReady(page);
+  const lockup = page.locator("#studioHome");
+  await expect(lockup).toBeVisible();
+  await expect(lockup).toHaveAttribute("href", "/");
+  await expect(lockup.locator("img")).toHaveAttribute("src", "/icons/icon.svg");
+  await expect(lockup.locator("img")).toHaveAttribute("alt", "");
+  await expect(lockup).toContainText("あのねジャンプメーカー");
+  await expect(page.locator("#studioView .hero-logo")).toHaveCount(0);
+  await expect(page.locator("#toLanding")).toBeVisible();
+  await expect(page.locator("#studioView .lang-switch")).toBeVisible();
+  const lockupBox = await lockup.boundingBox();
+  const backBox = await page.locator("#toLanding").boundingBox();
+  const langBox = await page.locator("#studioView .lang-switch").boundingBox();
+  expect(lockupBox && lockupBox.height < 48).toBe(true);
+  expect(
+    lockupBox &&
+      backBox &&
+      Math.abs(lockupBox.y + lockupBox.height / 2 - (backBox.y + backBox.height / 2)) < 12,
+  ).toBe(true);
+  expect(lockupBox && langBox && langBox.y < lockupBox.y + lockupBox.height + 24).toBe(true);
+  await lockup.click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
 });
 
 async function uploadPhoto(page: Page): Promise<void> {

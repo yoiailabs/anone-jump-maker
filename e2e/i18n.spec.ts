@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { t } from "../src/i18n.ts";
+import { MORE_JUMPS_HREF } from "../src/share.ts";
 import { blockAnalytics, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 test.describe("language routing", () => {
@@ -41,7 +42,8 @@ test.describe("language routing", () => {
       "aria-label",
       t("en", "makerPvAria", { song: t("en", "songTitle") }),
     );
-    await expect(page.locator("#toCommunity")).toHaveAttribute("href", "/en/community");
+    await expect(page.locator("#toCommunity")).toHaveAttribute("href", MORE_JUMPS_HREF);
+    await expect(page.locator("#toCommunity")).toHaveAttribute("target", "_blank");
     await expect(page.locator(".lang-switch").first()).toBeVisible();
     await expect(page.locator('.lang-switch a[lang="en"]').first()).toHaveAttribute("aria-current", "page");
   });
@@ -70,7 +72,8 @@ test.describe("language switcher", () => {
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("en", "makerTitle"));
 
-    await page.locator("#toCommunity").click();
+    await page.goto("/en/community");
+    await waitForAppReady(page);
     await expect(page).toHaveURL(/\/en\/community\/?$/);
     await expect(page.locator("#communityJumpsTitle")).toHaveText(t("en", "communityTitle"));
     await expect(page.locator("#communityView .eyebrow")).toHaveCount(0);

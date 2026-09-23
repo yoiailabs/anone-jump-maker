@@ -1,3 +1,6 @@
+/** 横並びワードマークが無いあいだ、ヘッダーに置く小さいマーク。 */
+export const HEADER_MARK_SRC = "/icons/icon.svg";
+
 export const MAKER_LOGO_STACKED_SRC = "/brand/anone-logo-stacked.svg";
 export const MAKER_LOGO_STACKED_EN_SRC = "/brand/anone-logo-stacked-en.svg";
 export const MAKER_LOGO_STACKED_SIZE = { width: 640, height: 365 } as const;

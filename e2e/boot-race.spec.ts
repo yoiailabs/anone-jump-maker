@@ -49,11 +49,11 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
 
   await expect
     .poll(async () => {
-      await page.locator("#copyHashtagsBtn").click();
-      return (await page.locator("#shareFeedback").textContent()) ?? "";
+      await page.locator("#muteBtn").click({ force: true });
+      return (await page.locator("#muteBtn").getAttribute("aria-pressed")) ?? "";
     })
-    .toMatch(/コピーしました|コピーできません/);
-  await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
+    .toBe("false");
+  await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
 
   await openStudio(page);
   await page.locator("#aspectTab").click();

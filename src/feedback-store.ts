@@ -1,4 +1,4 @@
-export type FeedbackPlace = "photo" | "preview" | "save" | "share";
+export type FeedbackPlace = "photo" | "preview" | "save";
 export type FeedbackKind = "idle" | "busy" | "error";
 
 export type FeedbackSnap = {
@@ -12,7 +12,6 @@ let snaps: Record<FeedbackPlace, FeedbackSnap> = {
   photo: empty,
   preview: empty,
   save: empty,
-  share: empty,
 };
 
 const listeners = new Set<() => void>();

@@ -80,7 +80,10 @@ describe("app view path", () => {
     const toCommunity = toCommunityLinkHtml();
     const toMaker = toMakerLinkHtml();
     expect(toCommunity).toContain(TO_COMMUNITY_LABEL);
-    expect(toCommunity).toContain('href="/community"');
+    expect(toCommunity).toContain('href="https://x.com/search?q=');
+    expect(toCommunity).toContain('target="_blank"');
+    expect(toCommunity).toContain('rel="noopener noreferrer"');
+    expect(toCommunity).not.toContain('href="/community"');
     expect(toCommunity).toContain('id="toCommunity"');
     expect(toCommunity).toContain('class="btn"');
     expect(toCommunity).not.toContain("#community");

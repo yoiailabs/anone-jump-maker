@@ -5,7 +5,9 @@ import makerSrc from "./components/MakerApp.tsx?raw";
 import privacySrc from "./components/PrivacyArticle.tsx?raw";
 import termsSrc from "./components/TermsArticle.tsx?raw";
 import legalLogoSrc from "./components/LegalHeroLogo.tsx?raw";
+import headerLockupSrc from "./components/HeaderLockup.tsx?raw";
 import {
+  HEADER_MARK_SRC,
   MAKER_LOGO_STACKED_EN_SIZE,
   MAKER_LOGO_STACKED_EN_SRC,
   MAKER_LOGO_STACKED_SIZE,
@@ -64,6 +66,10 @@ describe("stacked maker hero logo", () => {
     expect(studio.indexOf('id="picker"')).toBeLessThan(studio.indexOf('id="stage"'));
     expect(studio.indexOf('id="stage"')).toBeLessThan(studio.indexOf('id="previewSeek"'));
     expect(studio).toContain('id="studioEmpty"');
+    expect(studio).toContain('id="studioHome"');
+    expect(studio).toContain("<HeaderLockup");
+    expect(studio).not.toContain("hero-logo");
+    expect(studio).not.toContain("anone-logo-stacked");
     expect(makerSrc).not.toContain("samplePhotosBtn");
     expect(makerSrc).not.toContain("makerTrySamples");
     expect(makerSrc).not.toContain("<JaLede");
@@ -84,18 +90,33 @@ describe("stacked maker hero logo", () => {
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*width:\s*min\(100%,\s*22rem\)/);
   });
 
-  it("links the Japanese stacked logo home on the legal pages", () => {
-    expect(legalLogoSrc).toContain("MAKER_LOGO_STACKED_SRC");
-    expect(legalLogoSrc).not.toContain("MAKER_LOGO_STACKED_EN_SRC");
-    expect(legalLogoSrc).toContain('href={pathForApp("ja", "maker")}');
-    expect(legalLogoSrc).toContain('aria-label={HOME_LABEL}');
-    expect(legalLogoSrc).toContain("alt={HOME_LABEL}");
-    expect(legalLogoSrc).toContain('const HOME_LABEL = "トップへ戻る"');
+  it("uses a compact header lockup on the legal pages instead of the stacked hero", () => {
+    expect(HEADER_MARK_SRC).toBe("/icons/icon.svg");
+    expect(existsSync(new URL("../public/icons/icon.svg", import.meta.url))).toBe(true);
+    expect(existsSync(new URL("../public/brand/anone-logo-horizontal.svg", import.meta.url))).toBe(false);
+    expect(existsSync(new URL("../public/brand/anone-logo-inline.svg", import.meta.url))).toBe(false);
+    expect(existsSync(new URL("../public/brand/anone-logo-lockup.svg", import.meta.url))).toBe(false);
+    expect(headerLockupSrc).toContain("HEADER_MARK_SRC");
+    expect(headerLockupSrc).toContain('className="header-lockup"');
+    expect(headerLockupSrc).toContain('className="header-lockup-mark"');
+    expect(headerLockupSrc).toContain('alt=""');
+    expect(headerLockupSrc).toContain('{t(locale, "makerTitle")}');
+    expect(headerLockupSrc).toContain('href={pathForApp(locale, "maker")}');
+    expect(headerLockupSrc).not.toContain("hero-logo");
+    expect(headerLockupSrc).not.toContain("anone-logo-stacked");
+    expect(legalLogoSrc).toContain("<HeaderLockup");
     expect(legalLogoSrc).toContain('id="legalHome"');
+    expect(legalLogoSrc).toContain('locale="ja"');
+    expect(legalLogoSrc).toContain("label={HOME_LABEL}");
+    expect(legalLogoSrc).toContain('const HOME_LABEL = "トップへ戻る"');
+    expect(legalLogoSrc).not.toContain("MAKER_LOGO_STACKED_SRC");
+    expect(legalLogoSrc).not.toContain("hero-logo");
     expect(privacySrc).toContain("<LegalHeroLogo />");
     expect(termsSrc).toContain("<LegalHeroLogo />");
-    expect(privacySrc).not.toContain("anone-logo-stacked-en");
-    expect(termsSrc).not.toContain("anone-logo-stacked-en");
+    expect(privacySrc).not.toContain("anone-logo-stacked");
+    expect(termsSrc).not.toContain("anone-logo-stacked");
+    expect(stylesSrc).toMatch(/\.header-lockup\s*\{[^}]*display:\s*inline-flex/);
+    expect(stylesSrc).toMatch(/\.header-lockup-mark\s*\{[^}]*width:\s*1\.75rem/);
   });
 
   it("uses the Japanese stacked mark on ja and the English mark on en/ko/zh", () => {

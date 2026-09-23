@@ -70,10 +70,7 @@ import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
 import {
   canShareFiles,
-  copyTextToClipboard,
   isXInAppBrowser,
-  SHARE_TEXT,
-  shareHashtags,
   shareVideoFile,
   videoFileForShare,
 } from "./share.ts";
@@ -148,10 +145,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const photoFeedback = must(root, "#photoFeedback");
   const previewFeedback = must(root, "#previewFeedback");
   const saveFeedback = must(root, "#saveFeedback");
-  const shareFeedback = must(root, "#shareFeedback");
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
-  const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
-  const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const previewSeek = must(root, "#previewSeek") as HTMLInputElement;
   const previewTime = must(root, "#previewTime");
@@ -221,7 +215,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   isolateVolatileChrome(photoFeedback);
   isolateVolatileChrome(previewFeedback);
   isolateVolatileChrome(saveFeedback);
-  isolateVolatileChrome(shareFeedback);
   isolateVolatileChrome(benchFlag);
   isolateVolatileChrome(exportStatus);
   isolateVolatileChrome(exportProgressLabel);
@@ -653,8 +646,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       });
       if (outcome === "cancelled") {
         if (pendingExport === pending) {
-          const text = msg("statusExportShareCancelled");
-          setExportProgress(100, text);
+          setExportProgress(100, msg("statusExportReadyDownload"));
         }
         return;
       }
@@ -1122,38 +1114,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   saveBtn.addEventListener("click", () => {
     void startSave();
-  });
-
-  copyHashtagsBtn.addEventListener("click", async () => {
-    const copied = await copyTextToClipboard(
-      SHARE_TEXT,
-      typeof navigator === "undefined" ? undefined : navigator.clipboard,
-    );
-    if (copied) {
-      setFeedback("share", msg("statusHashtagsCopied"));
-    } else {
-      setFeedback("share", msg("statusCopyUnsupported", { text: SHARE_TEXT }), "error");
-    }
-  });
-
-  shareAppBtn.addEventListener("click", async () => {
-    const outcome = await shareHashtags({
-      navigator: typeof navigator === "undefined" ? undefined : navigator,
-      copyText: (text) =>
-        copyTextToClipboard(
-          text,
-          typeof navigator === "undefined" ? undefined : navigator.clipboard,
-        ),
-    });
-    if (outcome === "shared") {
-      setFeedback("share", msg("statusShared"));
-    } else if (outcome === "copied") {
-      setFeedback("share", msg("statusHashtagsCopied"));
-    } else if (outcome === "cancelled") {
-      setFeedback("share", msg("statusShareCancelled"));
-    } else {
-      setFeedback("share", msg("statusShareUnsupported", { text: SHARE_TEXT }), "error");
-    }
   });
 
   const goToView = (view: AppView) => {

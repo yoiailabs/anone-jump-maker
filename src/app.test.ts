@@ -78,7 +78,16 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="photoFeedback"');
     expect(makerSrc).toContain('id="previewFeedback"');
     expect(makerSrc).toContain('id="saveFeedback"');
-    expect(makerSrc).toContain('id="shareFeedback"');
+    expect(makerSrc).toContain('id="landingHashtags"');
+    expect(makerSrc).not.toContain('id="shareFeedback"');
+    expect(makerSrc).not.toContain('id="shareAppBtn"');
+    expect(makerSrc).not.toContain('id="copyHashtagsBtn"');
+    expect(appSrc).not.toContain('msg("statusShareCancelled")');
+    expect(appSrc).not.toContain('msg("statusExportShareCancelled")');
+    expect(appSrc).not.toContain('msg("statusHashtagsCopied")');
+    expect(appSrc).not.toContain('msg("statusShared")');
+    expect(makerSrc).toContain('id="studioHome"');
+    expect(makerSrc).not.toContain("anone-logo-stacked");
     expect(makerSrc).toContain('useState<OptionTab>("swap")');
     expect(makerSrc.indexOf('["swap", "studioTabEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioTabFilter"'));
     expect(makerSrc.indexOf('["filter", "studioTabFilter"')).toBeLessThan(

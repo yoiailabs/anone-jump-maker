@@ -8,11 +8,12 @@ import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
 import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
-import { SHARE_TEXT } from "../share.ts";
+import { MORE_JUMPS_HREF, SHARE_TEXT } from "../share.ts";
 import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT } from "../preview.ts";
 import { getPreviewChrome, subscribePreviewChrome } from "../preview-chrome-store.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { getFeedback, subscribeFeedback, type FeedbackPlace } from "../feedback-store.ts";
+import { HeaderLockup } from "@/components/HeaderLockup.tsx";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -169,63 +170,23 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               <Button
                 variant="site"
                 nativeButton={false}
-                render={<a id="toCommunity" className="btn ghost" href={pathForApp(locale, "community")} />}
+                render={
+                  <a
+                    id="toCommunity"
+                    className="btn ghost"
+                    href={MORE_JUMPS_HREF}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
               >
                 {t(locale, "communityToCommunity")}
               </Button>
             </p>
+            <p className="hero-hashtags" id="landingHashtags">
+              {SHARE_TEXT}
+            </p>
           </section>
-
-          <div className="share-wrap">
-            <Button variant="site" type="button" id="shareAppBtn" className="btn share-app">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path
-                  d="M12 3v10M8.2 6.8 12 3l3.8 3.8M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              {t(locale, "makerShare")}
-            </Button>
-            <div className="hashtag-copy">
-              <Button
-                variant="site"
-                type="button"
-                id="copyHashtagsBtn"
-                className="btn copy-hashtags"
-                aria-describedby="hashtagCopyHint"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <rect
-                    x="8.2"
-                    y="8.2"
-                    width="11.5"
-                    height="13"
-                    rx="2"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.1"
-                  />
-                  <path
-                    d="M15.8 8.2V6.4A1.8 1.8 0 0 0 14 4.6H6.4A1.8 1.8 0 0 0 4.6 6.4V18A1.8 1.8 0 0 0 6.4 19.8H8.2"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {t(locale, "makerCopyHashtags")}
-              </Button>
-              <p className="hashtag-copy-hint" id="hashtagCopyHint">
-                {SHARE_TEXT}
-              </p>
-            </div>
-            <LiveFeedback id="shareFeedback" place="share" />
-          </div>
 
           <footer className="notes">
             <nav className="links" aria-labelledby="linksTitle">
@@ -250,12 +211,13 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
         <div className="app-view" id="studioView" hidden={studioHidden}>
           <header className="studio-top">
-            <LanguageNav locale={locale} view="studio" />
-            <p className="studio-back-wrap">
-              <a id="toLanding" className="page-link" href={pathForApp(locale, "maker")}>
+            <div className="studio-bar">
+              <HeaderLockup id="studioHome" locale={locale} />
+              <a id="toLanding" className="page-link studio-back" href={pathForApp(locale, "maker")}>
                 {t(locale, "studioBack")}
               </a>
-            </p>
+              <LanguageNav locale={locale} view="studio" />
+            </div>
             <h1 id="studioTitle" className="studio-title">
               {t(locale, "studioTitle")}
             </h1>
