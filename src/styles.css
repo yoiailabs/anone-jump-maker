@@ -971,8 +971,9 @@ html[lang="ja"] .lede {
   flex: 0 0 auto;
 }
 
-.preview-status-icon[hidden] {
-  display: none !important;
+.preview-status[data-state="playing"] .preview-status-icon-play,
+.preview-status[data-state="stopped"] .preview-status-icon-pause {
+  display: none;
 }
 
 .preview-status-label {
