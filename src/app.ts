@@ -541,9 +541,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     cancelExportBtn.disabled = true;
   };
 
-  const savePendingExport = () => {
-    if (!pendingExport || sharingExport) return;
-    downloadBlob(pendingExport.blob, pendingExport.filename);
+  let exportSaveTracked = false;
+  const trackExportSaved = () => {
+    if (exportSaveTracked) return;
+    exportSaveTracked = true;
+    trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
   };
 
   const savedStatus = (extension: string) => msg("statusSaved", { ext: extension.toUpperCase() });
@@ -552,6 +554,20 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const text = savedStatus(extension);
     setExportProgress(100, text);
     setStatus(text);
+  };
+
+  const showExportReady = (shareReady: boolean) => {
+    const text = msg(shareReady ? "statusExportReady" : "statusExportReadyDownload");
+    setExportProgress(100, text);
+    setStatus(text);
+    setExportPhase("done");
+  };
+
+  const savePendingExport = () => {
+    if (!pendingExport || sharingExport) return;
+    downloadBlob(pendingExport.blob, pendingExport.filename);
+    markExportSaved(pendingExport.extension);
+    trackExportSaved();
   };
 
   const sharePendingExport = async (source: "auto" | "retry" = "retry") => {
@@ -572,7 +588,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         navigator: typeof navigator === "undefined" ? undefined : navigator,
       });
       if (pendingExport !== pending) {
-        if (outcome === "shared") setStatus(savedStatus(pending.extension));
+        if (outcome === "shared") {
+          setStatus(savedStatus(pending.extension));
+          trackExportSaved();
+        }
         return;
       }
       if (outcome === "cancelled") {
@@ -581,8 +600,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         setStatus(text);
         return;
       }
-      if (outcome === "unsupported") downloadBlob(pending.blob, pending.filename);
+      if (outcome === "unsupported") {
+        showExportReady(fileShareAvailable());
+        return;
+      }
       markExportSaved(pending.extension);
+      trackExportSaved();
     } finally {
       sharingExport = false;
       shareExportBtn.disabled = false;
@@ -949,6 +972,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     previewTracked = false;
     video.pause();
     refreshButtons();
+    exportSaveTracked = false;
     const controller = new AbortController();
     exportAbort = controller;
     openExportDialog();
@@ -984,12 +1008,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
           (shareExportBtn.hidden ? downloadExportBtn : shareExportBtn).focus();
         }
       } else {
-        downloadBlob(result.blob, filename);
-        markExportSaved(result.extension);
-        setExportPhase("done");
+        showExportReady(false);
         if (exportDialog.open) downloadExportBtn.focus();
       }
-      trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
         setStatus(msg("statusExportCancelled"));

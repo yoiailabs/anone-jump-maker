@@ -69,7 +69,8 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="shareExportBtn"');
     expect(makerSrc).toContain('id="downloadExportBtn"');
     expect(appSrc).toContain("shareVideoFile");
-    expect(appSrc).toContain("downloadBlob(pending.blob, pending.filename)");
-    expect(appSrc).toContain("downloadBlob(result.blob, filename)");
+    expect(appSrc).toContain("downloadBlob(pendingExport.blob, pendingExport.filename)");
+    expect(appSrc).not.toContain("downloadBlob(result.blob, filename)");
+    expect(appSrc).not.toContain("downloadBlob(pending.blob, pending.filename)");
   });
 });

@@ -305,8 +305,10 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   await expect(page.locator("#exportProgressLabel")).toHaveText("0%");
 
   // VideoEncoder があっても pickOfflinePlan が null なら未対応（WebKit でよくある）。
-  const downloadPromise = page.waitForEvent("download", { timeout: 45_000 });
-  void downloadPromise.catch(() => undefined);
+  let autoDownloaded = false;
+  page.on("download", () => {
+    autoDownloaded = true;
+  });
   await page.locator("#saveBtn").click();
   await expect(exportDialog)
     .toBeVisible({ timeout: 2_000 })
@@ -315,21 +317,22 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     await expect(page.locator("#exportProgressLabel")).toContainText("%");
   }
   await expect(page.locator("#status")).toContainText(
-    new RegExp(`保存しました|${UNSUPPORTED_EXPORT_MESSAGE}`),
+    new RegExp(`生成できました|${UNSUPPORTED_EXPORT_MESSAGE}`),
     { timeout: 45_000 },
   );
   const statusText = (await page.locator("#status").textContent()) ?? "";
-  if (statusText.includes("保存しました")) {
+  expect(autoDownloaded).toBe(false);
+  if (statusText.includes("生成できました")) {
     await expect(exportDialog).toBeVisible();
-    await expect(page.locator("#exportDownloadHint")).toHaveText("ダウンロードが開始されませんか？");
+    await expect(page.locator("#exportDownloadHint")).toHaveText("ダウンロードボタンで端末に保存できます。");
     await expect(page.locator("#downloadExportBtn")).toBeVisible();
+    await expect(page.locator("#shareExportBtn")).toBeHidden();
     await expect(page.locator("#cancelExportBtn")).toBeHidden();
-    const retryDownload = page.waitForEvent("download", { timeout: 10_000 });
+    const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
     await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
-    const retry = await retryDownload;
-    expect(retry.suggestedFilename()).toBe(download.suggestedFilename());
+    await expect(page.locator("#status")).toContainText("保存しました");
     await page.locator("#closeExportBtn").click();
     await expect(exportDialog).toBeHidden();
     return;
