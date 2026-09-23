@@ -30,11 +30,11 @@ test.describe("language routing", () => {
     await expect(page.locator("#saveBtn")).toHaveText(t("en", "makerSave"));
     await expect(page.locator("#previewSaveHint")).toHaveText(t("en", "previewSaveHint"));
     await expect(page.locator("#muteBtn .preview-mute-hint")).toHaveText(t("en", "previewMuteHint"));
-    await expect(page.locator("#browsersNote")).toHaveText(t("en", "makerBrowsersNote"));
+    await expect(page.locator("#browsersNote")).toHaveCount(0);
     await expect(page.locator("#onDeviceNote")).toHaveText(t("en", "makerOnDevice"));
     await page.locator("#toLanding").click();
     await expect(page).toHaveURL(/\/en\/?$/);
-    await expect(page.locator("#browsersNote")).not.toContainText(/supported/i);
+    await expect(page.locator("#browsersNote")).toHaveCount(0);
     await expect(page.locator("#linksTitle")).toHaveText(t("en", "makerOfficial"));
     await expect(page.locator("#officialMvTitle")).toHaveText(t("en", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(

@@ -1,7 +1,6 @@
-import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { initSentry, reportError } from "../sentry.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
-import { BrowsersNote } from "@/components/BrowsersNote.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
@@ -211,59 +210,118 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           </header>
           <section className="studio-stage" aria-label={t(locale, "previewTitle")}>
             <div className="stage-wrap">
-              <button
-                type="button"
-                className="stage"
-                id="stage"
-                data-aspect={DEFAULT_ASPECT}
-                aria-pressed="false"
-                aria-label={t(locale, "previewStageAria")}
-              >
+              <div className="stage" id="stage" data-aspect={DEFAULT_ASPECT} aria-pressed="false">
                 <span className="studio-empty" id="studioEmpty">
                   {t(locale, "studioEmpty")}
                 </span>
-                <span className="stage-play-hint" aria-hidden="true" />
-              </button>
+              </div>
             </div>
-            <input
-              id="previewSeek"
-              className="preview-seek"
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              defaultValue={0}
-              disabled
-              aria-label={t(locale, "previewSeekAria")}
-            />
-            <div className="preview-actions">
-              <Button
-                variant="site"
-                type="button"
-                id="playBtn"
-                className="btn ghost"
+            <div className="preview-transport">
+              <div className="preview-actions">
+                <Button
+                  variant="site"
+                  type="button"
+                  id="playBtn"
+                  className="btn ghost"
+                  disabled
+                  dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
+                />
+                <Button
+                  variant="site"
+                  type="button"
+                  id="restartBtn"
+                  className="btn ghost"
+                  dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
+                />
+                <Button
+                  variant="site"
+                  type="button"
+                  id="muteBtn"
+                  className="btn ghost notranslate"
+                  translate="no"
+                  aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
+                  dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
+                />
+              </div>
+              <input
+                id="previewSeek"
+                className="preview-seek"
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                defaultValue={0}
                 disabled
-                dangerouslySetInnerHTML={{ __html: playPauseButtonHtml(false, locale) }}
+                aria-label={t(locale, "previewSeekAria")}
               />
-              <Button
-                variant="site"
-                type="button"
-                id="restartBtn"
-                className="btn ghost"
-                dangerouslySetInnerHTML={{ __html: restartButtonHtml(locale) }}
-              />
-              <Button
-                variant="site"
-                type="button"
-                id="muteBtn"
-                className="btn ghost notranslate"
-                translate="no"
-                aria-pressed={PREVIEW_MUTED_DEFAULT ? "false" : "true"}
-                dangerouslySetInnerHTML={{ __html: muteButtonHtml(PREVIEW_MUTED_DEFAULT, locale) }}
-              />
+              <span className="preview-time" id="previewTime" aria-hidden="true">
+                0.0
+              </span>
+            </div>
+            <div className="option-triggers">
+              <OptionSlot popoverId="aspectPopover" legend={t(locale, "makerAspectLegend")} defaultValue={t(locale, "makerLandscape")}>
+                <fieldset className="aspect-field">
+                  <legend>{t(locale, "makerAspectLegend")}</legend>
+                  <RadioPills
+                    name="aspect"
+                    ariaLabel={t(locale, "makerAspectLegend")}
+                    options={[
+                      { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+                      { value: "portrait", label: t(locale, "makerPortrait") },
+                    ]}
+                  />
+                </fieldset>
+              </OptionSlot>
+              <OptionSlot popoverId="swapPopover" legend={t(locale, "makerEffectLegend")} defaultValue={t(locale, "makerJump")}>
+                <fieldset className="aspect-field" id="swapField">
+                  <legend>{t(locale, "makerEffectLegend")}</legend>
+                  <RadioPills
+                    name="swap"
+                    ariaLabel={t(locale, "makerEffectLegend")}
+                    options={[
+                      { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
+                      { value: "zoom", label: t(locale, "makerZoom") },
+                    ]}
+                  />
+                </fieldset>
+              </OptionSlot>
+              <OptionSlot popoverId="filterPopover" legend={t(locale, "makerFilterLegend")} defaultValue={t(locale, "makerFilterNone")}>
+                <fieldset className="aspect-field" id="filterField">
+                  <legend>{t(locale, "makerFilterLegend")}</legend>
+                  <RadioPills
+                    name="filter"
+                    ariaLabel={t(locale, "makerFilterLegend")}
+                    className="aspect-toggle cols-3"
+                    options={[
+                      { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+                      { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
+                      { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
+                    ]}
+                  />
+                </fieldset>
+              </OptionSlot>
+              <OptionSlot
+                popoverId="characterPopover"
+                legend={t(locale, "makerCharacterLegend")}
+                defaultValue={t(locale, "makerCharacterStandard")}
+              >
+                <fieldset className="aspect-field" id="characterField">
+                  <legend>{t(locale, "makerCharacterLegend")}</legend>
+                  <RadioPills
+                    name="character"
+                    ariaLabel={t(locale, "makerCharacterLegend")}
+                    className="aspect-toggle cols-3"
+                    options={[
+                      { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+                      { value: "1.2", label: t(locale, "makerCharacter12") },
+                      { value: "1.4", label: t(locale, "makerCharacter14") },
+                    ]}
+                  />
+                </fieldset>
+              </OptionSlot>
             </div>
           </section>
-          <section className="panel studio-tools">
+          <section className="studio-tools">
             <div className="make-cta">
               <Label className="file-btn">
                 <input
@@ -279,57 +337,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               </p>
             </div>
             <PhotoThumbsSlot locale={locale} />
-            <section className="studio-options" aria-labelledby="studioOptionsTitle">
-              <h2 id="studioOptionsTitle">{t(locale, "studioOptions")}</h2>
-              <fieldset className="aspect-field">
-                <legend>{t(locale, "makerAspectLegend")}</legend>
-                <RadioPills
-                  name="aspect"
-                  ariaLabel={t(locale, "makerAspectLegend")}
-                  options={[
-                    { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                    { value: "portrait", label: t(locale, "makerPortrait") },
-                  ]}
-                />
-              </fieldset>
-              <fieldset className="aspect-field" id="swapField">
-                <legend>{t(locale, "makerEffectLegend")}</legend>
-                <RadioPills
-                  name="swap"
-                  ariaLabel={t(locale, "makerEffectLegend")}
-                  options={[
-                    { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
-                    { value: "zoom", label: t(locale, "makerZoom") },
-                  ]}
-                />
-              </fieldset>
-              <fieldset className="aspect-field" id="filterField">
-                <legend>{t(locale, "makerFilterLegend")}</legend>
-                <RadioPills
-                  name="filter"
-                  ariaLabel={t(locale, "makerFilterLegend")}
-                  className="aspect-toggle cols-3"
-                  options={[
-                    { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                    { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
-                    { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
-                  ]}
-                />
-              </fieldset>
-              <fieldset className="aspect-field" id="characterField">
-                <legend>{t(locale, "makerCharacterLegend")}</legend>
-                <RadioPills
-                  name="character"
-                  ariaLabel={t(locale, "makerCharacterLegend")}
-                  className="aspect-toggle cols-3"
-                  options={[
-                    { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                    { value: "1.2", label: t(locale, "makerCharacter12") },
-                    { value: "1.4", label: t(locale, "makerCharacter14") },
-                  ]}
-                />
-              </fieldset>
-            </section>
             <div className="preview-save">
               <Button
                 variant="site"
@@ -348,7 +355,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <p className="status notranslate" id="status" data-kind="idle" translate="no">
               {t(locale, "makerStatusIdle")}
             </p>
-            <BrowsersNote locale={locale} />
           </section>
         </div>
         <div
@@ -403,6 +409,43 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
       </dialog>
     </>
+  );
+}
+
+function OptionSlot({
+  popoverId,
+  legend,
+  defaultValue,
+  children,
+}: {
+  popoverId: string;
+  legend: string;
+  defaultValue: string;
+  children: ReactNode;
+}) {
+  const [current, setCurrent] = useState(defaultValue);
+  useEffect(() => {
+    const popover = document.getElementById(popoverId);
+    if (!popover) return;
+    const sync = () => {
+      const checked = popover.querySelector<HTMLInputElement>("input:checked");
+      const text = checked?.closest("label")?.querySelector("span")?.textContent?.trim();
+      if (text) setCurrent(text);
+    };
+    sync();
+    popover.addEventListener("change", sync);
+    return () => popover.removeEventListener("change", sync);
+  }, [popoverId]);
+  return (
+    <div className="option-slot">
+      <button type="button" className="option-trigger" id={`${popoverId}Trigger`} popoverTarget={popoverId}>
+        <span className="option-trigger-name">{legend}</span>
+        <span className="option-trigger-value">{current}</span>
+      </button>
+      <div id={popoverId} popover="auto" className="option-popover">
+        {children}
+      </div>
+    </div>
   );
 }
 

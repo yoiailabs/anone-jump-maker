@@ -28,7 +28,6 @@ export const TWITTER_DATA_LANG: Record<Locale, string> = {
 const ja = {
   makerTitle: "あのねジャンプメーカー",
   pwaShortName: "あのねジャンプ",
-  makerBrowsersNote: "動作確認済みブラウザ: Safari, Chrome",
   makerPickPhotos: "写真を選ぶ",
   makerMakeVideo: "動画をつくる",
   studioTitle: "動画をつくる",
@@ -103,7 +102,6 @@ const ja = {
   previewEffectAria: "プレビューのエフェクト",
   previewFilterAria: "プレビューのフィルター",
   previewCharacterAria: "プレビューのキャラサイズ",
-  previewStageAria: "プレビュー。クリックで再生と一時停止",
   previewSlotPending: "スロット — / —",
   previewSlotEmpty: "スロット — / {total}",
   previewSlot: "スロット {n} / {total}",
@@ -193,7 +191,6 @@ export type MessageKey = keyof typeof ja;
 const en: Record<MessageKey, string> = {
   makerTitle: "Anone Jump Maker",
   pwaShortName: "Anone Jump",
-  makerBrowsersNote: "Verified browsers: Safari, Chrome",
   makerPickPhotos: "Choose photos",
   makerMakeVideo: "Make a video",
   studioTitle: "Make a video",
@@ -268,7 +265,6 @@ const en: Record<MessageKey, string> = {
   previewEffectAria: "Preview effect",
   previewFilterAria: "Preview filter",
   previewCharacterAria: "Preview character size",
-  previewStageAria: "Preview. Click to play or pause",
   previewSlotPending: "Slot — / —",
   previewSlotEmpty: "Slot — / {total}",
   previewSlot: "Slot {n} / {total}",
@@ -356,7 +352,6 @@ const en: Record<MessageKey, string> = {
 const ko: Record<MessageKey, string> = {
   makerTitle: "아노네 점프 메이커",
   pwaShortName: "아노네 점프",
-  makerBrowsersNote: "동작 확인된 브라우저: Safari, Chrome",
   makerPickPhotos: "사진 선택",
   makerMakeVideo: "영상 만들기",
   studioTitle: "영상 만들기",
@@ -431,7 +426,6 @@ const ko: Record<MessageKey, string> = {
   previewEffectAria: "미리보기 효과",
   previewFilterAria: "미리보기 필터",
   previewCharacterAria: "미리보기 캐릭터 크기",
-  previewStageAria: "미리보기. 클릭하면 재생/일시정지",
   previewSlotPending: "슬롯 — / —",
   previewSlotEmpty: "슬롯 — / {total}",
   previewSlot: "슬롯 {n} / {total}",
@@ -519,7 +513,6 @@ const ko: Record<MessageKey, string> = {
 const zh: Record<MessageKey, string> = {
   makerTitle: "あのね跳跃制作器",
   pwaShortName: "あのね跳跃",
-  makerBrowsersNote: "已确认可运行的浏览器：Safari, Chrome",
   makerPickPhotos: "选择照片",
   makerMakeVideo: "制作视频",
   studioTitle: "制作视频",
@@ -594,7 +587,6 @@ const zh: Record<MessageKey, string> = {
   previewEffectAria: "预览效果",
   previewFilterAria: "预览滤镜",
   previewCharacterAria: "预览角色大小",
-  previewStageAria: "预览。点击播放或暂停",
   previewSlotPending: "镜头 — / —",
   previewSlotEmpty: "镜头 — / {total}",
   previewSlot: "镜头 {n} / {total}",

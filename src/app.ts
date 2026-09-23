@@ -56,6 +56,7 @@ import { HEIC_UNSUPPORTED_MESSAGE, loadPhotos, revokePhotos, selectImageFiles, t
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
+  formatPreviewClock,
   PREVIEW_MUTED_DEFAULT,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
@@ -144,6 +145,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
   const previewSeek = must(root, "#previewSeek") as HTMLInputElement;
+  const previewTime = must(root, "#previewTime");
   const studioEmpty = must(root, "#studioEmpty");
   const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
   const exportTitle = must(root, "#exportTitle");
@@ -161,7 +163,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   benchFlag.id = "benchFlag";
   benchFlag.hidden = !benchFlags.bench;
   benchFlag.style.cssText = "margin:0.4rem 0 0;font-size:0.78rem;color:#5c5146";
-  muteBtn.closest(".preview-actions")?.after(benchFlag);
+  muteBtn.closest(".preview-transport")?.after(benchFlag);
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
   const filterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="filter"]')];
@@ -473,7 +475,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         return;
       }
       video.blur();
-      stage.focus();
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
@@ -487,12 +488,15 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const syncSeek = () => {
-    if (seeking) return;
     const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
     previewSeek.max = String(duration > 0 ? duration : 1);
     previewSeek.disabled = recording || duration <= 0;
     const time = Number.isFinite(video.currentTime) ? video.currentTime : 0;
-    previewSeek.value = String(duration > 0 ? Math.min(duration, Math.max(0, time)) : 0);
+    if (!seeking) {
+      previewSeek.value = String(duration > 0 ? Math.min(duration, Math.max(0, time)) : 0);
+    }
+    const shown = seeking ? Number(previewSeek.value) : time;
+    previewTime.textContent = formatPreviewClock(shown, duration);
   };
 
   let seeking = false;
@@ -940,11 +944,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     togglePreviewPlay();
   });
 
-  stage.addEventListener("click", (event) => {
-    event.preventDefault();
-    togglePreviewPlay();
-  });
-
   const endSeek = () => {
     seeking = false;
     syncSeek();
@@ -958,6 +957,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   previewSeek.addEventListener("input", () => {
     seeking = true;
     scrubTo(Number(previewSeek.value));
+    syncSeek();
   });
   video.addEventListener("timeupdate", syncSeek);
   video.addEventListener("durationchange", syncSeek);

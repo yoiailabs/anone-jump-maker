@@ -8,6 +8,7 @@ import {
   PREVIEW_SOUND_OFF_LABEL,
   PREVIEW_SOUND_ON_LABEL,
   muteButtonHtml,
+  formatPreviewClock,
   playPauseButtonHtml,
   playPauseLabel,
   previewSoundLabel,
@@ -17,6 +18,16 @@ import {
   syncMuteControl,
   syncPlayPauseControl,
 } from "./preview.ts";
+
+describe("formatPreviewClock", () => {
+  it("shows the current second, and the duration when the clip length is known", () => {
+    expect(formatPreviewClock(0, 0)).toBe("0.0");
+    expect(formatPreviewClock(Number.NaN, Number.NaN)).toBe("0.0");
+    expect(formatPreviewClock(1.26, 8)).toBe("1.3 / 8.0");
+    expect(formatPreviewClock(-1, 4)).toBe("0.0 / 4.0");
+    expect(formatPreviewClock(9, 4)).toBe("4.0 / 4.0");
+  });
+});
 
 describe("playPauseLabel", () => {
   it("shows play while paused and pause while playing", () => {

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -60,6 +60,19 @@ export async function waitForAppReady(page: Page): Promise<void> {
   await page.locator("#toCommunity").waitFor({ state: "attached" });
   await page.locator("#toStudio").waitFor({ state: "attached" });
   await page.locator("#app[data-app-ready='1']").waitFor({ state: "attached" });
+}
+
+export async function chooseStudioOption(
+  page: Page,
+  name: "aspect" | "swap" | "filter" | "character",
+  value: string,
+): Promise<void> {
+  const label = page.locator(`#${name}Popover label:has(input[name="${name}"][value="${value}"])`);
+  const trigger = page.locator(`#${name}PopoverTrigger`);
+  await expect(async () => {
+    if (!(await label.isVisible())) await trigger.click();
+    await label.click({ timeout: 1_500 });
+  }).toPass({ timeout: 8_000 });
 }
 
 export async function openStudio(page: Page): Promise<void> {

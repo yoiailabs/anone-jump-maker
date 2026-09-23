@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, openStudio, PHOTO_FILE, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, chooseStudioOption, openStudio, PHOTO_FILE, waitForAppReady } from "./helpers.ts";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -56,13 +56,13 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
   await expect(page.locator("#hashtagCopyHint")).toHaveText(SHARE_TEXT);
 
   await openStudio(page);
-  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+  await chooseStudioOption(page, "aspect", "portrait");
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
 
   releaseCuts();
   await waitForAppReady(page);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
-  await expect(page.getByRole("radio", { name: "縦" }).first()).toBeChecked();
+  await expect(page.locator('#studioView input[name="aspect"][value="portrait"]')).toBeChecked();
   await expect(page.locator("#playBtn")).toBeEnabled();
   await expect(page.locator("#status")).toContainText("1 枚を読み込みました");
 });

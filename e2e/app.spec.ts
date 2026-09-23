@@ -1,7 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
+import {
+  blockAnalytics,
+  chooseStudioOption,
+  jpegInput,
+  openStudio,
+  PHOTO_FILE,
+  stubShortTemplate,
+  stripZwsp,
+  waitForAppReady,
+} from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -97,6 +106,11 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#playBtn")).toBeEnabled();
   await expect(page.locator("#saveBtn")).toBeEnabled();
   await expect(page.locator("#previewSeek")).toBeEnabled();
+  await expect(page.locator("#previewTime")).toHaveText(/\d+\.\d/);
+  const playLabel = await page.locator("#playBtn .preview-ctrl-label").boundingBox();
+  expect(playLabel && playLabel.width <= 2 && playLabel.height <= 2).toBe(true);
+  await expect(page.locator("#aspectPopoverTrigger")).toBeVisible();
+  await expect(page.locator("#studioOptionsTitle")).toHaveCount(0);
   expect(
     await page.evaluate(() =>
       performance.getEntriesByType("resource").some((entry) => /\/template\/(landscape|vertical)\.mp4/.test(entry.name)),
@@ -108,6 +122,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 
   await settlePreviewPlayback(page);
+  const pressed = await page.locator("#stage").getAttribute("aria-pressed");
+  await page.locator("#stage").click({ force: true });
+  await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", pressed ?? "false");
   await expect(page.locator("#saveBtn")).toBeVisible();
   await expect(page.locator("#saveBtn")).toHaveText("動画を保存");
   await expect(page.locator("#previewSaveHint")).toHaveText("端末内で生成します。数十秒かかることがあります。");
@@ -122,11 +139,11 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await mute.click();
   await expect(mute).toContainText(/音声オフ|音声オン/);
 
-  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+  await chooseStudioOption(page, "aspect", "portrait");
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
-  await page.locator('#studioView label:has(input[name="swap"][value="zoom"])').click();
-  await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
-  await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
+  await chooseStudioOption(page, "swap", "zoom");
+  await chooseStudioOption(page, "filter", "blur-weak");
+  await chooseStudioOption(page, "character", "1.2");
   await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
   await expect(page.locator("#stage")).toBeVisible();
   await expect(page.locator("#saveBtn")).toBeEnabled();
@@ -509,11 +526,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(toCommunity).toHaveText("みんなの #あのねジャンプ を見る");
   await expect(toCommunity).toHaveClass(/\bbtn\b/);
 
-  const browsersNote = page.locator("#studioView #browsersNote");
-  await expect(browsersNote).toHaveText("動作確認済みブラウザ: Safari, Chrome");
-  await expect(browsersNote).not.toContainText("サポート");
-  await expect(browsersNote).not.toContainText("iOS");
-  await expect(page.locator("#makerView #browsersNote")).toHaveCount(0);
+  await expect(page.locator("#browsersNote")).toHaveCount(0);
   const heroBox = await page.locator("#makerView .hero").boundingBox();
   const ctaBox = await page.locator("#toStudio").boundingBox();
   expect(heroBox && ctaBox && ctaBox.y >= heroBox.y && ctaBox.y < heroBox.y + heroBox.height).toBe(true);
@@ -850,7 +863,7 @@ async function settlePreviewPlayback(page: Page): Promise<void> {
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
   if ((await page.locator("#status").textContent())?.includes("再生できませんでした")) {
     await page.locator("#muteBtn").click();
-    await page.locator("#stage").click();
+    await page.locator("#playBtn").click();
   }
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 }

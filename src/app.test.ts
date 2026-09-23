@@ -54,6 +54,10 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain('id="previewSaveBtn"');
     expect(makerSrc).not.toContain('id="previewDialog"');
     expect(makerSrc).toContain('id="previewSeek"');
+    expect(makerSrc).toContain('id="previewTime"');
+    expect(makerSrc).toContain('popoverId="aspectPopover"');
+    expect(makerSrc).toContain("popoverTarget={popoverId}");
+    expect(appSrc).toContain("formatPreviewClock");
     expect(makerSrc).toContain('id="restartBtn"');
     expect(makerSrc).toContain('id="muteBtn"');
     expect(makerSrc).not.toContain('id="modalPlayBtn"');
@@ -63,6 +67,12 @@ describe("preview save CTA", () => {
     expect(makerSrc.indexOf('id="restartBtn"')).toBeLessThan(makerSrc.indexOf('id="muteBtn"'));
     expect(makerSrc).not.toContain('id="previewMuteHint"');
     expect(makerSrc.indexOf('id="muteBtn"')).toBeLessThan(makerSrc.indexOf('id="saveBtn"'));
+    expect(makerSrc).toContain('className="preview-transport"');
+    expect(makerSrc).toContain('<div className="stage" id="stage"');
+    expect(makerSrc).not.toContain("<BrowsersNote");
+    expect(makerSrc).not.toContain('id="browsersNote"');
+    expect(makerSrc).not.toContain("previewStageAria");
+    expect(appSrc).not.toContain("stage.addEventListener");
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");
     expect(appSrc).toContain("trackEvent(MAKE_OPEN_EVENT");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(1);

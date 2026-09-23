@@ -29,6 +29,19 @@ export function previewSoundLabel(muted: boolean, locale: Locale = DEFAULT_LOCAL
   return t(locale, muted ? "previewSoundOff" : "previewSoundOn");
 }
 
+function formatPreviewSeconds(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return "0.0";
+  return value.toFixed(1);
+}
+
+/** シーク横の秒表示。長さが分かるときは「現在 / 全体」。 */
+export function formatPreviewClock(time: number, duration: number): string {
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+  const current = formatPreviewSeconds(hasDuration ? Math.min(duration, Math.max(0, time)) : time);
+  if (!hasDuration) return current;
+  return `${current} / ${formatPreviewSeconds(duration)}`;
+}
+
 function controlIcon(name: string, svg: string, visible: boolean): string {
   const hidden = visible ? "" : " hidden";
   return svg.replace("<svg ", `<svg class="preview-ctrl-icon" data-preview-icon="${name}"${hidden} `);
