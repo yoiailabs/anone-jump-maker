@@ -94,6 +94,8 @@ describe("preview save CTA", () => {
     expect(appSrc).not.toContain('msg("statusExportShareCancelled")');
     expect(appSrc).not.toContain('msg("statusHashtagsCopied")');
     expect(appSrc).not.toContain('msg("statusShared")');
+    expect(appSrc).not.toContain('msg("statusSaved")');
+    expect(appSrc).not.toContain("保存しました");
     expect(makerSrc).toContain('id="studioHome"');
     expect(makerSrc).not.toContain("anone-logo-stacked");
     expect(makerSrc).toContain('useState<OptionTab>("swap")');

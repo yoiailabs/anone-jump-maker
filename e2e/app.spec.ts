@@ -412,7 +412,9 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
-    await expect(page.locator("#exportStatus")).toContainText("保存しました");
+    await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
+    await expect(page.locator("#exportStatus")).not.toContainText("保存しました");
+    await expect(page.locator("#saveFeedback")).not.toContainText("保存しました");
     await page.locator("#closeExportBtn").click();
     await expect(exportDialog).toBeHidden();
     return;
@@ -508,7 +510,9 @@ test("download opens a file share sheet when the browser can share files", async
   expect(payload?.text).toBe(SHARE_TEXT);
   expect(payload?.keys).not.toContain("url");
   expect(payload?.keys).not.toContain("title");
-  await expect(page.locator("#exportStatus")).toContainText("保存しました");
+  await expect(page.locator("#exportStatus")).toHaveText("ダウンロードボタンで保存してください。");
+  await expect(page.locator("#exportStatus")).not.toContainText("保存しました");
+  await expect(page.locator("#saveFeedback")).not.toContainText("保存しました");
   await expect(page.locator("#exportPanel")).toBeVisible();
 });
 

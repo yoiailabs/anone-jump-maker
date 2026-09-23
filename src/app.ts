@@ -603,13 +603,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
   };
 
-  const savedStatus = (extension: string) => msg("statusSaved", { ext: extension.toUpperCase() });
-
-  const markExportSaved = (extension: string) => {
-    const text = savedStatus(extension);
-    setExportProgress(100, text);
-  };
-
   const showExportReady = () => {
     const text = msg("statusExportReadyDownload");
     setExportProgress(100, text);
@@ -618,7 +611,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const downloadPendingExport = (pending: NonNullable<typeof pendingExport>) => {
     downloadBlob(pending.blob, pending.filename);
-    markExportSaved(pending.extension);
     trackExportSaved();
   };
 
@@ -646,8 +638,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         return;
       }
       if (outcome === "shared") {
-        if (pendingExport === pending) markExportSaved(pending.extension);
-        else setFeedback("save", savedStatus(pending.extension));
         trackExportSaved();
         return;
       }
