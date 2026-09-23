@@ -792,16 +792,16 @@ html[lang="ja"] .lede {
 
 .preview-toggle {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% - 3.9rem);
+  left: 50%;
+  top: 50%;
   z-index: 4;
   width: 4.25rem;
   height: 4.25rem;
   min-width: 4.25rem;
-  margin-inline: auto;
+  margin: 0;
   border-width: 3px;
   box-shadow: 3px 3px 0 var(--ink);
+  transform: translate(-50%, -50%);
 }
 
 .preview-toggle svg {
@@ -955,29 +955,22 @@ html[lang="ja"] .lede {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.18rem;
-  max-width: 4.4rem;
+  justify-content: center;
+  width: 1.35rem;
+  height: 2.75rem;
   color: #fff8ee;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 1.15;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
 }
 
 .preview-status-icon {
-  width: 0.72rem;
-  height: 0.72rem;
+  width: 0.95rem;
+  height: 0.95rem;
   flex: 0 0 auto;
 }
 
-.preview-status[data-state="playing"] .preview-status-icon-play,
-.preview-status[data-state="stopped"] .preview-status-icon-pause {
+.preview-status[data-state="playing"] .preview-status-icon-pause,
+.preview-status[data-state="stopped"] .preview-status-icon-play {
   display: none;
-}
-
-.preview-status-label {
-  white-space: nowrap;
 }
 
 .preview-time {
@@ -1314,7 +1307,7 @@ a.btn:focus-visible {
 }
 
 .preview-toggle.btn:hover:not(:disabled) {
-  transform: none;
+  transform: translate(-50%, -50%);
 }
 
 /* ハッシュタグコピーとアプリ共有は操作パネルの枠の外に置く */

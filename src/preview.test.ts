@@ -13,6 +13,7 @@ import {
   playPauseLabel,
   previewSoundLabel,
   restartButtonHtml,
+  previewSurfaceChromeAction,
   shouldLoopPreviewPlayback,
   shouldRevealPreviewChrome,
   shouldSeekPreviewToStart,
@@ -160,6 +161,13 @@ describe("syncMuteControl", () => {
 });
 
 describe("shouldSeekPreviewToStart", () => {
+  it("toggles the player chrome from the preview surface only while playing", () => {
+    expect(previewSurfaceChromeAction({ chromeOpen: true, playing: false })).toBe("keep");
+    expect(previewSurfaceChromeAction({ chromeOpen: false, playing: false })).toBe("show");
+    expect(previewSurfaceChromeAction({ chromeOpen: true, playing: true })).toBe("hide");
+    expect(previewSurfaceChromeAction({ chromeOpen: false, playing: true })).toBe("show");
+  });
+
   it("shows the player chrome when the preview is ready and stopped", () => {
     expect(shouldRevealPreviewChrome({ ready: true, playing: false, recording: false })).toBe(true);
     expect(shouldRevealPreviewChrome({ ready: true, playing: true, recording: false })).toBe(false);

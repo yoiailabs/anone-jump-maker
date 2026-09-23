@@ -44,16 +44,19 @@ function PreviewChrome({ locale }: { locale: Locale }) {
 function PreviewStatus({ locale }: { locale: Locale }) {
   const { playing } = useSyncExternalStore(subscribePreviewChrome, getPreviewChrome, getPreviewChrome);
   return (
-    <span className="preview-status" id="previewStatus" data-state={playing ? "playing" : "stopped"}>
+    <span
+      className="preview-status"
+      id="previewStatus"
+      data-state={playing ? "playing" : "stopped"}
+      role="img"
+      aria-label={t(locale, playing ? "previewPlaying" : "previewStopped")}
+    >
       <svg className="preview-status-icon preview-status-icon-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M8 6.2 18.2 12 8 17.8Z" fill="currentColor" />
       </svg>
       <svg className="preview-status-icon preview-status-icon-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M8 6.2h2.7v11.6H8Zm5.3 0H16v11.6h-2.7Z" fill="currentColor" />
       </svg>
-      <span className="preview-status-label notranslate" id="previewStatusLabel" translate="no">
-        {t(locale, playing ? "previewPlaying" : "previewStopped")}
-      </span>
     </span>
   );
 }

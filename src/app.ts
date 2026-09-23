@@ -58,6 +58,7 @@ import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
   formatPreviewClock,
   PREVIEW_MUTED_DEFAULT,
+  previewSurfaceChromeAction,
   shouldLoopPreviewPlayback,
   shouldRevealPreviewChrome,
   shouldSeekPreviewToStart,
@@ -994,12 +995,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   stage.addEventListener("click", (event) => {
     if (!studioEmpty.hidden || photos.length === 0) return;
     const target = event.target;
-    if (target instanceof Node && previewTransport.contains(target)) return;
-    if (!chromeOpen) {
-      setChromeOpen(true);
-      return;
-    }
-    togglePreviewPlay();
+    if (target instanceof Node && (previewTransport.contains(target) || previewToggle.contains(target))) return;
+    const action = previewSurfaceChromeAction({ chromeOpen, playing: isPreviewPlaying() });
+    if (action === "show") setChromeOpen(true);
+    else if (action === "hide") setChromeOpen(false);
   });
 
   const endSeek = () => {

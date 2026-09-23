@@ -98,6 +98,8 @@ describe("preview save CTA", () => {
     expect(makerSrc.indexOf('id="previewTime"')).toBeLessThan(makerSrc.indexOf('id="muteBtn"'));
     expect(makerSrc.indexOf('id="stage"')).toBeLessThan(makerSrc.indexOf("<PreviewChrome"));
     expect(makerSrc.indexOf("<PreviewChrome")).toBeLessThan(makerSrc.indexOf('id="previewTransport"'));
+    expect(makerSrc).not.toContain('id="previewStatusLabel"');
+    expect(appSrc).toContain("previewSurfaceChromeAction");
     expect(appSrc).toContain("shouldRevealPreviewChrome");
     expect(appSrc).toContain("shouldLoopPreviewPlayback");
     expect(appSrc).not.toContain('must(root, "#restartBtn")');

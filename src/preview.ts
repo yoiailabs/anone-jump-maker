@@ -101,6 +101,19 @@ export function syncMuteControl(
   if (label) setTextIfChanged(label, previewSoundLabel(muted, locale));
 }
 
+/**
+ * 中央ボタン以外をタップしたときの操作表示。
+ * 止まっているときは隠さない。再生中だけ、出ていれば隠し、隠れていれば出す。
+ */
+export function previewSurfaceChromeAction(input: {
+  chromeOpen: boolean;
+  playing: boolean;
+}): "show" | "hide" | "keep" {
+  if (!input.chromeOpen) return "show";
+  if (!input.playing) return "keep";
+  return "hide";
+}
+
 /** プレビューが使えるのに止まっているときは、操作を出しておく。再生中の自動非表示は別経路。 */
 export function shouldRevealPreviewChrome(input: {
   ready: boolean;
