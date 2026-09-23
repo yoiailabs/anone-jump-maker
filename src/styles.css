@@ -890,6 +890,7 @@ html[lang="ja"] .lede {
   align-items: flex-end;
   gap: 0.2rem;
   width: 100%;
+  border-top: 3px solid var(--ink);
   border-bottom: 3px solid var(--ink);
 }
 
