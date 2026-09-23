@@ -156,7 +156,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const previewSeek = must(root, "#previewSeek") as HTMLInputElement;
   const previewTime = must(root, "#previewTime");
   const studioEmpty = must(root, "#studioEmpty") as HTMLButtonElement;
-  const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
+  const exportPanel = must(root, "#exportPanel");
   const exportTitle = must(root, "#exportTitle");
   const exportStatus = must(root, "#exportStatus");
   const exportProgress = must(root, "#exportProgress") as HTMLProgressElement;
@@ -561,7 +561,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const setExportPhase = (phase: "busy" | "done") => {
-    exportDialog.dataset.exportPhase = phase;
+    exportPanel.dataset.exportPhase = phase;
     exportTitle.textContent = phase === "done" ? msg("exportDoneTitle") : msg("exportTitle");
     exportKeepOpen.hidden = phase !== "busy";
     exportDownloadHint.hidden = phase !== "done";
@@ -578,25 +578,27 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     downloadExportBtn.hidden = phase !== "done";
     downloadExportBtn.classList.remove("ghost");
     closeExportBtn.hidden = phase !== "done";
-    exportDialog.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
+    exportPanel.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
   };
 
-  const openExportDialog = () => {
+  const revealExportPanel = () => {
+    exportPanel.dataset.open = "true";
+    exportPanel.scrollIntoView({ block: "center", inline: "nearest" });
+  };
+
+  const openExportPanel = () => {
     clearFeedback("save");
     pendingExport = null;
     cancelExportBtn.disabled = false;
     setExportPhase("busy");
     setExportProgress(0, msg("statusExportPreparing"));
-    if (!exportDialog.open) {
-      exportDialog.showModal();
-    }
+    revealExportPanel();
+    exportPanel.focus({ preventScroll: true });
   };
 
-  const closeExportDialog = () => {
+  const closeExportPanel = () => {
     pendingExport = null;
-    if (exportDialog.open) {
-      exportDialog.close();
-    }
+    delete exportPanel.dataset.open;
   };
 
   const cancelExport = () => {
@@ -718,7 +720,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (view !== "studio") {
       stopPlayback();
       cancelExport();
-      closeExportDialog();
+      closeExportPanel();
     }
     const firstPaint = activeView === null;
     if (activeView !== view) {
@@ -1043,20 +1045,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   closeExportBtn.addEventListener("click", () => {
-    closeExportDialog();
-  });
-
-  exportDialog.addEventListener("cancel", (event) => {
-    if (exportAbort) {
-      cancelExport();
-      return;
-    }
-    if (pendingExport) return;
-    event.preventDefault();
-  });
-
-  exportDialog.addEventListener("close", () => {
-    pendingExport = null;
+    closeExportPanel();
   });
 
   window.addEventListener("beforeunload", (event) => {
@@ -1078,7 +1067,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const controller = new AbortController();
     exportAbort = controller;
     trackEvent(GENERATE_START_EVENT, { count: photos.length });
-    openExportDialog();
+    openExportPanel();
     try {
       const cuts = (await ensureTimelines())[mode];
       throwIfAborted(controller.signal);
@@ -1106,7 +1095,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       pendingExport = { blob: result.blob, filename, mime: result.mime, extension: result.extension };
       exportAbort = null;
       showExportReady();
-      if (exportDialog.open) downloadExportBtn.focus();
+      if (exportPanel.dataset.open === "true") downloadExportBtn.focus({ preventScroll: true });
+      revealExportPanel();
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
         trackEvent(GENERATE_CANCEL_EVENT);
@@ -1124,7 +1114,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       haltLoop();
       video.pause();
       applyPreviewMute();
-      if (!pendingExport) closeExportDialog();
+      if (!pendingExport) closeExportPanel();
       refreshButtons();
       paint();
     }

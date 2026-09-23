@@ -115,6 +115,12 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain(">{t(locale, \"studioEmpty\")}");
     expect(appSrc).toContain('studioEmpty.addEventListener("click"');
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");
+    expect(makerSrc).not.toContain("<dialog");
+    expect(makerSrc).toContain('id="exportPanel"');
+    expect(makerSrc.indexOf('id="saveBtn"')).toBeLessThan(makerSrc.indexOf('id="exportPanel"'));
+    expect(makerSrc.indexOf('id="exportPanel"')).toBeLessThan(makerSrc.indexOf('id="saveFeedback"'));
+    expect(appSrc).not.toContain("showModal");
+    expect(appSrc).toContain("exportPanel.scrollIntoView");
     expect(appSrc).toContain("trackEvent(MAKE_OPEN_EVENT");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(1);
     expect(appSrc).toContain("trackEvent(VIDEO_SAVE_EVENT");

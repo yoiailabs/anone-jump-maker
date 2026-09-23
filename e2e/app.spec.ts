@@ -191,7 +191,7 @@ test("opens a generation modal from the preview save button", async ({ page }) =
   await uploadPhoto(page);
   await expect(page.locator("#saveBtn")).toBeEnabled();
 
-  const exportDialog = page.locator("#exportDialog");
+  const exportDialog = page.locator("#exportPanel");
   await page.locator("#saveBtn").click();
   try {
     await expect(exportDialog).toBeVisible({ timeout: 3_000 });
@@ -215,7 +215,7 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
       // キャンセルで fetch が中断されると continue は失敗する
     }
   });
-  const dialog = page.locator("#exportDialog");
+  const dialog = page.locator("#exportPanel");
   await page.locator("#saveBtn").click();
   try {
     await expect(dialog).toBeVisible({ timeout: 3_000 });
@@ -224,6 +224,10 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
     return;
   }
   await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
+  await expect(page.locator("dialog")).toHaveCount(0);
+  const saveBox = await page.locator("#saveBtn").boundingBox();
+  const panelBox = await page.locator("#exportPanel").boundingBox();
+  expect(saveBox && panelBox && panelBox.y > saveBox.y).toBe(true);
   await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
   await expect(page.locator("#exportProgressLabel")).toContainText("%");
   await expect(page.locator("#exportKeepOpen")).toBeVisible();
@@ -360,7 +364,7 @@ test("a touch swipe does not reorder photos without a long press", async ({ page
 
 test("saves a short clip when an encoder plan exists, and explains when it does not", async ({ page }) => {
   await uploadPhoto(page);
-  const exportDialog = page.locator("#exportDialog");
+  const exportDialog = page.locator("#exportPanel");
   await expect(exportDialog).toBeHidden();
   await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
   await expect(page.locator("#cancelExportBtn")).toHaveText("キャンセル");
@@ -438,11 +442,11 @@ test("download opens a file share sheet when the browser can share files", async
   const statusText = await waitForExportNotice(page, new RegExp(`生成できました|${UNSUPPORTED_EXPORT_MESSAGE}`));
   expect(downloaded).toBe(false);
   if (!statusText.includes("生成できました")) {
-    await expect(page.locator("#exportDialog")).toBeHidden();
+    await expect(page.locator("#exportPanel")).toBeHidden();
     return;
   }
 
-  await expect(page.locator("#exportDialog")).toBeVisible();
+  await expect(page.locator("#exportPanel")).toBeVisible();
   await expect(page.locator("#downloadExportBtn")).toBeVisible();
   await expect(page.locator("#downloadExportBtn")).toHaveText("ダウンロード");
   await expect(page.locator("#downloadExportBtn")).not.toHaveClass(/ghost/);
@@ -475,7 +479,7 @@ test("download opens a file share sheet when the browser can share files", async
   expect(payload?.keys).not.toContain("url");
   expect(payload?.keys).not.toContain("title");
   await expect(page.locator("#exportStatus")).toContainText("保存しました");
-  await expect(page.locator("#exportDialog")).toBeVisible();
+  await expect(page.locator("#exportPanel")).toBeVisible();
 });
 
 test("cancelling the share sheet stays on the export dialog", async ({ page }) => {
@@ -505,7 +509,7 @@ test("cancelling the share sheet stays on the export dialog", async ({ page }) =
   await page.locator("#downloadExportBtn").click();
   await expect(page.locator("#exportStatus")).toContainText("共有をやめました");
   expect(downloaded).toBe(false);
-  await expect(page.locator("#exportDialog")).toBeVisible();
+  await expect(page.locator("#exportPanel")).toBeVisible();
   await expect(page.locator("#downloadExportBtn")).toBeEnabled();
 });
 
@@ -907,7 +911,7 @@ async function waitForExportNotice(page: Page, pattern: RegExp): Promise<string>
   await expect
     .poll(
       async () => {
-        const dialogOpen = await page.locator("#exportDialog").isVisible();
+        const dialogOpen = await page.locator("#exportPanel").isVisible();
         text = ((await page.locator(dialogOpen ? "#exportStatus" : "#saveFeedback").textContent()) ?? "").trim();
         return pattern.test(text);
       },

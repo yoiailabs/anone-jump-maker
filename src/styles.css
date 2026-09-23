@@ -404,38 +404,17 @@ html[lang="ja"] .lede {
   }
 }
 
-.preview-dialog:not([open]) {
-  display: none;
+.export-panel {
+  scroll-margin: 1rem;
 }
 
-.preview-dialog {
-  width: min(28rem, calc(100vw - 1.25rem));
-  max-height: calc(100svh - 1.25rem);
-  margin: auto;
-  padding: 0;
-  border: 3px solid var(--ink);
-  border-radius: 1.4rem;
-  background: var(--card);
-  box-shadow: 6px 7px 0 var(--ink);
-  overflow: hidden;
+.export-panel:focus {
+  outline: none;
 }
 
-.preview-dialog:has(.stage[data-aspect="landscape"]) {
-  width: min(32rem, calc(100vw - 1.25rem));
-}
-
-.preview-dialog[open] {
-  display: flex;
-  flex-direction: column;
-  height: min(max-content, calc(100svh - 1.25rem));
-}
-
-.preview-dialog::backdrop {
-  background: rgba(26, 26, 26, 0.48);
-}
-
-.export-dialog {
-  width: min(22rem, calc(100vw - 1.25rem));
+.export-panel:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 .export-sheet {
@@ -444,6 +423,18 @@ html[lang="ja"] .lede {
   gap: 0.85rem;
   width: 100%;
   padding: 1rem 1.05rem 1.1rem;
+}
+
+.export-panel.export-sheet {
+  display: none;
+  border: 3px solid var(--ink);
+  border-radius: 1.1rem;
+  background: var(--card);
+  box-shadow: 4px 5px 0 var(--ink);
+}
+
+.export-panel.export-sheet[data-open="true"] {
+  display: flex;
 }
 
 .export-status {
