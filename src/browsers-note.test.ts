@@ -23,12 +23,13 @@ describe("verified browsers notice", () => {
     }
   });
 
-  it("renders above the photo picker, not in the hero", () => {
+  it("stays on the maker page below the first-view photo picker", () => {
     expect(noteSrc).toContain('id="browsersNote"');
     expect(noteSrc).toContain("makerBrowsersNote");
     expect(noteSrc).not.toContain("<ul");
     expect(makerSrc).not.toMatch(/<JaLede\b[^/]*\/>\s*<BrowsersNote\b/);
-    expect(makerSrc).toMatch(/<BrowsersNote\b[^/]*\/>\s*<Label className="file-btn">/);
+    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf("<BrowsersNote"));
+    expect(makerSrc.indexOf("<BrowsersNote")).toBeLessThan(makerSrc.indexOf("<JaLede"));
     expect(makerSrc).not.toMatch(/id="browsersNote"[^>]*translate="no"|translate="no"[^>]*id="browsersNote"/);
     expect(stylesSrc).toMatch(/\.browsers-note\s*\{[^}]*font-size:\s*0\.72rem/);
   });

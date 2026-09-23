@@ -65,5 +65,12 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("previewSaveBtn.disabled = saveDisabled");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(2);
     expect(appSrc).toContain("trackEvent(VIDEO_SAVE_EVENT");
+    expect(appSrc).toContain("trackEvent(PHOTO_PICKER_OPEN_EVENT");
+    expect(appSrc).toContain("trackEvent(PHOTOS_SELECTED_EVENT");
+    expect(appSrc).toContain("trackEvent(PHOTOS_REJECTED_EVENT");
+    expect(appSrc).toContain("trackEvent(GENERATE_START_EVENT");
+    expect(appSrc).toContain("trackEvent(GENERATE_FAIL_EVENT");
+    expect(appSrc).toContain("trackEvent(GENERATE_CANCEL_EVENT");
+    expect(appSrc).toContain("fetchSamplePhotoFiles");
   });
 });

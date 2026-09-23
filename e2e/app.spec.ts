@@ -39,10 +39,25 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
     .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))
     .toBe("none");
   await expect(page.locator("img.loop")).toHaveAttribute("src", "/jump-loop-still.png");
-  await expect(page.locator('link[rel="preload"][as="image"]')).toHaveAttribute(
-    "href",
-    "/jump-loop-still.png",
-  );
+  await expect(page.locator('link[rel="preload"][as="image"][href="/jump-loop-still.png"]')).toHaveCount(0);
+  const pickerLabel = page.locator("label.file-btn");
+  const sampleBtn = page.locator("#samplePhotosBtn");
+  await expect(pickerLabel).toBeVisible();
+  await expect(sampleBtn).toBeVisible();
+  await expect(pickerLabel).toHaveText("写真を選ぶ");
+  await expect(sampleBtn).toHaveText("サンプル写真で試す");
+  const viewport = page.viewportSize();
+  const pickerBoxOnBoot = await pickerLabel.boundingBox();
+  const sampleBoxOnBoot = await sampleBtn.boundingBox();
+  expect(
+    viewport && pickerBoxOnBoot && pickerBoxOnBoot.y >= 0 && pickerBoxOnBoot.y + pickerBoxOnBoot.height <= viewport.height,
+  ).toBe(true);
+  expect(
+    viewport &&
+      sampleBoxOnBoot &&
+      sampleBoxOnBoot.y >= 0 &&
+      sampleBoxOnBoot.y + sampleBoxOnBoot.height <= viewport.height,
+  ).toBe(true);
   const html = await page.request.get("/").then((response) => response.text());
   expect(html).not.toMatch(/<script[^>]+src="https:\/\/www\.googletagmanager\.com/);
   expect(html).toContain("Zen+Maru+Gothic");
@@ -384,8 +399,9 @@ test("opens community jumps from the disclaimer link and returns via the back li
   const pickerBox = await page.locator("#picker").evaluate((el) => el.closest("label")?.getBoundingClientRect());
   const browsersBox = await browsersNote.boundingBox();
   const heroBox = await page.locator("#makerView .hero").boundingBox();
+  expect(heroBox && pickerBox && pickerBox.y >= heroBox.y && pickerBox.y < heroBox.y + heroBox.height).toBe(true);
   expect(heroBox && browsersBox && heroBox.y + heroBox.height < browsersBox.y).toBe(true);
-  expect(browsersBox && pickerBox && browsersBox.y < pickerBox.y).toBe(true);
+  expect(pickerBox && browsersBox && pickerBox.y < browsersBox.y).toBe(true);
 
   await expect(toCommunity).toHaveAttribute("href", "/community");
   await toCommunity.click();

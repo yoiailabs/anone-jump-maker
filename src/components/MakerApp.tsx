@@ -97,37 +97,24 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 decoding="async"
               />
             </h1>
-            <JaLede locale={locale} />
-            <p className="hero-more">
-              <Button
-                variant="site"
-                nativeButton={false}
-                render={<a id="toCommunity" className="btn" href={pathForApp(locale, "community")} />}
-              >
-                {t(locale, "communityToCommunity")}
+            <div className="make-cta">
+              <Label className="file-btn">
+                <input
+                  id="picker"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+                  multiple
+                />
+                <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
+              </Label>
+              <Button variant="site" type="button" id="samplePhotosBtn" className="btn ghost">
+                {t(locale, "makerTrySamples")}
               </Button>
-            </p>
+            </div>
+            <PhotoThumbsSlot locale={locale} />
           </header>
 
-          <div className="loop-wrap">
-            <JumpLoop
-              href={OFFICIAL_MV_WATCH_HREF}
-              ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
-            />
-          </div>
-
           <section className="panel">
-            <BrowsersNote locale={locale} />
-            <Label className="file-btn">
-              <input
-                id="picker"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,image/*"
-                multiple
-              />
-              <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
-            </Label>
-            <PhotoThumbsSlot locale={locale} />
             <fieldset className="aspect-field">
               <legend>{t(locale, "makerAspectLegend")}</legend>
               <RadioPills
@@ -187,7 +174,28 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <p className="status notranslate" id="status" data-kind="idle" translate="no">
               {t(locale, "makerStatusIdle")}
             </p>
+            <BrowsersNote locale={locale} />
           </section>
+
+          <section className="maker-story">
+            <JaLede locale={locale} />
+            <p className="hero-more">
+              <Button
+                variant="site"
+                nativeButton={false}
+                render={<a id="toCommunity" className="btn ghost" href={pathForApp(locale, "community")} />}
+              >
+                {t(locale, "communityToCommunity")}
+              </Button>
+            </p>
+          </section>
+
+          <div className="loop-wrap">
+            <JumpLoop
+              href={OFFICIAL_MV_WATCH_HREF}
+              ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
+            />
+          </div>
 
           <div className="share-wrap">
             <Button variant="site" type="button" id="shareAppBtn" className="btn share-app">

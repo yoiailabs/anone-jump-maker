@@ -1,4 +1,16 @@
-import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
+import {
+  GENERATE_CANCEL_EVENT,
+  GENERATE_FAIL_EVENT,
+  GENERATE_START_EVENT,
+  generateFailReason,
+  PHOTO_PICKER_OPEN_EVENT,
+  PHOTOS_REJECTED_EVENT,
+  PHOTOS_SELECTED_EVENT,
+  trackEvent,
+  VIDEO_PREVIEW_EVENT,
+  VIDEO_SAVE_EVENT,
+  videoEventParams,
+} from "./analytics.ts";
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
 import type { CharacterFrame, Compositor } from "./compositor.ts";
 import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
@@ -39,7 +51,8 @@ import {
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNearViewport } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
-import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { HEIC_UNSUPPORTED_MESSAGE, loadPhotos, revokePhotos, selectImageFiles, type LoadedPhoto } from "./photos.ts";
+import { fetchSamplePhotoFiles } from "./sample-photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
@@ -121,6 +134,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
+  const samplePhotosBtn = must(root, "#samplePhotosBtn") as HTMLButtonElement;
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
   const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
   const exportTitle = must(root, "#exportTitle");
@@ -270,6 +284,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
+    samplePhotosBtn.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
     stage.setAttribute("aria-pressed", active ? "true" : "false");
@@ -741,10 +756,25 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     });
   }
 
-  picker.addEventListener("change", async () => {
-    const files = takeUpToPhotoCap(photos.length, [...(picker.files ?? [])]);
-    picker.value = "";
-    if (files.length === 0 || photosLocked()) return;
+  const rejectPhotos = (reason: string) => {
+    trackEvent(PHOTOS_REJECTED_EVENT, { reason });
+  };
+
+  const ingestPhotoFiles = async (incoming: readonly File[]) => {
+    if (photosLocked()) return;
+    if (incoming.length === 0) return;
+    const capped = takeUpToPhotoCap(photos.length, incoming);
+    if (capped.length === 0) {
+      rejectPhotos("at_cap");
+      setStatus(msg("makerPhotosAtCap", { n: PHOTO_MAX_COUNT }), "error");
+      return;
+    }
+    const imageFiles = selectImageFiles(capped);
+    if (imageFiles.length === 0) {
+      rejectPhotos("not_image");
+      setStatus(msg("statusPickImages"), "error");
+      return;
+    }
     beginTemplateVideoLoad(video);
     const hadPhotos = photos.length > 0;
     photosBusy = true;
@@ -752,7 +782,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     setStatus(msg("statusPhotosLoading"), "busy");
     try {
       const compositorReady = ensureCompositor();
-      const added = await loadPhotos(files, {
+      const added = await loadPhotos(imageFiles, {
         onProgress: (current, total) => {
           setStatus(msg("statusPhotosLoadingProgress", { current, total }), "busy");
         },
@@ -762,21 +792,63 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await compositorReady;
       await ensureTimelines();
       paint();
+      if (added.length === 0) {
+        rejectPhotos("decode");
+        setStatus(msg("statusPickImages"), "error");
+        return;
+      }
+      trackEvent(PHOTOS_SELECTED_EVENT, { count: added.length });
       setStatus(
-        photos.length === 0
-          ? msg("statusPickImages")
-          : hadPhotos
-            ? msg("statusPhotosAdded", { n: added.length, total: photos.length })
-            : msg("statusPhotosLoaded", { n: photos.length }),
+        hadPhotos
+          ? msg("statusPhotosAdded", { n: added.length, total: photos.length })
+          : msg("statusPhotosLoaded", { n: photos.length }),
       );
     } catch (error) {
       renderThumbs();
       paint();
+      rejectPhotos(error instanceof Error && error.message === HEIC_UNSUPPORTED_MESSAGE ? "heic" : "decode");
       setErrorStatus(error, "statusLoadFailed");
     } finally {
       photosBusy = false;
       refreshButtons();
     }
+  };
+
+  picker.addEventListener("click", () => {
+    if (picker.disabled) return;
+    trackEvent(PHOTO_PICKER_OPEN_EVENT, undefined, { debounceMs: 600 });
+  });
+
+  picker.addEventListener("change", () => {
+    const files = [...(picker.files ?? [])];
+    picker.value = "";
+    void ingestPhotoFiles(files);
+  });
+
+  samplePhotosBtn.addEventListener("click", () => {
+    if (samplePhotosBtn.disabled || photosLocked()) return;
+    photosBusy = true;
+    refreshButtons();
+    setStatus(msg("statusPhotosLoading"), "busy");
+    void (async () => {
+      try {
+        const files = await fetchSamplePhotoFiles();
+        photosBusy = false;
+        if (files.length === 0) {
+          rejectPhotos("unavailable");
+          setStatus(msg("statusLoadFailed"), "error");
+          refreshButtons();
+          return;
+        }
+        await ingestPhotoFiles(files);
+        refreshButtons();
+      } catch {
+        photosBusy = false;
+        rejectPhotos("unavailable");
+        setStatus(msg("statusLoadFailed"), "error");
+        refreshButtons();
+      }
+    })();
   });
 
   playBtn.addEventListener("click", () => {
@@ -874,6 +946,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     refreshButtons();
     const controller = new AbortController();
     exportAbort = controller;
+    trackEvent(GENERATE_START_EVENT, { count: photos.length });
     openExportDialog();
     try {
       const cuts = (await ensureTimelines())[mode];
@@ -908,8 +981,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
+        trackEvent(GENERATE_CANCEL_EVENT);
         setStatus(msg("statusExportCancelled"));
       } else {
+        trackEvent(GENERATE_FAIL_EVENT, { reason: generateFailReason(error) });
         setErrorStatus(error, "statusSaveFailed");
       }
     } finally {

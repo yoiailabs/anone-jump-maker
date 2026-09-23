@@ -54,9 +54,12 @@ describe("stacked maker hero logo", () => {
     expect(privacySrc).not.toContain("eyebrow");
     expect(termsSrc).not.toContain("eyebrow");
     expect(makerSrc).not.toMatch(/<h1 id="makerTitle">\{t\(locale, "makerTitle"\)\}<\/h1>/);
-    expect(makerSrc).toMatch(/<LanguageNav[\s\S]*id="makerTitle"[\s\S]*<JaLede\b/);
-    expect(makerSrc).toMatch(/<JaLede\b[\s\S]*id="toCommunity"/);
-    expect(makerSrc).toMatch(/<BrowsersNote\b[^/]*\/>\s*<Label className="file-btn">/);
+    expect(makerSrc.indexOf('id="makerTitle"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
+    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf('id="samplePhotosBtn"'));
+    expect(makerSrc.indexOf('id="samplePhotosBtn"')).toBeLessThan(makerSrc.indexOf("<JaLede"));
+    expect(makerSrc.indexOf("<JaLede")).toBeLessThan(makerSrc.indexOf('id="toCommunity"'));
+    expect(makerSrc).toMatch(/<LanguageNav[\s\S]*id="makerTitle"/);
+    expect(makerSrc).toContain('className="make-cta"');
     expect(makerSrc).toContain('<footer className="notes">');
     for (const locale of LOCALES) {
       expect(t(locale, "makerTitle").length).toBeGreaterThan(0);
