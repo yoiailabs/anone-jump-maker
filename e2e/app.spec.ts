@@ -49,9 +49,15 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect(pickerLabel).toBeVisible();
   await expect(loop).toBeVisible();
   await expect(pickerLabel).toHaveText("写真を選ぶ");
+  const onDevice = page.locator("#onDeviceNote");
+  await expect(onDevice).toHaveText("動画生成は端末内で行われ、外部に画像が送信されることはありません。");
   const viewport = page.viewportSize();
   const pickerBoxOnBoot = await pickerLabel.boundingBox();
   const loopBoxOnBoot = await loop.boundingBox();
+  const noteBoxOnBoot = await onDevice.boundingBox();
+  expect(pickerBoxOnBoot && noteBoxOnBoot && pickerBoxOnBoot.y + pickerBoxOnBoot.height <= noteBoxOnBoot.y + 1).toBe(
+    true,
+  );
   expect(
     viewport && pickerBoxOnBoot && pickerBoxOnBoot.y >= 0 && pickerBoxOnBoot.y + pickerBoxOnBoot.height <= viewport.height,
   ).toBe(true);

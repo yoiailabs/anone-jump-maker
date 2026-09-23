@@ -113,6 +113,9 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 />
                 <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
               </Label>
+              <p className="make-note" id="onDeviceNote">
+                {t(locale, "makerOnDevice")}
+              </p>
             </div>
             <PhotoThumbsSlot locale={locale} />
           </header>

@@ -56,7 +56,8 @@ describe("stacked maker hero logo", () => {
     expect(makerSrc).not.toMatch(/<h1 id="makerTitle">\{t\(locale, "makerTitle"\)\}<\/h1>/);
     expect(makerSrc.indexOf('id="makerTitle"')).toBeLessThan(makerSrc.indexOf("<JumpLoop"));
     expect(makerSrc.indexOf("<JumpLoop")).toBeLessThan(makerSrc.indexOf('id="picker"'));
-    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf("<JaLede"));
+    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf('id="onDeviceNote"'));
+    expect(makerSrc.indexOf('id="onDeviceNote"')).toBeLessThan(makerSrc.indexOf("<JaLede"));
     expect(makerSrc).not.toContain("samplePhotosBtn");
     expect(makerSrc).not.toContain("makerTrySamples");
     expect(makerSrc.indexOf("<JaLede")).toBeLessThan(makerSrc.indexOf('id="toCommunity"'));

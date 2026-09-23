@@ -31,6 +31,6 @@ describe("verified browsers notice", () => {
     expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf("<BrowsersNote"));
     expect(makerSrc.indexOf("<BrowsersNote")).toBeLessThan(makerSrc.indexOf("<JaLede"));
     expect(makerSrc).not.toMatch(/id="browsersNote"[^>]*translate="no"|translate="no"[^>]*id="browsersNote"/);
-    expect(stylesSrc).toMatch(/\.browsers-note\s*\{[^}]*font-size:\s*0\.72rem/);
+    expect(stylesSrc).toMatch(/\.browsers-note,\s*\.make-note\s*\{[^}]*font-size:\s*0\.72rem/);
   });
 });
