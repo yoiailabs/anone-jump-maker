@@ -95,7 +95,18 @@ describe("preview save CTA", () => {
     expect(appSrc).not.toContain('msg("statusHashtagsCopied")');
     expect(appSrc).not.toContain('msg("statusShared")');
     expect(appSrc).not.toContain('msg("statusSaved")');
+    expect(appSrc).not.toContain('msg("statusCopyUnsupported")');
+    expect(appSrc).not.toContain('msg("statusShareUnsupported")');
+    expect(appSrc).not.toContain('msg("statusExportPreparing")');
+    expect(appSrc).not.toContain('msg("statusGenerating")');
+    expect(appSrc).not.toContain('msg("statusExportCancelled")');
+    expect(appSrc).not.toContain('msg("statusExportReadyDownload")');
     expect(appSrc).not.toContain("保存しました");
+    expect(appSrc).toContain('setErrorFeedback("save", error, "statusSaveFailed")');
+    expect(makerSrc).toContain('id="exportStatus"');
+    expect(makerSrc).not.toContain("statusExportPreparing");
+    expect(makerSrc).toContain('id="exportKeepOpen"');
+    expect(makerSrc).toContain('id="previewSaveHint"');
     expect(makerSrc).toContain('id="studioHome"');
     expect(makerSrc).not.toContain("anone-logo-stacked");
     expect(makerSrc).toContain('useState<OptionTab>("swap")');
