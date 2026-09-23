@@ -139,7 +139,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const exportKeepOpen = must(root, "#exportKeepOpen");
   const exportDownloadHint = must(root, "#exportDownloadHint");
   const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
-  const shareExportBtn = must(root, "#shareExportBtn") as HTMLButtonElement;
   const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
   const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
   const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
@@ -497,12 +496,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const setExportPhase = (phase: "busy" | "done") => {
-    const shareReady = phase === "done" && fileShareAvailable();
     exportDialog.dataset.exportPhase = phase;
     exportTitle.textContent = phase === "done" ? msg("exportDoneTitle") : msg("exportTitle");
     exportKeepOpen.hidden = phase !== "busy";
     exportDownloadHint.hidden = phase !== "done";
     if (phase === "done") {
+      const shareReady = fileShareAvailable();
       const hintKey = !shareReady
         ? "exportDownloadHint"
         : isXInAppBrowser(typeof navigator === "undefined" ? "" : navigator.userAgent)
@@ -511,9 +510,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       setTextIfChanged(exportDownloadHint, msg(hintKey));
     }
     cancelExportBtn.hidden = phase !== "busy";
-    shareExportBtn.hidden = !shareReady;
     downloadExportBtn.hidden = phase !== "done";
-    downloadExportBtn.classList.toggle("ghost", shareReady);
+    downloadExportBtn.classList.remove("ghost");
     closeExportBtn.hidden = phase !== "done";
     exportDialog.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
   };
@@ -556,27 +554,28 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     setStatus(text);
   };
 
-  const showExportReady = (shareReady: boolean) => {
-    const text = msg(shareReady ? "statusExportReady" : "statusExportReadyDownload");
+  const showExportReady = () => {
+    const text = msg("statusExportReadyDownload");
     setExportProgress(100, text);
     setStatus(text);
     setExportPhase("done");
   };
 
-  const savePendingExport = () => {
-    if (!pendingExport || sharingExport) return;
-    downloadBlob(pendingExport.blob, pendingExport.filename);
-    markExportSaved(pendingExport.extension);
+  const downloadPendingExport = (pending: NonNullable<typeof pendingExport>) => {
+    downloadBlob(pending.blob, pending.filename);
+    markExportSaved(pending.extension);
     trackExportSaved();
   };
 
-  const sharePendingExport = async (source: "auto" | "retry" = "retry") => {
+  const savePendingExport = async () => {
     if (!pendingExport || sharingExport) return;
     const pending = pendingExport;
+    if (!fileShareAvailable()) {
+      downloadPendingExport(pending);
+      return;
+    }
     sharingExport = true;
     refreshButtons();
-    setExportPhase("done");
-    shareExportBtn.disabled = true;
     downloadExportBtn.disabled = true;
     try {
       setExportProgress(100, msg("statusExportSharing"));
@@ -587,28 +586,24 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         mime: pending.mime,
         navigator: typeof navigator === "undefined" ? undefined : navigator,
       });
-      if (pendingExport !== pending) {
-        if (outcome === "shared") {
-          setStatus(savedStatus(pending.extension));
-          trackExportSaved();
+      if (outcome === "cancelled") {
+        if (pendingExport === pending) {
+          const text = msg("statusExportShareCancelled");
+          setExportProgress(100, text);
+          setStatus(text);
         }
         return;
       }
-      if (outcome === "cancelled") {
-        const text = msg(source === "auto" ? "statusExportReady" : "statusExportShareCancelled");
-        setExportProgress(100, text);
-        setStatus(text);
+      if (outcome === "shared") {
+        if (pendingExport === pending) markExportSaved(pending.extension);
+        else setStatus(savedStatus(pending.extension));
+        trackExportSaved();
         return;
       }
-      if (outcome === "unsupported") {
-        showExportReady(fileShareAvailable());
-        return;
-      }
-      markExportSaved(pending.extension);
-      trackExportSaved();
+      if (pendingExport !== pending) return;
+      downloadPendingExport(pending);
     } finally {
       sharingExport = false;
-      shareExportBtn.disabled = false;
       downloadExportBtn.disabled = false;
       if (pendingExport === pending) setExportPhase("done");
       refreshButtons();
@@ -920,12 +915,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     cancelExport();
   });
 
-  shareExportBtn.addEventListener("click", () => {
-    void sharePendingExport();
-  });
-
   downloadExportBtn.addEventListener("click", () => {
-    savePendingExport();
+    void savePendingExport();
   });
 
   closeExportBtn.addEventListener("click", () => {
@@ -1002,15 +993,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
       pendingExport = { blob: result.blob, filename, mime: result.mime, extension: result.extension };
       exportAbort = null;
-      if (fileShareAvailable()) {
-        await sharePendingExport("auto");
-        if (pendingExport && exportDialog.open) {
-          (shareExportBtn.hidden ? downloadExportBtn : shareExportBtn).focus();
-        }
-      } else {
-        showExportReady(false);
-        if (exportDialog.open) downloadExportBtn.focus();
-      }
+      showExportReady();
+      if (exportDialog.open) downloadExportBtn.focus();
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
         setStatus(msg("statusExportCancelled"));
