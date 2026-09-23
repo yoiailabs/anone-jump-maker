@@ -14,36 +14,22 @@ import jaPhraseSrc from "./ja-phrase.ts?raw";
 
 const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
-const JA_LEDE = [t("ja", "makerLede1"), t("ja", "makerLede2"), t("ja", "makerLede3")] as const;
-const EN_LEDE = [t("en", "makerLede1"), t("en", "makerLede2"), t("en", "makerLede3")] as const;
+const JA_COPY = [t("ja", "communityLede"), t("ja", "makerOnDevice")] as const;
 
 describe("Japanese phrase breaks", () => {
-  it("keeps the maker lede wording exactly", () => {
-    expect(JA_LEDE).toEqual([
-      "写真を何枚か選択するだけで簡単に「あのねジャンプ」動画が作れます。",
-      "動画生成はすべて端末内で完結するため、外部のサーバーに画像が送信されることはありません。",
-      "※ファン制作の非公式アプリです。",
-    ]);
-  });
-
   it("inserts ZWSP between Japanese phrases without changing visible copy", () => {
-    for (const line of JA_LEDE) {
+    for (const line of JA_COPY) {
       const phrased = insertJaPhraseBreaks(line, parseJaPhrases);
       expect(phrased).toContain(JA_PHRASE_ZWSP);
       expect(visibleJaText(phrased)).toBe(line);
       expect(parseJaPhrases(line).length).toBeGreaterThan(1);
     }
-    const community = t("ja", "communityLede");
-    const phrasedCommunity = insertJaPhraseBreaks(community, parseJaPhrases);
-    expect(phrasedCommunity).toContain(JA_PHRASE_ZWSP);
-    expect(visibleJaText(phrasedCommunity)).toBe(community);
   });
 
   it("does not rewrite non-Japanese lede copy", () => {
-    for (const line of EN_LEDE) {
-      expect(line).not.toContain(JA_PHRASE_ZWSP);
-      expect(visibleJaText(line)).toBe(line);
-    }
+    const line = t("en", "communityLede");
+    expect(line).not.toContain(JA_PHRASE_ZWSP);
+    expect(visibleJaText(line)).toBe(line);
     expect(needsJaPhrasePolyfill("en")).toBe(false);
     expect(needsJaPhrasePolyfill("ko")).toBe(false);
     expect(needsJaPhrasePolyfill("zh")).toBe(false);
@@ -63,7 +49,7 @@ describe("Japanese phrase breaks", () => {
   });
 
   it("is idempotent when ZWSP is already present", () => {
-    const once = insertJaPhraseBreaks(JA_LEDE[0], parseJaPhrases);
+    const once = insertJaPhraseBreaks(JA_COPY[0], parseJaPhrases);
     expect(insertJaPhraseBreaks(once, parseJaPhrases)).toBe(once);
   });
 

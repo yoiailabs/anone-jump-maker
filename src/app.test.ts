@@ -65,6 +65,7 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("previewSaveBtn.disabled = saveDisabled");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(2);
     expect(appSrc).toContain("trackEvent(VIDEO_SAVE_EVENT");
+    expect(appSrc.match(/trackEvent\(VIDEO_SAVE_EVENT/g)).toHaveLength(1);
     expect(appSrc).toContain("trackEvent(PHOTO_PICKER_OPEN_EVENT");
     expect(appSrc).toContain("trackEvent(PHOTOS_SELECTED_EVENT");
     expect(appSrc).toContain("trackEvent(PHOTOS_REJECTED_EVENT");
@@ -73,5 +74,12 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("trackEvent(GENERATE_CANCEL_EVENT");
     expect(appSrc).not.toContain("fetchSamplePhotoFiles");
     expect(appSrc).not.toContain("samplePhotosBtn");
+    expect(makerSrc).not.toContain('id="shareExportBtn"');
+    expect(makerSrc).toContain('id="downloadExportBtn"');
+    expect(appSrc).not.toContain("shareExportBtn");
+    expect(appSrc).toContain("shareVideoFile");
+    expect(appSrc).toContain("downloadBlob(pending.blob, pending.filename)");
+    expect(appSrc).not.toContain("downloadBlob(result.blob, filename)");
+    expect(appSrc).not.toContain("sharePendingExport");
   });
 });

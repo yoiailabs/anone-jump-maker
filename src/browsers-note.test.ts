@@ -27,9 +27,9 @@ describe("verified browsers notice", () => {
     expect(noteSrc).toContain('id="browsersNote"');
     expect(noteSrc).toContain("makerBrowsersNote");
     expect(noteSrc).not.toContain("<ul");
-    expect(makerSrc).not.toMatch(/<JaLede\b[^/]*\/>\s*<BrowsersNote\b/);
+    expect(makerSrc).not.toContain("<JaLede");
     expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf("<BrowsersNote"));
-    expect(makerSrc.indexOf("<BrowsersNote")).toBeLessThan(makerSrc.indexOf("<JaLede"));
+    expect(makerSrc.indexOf("<BrowsersNote")).toBeLessThan(makerSrc.indexOf('id="toCommunity"'));
     expect(makerSrc).not.toMatch(/id="browsersNote"[^>]*translate="no"|translate="no"[^>]*id="browsersNote"/);
     expect(stylesSrc).toMatch(/\.browsers-note,\s*\.make-note\s*\{[^}]*font-size:\s*0\.72rem/);
   });

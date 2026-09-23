@@ -57,10 +57,11 @@ describe("stacked maker hero logo", () => {
     expect(makerSrc.indexOf('id="makerTitle"')).toBeLessThan(makerSrc.indexOf("<JumpLoop"));
     expect(makerSrc.indexOf("<JumpLoop")).toBeLessThan(makerSrc.indexOf('id="picker"'));
     expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf('id="onDeviceNote"'));
-    expect(makerSrc.indexOf('id="onDeviceNote"')).toBeLessThan(makerSrc.indexOf("<JaLede"));
+    expect(makerSrc.indexOf('id="onDeviceNote"')).toBeLessThan(makerSrc.indexOf('id="toCommunity"'));
     expect(makerSrc).not.toContain("samplePhotosBtn");
     expect(makerSrc).not.toContain("makerTrySamples");
-    expect(makerSrc.indexOf("<JaLede")).toBeLessThan(makerSrc.indexOf('id="toCommunity"'));
+    expect(makerSrc).not.toContain("<JaLede");
+    expect(makerSrc).not.toContain("makerLede");
     expect(makerSrc).toMatch(/<LanguageNav[\s\S]*id="makerTitle"/);
     expect(makerSrc).toContain('className="make-cta"');
     expect(makerSrc).toContain('<footer className="notes">');

@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useRef, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { BrowsersNote } from "@/components/BrowsersNote.tsx";
-import { JaLede } from "@/components/JaLede.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
@@ -184,7 +183,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           </section>
 
           <section className="maker-story">
-            <JaLede locale={locale} />
             <p className="hero-more">
               <Button
                 variant="site"

@@ -239,19 +239,44 @@ test.describe("song and artist names", () => {
   });
 });
 
-test.describe("maker lede phrase wrapping", () => {
+test.describe("maker intro copy", () => {
   test.beforeEach(async ({ page }) => {
     await blockAnalytics(page);
     await stubShortTemplate(page);
   });
 
-  test("wraps Japanese lede at phrase boundaries and leaves English unchanged", async ({ page }) => {
+  test("hides the old intro lines and keeps the short on-device note", async ({ page }) => {
     await page.goto("/");
     await waitForAppReady(page);
-    const jaExpected = `${t("ja", "makerLede1")}${t("ja", "makerLede2")}${t("ja", "makerLede3")}`;
+    await expect(page.locator("#makerView .lede")).toHaveCount(0);
+    await expect(page.locator("#onDeviceNote")).toHaveText(t("ja", "makerOnDevice"));
+    const text = (await page.locator("#makerView").innerText()).replaceAll("\u200b", "");
+    expect(text).not.toContain("写真を何枚か選択するだけで");
+    expect(text).not.toContain("動画生成はすべて端末内で完結するため");
+    expect(text).not.toContain("※ファン制作の非公式アプリです。");
+
+    await page.goto("/en");
+    await waitForAppReady(page);
+    await expect(page.locator("#onDeviceNote")).toHaveText(t("en", "makerOnDevice"));
+    const en = (await page.locator("#makerView").innerText()).replaceAll("\u200b", "");
+    expect(en).not.toContain("Pick a few photos to make an Anone Jump video");
+    expect(en).not.toContain("Unofficial fan-made app.");
+  });
+});
+
+test.describe("community lede phrase wrapping", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("wraps Japanese community lede at phrase boundaries and leaves English unchanged", async ({ page }) => {
+    await page.goto("/community");
+    await waitForAppReady(page);
+    const jaExpected = t("ja", "communityLede");
     await expect
       .poll(async () =>
-        page.locator("#makerView .lede").evaluate((el) => {
+        page.locator("#communityJumps .lede").evaluate((el) => {
           const text = el.textContent ?? "";
           const wordBreak = getComputedStyle(el).wordBreak;
           return {
@@ -262,10 +287,10 @@ test.describe("maker lede phrase wrapping", () => {
       )
       .toEqual({ visible: jaExpected, hasBreaks: true });
 
-    await page.goto("/en");
+    await page.goto("/en/community");
     await waitForAppReady(page);
-    const enExpected = `${t("en", "makerLede1")}${t("en", "makerLede2")}${t("en", "makerLede3")}`;
-    const en = await page.locator("#makerView .lede").evaluate((el) => ({
+    const enExpected = t("en", "communityLede");
+    const en = await page.locator("#communityJumps .lede").evaluate((el) => ({
       text: el.textContent ?? "",
       wordBreak: getComputedStyle(el).wordBreak,
     }));
