@@ -37,6 +37,7 @@ import {
   putRgbaOnCanvas,
   markCharacterVideoUsed,
   rewindCharacterVideo,
+  seekVideo,
   templateFrameMatchesTime,
   throwIfAborted,
   abortError,
