@@ -468,7 +468,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await startLoop();
       if (gen !== playGen) return;
       await video.play();
-      if (gen !== playGen) return;
+      if (gen !== playGen) {
+        video.pause();
+        return;
+      }
       video.blur();
       stage.focus();
     } catch (error) {

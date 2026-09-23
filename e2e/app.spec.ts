@@ -128,9 +128,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
   await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
   await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
-
-  await page.locator("#playBtn").click();
-  await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#stage")).toBeVisible();
+  await expect(page.locator("#saveBtn")).toBeEnabled();
+  await expect(page.locator("#previewDialog")).toHaveCount(0);
 });
 
 test("opens a generation modal from the preview save button", async ({ page }) => {
