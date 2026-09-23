@@ -176,6 +176,7 @@ describe("messages", () => {
     expect(t("ja", "studioTabEffect")).toBe("エフェクト");
     expect(t("ja", "studioTabFilter")).toBe("フィルター");
     expect(t("ja", "studioTabCharacter")).toBe("キャラサイズ");
+    expect(t("ja", "studioTabCharacterShort")).toBe("サイズ");
     expect(t("en", "studioTabAspect")).toBe("Aspect");
     expect(t("en", "studioTabCharacter")).toBe("Size");
     expect(t("ja", "makerLandscape")).toBe("横");

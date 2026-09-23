@@ -286,7 +286,14 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                       aria-label={t(locale, legendKey)}
                       onClick={() => setOptionTab(id)}
                     >
-                      {t(locale, labelKey)}
+                      {id === "character" ? (
+                        <>
+                          <span className="studio-option-tab-full">{t(locale, labelKey)}</span>
+                          <span className="studio-option-tab-short">{t(locale, "studioTabCharacterShort")}</span>
+                        </>
+                      ) : (
+                        t(locale, labelKey)
+                      )}
                     </button>
                   ))}
                 </div>

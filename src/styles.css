@@ -895,37 +895,64 @@ html[lang="ja"] .lede {
 
 .studio-option-tab {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 1 1 0;
   min-width: 0;
-  min-height: 2.7rem;
+  height: 46px;
+  min-height: 46px;
   margin: 0;
-  padding: 0.5rem 0.3rem 0.4rem;
+  padding: 0 0.12rem 0.45rem;
   border: 0;
   border-radius: 0.8rem 0.8rem 0 0;
   background: transparent;
   color: color-mix(in srgb, var(--mute) 88%, var(--ink));
   font: inherit;
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.01em;
   text-align: center;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.studio-option-tab-short {
+  display: none;
 }
 
 .studio-option-tab[aria-selected="true"] {
   z-index: 1;
   margin-bottom: -3px;
-  padding-bottom: calc(0.4rem + 3px);
   background: var(--card);
   color: var(--ink);
-  text-decoration: underline;
-  text-decoration-thickness: 3px;
-  text-decoration-color: var(--ink);
-  text-underline-offset: 0.22rem;
   box-shadow:
     inset 3px 0 0 var(--ink),
     inset -3px 0 0 var(--ink);
+}
+
+.studio-option-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0.42rem;
+  width: 1.7rem;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ink);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+@media (max-width: 420px) {
+  .studio-option-tab-full {
+    display: none;
+  }
+
+  .studio-option-tab-short {
+    display: inline;
+  }
 }
 
 .studio-option-tab:hover {
@@ -1029,6 +1056,15 @@ html[lang="ja"] .lede {
 .aspect-toggle label:has(input:checked) {
   background: var(--peach);
   box-shadow: 3px 4px 0 var(--ink);
+}
+
+.studio-options .aspect-toggle label:has(input:focus-visible) {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.studio-options .aspect-toggle label:has(input:checked) {
+  box-shadow: 1px 2px 0 var(--ink);
 }
 
 .aspect-toggle label:has(input:disabled) {
