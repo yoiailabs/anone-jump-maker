@@ -92,6 +92,16 @@ describe("worker fetch", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
+  it("redirects /make when a language cookie is set", async () => {
+    const response = await worker.fetch(
+      new Request("https://anone.yoiailabs.com/make", {
+        headers: { cookie: "anone-locale=en" },
+      }),
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/en/make");
+  });
+
   it("redirects / when a language cookie is set", async () => {
     const response = await worker.fetch(
       new Request("https://anone.yoiailabs.com/", {

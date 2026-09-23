@@ -150,8 +150,6 @@ body {
 
 .hero,
 .stage-wrap,
-.panel,
-.share-wrap,
 .notes,
 .site-footer,
 .privacy {
@@ -159,7 +157,8 @@ body {
   z-index: 1;
 }
 
-.hero {
+.hero,
+.studio-top {
   text-align: center;
 }
 
@@ -198,7 +197,8 @@ body {
   outline-offset: 3px;
 }
 
-.hero h1 {
+.hero h1,
+.studio-title {
   margin: 0.3rem 0 0.7rem;
   font-family: "Zen Maru Gothic", "Noto Sans KR", "Noto Sans SC",
     "Hiragino Maru Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo",
@@ -207,6 +207,7 @@ body {
   font-weight: 400;
   letter-spacing: 0.04em;
   line-height: 1.45;
+  color: var(--ink);
 }
 
 .hero-logo-link {
@@ -229,12 +230,25 @@ body {
   margin-inline: auto;
 }
 
+/* スマホの最初の画面はロゴより「写真を選ぶ」を主役にする。 */
+@media (max-width: 40rem) {
+  #makerView .hero-logo,
+  #studioView .hero-logo {
+    width: min(100%, 16rem);
+  }
+
+  #makerView .hero h1 {
+    margin: 0.15rem 0 0.45rem;
+  }
+}
+
 .hero-logo[height="390"] {
   aspect-ratio: 640 / 390;
 }
 
 /* applyView の heading.focus() は :focus だけ。Tab のときだけ輪郭を出す。 */
-.hero h1:focus:not(:focus-visible) {
+.hero h1:focus:not(:focus-visible),
+.studio-title:focus:not(:focus-visible) {
   outline: none;
 }
 
@@ -267,8 +281,45 @@ html[lang="ja"] .lede {
   }
 }
 
+.hero .loop-wrap {
+  /* 影の下に、言語切替や説明ブロックと同じ 0.85rem の余白を残す。 */
+  margin: 0.15rem 0 calc(var(--loop-shadow-y) + 0.85rem);
+}
+
+.make-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.make-cta .file-btn,
+.make-cta .btn {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#makerView .hero + .maker-story {
+  margin-top: calc(0.65rem - var(--section-gap));
+}
+
+.maker-story {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.hero-hashtags {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
 .hero-more {
-  margin: 0.85rem 0 0;
+  margin: 0;
 }
 
 .community-jumps-hero .community-back-wrap {
@@ -307,6 +358,7 @@ html[lang="ja"] .lede {
 
 /* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
 .loop-wrap {
+  --loop-shadow-y: 8px;
   display: flex;
   justify-content: center;
   position: relative;
@@ -336,7 +388,7 @@ html[lang="ja"] .lede {
   border-radius: 1.5rem;
   background: var(--card);
   border: 3.5px solid var(--ink);
-  box-shadow: 7px 8px 0 var(--ink);
+  box-shadow: 7px var(--loop-shadow-y, 8px) 0 var(--ink);
   overflow: hidden;
 }
 
@@ -369,38 +421,17 @@ html[lang="ja"] .lede {
   }
 }
 
-.preview-dialog:not([open]) {
-  display: none;
+.export-panel {
+  scroll-margin: 1rem;
 }
 
-.preview-dialog {
-  width: min(28rem, calc(100vw - 1.25rem));
-  max-height: calc(100svh - 1.25rem);
-  margin: auto;
-  padding: 0;
-  border: 3px solid var(--ink);
-  border-radius: 1.4rem;
-  background: var(--card);
-  box-shadow: 6px 7px 0 var(--ink);
-  overflow: hidden;
+.export-panel:focus {
+  outline: none;
 }
 
-.preview-dialog:has(.stage[data-aspect="landscape"]) {
-  width: min(32rem, calc(100vw - 1.25rem));
-}
-
-.preview-dialog[open] {
-  display: flex;
-  flex-direction: column;
-  height: min(max-content, calc(100svh - 1.25rem));
-}
-
-.preview-dialog::backdrop {
-  background: rgba(26, 26, 26, 0.48);
-}
-
-.export-dialog {
-  width: min(22rem, calc(100vw - 1.25rem));
+.export-panel:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 .export-sheet {
@@ -409,6 +440,18 @@ html[lang="ja"] .lede {
   gap: 0.85rem;
   width: 100%;
   padding: 1rem 1.05rem 1.1rem;
+}
+
+.export-panel.export-sheet {
+  display: none;
+  border: 3px solid var(--ink);
+  border-radius: 1.1rem;
+  background: var(--card);
+  box-shadow: 4px 5px 0 var(--ink);
+}
+
+.export-panel.export-sheet[data-open="true"] {
+  display: flex;
 }
 
 .export-status {
@@ -459,8 +502,7 @@ html[lang="ja"] .lede {
   text-align: right;
 }
 
-.export-keep-open,
-.export-download-hint {
+.export-keep-open {
   margin: 0;
   font-size: 0.72rem;
   line-height: 1.55;
@@ -657,39 +699,12 @@ html[lang="ja"] .lede {
   padding: 0;
   appearance: none;
   -webkit-appearance: none;
-  cursor: pointer;
+  cursor: default;
   border-radius: 1.5rem;
   overflow: hidden;
   background: var(--teal);
   border: 3.5px solid var(--ink);
   box-shadow: 7px 8px 0 var(--ink);
-}
-
-.stage-play-hint {
-  display: none;
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: rgba(26, 26, 26, 0.28);
-}
-
-.stage[aria-pressed="false"] .stage-play-hint {
-  display: block;
-}
-
-.stage-play-hint::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 1.15rem 0 1.15rem 1.85rem;
-  border-color: transparent transparent transparent #fff;
-  transform: translate(-35%, -50%);
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
 }
 
 .stage:focus-visible {
@@ -703,23 +718,470 @@ html[lang="ja"] .lede {
   aspect-ratio: 16 / 9;
 }
 
+.header-lockup {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.header-lockup:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.header-lockup-logo {
+  display: block;
+  height: 2.15rem;
+  width: auto;
+  max-width: 100%;
+}
+
+.hero .header-lockup {
+  margin: 0.15rem auto 0.2rem;
+}
+
+#studioHome {
+  display: block;
+  margin: 0;
+  line-height: 0;
+}
+
+#studioHome:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+#studioView .lang-switch {
+  margin: 0.85rem 0 0;
+}
+
+.studio-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* 縦だけ一段大きく。横は下の landscape 指定のまま。画面の約 55svh、幅は列を超えない。 */
+#studioView .stage {
+  width: min(100%, 86vw, 18rem, calc(55svh * 608 / 1080));
+  max-height: 55svh;
+}
+
+#studioView .stage[data-aspect="landscape"] {
+  width: min(100%, calc(36svh * 16 / 9));
+  max-height: 36svh;
+}
+
+.studio-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  color: var(--ink);
+  width: 100%;
+  height: 100%;
+  border: 0;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.studio-empty:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: -6px;
+}
+
+.studio-empty:disabled {
+  cursor: default;
+}
+
+.studio-empty[hidden] {
+  display: none !important;
+}
+
+.preview-dim {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: rgba(20, 16, 12, 0.45);
+  pointer-events: none;
+}
+
+.preview-toggle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 4;
+  width: 4.25rem;
+  height: 4.25rem;
+  min-width: 4.25rem;
+  margin: 0;
+  border-width: 3px;
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: translate(-50%, -50%);
+}
+
+.preview-toggle svg {
+  width: 2.15rem;
+  height: 2.15rem;
+}
+
+.preview-toggle .preview-ctrl-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.preview-toggle:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.stage[data-chrome="open"] .preview-dim {
+  display: block;
+}
+
+.stage:has(#studioEmpty:not([hidden])) .preview-dim,
+.stage:has(#studioEmpty:not([hidden])) .preview-toggle {
+  display: none !important;
+}
+
+.preview-transport {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.28rem;
+  width: 100%;
+  margin: 0;
+  padding: 1.35rem 0.35rem 0.35rem;
+  background: linear-gradient(to top, rgba(28, 22, 16, 0.82) 0%, rgba(28, 22, 16, 0.42) 58%, rgba(28, 22, 16, 0) 100%);
+  color: #fff8ee;
+}
+
+.stage[data-chrome="open"] .preview-transport {
+  display: flex;
+}
+
+.stage:has(#studioEmpty:not([hidden])) .preview-transport {
+  display: none !important;
+}
+
+.preview-transport .preview-actions {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  gap: 0.28rem;
+  margin-left: auto;
+  padding-top: 0;
+}
+
+.preview-transport .preview-actions .btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border-width: 2.5px;
+  gap: 0;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.preview-transport .preview-actions .btn svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.preview-transport #muteBtn {
+  flex-direction: row;
+  gap: 0;
+  min-height: 2.75rem;
+  padding: 0;
+}
+
+.preview-transport .preview-ctrl-label,
+.preview-transport .preview-mute-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.preview-transport .preview-seek {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 2.5rem;
+  height: 2.75rem;
+  margin: 0;
+  accent-color: #fff8ee;
+  background: transparent;
+  touch-action: pan-x;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.preview-transport .preview-seek::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 248, 238, 0.72);
+}
+
+.preview-transport .preview-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: -0.375rem;
+  border-radius: 999px;
+  background: #fff8ee;
+  border: 2.5px solid var(--ink);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.preview-transport .preview-seek::-moz-range-track {
+  height: 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 248, 238, 0.72);
+}
+
+.preview-transport .preview-seek::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: #fff8ee;
+  border: 2.5px solid var(--ink);
+}
+
+.preview-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 2.75rem;
+  color: #fff8ee;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+}
+
+.preview-status-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+}
+
+.preview-status[data-state="playing"] .preview-status-icon-pause,
+.preview-status[data-state="stopped"] .preview-status-icon-play {
+  display: none;
+}
+
+.preview-time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #fff8ee;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.preview-seek {
+  width: min(100%, 22rem);
+  height: 2.75rem;
+  margin: 0;
+  accent-color: var(--teal);
+  touch-action: pan-x;
+}
+
+.status.feedback {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.status.feedback[hidden] {
+  display: none !important;
+}
+
+.studio-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 見出しの margin はそのまま。セクション間隔だけ生成案内の上で詰める。 */
+#studioView .studio-photos {
+  margin-top: calc(0.2rem - var(--section-gap));
+}
+
+.studio-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.studio-options {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.studio-options-heading {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  color: var(--mute);
+}
+
+.studio-option-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.studio-option-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.2rem;
+  width: 100%;
+  border-bottom: 3px solid var(--ink);
+}
+
+.studio-option-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 46px;
+  min-height: 46px;
+  margin: 0;
+  padding: 0 0.12rem 0.45rem;
+  border: 0;
+  border-radius: 0.8rem 0.8rem 0 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--mute) 88%, var(--ink));
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.studio-option-tab-short {
+  display: none;
+}
+
+.studio-option-tab[aria-selected="true"] {
+  z-index: 1;
+  margin-bottom: -3px;
+  border-top: 3px solid var(--ink);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow:
+    inset 3px 0 0 var(--ink),
+    inset -3px 0 0 var(--ink);
+}
+
+.studio-option-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0.42rem;
+  width: 1.7rem;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ink);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+@media (max-width: 420px) {
+  .studio-option-tab-full {
+    display: none;
+  }
+
+  .studio-option-tab-short {
+    display: inline;
+  }
+}
+
+.studio-option-tab:hover {
+  color: var(--ink);
+}
+
+.studio-option-tab:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.studio-option-panels {
+  border: 3px solid var(--ink);
+  border-top: 0;
+  border-radius: 0 0 1rem 1rem;
+  background: var(--card);
+  padding: 0.75rem 0.6rem 0.8rem;
+}
+
+.studio-options .aspect-field legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* 内部ビットマップは PREVIEW_RESOLUTION_SCALE。表示は .stage の大きさへ拡大する。 */
 .stage-canvas {
   display: block;
   width: 100%;
   height: 100%;
   pointer-events: auto;
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.95rem;
-  padding: 1.2rem 1.1rem 1.25rem;
-  background: var(--card);
-  border: 3px solid var(--ink);
-  border-radius: 1.4rem;
-  box-shadow: 5px 6px 0 var(--lime);
 }
 
 .aspect-field {
@@ -786,6 +1248,15 @@ html[lang="ja"] .lede {
 .aspect-toggle label:has(input:checked) {
   background: var(--peach);
   box-shadow: 3px 4px 0 var(--ink);
+}
+
+.studio-options .aspect-toggle label:has(input:focus-visible) {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.studio-options .aspect-toggle label:has(input:checked) {
+  box-shadow: 1px 2px 0 var(--ink);
 }
 
 .aspect-toggle label:has(input:disabled) {
@@ -857,50 +1328,21 @@ a.btn:focus-visible {
   color: var(--ink);
 }
 
-/* ハッシュタグコピーとアプリ共有は操作パネルの枠の外に置く */
-.share-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.hashtag-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
-}
-
-.hashtag-copy-hint {
-  margin: 0;
-  text-align: center;
-  color: var(--mute);
-  font-size: 0.74rem;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-}
-
-.btn.copy-hashtags,
-.btn.share-app {
-  width: 100%;
-  gap: 0.45rem;
-  font-size: 0.92rem;
-}
-
-.btn.copy-hashtags {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-.btn.share-app {
-  background: var(--card);
+.preview-toggle.btn {
+  display: none;
+  min-height: 4.25rem;
+  padding: 0;
+  border-radius: 999px;
+  background: #fff8ee;
   color: var(--ink);
 }
 
-.btn.copy-hashtags svg,
-.btn.share-app svg {
-  width: 1.05em;
-  height: 1.05em;
-  flex: 0 0 auto;
+.stage[data-chrome="open"] .preview-toggle.btn {
+  display: inline-flex;
+}
+
+.preview-toggle.btn:hover:not(:disabled) {
+  transform: translate(-50%, -50%);
 }
 
 .btn:disabled,
@@ -914,9 +1356,15 @@ a.btn:focus-visible {
   --thumb-size: 6rem;
   --thumb-radius: 0.9rem;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.7rem;
-  padding: 0.55rem 0.15rem 0.45rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  padding: 0.35rem 0.4rem 0.7rem 0.15rem;
   margin: 0;
 }
 
@@ -930,8 +1378,8 @@ a.btn:focus-visible {
   flex: 0 0 auto;
   width: var(--thumb-size);
   height: var(--thumb-size);
-  touch-action: pan-y;
   cursor: grab;
+  touch-action: pan-x;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -1085,16 +1533,18 @@ a.btn:focus-visible {
   line-height: 1.5;
 }
 
-.status[data-kind="busy"] {
+.status[data-kind="busy"],
+.status.feedback[data-kind="busy"] {
   color: #2a7f82;
 }
 
-.status[data-kind="error"] {
+.status[data-kind="error"],
+.status.feedback[data-kind="error"] {
   color: #c44b45;
 }
 
-.browsers-note {
-  margin: 0 0 -0.5rem;
+.make-note {
+  margin: 0;
   color: var(--mute);
   font-size: 0.72rem;
   font-weight: 400;
@@ -1118,11 +1568,17 @@ a.btn:focus-visible {
   gap: 0.7rem;
 }
 
-.links-title {
+/* 公式見出しが正。MV と反応の見出しも同じタイポ・ウェイト・余白。 */
+.notes .links-title,
+.notes .official-mv-title,
+.notes .reactions-title {
   margin: 0;
   color: var(--mute);
-  font-size: 0.74rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 400;
   letter-spacing: 0.1em;
+  line-height: 1.75;
 }
 
 .link-banners {
@@ -1202,14 +1658,7 @@ a.btn:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-  margin: 0.15rem 0 0;
-}
-
-.official-mv-title {
   margin: 0;
-  color: var(--mute);
-  font-size: 0.74rem;
-  letter-spacing: 0.1em;
 }
 
 .official-mv-frame {
@@ -1406,14 +1855,6 @@ a.btn:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-}
-
-.reactions-title {
-  margin: 0;
-  color: var(--mute);
-  font-size: 0.74rem;
-  font-weight: 400;
-  letter-spacing: 0.1em;
 }
 
 .reactions-embed {

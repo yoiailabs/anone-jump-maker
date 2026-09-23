@@ -7,6 +7,9 @@ export const SHARE_MAKER_HASHTAG = "#あのねジャンプメーカー";
 /** ハッシュタグをコピー／アプリ共有するときに渡す本文。 */
 export const SHARE_TEXT = `${SHARE_HASHTAG} ${SHARE_MAKER_HASHTAG}`;
 
+/** X の #あのねジャンプ 検索。コミュニティ導線からも使う。 */
+export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(SHARE_HASHTAG)}`;
+
 /** Web Share に渡すデータ。ハッシュタグ本文のみ（URL は付けない）。 */
 export const APP_SHARE_DATA: ShareData = {
   text: SHARE_TEXT,

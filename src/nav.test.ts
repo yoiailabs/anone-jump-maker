@@ -16,6 +16,8 @@ describe("app view path", () => {
   it("treats / and leftover hashes as the maker, /community as the community page", () => {
     expect(parseAppView("/")).toBe("maker");
     expect(parseAppView("/?bench=1")).toBe("maker");
+    expect(parseAppView("/make")).toBe("studio");
+    expect(parseAppView("/en/make")).toBe("studio");
     expect(parseAppView("/community")).toBe("community");
     expect(parseAppView("/community/")).toBe("community");
     expect(parseAppView("/community?from=x")).toBe("community");
@@ -40,6 +42,8 @@ describe("app view path", () => {
 
   it("writes stable paths and titles", () => {
     expect(pathForView("maker")).toBe("/");
+    expect(pathForView("studio")).toBe("/make");
+    expect(pathForView("studio", "zh")).toBe("/zh/make");
     expect(pathForView("community")).toBe("/community");
     expect(pathForView("maker", "en")).toBe("/en");
     expect(pathForView("community", "ko")).toBe("/ko/community");
@@ -76,7 +80,10 @@ describe("app view path", () => {
     const toCommunity = toCommunityLinkHtml();
     const toMaker = toMakerLinkHtml();
     expect(toCommunity).toContain(TO_COMMUNITY_LABEL);
-    expect(toCommunity).toContain('href="/community"');
+    expect(toCommunity).toContain('href="https://x.com/search?q=');
+    expect(toCommunity).toContain('target="_blank"');
+    expect(toCommunity).toContain('rel="noopener noreferrer"');
+    expect(toCommunity).not.toContain('href="/community"');
     expect(toCommunity).toContain('id="toCommunity"');
     expect(toCommunity).toContain('class="btn"');
     expect(toCommunity).not.toContain("#community");

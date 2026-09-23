@@ -1,4 +1,17 @@
-import { trackEvent, VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT, videoEventParams } from "./analytics.ts";
+import {
+  GENERATE_CANCEL_EVENT,
+  GENERATE_FAIL_EVENT,
+  GENERATE_START_EVENT,
+  MAKE_OPEN_EVENT,
+  generateFailReason,
+  PHOTO_PICKER_OPEN_EVENT,
+  PHOTOS_REJECTED_EVENT,
+  PHOTOS_SELECTED_EVENT,
+  trackEvent,
+  VIDEO_PREVIEW_EVENT,
+  VIDEO_SAVE_EVENT,
+  videoEventParams,
+} from "./analytics.ts";
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
 import type { CharacterFrame, Compositor } from "./compositor.ts";
 import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
@@ -39,26 +52,24 @@ import {
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNearViewport } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
-import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { HEIC_UNSUPPORTED_MESSAGE, loadPhotos, revokePhotos, selectImageFiles, type LoadedPhoto } from "./photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
+  formatPreviewClock,
   PREVIEW_MUTED_DEFAULT,
+  previewSurfaceChromeAction,
+  shouldLoopPreviewPlayback,
+  shouldRevealPreviewChrome,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
   syncMuteControl,
 } from "./preview.ts";
+import { setPreviewChromeState } from "./preview-chrome-store.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
-import {
-  canShareFiles,
-  copyTextToClipboard,
-  isXInAppBrowser,
-  SHARE_TEXT,
-  shareHashtags,
-  shareVideoFile,
-  videoFileForShare,
-} from "./share.ts";
+import { canShareFiles, shareVideoFile, videoFileForShare } from "./share.ts";
+import { setFeedbackState, type FeedbackPlace } from "./feedback-store.ts";
 import { isolateVolatileChrome, setTextIfChanged } from "./translate-guard.ts";
 import type { CutTimeline } from "./timeline.ts";
 
@@ -107,6 +118,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let compositor: Compositor | null = null;
   let compositorPromise: Promise<Compositor> | null = null;
   let photos: LoadedPhoto[] = [];
+  let chromeOpen = false;
+  let chromeTimer = 0;
   let photosBusy = false;
   let playing = false;
   let recording = false;
@@ -122,43 +135,36 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
 
   const stage = must(root, "#stage");
+  const previewTransport = must(root, "#previewTransport");
   const pickerLabel = must(root, "#pickerLabel");
-  const statusEl = must(root, "#status");
-  const playBtn = must(root, "#playBtn") as HTMLButtonElement;
+  const photoFeedback = must(root, "#photoFeedback");
+  const previewFeedback = must(root, "#previewFeedback");
+  const saveFeedback = must(root, "#saveFeedback");
   const saveBtn = must(root, "#saveBtn") as HTMLButtonElement;
-  const previewSaveBtn = must(root, "#previewSaveBtn") as HTMLButtonElement;
-  const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
-  const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
-  const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
-  const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
+  const previewSeek = must(root, "#previewSeek") as HTMLInputElement;
+  const previewTime = must(root, "#previewTime");
+  const studioEmpty = must(root, "#studioEmpty") as HTMLButtonElement;
+  const exportPanel = must(root, "#exportPanel");
   const exportTitle = must(root, "#exportTitle");
   const exportStatus = must(root, "#exportStatus");
   const exportProgress = must(root, "#exportProgress") as HTMLProgressElement;
   const exportProgressLabel = must(root, "#exportProgressLabel");
   const exportKeepOpen = must(root, "#exportKeepOpen");
-  const exportDownloadHint = must(root, "#exportDownloadHint");
   const cancelExportBtn = must(root, "#cancelExportBtn") as HTMLButtonElement;
   const downloadExportBtn = must(root, "#downloadExportBtn") as HTMLButtonElement;
   const closeExportBtn = must(root, "#closeExportBtn") as HTMLButtonElement;
-  const closePreviewBtn = must(root, "#closePreviewBtn") as HTMLButtonElement;
-  const restartBtn = must(root, "#restartBtn") as HTMLButtonElement;
+  const previewToggle = must(root, "#previewToggle") as HTMLButtonElement;
   const muteBtn = must(root, "#muteBtn") as HTMLButtonElement;
   const benchFlag = document.createElement("p");
   benchFlag.id = "benchFlag";
   benchFlag.hidden = !benchFlags.bench;
   benchFlag.style.cssText = "margin:0.4rem 0 0;font-size:0.78rem;color:#5c5146";
-  muteBtn.closest(".preview-actions")?.after(benchFlag);
-  const aspectInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="aspect"], input[name="preview-aspect"]'),
-  ];
-  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"], input[name="preview-swap"]')];
-  const filterInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="filter"], input[name="preview-filter"]'),
-  ];
-  const characterInputs = [
-    ...root.querySelectorAll<HTMLInputElement>('input[name="character"], input[name="preview-character"]'),
-  ];
+  stage.closest(".studio-stage")?.after(benchFlag);
+  const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
+  const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
+  const filterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="filter"]')];
+  const characterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="character"]')];
 
   const aspectValue = checkedNamedValue(aspectInputs, "aspect");
   const swapValue = checkedNamedValue(swapInputs, "swap");
@@ -200,7 +206,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     return compositorPromise;
   };
 
-  isolateVolatileChrome(statusEl);
+  isolateVolatileChrome(photoFeedback);
+  isolateVolatileChrome(previewFeedback);
+  isolateVolatileChrome(saveFeedback);
   isolateVolatileChrome(benchFlag);
   isolateVolatileChrome(exportStatus);
   isolateVolatileChrome(exportProgressLabel);
@@ -210,14 +218,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     return timelines[mode];
   };
 
-  const setStatus = (text: string, kind: StatusKind = "idle") => {
-    setTextIfChanged(statusEl, text);
-    statusEl.dataset.kind = kind;
+  const setFeedback = (place: FeedbackPlace, text: string, kind: StatusKind = "idle") => {
+    setFeedbackState(place, { text, kind });
   };
 
-  const setErrorStatus = (error: unknown, fallback: Parameters<typeof t>[1]) => {
+  const clearFeedback = (place: FeedbackPlace) => {
+    setFeedback(place, "");
+  };
+
+  const setErrorFeedback = (place: FeedbackPlace, error: unknown, fallback: Parameters<typeof t>[1]) => {
     reportError(error);
-    setStatus(messageFromError(locale, error, fallback), "error");
+    setFeedback(place, messageFromError(locale, error, fallback), "error");
   };
 
   const syncAspectRadios = (value: AspectMode) => {
@@ -262,26 +273,51 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       photos: photos.map((photo) => ({ id: photo.id, name: photo.name, thumbUrl: photo.thumbUrl })),
       locked: photosLocked(),
     });
+    studioEmpty.hidden = photos.length > 0;
+    studioEmpty.disabled = picker.disabled;
     syncPickerLabel();
+    if (photos.length === 0) {
+      chromeOpen = false;
+      window.clearTimeout(chromeTimer);
+      chromeTimer = 0;
+      stage.removeAttribute("data-chrome");
+    }
   };
 
   const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 
   const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
 
+  const armChromeTimer = () => {
+    window.clearTimeout(chromeTimer);
+    chromeTimer = 0;
+    if (!chromeOpen || !isPreviewPlaying()) return;
+    chromeTimer = window.setTimeout(() => {
+      if (!chromeOpen || !isPreviewPlaying()) return;
+      chromeOpen = false;
+      stage.removeAttribute("data-chrome");
+    }, 4000);
+  };
+
+  const setChromeOpen = (open: boolean) => {
+    chromeOpen = open && photos.length > 0;
+    if (chromeOpen) stage.setAttribute("data-chrome", "open");
+    else stage.removeAttribute("data-chrome");
+    armChromeTimer();
+  };
+
   const refreshButtons = () => {
     const ready = canUse();
     const locked = photosLocked();
-    playBtn.disabled = recording || !ready;
     const saveDisabled = recording || sharingExport || !ready;
     saveBtn.disabled = saveDisabled;
-    previewSaveBtn.disabled = saveDisabled;
-    restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
     stage.setAttribute("aria-pressed", active ? "true" : "false");
+    setPreviewChromeState({ playing: active, enabled: ready && !recording });
+    if (shouldRevealPreviewChrome({ ready, playing: active, recording })) setChromeOpen(true);
     for (const input of aspectInputs) {
       input.disabled = recording;
     }
@@ -294,6 +330,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     for (const input of characterInputs) {
       input.disabled = recording;
     }
+    armChromeTimer();
   };
 
   const paintSamples: number[] = [];
@@ -328,11 +365,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     renderThumbs();
     paint();
     refreshButtons();
-    if (photos.length === 0) {
-      setStatus(msg("statusPhotosCleared"));
-      return;
-    }
-    setStatus(msg("statusPhotoRemoved", { n: photos.length }));
+    clearFeedback("photo");
   };
 
   setPhotoThumbsHandlers({
@@ -430,7 +463,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     video.pause();
     paint();
     refreshButtons();
-    setStatus(msg("statusPaused"));
   };
 
   const startPlayback = async (fromStart: boolean) => {
@@ -455,30 +487,51 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       }
       if (gen !== playGen) return;
       playing = true;
+      clearFeedback("preview");
       refreshButtons();
-      setStatus(msg("statusPreviewing"));
       await startLoop();
       if (gen !== playGen) return;
       await video.play();
-      if (gen !== playGen) return;
+      if (gen !== playGen) {
+        video.pause();
+        return;
+      }
       video.blur();
-      stage.focus();
     } catch (error) {
       if (gen !== playGen) return;
       playing = false;
       previewTracked = false;
       haltLoop();
       refreshButtons();
-      setErrorStatus(error, "statusPlayFailed");
+      setErrorFeedback("preview", error, "statusPlayFailed");
     } finally {
       if (gen === playGen) playbackBusy = false;
     }
   };
 
-  const closePreview = () => {
-    if (previewDialog.open) {
-      previewDialog.close();
+  const syncSeek = () => {
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+    previewSeek.max = String(duration > 0 ? duration : 1);
+    previewSeek.disabled = recording || duration <= 0;
+    const time = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    if (!seeking) {
+      previewSeek.value = String(duration > 0 ? Math.min(duration, Math.max(0, time)) : 0);
     }
+    const shown = seeking ? Number(previewSeek.value) : time;
+    previewTime.textContent = formatPreviewClock(shown, duration);
+  };
+
+  let seeking = false;
+  let seekGen = 0;
+  const scrubTo = (time: number) => {
+    if (recording || !Number.isFinite(time)) return;
+    if (isPreviewPlaying() || playbackBusy) pausePlayback();
+    const gen = ++seekGen;
+    void seekVideo(video, time).then(() => {
+      if (gen !== seekGen) return;
+      paint();
+      refreshButtons();
+    });
   };
 
   const setExportProgress = (percent: number, statusText: string) => {
@@ -486,7 +539,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     exportProgress.value = value;
     setTextIfChanged(exportProgressLabel, msg("exportPercent", { percent: value }));
     setTextIfChanged(exportStatus, statusText);
-    setStatus(statusText, "busy");
   };
 
   const fileShareAvailable = () => {
@@ -496,41 +548,35 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const setExportPhase = (phase: "busy" | "done") => {
-    exportDialog.dataset.exportPhase = phase;
+    exportPanel.dataset.exportPhase = phase;
     exportTitle.textContent = phase === "done" ? msg("exportDoneTitle") : msg("exportTitle");
     exportKeepOpen.hidden = phase !== "busy";
-    exportDownloadHint.hidden = phase !== "done";
-    if (phase === "done") {
-      const shareReady = fileShareAvailable();
-      const hintKey = !shareReady
-        ? "exportDownloadHint"
-        : isXInAppBrowser(typeof navigator === "undefined" ? "" : navigator.userAgent)
-          ? "exportShareHintX"
-          : "exportShareHint";
-      setTextIfChanged(exportDownloadHint, msg(hintKey));
-    }
     cancelExportBtn.hidden = phase !== "busy";
     downloadExportBtn.hidden = phase !== "done";
     downloadExportBtn.classList.remove("ghost");
     closeExportBtn.hidden = phase !== "done";
-    exportDialog.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
+    if (phase === "done") exportPanel.removeAttribute("aria-describedby");
+    else exportPanel.setAttribute("aria-describedby", "exportKeepOpen");
   };
 
-  const openExportDialog = () => {
+  const revealExportPanel = () => {
+    exportPanel.dataset.open = "true";
+    exportPanel.scrollIntoView({ block: "center", inline: "nearest" });
+  };
+
+  const openExportPanel = () => {
+    clearFeedback("save");
     pendingExport = null;
     cancelExportBtn.disabled = false;
     setExportPhase("busy");
     setExportProgress(0, msg("statusExportPreparing"));
-    if (!exportDialog.open) {
-      exportDialog.showModal();
-    }
+    revealExportPanel();
+    exportPanel.focus({ preventScroll: true });
   };
 
-  const closeExportDialog = () => {
+  const closeExportPanel = () => {
     pendingExport = null;
-    if (exportDialog.open) {
-      exportDialog.close();
-    }
+    delete exportPanel.dataset.open;
   };
 
   const cancelExport = () => {
@@ -551,13 +597,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const markExportSaved = (extension: string) => {
     const text = savedStatus(extension);
     setExportProgress(100, text);
-    setStatus(text);
   };
 
   const showExportReady = () => {
     const text = msg("statusExportReadyDownload");
     setExportProgress(100, text);
-    setStatus(text);
     setExportPhase("done");
   };
 
@@ -578,8 +622,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     refreshButtons();
     downloadExportBtn.disabled = true;
     try {
-      setExportProgress(100, msg("statusExportSharing"));
-      setStatus(msg("statusExportSharing"), "busy");
       const outcome = await shareVideoFile({
         blob: pending.blob,
         filename: pending.filename,
@@ -588,15 +630,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       });
       if (outcome === "cancelled") {
         if (pendingExport === pending) {
-          const text = msg("statusExportShareCancelled");
-          setExportProgress(100, text);
-          setStatus(text);
+          setExportProgress(100, msg("statusExportReadyDownload"));
         }
         return;
       }
       if (outcome === "shared") {
         if (pendingExport === pending) markExportSaved(pending.extension);
-        else setStatus(savedStatus(pending.extension));
+        else setFeedback("save", savedStatus(pending.extension));
         trackExportSaved();
         return;
       }
@@ -610,24 +650,16 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  let openingPreview = false;
-  const openPreview = async () => {
-    if (recording || !canUse() || previewDialog.open || openingPreview) return;
-    openingPreview = true;
-    try {
-      await ensureCompositor();
-      await ensureTimelines();
-      if (recording || previewDialog.open) return;
-      previewDialog.showModal();
-      paint();
-    } catch (error) {
-      closePreview();
-      setErrorStatus(error, "statusPreviewOpenFailed");
-      return;
-    } finally {
-      openingPreview = false;
-    }
-    await startPlayback(true);
+  const armStudio = () => {
+    beginTemplateVideoLoad(video);
+    void ensureCompositor()
+      .then(() => {
+        paint();
+        syncSeek();
+      })
+      .catch((error: unknown) => {
+        setErrorFeedback("preview", error, "statusPreviewOpenFailed");
+      });
   };
 
   let communityMounted = false;
@@ -638,7 +670,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const heading =
       view === "community"
         ? root.querySelector<HTMLElement>("#communityJumpsTitle")
-        : root.querySelector<HTMLElement>("#makerTitle");
+        : view === "studio"
+          ? root.querySelector<HTMLElement>("#studioTitle")
+          : root.querySelector<HTMLElement>("#makerTitle");
     heading?.setAttribute("tabindex", "-1");
     heading?.focus({
       preventScroll: true,
@@ -652,22 +686,26 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       return;
     }
     const makerView = must(root, "#makerView");
+    const studioView = must(root, "#studioView");
     const communityView = must(root, "#communityView");
     makerView.hidden = view !== "maker";
+    studioView.hidden = view !== "studio";
     communityView.hidden = view !== "community";
     document.title = documentTitleForView(view, locale);
     syncLanguageNav(root, locale, view);
-    if (view !== "maker") {
-      closePreview();
+    if (view !== "studio") {
+      stopPlayback();
       cancelExport();
-      closeExportDialog();
+      closeExportPanel();
     }
     const firstPaint = activeView === null;
     if (activeView !== view) {
+      const enterStudio = view === "studio";
       activeView = view;
       window.scrollTo(0, 0);
-      if (!firstPaint && view === "maker") {
-        focusViewHeading("maker");
+      if (enterStudio) trackEvent(MAKE_OPEN_EVENT);
+      if (!firstPaint && (view === "maker" || view === "studio")) {
+        focusViewHeading(view);
       }
     }
     const paintGen = ++embedPaintGen;
@@ -696,6 +734,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       });
       return;
     }
+    if (view === "studio") {
+      armStudio();
+      return;
+    }
     const embed = must(root, "#reactionsEmbed");
     whenEmbedHostVisible(makerView, () => {
       if (paintGen !== embedPaintGen) return;
@@ -714,7 +756,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
-    const inPreview = previewDialog.open;
+    const inPreview = activeView === "studio";
     aspectResume = inPreview
       ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
       : null;
@@ -733,7 +775,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     video.dataset.templateSrc = TEMPLATES[mode].video;
     video.removeAttribute("src");
     video.preload = "none";
-    if (photos.length > 0 || previewDialog.open || recording) {
+    if (photos.length > 0 || activeView === "studio" || recording) {
       beginTemplateVideoLoad(video);
     }
     refreshButtons();
@@ -765,12 +807,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await ensureTimelines();
       paint();
       refreshButtons();
-      if (!recording && photos.length === 0) {
-        setStatus(msg("statusTemplateReady", { n: timeline().slots.length }));
-      }
+      if (!recording && photos.length === 0) syncSeek();
       const resume = aspectResume;
       aspectResume = null;
-      if (!resume || !previewDialog.open || recording) return;
+      if (!resume || activeView !== "studio" || recording) return;
       previewTracked = resume.tracked;
       try {
         await seekVideo(video, resume.time);
@@ -783,21 +823,42 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       } catch (error) {
         paint();
         refreshButtons();
-        setErrorStatus(error, "statusPreviewResumeFailed");
+        setErrorFeedback("preview", error, "statusPreviewResumeFailed");
       }
     })();
   });
   video.addEventListener("ended", () => {
-    if (!recording) {
+    if (recording) return;
+    if (!shouldLoopPreviewPlayback({ recording, playing })) {
       stopPlayback();
       paint();
-      setStatus(msg("statusPreviewEnded"));
+      return;
     }
+    const gen = playGen;
+    void (async () => {
+      try {
+        await seekVideo(video, 0);
+        if (gen !== playGen || !shouldLoopPreviewPlayback({ recording, playing })) return;
+        paint();
+        await video.play();
+        if (gen !== playGen) video.pause();
+      } catch (error) {
+        if (gen !== playGen) return;
+        playing = false;
+        previewTracked = false;
+        haltLoop();
+        video.pause();
+        paint();
+        refreshButtons();
+        setErrorFeedback("preview", error, "statusPlayFailed");
+      }
+    })();
   });
   video.addEventListener("error", () => {
     if (recording) return;
     const code = video.error?.code;
-    setErrorStatus(
+    setErrorFeedback(
+      "preview",
       new Error(code != null ? msg("statusTemplateLoadFailedCode", { code }) : msg("statusTemplateLoadFailed")),
       "statusTemplateLoadFailed",
     );
@@ -832,20 +893,34 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     });
   }
 
-  picker.addEventListener("change", async () => {
-    const files = takeUpToPhotoCap(photos.length, [...(picker.files ?? [])]);
-    picker.value = "";
-    if (files.length === 0 || photosLocked()) return;
+  const rejectPhotos = (reason: string) => {
+    trackEvent(PHOTOS_REJECTED_EVENT, { reason });
+  };
+
+  const ingestPhotoFiles = async (incoming: readonly File[]) => {
+    if (photosLocked()) return;
+    if (incoming.length === 0) return;
+    const capped = takeUpToPhotoCap(photos.length, incoming);
+    if (capped.length === 0) {
+      rejectPhotos("at_cap");
+      setFeedback("photo", msg("makerPhotosAtCap", { n: PHOTO_MAX_COUNT }), "error");
+      return;
+    }
+    const imageFiles = selectImageFiles(capped);
+    if (imageFiles.length === 0) {
+      rejectPhotos("not_image");
+      setFeedback("photo", msg("statusPickImages"), "error");
+      return;
+    }
     beginTemplateVideoLoad(video);
-    const hadPhotos = photos.length > 0;
     photosBusy = true;
     refreshButtons();
-    setStatus(msg("statusPhotosLoading"), "busy");
+    setFeedback("photo", msg("statusPhotosLoading"), "busy");
     try {
       const compositorReady = ensureCompositor();
-      const added = await loadPhotos(files, {
+      const added = await loadPhotos(imageFiles, {
         onProgress: (current, total) => {
-          setStatus(msg("statusPhotosLoadingProgress", { current, total }), "busy");
+          setFeedback("photo", msg("statusPhotosLoadingProgress", { current, total }), "busy");
         },
       });
       photos = appendAll(photos, added);
@@ -853,25 +928,38 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       await compositorReady;
       await ensureTimelines();
       paint();
-      setStatus(
-        photos.length === 0
-          ? msg("statusPickImages")
-          : hadPhotos
-            ? msg("statusPhotosAdded", { n: added.length, total: photos.length })
-            : msg("statusPhotosLoaded", { n: photos.length }),
-      );
+      if (added.length === 0) {
+        rejectPhotos("decode");
+        setFeedback("photo", msg("statusPickImages"), "error");
+        return;
+      }
+      trackEvent(PHOTOS_SELECTED_EVENT, { count: added.length });
+      clearFeedback("photo");
     } catch (error) {
       renderThumbs();
       paint();
-      setErrorStatus(error, "statusLoadFailed");
+      rejectPhotos(error instanceof Error && error.message === HEIC_UNSUPPORTED_MESSAGE ? "heic" : "decode");
+      setErrorFeedback("photo", error, "statusLoadFailed");
     } finally {
       photosBusy = false;
       refreshButtons();
     }
+  };
+
+  picker.addEventListener("click", () => {
+    if (picker.disabled) return;
+    trackEvent(PHOTO_PICKER_OPEN_EVENT, undefined, { debounceMs: 600 });
   });
 
-  playBtn.addEventListener("click", () => {
-    void openPreview();
+  studioEmpty.addEventListener("click", () => {
+    if (studioEmpty.hidden || studioEmpty.disabled || picker.disabled) return;
+    picker.click();
+  });
+
+  picker.addEventListener("change", () => {
+    const files = [...(picker.files ?? [])];
+    picker.value = "";
+    void ingestPhotoFiles(files);
   });
 
   const togglePreviewPlay = () => {
@@ -882,22 +970,39 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     void startPlayback(false);
   };
 
-  previewDialog.addEventListener(
-    "click",
-    (event) => {
-      const target = event.target;
-      if (!(target instanceof Node) || !stage.contains(target)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      togglePreviewPlay();
-    },
-    true,
-  );
+  stage.addEventListener("click", (event) => {
+    if (!studioEmpty.hidden || photos.length === 0) return;
+    const target = event.target;
+    if (target instanceof Node && (previewTransport.contains(target) || previewToggle.contains(target))) return;
+    const action = previewSurfaceChromeAction({ chromeOpen, playing: isPreviewPlaying() });
+    if (action === "show") setChromeOpen(true);
+    else if (action === "hide") setChromeOpen(false);
+  });
 
-  restartBtn.addEventListener("click", (event) => {
+  const endSeek = () => {
+    seeking = false;
+    syncSeek();
+  };
+  previewSeek.addEventListener("pointerdown", () => {
+    seeking = true;
+  });
+  previewSeek.addEventListener("pointerup", endSeek);
+  previewSeek.addEventListener("pointercancel", endSeek);
+  previewSeek.addEventListener("change", endSeek);
+  previewSeek.addEventListener("input", () => {
+    seeking = true;
+    scrubTo(Number(previewSeek.value));
+    syncSeek();
+  });
+  video.addEventListener("timeupdate", syncSeek);
+  video.addEventListener("durationchange", syncSeek);
+  video.addEventListener("loadedmetadata", syncSeek);
+
+  previewToggle.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    void startPlayback(true);
+    if (previewToggle.disabled) return;
+    togglePreviewPlay();
   });
 
   muteBtn.addEventListener("click", (event) => {
@@ -905,10 +1010,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     event.stopPropagation();
     previewMuted = !previewMuted;
     applyPreviewMute();
-  });
-
-  closePreviewBtn.addEventListener("click", () => {
-    closePreview();
   });
 
   cancelExportBtn.addEventListener("click", () => {
@@ -920,20 +1021,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   closeExportBtn.addEventListener("click", () => {
-    closeExportDialog();
-  });
-
-  exportDialog.addEventListener("cancel", (event) => {
-    if (exportAbort) {
-      cancelExport();
-      return;
-    }
-    if (pendingExport) return;
-    event.preventDefault();
-  });
-
-  exportDialog.addEventListener("close", () => {
-    pendingExport = null;
+    closeExportPanel();
   });
 
   window.addEventListener("beforeunload", (event) => {
@@ -942,23 +1030,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     event.returnValue = "";
   });
 
-  previewDialog.addEventListener("click", (event) => {
-    if (event.target !== previewDialog) return;
-    const rect = previewDialog.getBoundingClientRect();
-    const { clientX: x, clientY: y } = event;
-    const inside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-    if (!inside) closePreview();
-  });
-
-  previewDialog.addEventListener("close", () => {
-    stopPlayback();
-    video.muted = true;
-  });
-
   const startSave = async () => {
     if (recording || sharingExport || photos.length === 0) return;
-    closePreview();
     recording = true;
+    stopPlayback();
+    video.muted = false;
     playing = false;
     previewTracked = false;
     video.pause();
@@ -966,7 +1042,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     exportSaveTracked = false;
     const controller = new AbortController();
     exportAbort = controller;
-    openExportDialog();
+    trackEvent(GENERATE_START_EVENT, { count: photos.length });
+    openExportPanel();
     try {
       const cuts = (await ensureTimelines())[mode];
       throwIfAborted(controller.signal);
@@ -994,12 +1071,15 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       pendingExport = { blob: result.blob, filename, mime: result.mime, extension: result.extension };
       exportAbort = null;
       showExportReady();
-      if (exportDialog.open) downloadExportBtn.focus();
+      if (exportPanel.dataset.open === "true") downloadExportBtn.focus({ preventScroll: true });
+      revealExportPanel();
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
-        setStatus(msg("statusExportCancelled"));
+        trackEvent(GENERATE_CANCEL_EVENT);
+        setFeedback("save", msg("statusExportCancelled"));
       } else {
-        setErrorStatus(error, "statusSaveFailed");
+        trackEvent(GENERATE_FAIL_EVENT, { reason: generateFailReason(error) });
+        setErrorFeedback("save", error, "statusSaveFailed");
       }
     } finally {
       exportAbort = null;
@@ -1009,8 +1089,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       previewTracked = false;
       haltLoop();
       video.pause();
-      video.muted = true;
-      if (!pendingExport) closeExportDialog();
+      applyPreviewMute();
+      if (!pendingExport) closeExportPanel();
       refreshButtons();
       paint();
     }
@@ -1018,41 +1098,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   saveBtn.addEventListener("click", () => {
     void startSave();
-  });
-  previewSaveBtn.addEventListener("click", () => {
-    void startSave();
-  });
-
-  copyHashtagsBtn.addEventListener("click", async () => {
-    const copied = await copyTextToClipboard(
-      SHARE_TEXT,
-      typeof navigator === "undefined" ? undefined : navigator.clipboard,
-    );
-    if (copied) {
-      setStatus(msg("statusHashtagsCopied"));
-    } else {
-      setStatus(msg("statusCopyUnsupported", { text: SHARE_TEXT }), "error");
-    }
-  });
-
-  shareAppBtn.addEventListener("click", async () => {
-    const outcome = await shareHashtags({
-      navigator: typeof navigator === "undefined" ? undefined : navigator,
-      copyText: (text) =>
-        copyTextToClipboard(
-          text,
-          typeof navigator === "undefined" ? undefined : navigator.clipboard,
-        ),
-    });
-    if (outcome === "shared") {
-      setStatus(msg("statusShared"));
-    } else if (outcome === "copied") {
-      setStatus(msg("statusHashtagsCopied"));
-    } else if (outcome === "cancelled") {
-      setStatus(msg("statusShareCancelled"));
-    } else {
-      setStatus(msg("statusShareUnsupported", { text: SHARE_TEXT }), "error");
-    }
   });
 
   const goToView = (view: AppView) => {

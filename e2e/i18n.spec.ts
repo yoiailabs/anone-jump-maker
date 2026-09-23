@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { t } from "../src/i18n.ts";
+import { MORE_JUMPS_HREF } from "../src/share.ts";
 import { blockAnalytics, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 test.describe("language routing", () => {
@@ -20,20 +21,34 @@ test.describe("language routing", () => {
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("en", "makerTitle"));
     await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
-    await expect(page.locator("#playBtn")).toHaveText(t("en", "makerPreview"));
+    await expect(page.locator("#toStudio")).toHaveText(t("en", "makerMakeVideo"));
+    await expect(page.locator("#toStudio")).toHaveAttribute("href", "/en/make");
+    await expect(page.locator("#makerView #picker")).toHaveCount(0);
+    await page.locator("#toStudio").click();
+    await expect(page).toHaveURL(/\/en\/make\/?$/);
+    await expect(page).toHaveTitle(t("en", "studioTitle"));
+    await expect(page.locator("#studioEmpty")).toHaveText("");
     await expect(page.locator("#saveBtn")).toHaveText(t("en", "makerSave"));
-    await expect(page.locator("#previewSaveBtn")).toHaveText(t("en", "makerSave"));
     await expect(page.locator("#previewSaveHint")).toHaveText(t("en", "previewSaveHint"));
     await expect(page.locator("#muteBtn .preview-mute-hint")).toHaveText(t("en", "previewMuteHint"));
-    await expect(page.locator("#browsersNote")).toHaveText(t("en", "makerBrowsersNote"));
-    await expect(page.locator("#browsersNote")).not.toContainText(/supported/i);
+    await expect(page.locator("#browsersNote")).toHaveCount(0);
+    await expect(page.locator("#onDeviceNote")).toHaveText(t("en", "makerOnDevice"));
+    await expect(page.locator("#studioHome img")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
+    await expect(page.locator("#studioHome img")).toHaveClass(/hero-logo/);
+    await expect(page.locator("#toLanding")).toHaveCount(0);
+    await expect(page.locator("#studioView .studio-top .lang-switch")).toHaveCount(0);
+    await expect(page.locator("#studioView .lang-switch")).toHaveCount(1);
+    await page.locator("#studioHome").click();
+    await expect(page).toHaveURL(/\/en\/?$/);
+    await expect(page.locator("#browsersNote")).toHaveCount(0);
     await expect(page.locator("#linksTitle")).toHaveText(t("en", "makerOfficial"));
     await expect(page.locator("#officialMvTitle")).toHaveText(t("en", "makerOfficialMv"));
     await expect(page.locator(".loop-link")).toHaveAttribute(
       "aria-label",
       t("en", "makerPvAria", { song: t("en", "songTitle") }),
     );
-    await expect(page.locator("#toCommunity")).toHaveAttribute("href", "/en/community");
+    await expect(page.locator("#toCommunity")).toHaveAttribute("href", MORE_JUMPS_HREF);
+    await expect(page.locator("#toCommunity")).toHaveAttribute("target", "_blank");
     await expect(page.locator(".lang-switch").first()).toBeVisible();
     await expect(page.locator('.lang-switch a[lang="en"]').first()).toHaveAttribute("aria-current", "page");
   });
@@ -62,7 +77,8 @@ test.describe("language switcher", () => {
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("en", "makerTitle"));
 
-    await page.locator("#toCommunity").click();
+    await page.goto("/en/community");
+    await waitForAppReady(page);
     await expect(page).toHaveURL(/\/en\/community\/?$/);
     await expect(page.locator("#communityJumpsTitle")).toHaveText(t("en", "communityTitle"));
     await expect(page.locator("#communityView .eyebrow")).toHaveCount(0);
@@ -239,19 +255,53 @@ test.describe("song and artist names", () => {
   });
 });
 
-test.describe("maker lede phrase wrapping", () => {
+test.describe("maker intro copy", () => {
   test.beforeEach(async ({ page }) => {
     await blockAnalytics(page);
     await stubShortTemplate(page);
   });
 
-  test("wraps Japanese lede at phrase boundaries and leaves English unchanged", async ({ page }) => {
+  test("hides the old intro lines and keeps the short on-device note", async ({ page }) => {
     await page.goto("/");
     await waitForAppReady(page);
-    const jaExpected = `${t("ja", "makerLede1")}${t("ja", "makerLede2")}${t("ja", "makerLede3")}`;
+    await expect(page.locator("#makerView .lede")).toHaveCount(0);
+    await expect(page.locator("#makerView #onDeviceNote")).toHaveCount(0);
+    await expect(page.locator("#toStudio")).toHaveText(t("ja", "makerMakeVideo"));
+    await page.locator("#toStudio").click();
+    await expect(page).toHaveURL(/\/make\/?$/);
+    await expect(page.locator("#studioEmpty")).toHaveText("");
+    await expect(page.locator("#onDeviceNote")).toHaveText(t("ja", "makerOnDevice"));
+    const text = (await page.locator("#makerView").innerText()).replaceAll("\u200b", "");
+    expect(text).not.toContain("写真を何枚か選択するだけで");
+    expect(text).not.toContain("動画生成はすべて端末内で完結するため");
+    expect(text).not.toContain("※ファン制作の非公式アプリです。");
+    expect(text).not.toContain("※ファン制作の非公式サイトです");
+    await expect(page.locator("#fanNote")).toHaveCount(0);
+
+    await page.goto("/en");
+    await waitForAppReady(page);
+    await expect(page.locator("#onDeviceNote")).toHaveText(t("en", "makerOnDevice"));
+    const en = (await page.locator("#makerView").innerText()).replaceAll("\u200b", "");
+    expect(en).not.toContain("Pick a few photos to make an Anone Jump video");
+    expect(en).not.toContain("Unofficial fan-made app.");
+    expect(en).not.toContain("unofficial fan-made site");
+    await expect(page.locator("#fanNote")).toHaveCount(0);
+  });
+});
+
+test.describe("community lede phrase wrapping", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("wraps Japanese community lede at phrase boundaries and leaves English unchanged", async ({ page }) => {
+    await page.goto("/community");
+    await waitForAppReady(page);
+    const jaExpected = t("ja", "communityLede");
     await expect
       .poll(async () =>
-        page.locator("#makerView .lede").evaluate((el) => {
+        page.locator("#communityJumps .lede").evaluate((el) => {
           const text = el.textContent ?? "";
           const wordBreak = getComputedStyle(el).wordBreak;
           return {
@@ -262,10 +312,10 @@ test.describe("maker lede phrase wrapping", () => {
       )
       .toEqual({ visible: jaExpected, hasBreaks: true });
 
-    await page.goto("/en");
+    await page.goto("/en/community");
     await waitForAppReady(page);
-    const enExpected = `${t("en", "makerLede1")}${t("en", "makerLede2")}${t("en", "makerLede3")}`;
-    const en = await page.locator("#makerView .lede").evaluate((el) => ({
+    const enExpected = t("en", "communityLede");
+    const en = await page.locator("#communityJumps .lede").evaluate((el) => ({
       text: el.textContent ?? "",
       wordBreak: getComputedStyle(el).wordBreak,
     }));

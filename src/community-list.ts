@@ -15,6 +15,7 @@ import {
   type Locale,
 } from "./i18n.ts";
 import { linkBannersHtml, type OfficialLink } from "./links.ts";
+import { MORE_JUMPS_HREF, SHARE_HASHTAG } from "./share.ts";
 import { toMakerLinkHtml } from "./nav.ts";
 import { hydrateReactionEmbed, isEmbedHostVisible } from "./reactions.ts";
 
@@ -80,8 +81,8 @@ export function applyCommunityMasonryLayout(
 export const COMMUNITY_JUMPS_TITLE = t("ja", "communityTitle");
 export const COMMUNITY_JUMPS_LEDE = t("ja", "communityLede");
 export const COMMUNITY_JUMPS_EMPTY = t("ja", "communityEmpty");
-export const MORE_JUMPS_QUERY = "#あのねジャンプ";
-export const MORE_JUMPS_HREF = `https://x.com/search?q=${encodeURIComponent(MORE_JUMPS_QUERY)}`;
+export const MORE_JUMPS_QUERY = SHARE_HASHTAG;
+export { MORE_JUMPS_HREF };
 const HASHTAG_SLUG = MORE_JUMPS_QUERY.slice(1);
 
 /** ページ送りの下の SNS。公式アカウントではなく #あのねジャンプ の検索・タグへ。 */

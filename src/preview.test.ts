@@ -8,15 +8,30 @@ import {
   PREVIEW_SOUND_OFF_LABEL,
   PREVIEW_SOUND_ON_LABEL,
   muteButtonHtml,
+  formatPreviewClock,
   playPauseButtonHtml,
   playPauseLabel,
   previewSoundLabel,
   restartButtonHtml,
+  previewSurfaceChromeAction,
+  shouldLoopPreviewPlayback,
+  shouldRevealPreviewChrome,
   shouldSeekPreviewToStart,
   shouldTrackPreviewStart,
   syncMuteControl,
   syncPlayPauseControl,
 } from "./preview.ts";
+
+describe("formatPreviewClock", () => {
+  it("shows the current second, and the duration when the clip length is known", () => {
+    expect(formatPreviewClock(0, 0)).toBe("0:00");
+    expect(formatPreviewClock(Number.NaN, Number.NaN)).toBe("0:00");
+    expect(formatPreviewClock(1.26, 8)).toBe("0:01 / 0:08");
+    expect(formatPreviewClock(65.9, 90)).toBe("1:05 / 1:30");
+    expect(formatPreviewClock(-1, 4)).toBe("0:00 / 0:04");
+    expect(formatPreviewClock(9, 4)).toBe("0:04 / 0:04");
+  });
+});
 
 describe("playPauseLabel", () => {
   it("shows play while paused and pause while playing", () => {
@@ -46,6 +61,10 @@ describe("preview control markup", () => {
     expect(playPauseButtonHtml(false)).toContain('translate="no"');
     expect(playPauseButtonHtml(false)).not.toBe(playPauseButtonHtml(true));
     expect(restartButtonHtml()).toContain("<svg");
+    expect(restartButtonHtml()).toContain("M19 20 9 12 19 4");
+    expect(restartButtonHtml()).toContain("M5 5v14");
+    expect(restartButtonHtml()).not.toContain("M21 3v5h-5");
+    expect(restartButtonHtml()).not.toContain("M3 12a9");
     expect(restartButtonHtml()).toContain("最初から");
     expect(restartButtonHtml()).not.toContain("最初から再生");
     expect(muteButtonHtml(false)).toContain('data-preview-icon="sound-on"');
@@ -142,6 +161,26 @@ describe("syncMuteControl", () => {
 });
 
 describe("shouldSeekPreviewToStart", () => {
+  it("toggles the player chrome from the preview surface only while playing", () => {
+    expect(previewSurfaceChromeAction({ chromeOpen: true, playing: false })).toBe("keep");
+    expect(previewSurfaceChromeAction({ chromeOpen: false, playing: false })).toBe("show");
+    expect(previewSurfaceChromeAction({ chromeOpen: true, playing: true })).toBe("hide");
+    expect(previewSurfaceChromeAction({ chromeOpen: false, playing: true })).toBe("show");
+  });
+
+  it("shows the player chrome when the preview is ready and stopped", () => {
+    expect(shouldRevealPreviewChrome({ ready: true, playing: false, recording: false })).toBe(true);
+    expect(shouldRevealPreviewChrome({ ready: true, playing: true, recording: false })).toBe(false);
+    expect(shouldRevealPreviewChrome({ ready: false, playing: false, recording: false })).toBe(false);
+    expect(shouldRevealPreviewChrome({ ready: true, playing: false, recording: true })).toBe(false);
+  });
+
+  it("loops studio preview playback and leaves export alone", () => {
+    expect(shouldLoopPreviewPlayback({ playing: true, recording: false })).toBe(true);
+    expect(shouldLoopPreviewPlayback({ playing: false, recording: false })).toBe(false);
+    expect(shouldLoopPreviewPlayback({ playing: true, recording: true })).toBe(false);
+  });
+
   it("seeks when the caller asked to restart or the clip already ended", () => {
     expect(
       shouldSeekPreviewToStart({ fromStart: true, ended: false, currentTime: 1.2, duration: 8 }),

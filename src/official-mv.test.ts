@@ -50,6 +50,7 @@ describe("official Anone MV embed", () => {
     );
     expect(makerSrc).toMatch(/<OfficialMvEmbed\b[^/]*\/>\s*<\/nav>/);
     expect(makerSrc).toMatch(/<\/nav>\s*<section className="reactions"/);
+    expect(makerSrc).not.toContain('id="fanNote"');
     expect(OFFICIAL_LINKS.map((link) => link.id)).toEqual([
       "x",
       "instagram",

@@ -21,7 +21,8 @@ test.describe("privacy policy", () => {
     await expect(page.locator("#linksTitle")).toHaveText(t("ja", "makerOfficial"));
     await expect(page.locator("#makerView .notes .lang-switch a[lang='en']")).toHaveAttribute("href", "/en");
 
-    await page.locator("#toCommunity").click();
+    await page.goto("/community");
+    await waitForAppReady(page);
     await expect(page).toHaveURL(/\/community\/?$/);
     await expect(page.locator("#privacyPolicyLink")).toBeVisible();
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
@@ -62,8 +63,9 @@ test.describe("privacy policy", () => {
     await expect(page.locator("#playBtn")).toHaveCount(0);
     await expect(page.locator("#legalHome")).toHaveAttribute("href", "/");
     await expect(page.locator("#legalHome")).toHaveAttribute("aria-label", "トップへ戻る");
-    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
-    await expect(page.locator("#legalHome img")).toHaveAttribute("alt", "トップへ戻る");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/brand/anone-logo-horizontal.svg");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("alt", "あのねジャンプメーカー");
+    await expect(page.locator("#legalHome .hero-logo")).toHaveCount(0);
     await expect(page.locator("#privacyBack")).toHaveAttribute("href", "/");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("aria-current", "page");
   });
