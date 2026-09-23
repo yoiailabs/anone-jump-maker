@@ -65,5 +65,11 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("previewSaveBtn.disabled = saveDisabled");
     expect(appSrc.match(/void startSave\(\)/g)).toHaveLength(2);
     expect(appSrc).toContain("trackEvent(VIDEO_SAVE_EVENT");
+    expect(appSrc.match(/trackEvent\(VIDEO_SAVE_EVENT/g)).toHaveLength(1);
+    expect(makerSrc).toContain('id="shareExportBtn"');
+    expect(makerSrc).toContain('id="downloadExportBtn"');
+    expect(appSrc).toContain("shareVideoFile");
+    expect(appSrc).toContain("downloadBlob(pending.blob, pending.filename)");
+    expect(appSrc).toContain("downloadBlob(result.blob, filename)");
   });
 });

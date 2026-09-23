@@ -416,6 +416,9 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           <Button variant="site" type="button" id="cancelExportBtn" className="btn ghost">
             {t(locale, "exportCancel")}
           </Button>
+          <Button variant="site" type="button" id="shareExportBtn" className="btn" hidden>
+            {t(locale, "exportShareSave")}
+          </Button>
           <Button variant="site" type="button" id="downloadExportBtn" className="btn" hidden>
             {t(locale, "exportDownload")}
           </Button>
