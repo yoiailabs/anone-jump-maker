@@ -905,7 +905,6 @@ html[lang="ja"] .lede {
   margin: 0;
   padding: 0 0.12rem 0.45rem;
   border: 0;
-  border-top: 3px solid var(--ink);
   border-radius: 0.8rem 0.8rem 0 0;
   background: transparent;
   color: color-mix(in srgb, var(--mute) 88%, var(--ink));
@@ -926,6 +925,7 @@ html[lang="ja"] .lede {
 .studio-option-tab[aria-selected="true"] {
   z-index: 1;
   margin-bottom: -3px;
+  border-top: 3px solid var(--ink);
   background: var(--card);
   color: var(--ink);
   box-shadow:
