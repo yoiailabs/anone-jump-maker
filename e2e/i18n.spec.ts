@@ -26,7 +26,7 @@ test.describe("language routing", () => {
     await page.locator("#toStudio").click();
     await expect(page).toHaveURL(/\/en\/make\/?$/);
     await expect(page).toHaveTitle(t("en", "studioTitle"));
-    await expect(page.locator("#studioEmpty")).toHaveText(t("en", "studioEmpty"));
+    await expect(page.locator("#studioEmpty")).toHaveText("");
     await expect(page.locator("#saveBtn")).toHaveText(t("en", "makerSave"));
     await expect(page.locator("#previewSaveHint")).toHaveText(t("en", "previewSaveHint"));
     await expect(page.locator("#muteBtn .preview-mute-hint")).toHaveText(t("en", "previewMuteHint"));
@@ -261,7 +261,7 @@ test.describe("maker intro copy", () => {
     await expect(page.locator("#toStudio")).toHaveText(t("ja", "makerMakeVideo"));
     await page.locator("#toStudio").click();
     await expect(page).toHaveURL(/\/make\/?$/);
-    await expect(page.locator("#studioEmpty")).toHaveText(t("ja", "studioEmpty"));
+    await expect(page.locator("#studioEmpty")).toHaveText("");
     await expect(page.locator("#onDeviceNote")).toHaveText(t("ja", "makerOnDevice"));
     const text = (await page.locator("#makerView").innerText()).replaceAll("\u200b", "");
     expect(text).not.toContain("写真を何枚か選択するだけで");

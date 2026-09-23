@@ -103,6 +103,7 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain("previewStageAria");
     expect(appSrc).toContain('stage.addEventListener("click"');
     expect(makerSrc).toContain('<button type="button" className="studio-empty" id="studioEmpty"');
+    expect(makerSrc).not.toContain(">{t(locale, \"studioEmpty\")}");
     expect(appSrc).toContain('studioEmpty.addEventListener("click"');
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");
     expect(appSrc).toContain("trackEvent(MAKE_OPEN_EVENT");

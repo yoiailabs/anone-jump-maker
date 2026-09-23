@@ -97,7 +97,7 @@ test("empty preview opens the photo picker and does not start playback", async (
   await openStudio(page);
   const empty = page.locator("#studioEmpty");
   await expect(empty).toBeVisible();
-  await expect(empty).toHaveText("写真を選んでね");
+  await expect(empty).toHaveText("");
   await empty.focus();
   const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.keyboard.press("Enter")]);
   expect(chooser.isMultiple()).toBe(true);

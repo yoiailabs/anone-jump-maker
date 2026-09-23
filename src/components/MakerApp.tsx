@@ -241,9 +241,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           <section className="studio-stage" aria-label={t(locale, "previewTitle")}>
             <div className="stage-wrap">
               <div className="stage" id="stage" data-aspect={DEFAULT_ASPECT} aria-pressed="false">
-                <button type="button" className="studio-empty" id="studioEmpty">
-                  {t(locale, "studioEmpty")}
-                </button>
+                <button type="button" className="studio-empty" id="studioEmpty" aria-label={t(locale, "studioEmpty")} />
                 <div className="preview-transport" id="previewTransport">
                   <input
                     id="previewSeek"
