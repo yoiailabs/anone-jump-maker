@@ -52,7 +52,6 @@ import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNear
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
 import { HEIC_UNSUPPORTED_MESSAGE, loadPhotos, revokePhotos, selectImageFiles, type LoadedPhoto } from "./photos.ts";
-import { fetchSamplePhotoFiles } from "./sample-photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
 import {
@@ -134,7 +133,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const copyHashtagsBtn = must(root, "#copyHashtagsBtn") as HTMLButtonElement;
   const shareAppBtn = must(root, "#shareAppBtn") as HTMLButtonElement;
   const picker = must(root, "#picker") as HTMLInputElement;
-  const samplePhotosBtn = must(root, "#samplePhotosBtn") as HTMLButtonElement;
   const previewDialog = must(root, "#previewDialog") as HTMLDialogElement;
   const exportDialog = must(root, "#exportDialog") as HTMLDialogElement;
   const exportTitle = must(root, "#exportTitle");
@@ -284,7 +282,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     restartBtn.disabled = recording || !ready;
     muteBtn.disabled = recording;
     picker.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
-    samplePhotosBtn.disabled = locked || photos.length >= PHOTO_MAX_COUNT;
     renderThumbs();
     const active = isPreviewPlaying();
     stage.setAttribute("aria-pressed", active ? "true" : "false");
@@ -823,32 +820,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const files = [...(picker.files ?? [])];
     picker.value = "";
     void ingestPhotoFiles(files);
-  });
-
-  samplePhotosBtn.addEventListener("click", () => {
-    if (samplePhotosBtn.disabled || photosLocked()) return;
-    photosBusy = true;
-    refreshButtons();
-    setStatus(msg("statusPhotosLoading"), "busy");
-    void (async () => {
-      try {
-        const files = await fetchSamplePhotoFiles();
-        photosBusy = false;
-        if (files.length === 0) {
-          rejectPhotos("unavailable");
-          setStatus(msg("statusLoadFailed"), "error");
-          refreshButtons();
-          return;
-        }
-        await ingestPhotoFiles(files);
-        refreshButtons();
-      } catch {
-        photosBusy = false;
-        rejectPhotos("unavailable");
-        setStatus(msg("statusLoadFailed"), "error");
-        refreshButtons();
-      }
-    })();
   });
 
   playBtn.addEventListener("click", () => {

@@ -278,6 +278,10 @@ html[lang="ja"] .lede {
   }
 }
 
+.hero .loop-wrap {
+  margin: 0.15rem 0 0.75rem;
+}
+
 .make-cta {
   display: flex;
   flex-direction: column;

@@ -133,10 +133,6 @@ describe("messages", () => {
     expect(t("en", "exportDownload")).toBe("Download");
     expect(t("ko", "statusExportCancelled")).toBe("생성을 취소했습니다");
     expect(t("zh", "exportTitle")).toBe("正在生成视频");
-    expect(t("ja", "makerTrySamples")).toBe("サンプル写真で試す");
-    expect(t("en", "makerTrySamples")).toBe("Try sample photos");
-    expect(t("ko", "makerTrySamples")).toBe("샘플 사진으로 해보기");
-    expect(t("zh", "makerTrySamples")).toBe("用示例照片试试");
     expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
     expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
     expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");

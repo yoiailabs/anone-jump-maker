@@ -39,25 +39,26 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
     .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))
     .toBe("none");
   await expect(page.locator("img.loop")).toHaveAttribute("src", "/jump-loop-still.png");
-  await expect(page.locator('link[rel="preload"][as="image"][href="/jump-loop-still.png"]')).toHaveCount(0);
+  await expect(page.locator('link[rel="preload"][as="image"]')).toHaveAttribute(
+    "href",
+    "/jump-loop-still.png",
+  );
+  await expect(page.locator("#samplePhotosBtn")).toHaveCount(0);
   const pickerLabel = page.locator("label.file-btn");
-  const sampleBtn = page.locator("#samplePhotosBtn");
+  const loop = page.locator("#makerView .loop-wrap");
   await expect(pickerLabel).toBeVisible();
-  await expect(sampleBtn).toBeVisible();
+  await expect(loop).toBeVisible();
   await expect(pickerLabel).toHaveText("写真を選ぶ");
-  await expect(sampleBtn).toHaveText("サンプル写真で試す");
   const viewport = page.viewportSize();
   const pickerBoxOnBoot = await pickerLabel.boundingBox();
-  const sampleBoxOnBoot = await sampleBtn.boundingBox();
+  const loopBoxOnBoot = await loop.boundingBox();
   expect(
     viewport && pickerBoxOnBoot && pickerBoxOnBoot.y >= 0 && pickerBoxOnBoot.y + pickerBoxOnBoot.height <= viewport.height,
   ).toBe(true);
   expect(
-    viewport &&
-      sampleBoxOnBoot &&
-      sampleBoxOnBoot.y >= 0 &&
-      sampleBoxOnBoot.y + sampleBoxOnBoot.height <= viewport.height,
+    viewport && loopBoxOnBoot && loopBoxOnBoot.y >= 0 && loopBoxOnBoot.y + loopBoxOnBoot.height <= viewport.height,
   ).toBe(true);
+  expect(loopBoxOnBoot && pickerBoxOnBoot && loopBoxOnBoot.y + loopBoxOnBoot.height <= pickerBoxOnBoot.y + 1).toBe(true);
   const html = await page.request.get("/").then((response) => response.text());
   expect(html).not.toMatch(/<script[^>]+src="https:\/\/www\.googletagmanager\.com/);
   expect(html).toContain("Zen+Maru+Gothic");

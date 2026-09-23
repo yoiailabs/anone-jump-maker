@@ -71,6 +71,7 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("trackEvent(GENERATE_START_EVENT");
     expect(appSrc).toContain("trackEvent(GENERATE_FAIL_EVENT");
     expect(appSrc).toContain("trackEvent(GENERATE_CANCEL_EVENT");
-    expect(appSrc).toContain("fetchSamplePhotoFiles");
+    expect(appSrc).not.toContain("fetchSamplePhotoFiles");
+    expect(appSrc).not.toContain("samplePhotosBtn");
   });
 });

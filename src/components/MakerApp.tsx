@@ -97,6 +97,12 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 decoding="async"
               />
             </h1>
+            <div className="loop-wrap">
+              <JumpLoop
+                href={OFFICIAL_MV_WATCH_HREF}
+                ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
+              />
+            </div>
             <div className="make-cta">
               <Label className="file-btn">
                 <input
@@ -107,9 +113,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 />
                 <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
               </Label>
-              <Button variant="site" type="button" id="samplePhotosBtn" className="btn ghost">
-                {t(locale, "makerTrySamples")}
-              </Button>
             </div>
             <PhotoThumbsSlot locale={locale} />
           </header>
@@ -189,13 +192,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
               </Button>
             </p>
           </section>
-
-          <div className="loop-wrap">
-            <JumpLoop
-              href={OFFICIAL_MV_WATCH_HREF}
-              ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
-            />
-          </div>
 
           <div className="share-wrap">
             <Button variant="site" type="button" id="shareAppBtn" className="btn share-app">

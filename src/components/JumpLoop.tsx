@@ -60,8 +60,7 @@ export function JumpLoop({ href, ariaLabel }: JumpLoopProps) {
           width={448}
           height={252}
           decoding="async"
-          loading="lazy"
-          {...{ fetchpriority: "low" }}
+          {...{ fetchpriority: "high" }}
         />
         <video
           ref={videoRef}
