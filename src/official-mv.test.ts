@@ -15,17 +15,17 @@ const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8")
 describe("official Anone MV embed", () => {
   it("labels the MV in every locale", () => {
     expect(t("ja", "makerOfficialMv")).toBe("「あのね」MV");
-    expect(t("en", "makerOfficialMv")).toBe("“Anone” MV");
-    expect(t("ko", "makerOfficialMv")).toBe("「あのね」MV");
-    expect(t("zh", "makerOfficialMv")).toBe("「あのね」MV");
+    expect(t("en", "makerOfficialMv")).toBe("“Connect the World” MV");
+    expect(t("ko", "makerOfficialMv")).toBe("「있잖아」MV");
+    expect(t("zh", "makerOfficialMv")).toBe("「Connect the World」MV");
     expect(t("ja", "makerOfficialMvTitle", { song: t("ja", "songTitle") })).toBe(
       "「あのね」の公式ミュージックビデオ",
     );
     expect(t("en", "makerOfficialMvTitle", { song: t("en", "songTitle") })).toBe(
-      "Official music video for Anone(Connect the World)",
+      "Official music video for Connect the World",
     );
-    expect(t("ko", "makerOfficialMvTitle", { song: t("ko", "songTitle") })).toContain("공식 뮤직비디오");
-    expect(t("zh", "makerOfficialMvTitle", { song: t("zh", "songTitle") })).toContain("官方音乐视频");
+    expect(t("ko", "makerOfficialMvTitle", { song: t("ko", "songTitle") })).toBe("있잖아 공식 뮤직비디오");
+    expect(t("zh", "makerOfficialMvTitle", { song: t("zh", "songTitle") })).toBe("Connect the World 官方音乐视频");
     for (const locale of LOCALES) {
       expect(t(locale, "makerOfficialMv")).toMatch(/MV/);
     }

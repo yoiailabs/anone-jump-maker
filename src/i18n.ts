@@ -95,7 +95,7 @@ export function t(locale: Locale, key: MessageKey, vars?: Record<string, string 
   return text;
 }
 
-/** 動画内クレジット。日本語は配信タイトル、それ以外は英語圏の公式メタデータ。 */
+/** 動画内クレジット。各ロケールの公式曲名。中国語は英語の公式タイトルを使う。 */
 export function songCreditLine(locale: Locale = DEFAULT_LOCALE): string {
   return `♪ ${t(locale, "songTitle")} - ${t(locale, "artistName")}`;
 }

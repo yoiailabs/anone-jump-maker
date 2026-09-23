@@ -167,7 +167,7 @@ describe("messages", () => {
       /https?:\/\//,
     );
     expect(t("ja", "makerOfficialMv")).toBe("「あのね」MV");
-    expect(t("en", "makerOfficialMv")).toBe("“Anone” MV");
+    expect(t("en", "makerOfficialMv")).toBe("“Connect the World” MV");
     expect(t("ja", "studioOptions")).toBe("オプション");
     expect(t("en", "studioOptions")).toBe("Options");
     expect(t("ko", "studioOptions")).toBe("옵션");
@@ -216,15 +216,17 @@ describe("messages", () => {
     expect(t("ja", "metaPrivacyDescription")).toContain("Yoiailabs");
   });
 
-  it("uses the English store title in non-Japanese credits", () => {
+  it("uses the official song title in each locale's credit", () => {
     expect(t("ja", "songTitle")).toBe("あのね");
     expect(t("ja", "artistName")).toBe("ナナツカゼ");
     expect(songCreditLine("ja")).toBe("♪ あのね - ナナツカゼ");
-    expect(t("en", "songTitle")).toBe("Anone(Connect the World)");
+    expect(t("en", "songTitle")).toBe("Connect the World");
     expect(t("en", "artistName")).toBe("Nanatsukaze");
-    expect(songCreditLine("en")).toBe("♪ Anone(Connect the World) - Nanatsukaze");
-    expect(songCreditLine("ko")).toBe(songCreditLine("en"));
-    expect(songCreditLine("zh")).toBe(songCreditLine("en"));
+    expect(songCreditLine("en")).toBe("♪ Connect the World - Nanatsukaze");
+    expect(t("ko", "songTitle")).toBe("있잖아");
+    expect(songCreditLine("ko")).toBe("♪ 있잖아 - Nanatsukaze");
+    expect(t("zh", "songTitle")).toBe("Connect the World");
+    expect(songCreditLine("zh")).toBe("♪ Connect the World - Nanatsukaze");
   });
 });
 
