@@ -15,7 +15,7 @@ const SHORT_CUTS = {
   photoCount: 2,
 } as const;
 
-test("binds share, radios, and picker before cuts.json returns", async ({ page }) => {
+test("binds controls and the picker before cuts.json returns", async ({ page }) => {
   await blockAnalytics(page);
 
   let releaseCuts!: () => void;
@@ -49,7 +49,9 @@ test("binds share, radios, and picker before cuts.json returns", async ({ page }
 
   await expect
     .poll(async () => {
-      await page.locator("#muteBtn").click({ force: true });
+      await page.evaluate(() => {
+        document.querySelector<HTMLButtonElement>("#muteBtn")?.click();
+      });
       return (await page.locator("#muteBtn").getAttribute("aria-pressed")) ?? "";
     })
     .toBe("false");

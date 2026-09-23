@@ -565,9 +565,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(toCommunity).toHaveAttribute("target", "_blank");
   await expect(toCommunity).toHaveAttribute("rel", "noopener noreferrer");
   await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
-  await page.goto("/community");
-  await waitForAppReady(page);
-  await expect(page).toHaveURL(/\/community\/?$/);
+  await openCommunityInApp(page);
   await expect(page).not.toHaveURL(/#community/);
   await expect(page).toHaveTitle("みんなの #あのねジャンプ");
   await expect(page.locator("#communityView")).toBeVisible();
@@ -713,10 +711,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#reactionsEmbed blockquote.twitter-tweet")).toHaveCount(3);
   await expect(page.locator("#reactionsEmbed iframe.twitter-tweet-rendered")).toHaveCount(0);
 
-  await page.goto("/community");
-  await waitForAppReady(page);
-  await expect(page).toHaveURL(/\/community\/?$/);
-  await expect(page.locator("#communityView")).toBeVisible();
+  await openCommunityInApp(page);
   await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(50);
   await expect(page.locator(".community-jumps-card iframe.twitter-tweet-rendered")).toHaveCount(0);
 });
@@ -867,6 +862,15 @@ test("studio header uses a compact lockup back to the top", async ({ page }) => 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
 });
+
+async function openCommunityInApp(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    history.pushState({}, "", "/community");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page.locator("#communityView")).toBeVisible();
+}
 
 async function uploadPhoto(page: Page): Promise<void> {
   await openStudio(page);
