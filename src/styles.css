@@ -279,7 +279,8 @@ html[lang="ja"] .lede {
 }
 
 .hero .loop-wrap {
-  margin: 0.15rem 0 0.75rem;
+  /* 影の下に、言語切替や説明ブロックと同じ 0.85rem の余白を残す。 */
+  margin: 0.15rem 0 calc(var(--loop-shadow-y) + 0.85rem);
 }
 
 .make-cta {
@@ -341,6 +342,7 @@ html[lang="ja"] .lede {
 
 /* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
 .loop-wrap {
+  --loop-shadow-y: 8px;
   display: flex;
   justify-content: center;
   position: relative;
@@ -370,7 +372,7 @@ html[lang="ja"] .lede {
   border-radius: 1.5rem;
   background: var(--card);
   border: 3.5px solid var(--ink);
-  box-shadow: 7px 8px 0 var(--ink);
+  box-shadow: 7px var(--loop-shadow-y, 8px) 0 var(--ink);
   overflow: hidden;
 }
 
