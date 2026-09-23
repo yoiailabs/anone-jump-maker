@@ -129,7 +129,14 @@ describe("messages", () => {
     expect(t("ja", "exportTitle")).toBe("動画を生成中");
     expect(t("ja", "exportCancel")).toBe("キャンセル");
     expect(t("ja", "exportKeepOpen")).toContain("タブを閉じたり");
-    expect(t("ja", "exportDownloadHint")).toBe("ダウンロードが開始されませんか？");
+    expect(t("ja", "exportDownloadHint")).toBe("ダウンロードボタンで端末に保存できます。");
+    expect(t("en", "exportDownloadHint")).toBe("Tap Download to save it on this device.");
+    expect(t("ja", "statusExportReadyDownload")).toBe("生成できました。ダウンロードボタンで保存してください。");
+    expect(t("ja", "exportShareHint")).toContain("ダウンロードを押すと共有シート");
+    expect(t("en", "exportShareHint")).toContain("Download opens the share sheet");
+    expect(t("ko", "exportShareHintX")).toContain("X");
+    expect(t("zh", "exportShareHint")).toContain("分享表");
+    expect(t("ja", "statusExportShareCancelled")).toBe("共有をやめました。もう一度ダウンロードを押せます。");
     expect(t("en", "exportDownload")).toBe("Download");
     expect(t("ko", "statusExportCancelled")).toBe("생성을 취소했습니다");
     expect(t("zh", "exportTitle")).toBe("正在生成视频");

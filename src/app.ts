@@ -50,7 +50,15 @@ import {
 } from "./preview.ts";
 import { downloadBlob } from "./recorder.ts";
 import { reportError } from "./sentry.ts";
-import { copyTextToClipboard, SHARE_TEXT, shareHashtags } from "./share.ts";
+import {
+  canShareFiles,
+  copyTextToClipboard,
+  isXInAppBrowser,
+  SHARE_TEXT,
+  shareHashtags,
+  shareVideoFile,
+  videoFileForShare,
+} from "./share.ts";
 import { isolateVolatileChrome, setTextIfChanged } from "./translate-guard.ts";
 import type { CutTimeline } from "./timeline.ts";
 
@@ -103,7 +111,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let playing = false;
   let recording = false;
   let exportAbort: AbortController | null = null;
-  let pendingExport: { blob: Blob; filename: string } | null = null;
+  let pendingExport: { blob: Blob; filename: string; mime: string; extension: string } | null = null;
+  let sharingExport = false;
   let previewTracked = false;
   let previewMuted = PREVIEW_MUTED_DEFAULT;
   let playbackBusy = false;
@@ -264,7 +273,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const ready = canUse();
     const locked = photosLocked();
     playBtn.disabled = recording || !ready;
-    const saveDisabled = recording || !ready;
+    const saveDisabled = recording || sharingExport || !ready;
     saveBtn.disabled = saveDisabled;
     previewSaveBtn.disabled = saveDisabled;
     restartBtn.disabled = recording || !ready;
@@ -480,13 +489,29 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     setStatus(statusText, "busy");
   };
 
+  const fileShareAvailable = () => {
+    if (!pendingExport) return false;
+    const nav = typeof navigator === "undefined" ? undefined : navigator;
+    return canShareFiles(nav, [videoFileForShare(pendingExport.blob, pendingExport.filename, pendingExport.mime)]);
+  };
+
   const setExportPhase = (phase: "busy" | "done") => {
     exportDialog.dataset.exportPhase = phase;
     exportTitle.textContent = phase === "done" ? msg("exportDoneTitle") : msg("exportTitle");
     exportKeepOpen.hidden = phase !== "busy";
     exportDownloadHint.hidden = phase !== "done";
+    if (phase === "done") {
+      const shareReady = fileShareAvailable();
+      const hintKey = !shareReady
+        ? "exportDownloadHint"
+        : isXInAppBrowser(typeof navigator === "undefined" ? "" : navigator.userAgent)
+          ? "exportShareHintX"
+          : "exportShareHint";
+      setTextIfChanged(exportDownloadHint, msg(hintKey));
+    }
     cancelExportBtn.hidden = phase !== "busy";
     downloadExportBtn.hidden = phase !== "done";
+    downloadExportBtn.classList.remove("ghost");
     closeExportBtn.hidden = phase !== "done";
     exportDialog.setAttribute("aria-describedby", phase === "done" ? "exportDownloadHint" : "exportKeepOpen");
   };
@@ -514,9 +539,75 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     cancelExportBtn.disabled = true;
   };
 
-  const savePendingExport = () => {
-    if (!pendingExport) return;
-    downloadBlob(pendingExport.blob, pendingExport.filename);
+  let exportSaveTracked = false;
+  const trackExportSaved = () => {
+    if (exportSaveTracked) return;
+    exportSaveTracked = true;
+    trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
+  };
+
+  const savedStatus = (extension: string) => msg("statusSaved", { ext: extension.toUpperCase() });
+
+  const markExportSaved = (extension: string) => {
+    const text = savedStatus(extension);
+    setExportProgress(100, text);
+    setStatus(text);
+  };
+
+  const showExportReady = () => {
+    const text = msg("statusExportReadyDownload");
+    setExportProgress(100, text);
+    setStatus(text);
+    setExportPhase("done");
+  };
+
+  const downloadPendingExport = (pending: NonNullable<typeof pendingExport>) => {
+    downloadBlob(pending.blob, pending.filename);
+    markExportSaved(pending.extension);
+    trackExportSaved();
+  };
+
+  const savePendingExport = async () => {
+    if (!pendingExport || sharingExport) return;
+    const pending = pendingExport;
+    if (!fileShareAvailable()) {
+      downloadPendingExport(pending);
+      return;
+    }
+    sharingExport = true;
+    refreshButtons();
+    downloadExportBtn.disabled = true;
+    try {
+      setExportProgress(100, msg("statusExportSharing"));
+      setStatus(msg("statusExportSharing"), "busy");
+      const outcome = await shareVideoFile({
+        blob: pending.blob,
+        filename: pending.filename,
+        mime: pending.mime,
+        navigator: typeof navigator === "undefined" ? undefined : navigator,
+      });
+      if (outcome === "cancelled") {
+        if (pendingExport === pending) {
+          const text = msg("statusExportShareCancelled");
+          setExportProgress(100, text);
+          setStatus(text);
+        }
+        return;
+      }
+      if (outcome === "shared") {
+        if (pendingExport === pending) markExportSaved(pending.extension);
+        else setStatus(savedStatus(pending.extension));
+        trackExportSaved();
+        return;
+      }
+      if (pendingExport !== pending) return;
+      downloadPendingExport(pending);
+    } finally {
+      sharingExport = false;
+      downloadExportBtn.disabled = false;
+      if (pendingExport === pending) setExportPhase("done");
+      refreshButtons();
+    }
   };
 
   let openingPreview = false;
@@ -825,7 +916,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   downloadExportBtn.addEventListener("click", () => {
-    savePendingExport();
+    void savePendingExport();
   });
 
   closeExportBtn.addEventListener("click", () => {
@@ -865,13 +956,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   });
 
   const startSave = async () => {
-    if (recording || photos.length === 0) return;
+    if (recording || sharingExport || photos.length === 0) return;
     closePreview();
     recording = true;
     playing = false;
     previewTracked = false;
     video.pause();
     refreshButtons();
+    exportSaveTracked = false;
     const controller = new AbortController();
     exportAbort = controller;
     openExportDialog();
@@ -899,13 +991,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         },
       });
       const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
-      pendingExport = { blob: result.blob, filename };
-      downloadBlob(result.blob, filename);
-      setExportProgress(100, msg("statusSaved", { ext: result.extension.toUpperCase() }));
-      setStatus(msg("statusSaved", { ext: result.extension.toUpperCase() }));
-      setExportPhase("done");
-      downloadExportBtn.focus();
-      trackEvent(VIDEO_SAVE_EVENT, analyticsParams());
+      pendingExport = { blob: result.blob, filename, mime: result.mime, extension: result.extension };
+      exportAbort = null;
+      showExportReady();
+      if (exportDialog.open) downloadExportBtn.focus();
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
         setStatus(msg("statusExportCancelled"));

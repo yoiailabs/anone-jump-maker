@@ -73,6 +73,84 @@ export async function copyTextToClipboard(
   }
 }
 
+/** shared: シートを完了 / cancelled: ユーザーが閉じた / unsupported: 使えないか失敗 */
+export type FileShareOutcome = "shared" | "cancelled" | "unsupported";
+
+/** 書き出し Blob を、ファイル名と MIME を保った File にする。 */
+export function videoFileForShare(blob: Blob, filename: string, mime?: string): File {
+  return new File([blob], filename, { type: videoShareType(mime, blob.type) });
+}
+
+/**
+ * ファイル付き Web Share が使えるか。`canShare({ files })` が無い、または false なら使わない。
+ * ハッシュタグ本文だけの共有とは別で、UA では判定しない。
+ */
+export function canShareFiles(nav: ShareNavigatorLike | undefined, files: readonly File[]): boolean {
+  if (!nav?.share || !nav.canShare || files.length === 0) return false;
+  try {
+    return nav.canShare({ files: [...files] });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 生成動画をファイルとして共有する。
+ * `canShare({ files })` が通ったときだけ `share` する。
+ * ハッシュタグ本文を足しても `canShare` が通るときだけ text を付け、通らなければファイルだけ渡す。
+ */
+export async function shareVideoFile(options: {
+  blob: Blob;
+  filename: string;
+  mime?: string;
+  text?: string;
+  navigator?: ShareNavigatorLike;
+}): Promise<FileShareOutcome> {
+  const nav = options.navigator;
+  if (!nav?.share || !nav.canShare) return "unsupported";
+  const file = videoFileForShare(options.blob, options.filename, options.mime);
+  const files = [file];
+  let filesOk = false;
+  try {
+    filesOk = nav.canShare({ files });
+  } catch {
+    return "unsupported";
+  }
+  if (!filesOk) return "unsupported";
+
+  const text = options.text ?? SHARE_TEXT;
+  let data: ShareData = { files };
+  if (text) {
+    try {
+      if (nav.canShare({ files, text })) data = { files, text };
+    } catch {
+      data = { files };
+    }
+  }
+
+  try {
+    await nav.share(data);
+    return "shared";
+  } catch (error) {
+    if (isAbort(error)) return "cancelled";
+    return "unsupported";
+  }
+}
+
+/** コピー出し分け専用。共有の可否は `canShare` で見る。 */
+export function isXInAppBrowser(userAgent: string | undefined): boolean {
+  if (!userAgent) return false;
+  return /Twitter/i.test(userAgent);
+}
+
+function videoShareType(mime: string | undefined, blobType: string): string {
+  const fromMime = mime?.split(";")[0]?.trim();
+  if (fromMime) return fromMime;
+  const fromBlob = blobType.split(";")[0]?.trim();
+  if (fromBlob) return fromBlob;
+  return "video/mp4";
+}
+
 function isAbort(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
