@@ -56,7 +56,9 @@ describe("hero logo hop", () => {
     const full = { matchMedia: vi.fn(() => ({ matches: false })) } as unknown as Window;
     expect(prefersReducedMotion(reduced)).toBe(true);
     expect(prefersReducedMotion(full)).toBe(false);
-    const animate = vi.fn(() => ({ id: HERO_LOGO_HOP_ID }) as Animation);
+    const animate = vi.fn((_frames: Keyframe[], _options?: KeyframeAnimationOptions) => {
+      return { id: HERO_LOGO_HOP_ID } as Animation;
+    });
     expect(playHeroLogoHop({ animate }, reduced)).toBeNull();
     expect(animate).not.toHaveBeenCalled();
     playHeroLogoHop({ animate }, full);
