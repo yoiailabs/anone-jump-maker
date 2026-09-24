@@ -3,13 +3,21 @@ import { JUMP_CYCLE_FRAMES, JUMP_DROP_FRAC, jumpCycle } from "./layout.ts";
 /**
  * トップの縦積みロゴ用。本編の 1 拍（15 フレ）と同じ割合で
  * 跳ね上がり（指数 2.3）と着地（二次曲線）を踏む。振幅だけ数ピクセルに抑える。
- * 後の拍ほど短く小さくして、2〜3 回で静かに止まる。
+ * 後の拍ほど短く小さくして、3 回で静かに止まる。
+ * 接地では少し横につぶれ、空中では少し縦に伸びる（ぽよん）。面積はほぼ保つ。
+ * 伸びは言語リンクとの隙間に収まるよう、つぶれより小さくしてある。
  */
 export const HERO_LOGO_HOPS = [
   { amplitudePx: 9, durationMs: 360 },
   { amplitudePx: 4, durationMs: 280 },
   { amplitudePx: 1.5, durationMs: 200 },
 ] as const;
+
+/** いちばん高い拍の接地。scaleY をこれだけ縮め、scaleX は逆数（約 +3.1%）。 */
+export const HERO_LOGO_SQUASH = 0.03;
+
+/** いちばん高い拍の空中。scaleY をこれだけ伸ばし、scaleX は逆数（約 −1.2%）。 */
+export const HERO_LOGO_STRETCH = 0.012;
 
 export const HERO_LOGO_HOP_ID = "hero-logo-hop";
 
@@ -31,10 +39,38 @@ export function heroLogoHopDy(progress: number, amplitudePx: number): number {
   return dy === 0 ? 0 : dy;
 }
 
-function translateY(px: number): string {
-  const rounded = Math.round(px * 100) / 100;
-  const value = rounded === 0 ? 0 : rounded;
-  return `translateY(${value}px)`;
+function roundTo(value: number, places: number): number {
+  const rounded = Math.round(value * 10 ** places) / 10 ** places;
+  return rounded === 0 ? 0 : rounded;
+}
+
+/**
+ * 拍の強さ（0..1）に応じたスケール。`air` は 0 が接地、1 が頂点。
+ * 接地は横に広く縦に短く、空中は縦に高く横に細い。後の拍ほど弱い。
+ */
+export function heroLogoHopScale(
+  progress: number,
+  amplitudePx: number,
+): { scaleX: number; scaleY: number } {
+  const maxAmplitude = HERO_LOGO_HOPS[0].amplitudePx;
+  const strength = Math.min(Math.max(amplitudePx / maxAmplitude, 0), 1);
+  const air =
+    amplitudePx === 0
+      ? 0
+      : Math.min(Math.max(-heroLogoHopDy(progress, amplitudePx) / amplitudePx, 0), 1);
+  const scaleY = 1 - HERO_LOGO_SQUASH * strength * (1 - air) + HERO_LOGO_STRETCH * strength * air;
+  const safeY = scaleY === 0 ? 1 : scaleY;
+  return { scaleX: 1 / safeY, scaleY: safeY };
+}
+
+const REST_TRANSFORM = "translateY(0px) scale(1, 1)";
+
+export function heroLogoHopTransform(progress: number, amplitudePx: number): string {
+  const dy = roundTo(heroLogoHopDy(progress, amplitudePx), 2);
+  const { scaleX, scaleY } = heroLogoHopScale(progress, amplitudePx);
+  const sx = roundTo(scaleX, 4);
+  const sy = roundTo(scaleY, 4);
+  return `translateY(${dy}px) scale(${sx}, ${sy})`;
 }
 
 export function heroLogoHopFrames(
@@ -48,10 +84,11 @@ export function heroLogoHopFrames(
       if (hopIndex > 0 && sample === 0) continue;
       const local = sample / JUMP_CYCLE_FRAMES;
       const offset = total === 0 ? 0 : (elapsed + local * hop.durationMs) / total;
-      frames.push({
-        offset,
-        transform: translateY(heroLogoHopDy(local, hop.amplitudePx)),
-      });
+      const transform =
+        (hopIndex === 0 && sample === 0) || (hopIndex === hops.length - 1 && sample === JUMP_CYCLE_FRAMES)
+          ? REST_TRANSFORM
+          : heroLogoHopTransform(local, hop.amplitudePx);
+      frames.push({ offset, transform });
     }
     elapsed += hop.durationMs;
   });

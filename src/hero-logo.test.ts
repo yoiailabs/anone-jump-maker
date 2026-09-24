@@ -103,6 +103,8 @@ describe("stacked maker hero logo", () => {
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*365/);
     expect(stylesSrc).toMatch(/\.hero-logo\[height="390"\]\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*390/);
     expect(stylesSrc).toMatch(/\.hero-logo\s*\{[^}]*width:\s*min\(100%,\s*22rem\)/);
+    expect(stylesSrc).toMatch(/#makerTitle \.hero-logo\s*\{[^}]*transform-origin:\s*center bottom/);
+    expect(stylesSrc).not.toMatch(/#studioHome[^{]*transform-origin/);
   });
 
   it("uses the horizontal wordmark on legal headers and the stacked hero on studio", () => {

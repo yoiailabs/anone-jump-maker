@@ -230,6 +230,11 @@ body {
   margin-inline: auto;
 }
 
+/* トップの縦積みロゴだけ。跳ねの伸縮は下辺を軸にして、上の言語リンクへ伸びすぎない。 */
+#makerTitle .hero-logo {
+  transform-origin: center bottom;
+}
+
 /* スマホの最初の画面はロゴより「写真を選ぶ」を主役にする。 */
 @media (max-width: 40rem) {
   #makerView .hero-logo,
