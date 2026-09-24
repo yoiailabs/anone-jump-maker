@@ -4,20 +4,20 @@ import { JUMP_CYCLE_FRAMES, JUMP_DROP_FRAC, jumpCycle } from "./layout.ts";
  * トップの縦積みロゴ用。本編の 1 拍（15 フレ）と同じ割合で
  * 跳ね上がり（指数 2.3）と着地（二次曲線）を踏む。振幅だけ数ピクセルに抑える。
  * 後の拍ほど短く小さくして、3 回で静かに止まる。
- * 接地では少し横につぶれ、空中では少し縦に伸びる（ぽよん）。面積はほぼ保つ。
- * 伸びは言語リンクとの隙間に収まるよう、つぶれより小さくしてある。
+ * 接地では横につぶれ、空中では縦に伸びる（ぽよんぽよん）。面積はほぼ保つ。
+ * 伸びはつぶれより小さく、言語リンクに触れない範囲に収める。
  */
 export const HERO_LOGO_HOPS = [
-  { amplitudePx: 9, durationMs: 360 },
-  { amplitudePx: 4, durationMs: 280 },
-  { amplitudePx: 1.5, durationMs: 200 },
+  { amplitudePx: 16, durationMs: 420 },
+  { amplitudePx: 7, durationMs: 300 },
+  { amplitudePx: 2.5, durationMs: 220 },
 ] as const;
 
-/** いちばん高い拍の接地。scaleY をこれだけ縮め、scaleX は逆数（約 +3.1%）。 */
-export const HERO_LOGO_SQUASH = 0.03;
+/** いちばん高い拍の接地。scaleY をこれだけ縮め、scaleX は逆数（約 +5.8%）。 */
+export const HERO_LOGO_SQUASH = 0.055;
 
-/** いちばん高い拍の空中。scaleY をこれだけ伸ばし、scaleX は逆数（約 −1.2%）。 */
-export const HERO_LOGO_STRETCH = 0.012;
+/** いちばん高い拍の空中。scaleY をこれだけ伸ばし、scaleX は逆数（約 −2.0%）。 */
+export const HERO_LOGO_STRETCH = 0.02;
 
 export const HERO_LOGO_HOP_ID = "hero-logo-hop";
 

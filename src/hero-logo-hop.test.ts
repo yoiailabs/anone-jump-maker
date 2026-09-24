@@ -24,12 +24,12 @@ describe("hero logo hop", () => {
     expect(JUMP_RISE_POW).toBe(2.3);
     expect(JUMP_RISE_FRAMES).toBe(7);
     expect(HERO_LOGO_HOPS).toHaveLength(3);
-    expect(HERO_LOGO_HOPS.map((hop) => hop.amplitudePx)).toEqual([9, 4, 1.5]);
+    expect(HERO_LOGO_HOPS.map((hop) => hop.amplitudePx)).toEqual([16, 7, 2.5]);
     for (const amplitude of HERO_LOGO_HOPS) {
-      expect(amplitude.amplitudePx).toBeLessThan(12);
+      expect(amplitude.amplitudePx).toBeLessThan(18);
       expect(amplitude.durationMs).toBeLessThan(500);
     }
-    expect(heroLogoHopDurationMs()).toBe(840);
+    expect(heroLogoHopDurationMs()).toBe(940);
 
     for (const k of [0, 1, 3.5, 6, 7, 8, 11, 14, 15]) {
       const lift = 1 - jumpCycle(k).dy / JUMP_DROP_FRAC;
@@ -54,36 +54,39 @@ describe("hero logo hop", () => {
       expect(values.some((dy) => Math.abs(dy - -hop.amplitudePx) < 0.02)).toBe(true);
     }
     expect(Math.min(...values)).toBeCloseTo(-HERO_LOGO_HOPS[0]!.amplitudePx, 5);
-    expect(Math.min(...values)).toBeGreaterThan(-12);
+    expect(Math.min(...values)).toBeGreaterThan(-18);
   });
 
   it("squashes on contact and stretches in the air, softer on later hops", () => {
+    const [first, second, third] = HERO_LOGO_HOPS.map((hop) => hop.amplitudePx);
     expect(HERO_LOGO_SQUASH).toBeGreaterThan(HERO_LOGO_STRETCH);
-    expect(HERO_LOGO_SQUASH).toBeLessThan(0.05);
-    expect(HERO_LOGO_STRETCH).toBeLessThan(0.02);
+    expect(HERO_LOGO_SQUASH).toBeGreaterThan(0.05);
+    expect(HERO_LOGO_SQUASH).toBeLessThan(0.07);
+    expect(HERO_LOGO_STRETCH).toBeGreaterThan(0.015);
+    expect(HERO_LOGO_STRETCH).toBeLessThan(HERO_LOGO_SQUASH);
 
-    const contact = heroLogoHopScale(0, 9);
+    const contact = heroLogoHopScale(0, first!);
     expect(contact.scaleX).toBeGreaterThan(1);
     expect(contact.scaleY).toBeLessThan(1);
     expect(contact.scaleX).toBeCloseTo(1 / contact.scaleY, 5);
     expect(contact.scaleY).toBeCloseTo(1 - HERO_LOGO_SQUASH, 5);
 
-    const air = heroLogoHopScale(JUMP_RISE_FRAMES / JUMP_CYCLE_FRAMES, 9);
+    const air = heroLogoHopScale(JUMP_RISE_FRAMES / JUMP_CYCLE_FRAMES, first!);
     expect(air.scaleY).toBeGreaterThan(1);
     expect(air.scaleX).toBeLessThan(1);
     expect(air.scaleX).toBeCloseTo(1 / air.scaleY, 5);
     expect(air.scaleY).toBeCloseTo(1 + HERO_LOGO_STRETCH, 5);
 
-    const softer = heroLogoHopScale(0, 4);
+    const softer = heroLogoHopScale(0, second!);
     expect(softer.scaleX).toBeGreaterThan(1);
     expect(softer.scaleX).toBeLessThan(contact.scaleX);
-    expect(heroLogoHopScale(1, 1.5).scaleY).toBeCloseTo(1 - HERO_LOGO_SQUASH * (1.5 / 9), 5);
+    expect(heroLogoHopScale(1, third!).scaleY).toBeCloseTo(1 - HERO_LOGO_SQUASH * (third! / first!), 5);
 
-    const landed = heroLogoHopTransform(1, 9);
+    const landed = heroLogoHopTransform(1, first!);
     expect(landed).toContain("translateY(0px)");
     expect(landed).toContain(`scale(${round4(contact.scaleX)}, ${round4(contact.scaleY)})`);
-    const apex = heroLogoHopTransform(JUMP_RISE_FRAMES / JUMP_CYCLE_FRAMES, 9);
-    expect(apex).toContain("translateY(-9px)");
+    const apex = heroLogoHopTransform(JUMP_RISE_FRAMES / JUMP_CYCLE_FRAMES, first!);
+    expect(apex).toContain(`translateY(-${first}px)`);
     expect(apex).toContain(`scale(${round4(air.scaleX)}, ${round4(air.scaleY)})`);
   });
 
@@ -102,7 +105,7 @@ describe("hero logo hop", () => {
     const [frames, options] = animate.mock.calls[0]!;
     expect(frames).toEqual(heroLogoHopFrames());
     expect(options).toMatchObject({
-      duration: 840,
+      duration: 940,
       easing: "linear",
       fill: "none",
       iterations: 1,
