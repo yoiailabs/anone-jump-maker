@@ -15,6 +15,7 @@ import { getPreviewChrome, subscribePreviewChrome } from "../preview-chrome-stor
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { getFeedback, subscribeFeedback, type FeedbackPlace } from "../feedback-store.ts";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
+import { scheduleHeroLogoHop } from "../hero-logo-hop.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -93,6 +94,7 @@ type OptionTab = (typeof OPTION_TABS)[number][0];
 
 export default function MakerApp({ initialView, locale, communityHtml = "" }: MakerAppProps) {
   const started = useRef(false);
+  const landingLogoRef = useRef<HTMLImageElement>(null);
   const [optionTab, setOptionTab] = useState<OptionTab>("swap");
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
@@ -122,6 +124,13 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
     };
   }, [locale]);
 
+  useEffect(() => {
+    if (initialView !== "maker") return;
+    const logo = landingLogoRef.current;
+    if (!logo) return;
+    return scheduleHeroLogoHop(logo);
+  }, [initialView]);
+
   const makerHidden = initialView !== "maker";
   const studioHidden = initialView !== "studio";
   const communityHidden = initialView !== "community";
@@ -140,6 +149,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             <LanguageNav locale={locale} view="maker" />
             <h1 id="makerTitle">
               <img
+                ref={landingLogoRef}
                 className="hero-logo"
                 src={makerLogoStackedSrc(locale)}
                 width={logoSize.width}

@@ -66,6 +66,10 @@ describe("stacked maker hero logo", () => {
     const landing = makerSrc.slice(makerSrc.indexOf('id="makerView"'), makerSrc.indexOf('id="studioView"'));
     const studio = makerSrc.slice(makerSrc.indexOf('id="studioView"'), makerSrc.indexOf('id="communityView"'));
     expect(landing.indexOf('id="makerTitle"')).toBeLessThan(landing.indexOf("<JumpLoop"));
+    expect(landing).toContain("landingLogoRef");
+    expect(studio).not.toContain("landingLogoRef");
+    expect(makerSrc).toContain("scheduleHeroLogoHop");
+    expect(makerSrc).toContain('if (initialView !== "maker") return;');
     expect(landing.indexOf("<JumpLoop")).toBeLessThan(landing.indexOf('id="toStudio"'));
     expect(landing.indexOf('id="toStudio"')).toBeLessThan(landing.indexOf('id="toCommunity"'));
     expect(landing).not.toContain('id="picker"');
