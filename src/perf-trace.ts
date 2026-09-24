@@ -73,6 +73,11 @@ export type TraceHandle = {
   end(outcome?: TraceOutcome, attrs?: TraceAttributes): void;
 };
 
+/** One `beginPreviewStart` call. A later start replaces this; a stale finish must not close the newer one. */
+export type PreviewStartAttempt = {
+  readonly id: number;
+};
+
 const STATUS_BY_OUTCOME: Record<TraceOutcome, { code: 1 | 2; message: string }> = {
   success: { code: 1, message: "ok" },
   error: { code: 2, message: "internal_error" },
@@ -160,6 +165,10 @@ function createHandle(name: TraceSpanName, span: TracingSpan): TraceHandle {
 
 let previewOpen: TraceHandle | null = null;
 let previewStart: TraceHandle | null = null;
+let previewStartAttempt: PreviewStartAttempt | null = null;
+let previewStartSeq = 0;
+/** True for the life of a preview start, even when that span was not sampled. */
+let previewStartArmed = false;
 let previewPlayback: TraceHandle | null = null;
 let previewRender: TraceHandle | null = null;
 let movingSpan: TraceHandle | null = null;
@@ -207,6 +216,8 @@ function finishPreviewOpen(outcome: TraceOutcome, attrs?: TraceAttributes): void
 }
 
 function finishPreviewStart(outcome: TraceOutcome, attrs?: TraceAttributes): void {
+  previewStartAttempt = null;
+  previewStartArmed = false;
   movingAnchor = null;
   const moving = movingSpan;
   movingSpan = null;
@@ -214,6 +225,16 @@ function finishPreviewStart(outcome: TraceOutcome, attrs?: TraceAttributes): voi
   const current = previewStart;
   previewStart = null;
   current?.end(outcome, attrs);
+}
+
+/** Closes this attempt only. A stale attempt must not end the newer preview.start. */
+function finishPreviewStartIfCurrent(
+  attempt: PreviewStartAttempt,
+  outcome: TraceOutcome,
+  attrs?: TraceAttributes,
+): void {
+  if (previewStartAttempt !== attempt) return;
+  finishPreviewStart(outcome, attrs);
 }
 
 function finishPlayback(reason: "window" | "stop" | "leave" | "settings" | "hidden" | "superseded"): void {
@@ -236,6 +257,12 @@ function finishPlayback(reason: "window" | "stop" | "leave" | "settings" | "hidd
   root?.end(outcome, attrs);
 }
 
+/**
+ * Separate root, sampled once at `tracesSampleRate`.
+ * Reaching this must not depend on `preview.start` being recorded: that span is
+ * dropped when it misses the 0.1 sample, and gating this window on it would sample
+ * the render measurements a second time.
+ */
 function beginPlaybackWindow(): void {
   finishPlayback("superseded");
   const root = openSpan("preview.playback", { parent: null, forceTransaction: true });
@@ -280,26 +307,31 @@ export const studioTrace = {
   openPreviewResourcesSpan(): TraceHandle | null {
     return previewOpen?.startChild("preview.resources") ?? null;
   },
-  beginPreviewStart(attrs: TraceAttributes): void {
+  beginPreviewStart(attrs: TraceAttributes): PreviewStartAttempt {
     finishPreviewStart("superseded", { end_reason: "superseded" });
     finishPlayback("superseded");
+    const attempt: PreviewStartAttempt = { id: ++previewStartSeq };
+    previewStartAttempt = attempt;
+    previewStartArmed = true;
     previewStart = openSpan("preview.start", { parent: null, forceTransaction: true, attrs });
+    return attempt;
   },
   annotatePreviewStart(attrs: TraceAttributes): void {
     previewStart?.setAttributes(attrs);
   },
   finishPreviewStart,
+  finishPreviewStartIfCurrent,
   openPreviewChild(name: TraceSpanName): TraceHandle | null {
     return previewStart?.startChild(name) ?? null;
   },
   armFirstMovingPaint(anchorTime: number): void {
-    if (!previewStart || !Number.isFinite(anchorTime)) return;
+    if (!previewStartArmed || !Number.isFinite(anchorTime)) return;
     movingAnchor = anchorTime;
     movingSpan?.end("superseded");
-    movingSpan = previewStart.startChild("preview.first_moving_paint");
+    movingSpan = previewStart?.startChild("preview.first_moving_paint") ?? null;
   },
   waitingForMovingPaint(): boolean {
-    return movingAnchor != null && previewStart != null && !previewStart.ended;
+    return movingAnchor != null && previewStartArmed;
   },
   wantsPaintSample(): boolean {
     return previewPlayback != null && !previewPlayback.ended;
@@ -326,7 +358,7 @@ export const studioTrace = {
         template_ready: true,
       });
     }
-    if (movingAnchor == null || !previewStart || previewStart.ended) return;
+    if (movingAnchor == null || !previewStartArmed) return;
     if (
       !isFirstMovingCompositePaint({
         anchorTime: movingAnchor,
@@ -452,6 +484,8 @@ export function resetStudioTraceForTests(): void {
   clearPlaybackTimer();
   previewOpen = null;
   previewStart = null;
+  previewStartAttempt = null;
+  previewStartArmed = false;
   previewPlayback = null;
   previewRender = null;
   movingSpan = null;
