@@ -1,3 +1,15 @@
+/** One accepted preview start is observed for this long, then the window closes. */
+export const PREVIEW_RENDER_WINDOW_MS = 5000;
+
+/** Paused frames and export draws stay out of the preview paint window. */
+export function shouldRecordPreviewPaintSample(input: {
+  paused: boolean;
+  exporting: boolean;
+  windowOpen: boolean;
+}): boolean {
+  return input.windowOpen && !input.paused && !input.exporting;
+}
+
 export type PaintBenchSnapshot = {
   n: number;
   avgMs: number;

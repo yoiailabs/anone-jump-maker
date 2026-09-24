@@ -45,6 +45,18 @@ import {
   type ExportProgress,
   type ExportResult,
 } from "./export.ts";
+import {
+  createStageStat,
+  detailFrameRoles,
+  noteStage,
+  nowMs,
+  roundTraceMs,
+  stageAttributePrefix,
+  studioTrace,
+  withComposeDetail,
+  type StageStat,
+} from "./perf-trace.ts";
+import type { TraceOutcome } from "./sentry.ts";
 
 export type OfflinePlan = {
   container: "mp4" | "webm";
@@ -115,17 +127,16 @@ export async function encodeOffline(options: {
     throwIfAborted(signal);
     const frameSink = template ? await openTemplateFrameSink(template) : null;
     throwIfAborted(signal);
-    const characterPath = frameSink
-      ? await firstResolved([
-          probeExportCharacterPath(frameSink, signal),
-          sleep(EXPORT_PROBE_TIMEOUT_MS, signal).then(() => EXPORT_CHARACTER_FALLBACK),
-        ])
-      : EXPORT_CHARACTER_FALLBACK;
+    const characterPath = await chooseCharacterPath(frameSink, signal);
     throwIfAborted(signal);
-    const pumpAudio = template ? await attachTemplateAudio(output, plan.format, template, signal) : null;
+    const pumpAudio = template
+      ? await studioTrace.withExportChild("export.audio_prepare", () =>
+          attachTemplateAudio(output, plan.format, template, signal),
+        )
+      : null;
     await output.start();
     if (pumpAudio) {
-      await pumpAudio();
+      await studioTrace.withExportChild("export.audio_pump", () => pumpAudio());
     }
     if (characterPath === EXPORT_CHARACTER_PIXELS && frameSink) {
       await encodeWithRgbaFrames({
@@ -149,10 +160,17 @@ export async function encodeOffline(options: {
       });
     }
     throwIfAborted(signal);
-    await output.finalize();
+    await studioTrace.withExportChild("export.finalize", () => output.finalize());
   } catch (error) {
     if (output.state === "started" || output.state === "pending") {
-      await output.cancel();
+      const cleanup = studioTrace.openExportChild("export.cancel_cleanup");
+      try {
+        await output.cancel();
+        cleanup?.end("success");
+      } catch (cancelError) {
+        cleanup?.end(isAbortError(cancelError) ? "cancelled" : "error");
+        throw cancelError;
+      }
     }
     throw error;
   } finally {
@@ -166,32 +184,104 @@ export async function encodeOffline(options: {
   }
   const mime = plan.format.mimeType;
   const extension = plan.format.fileExtension.replace(".", "") as "mp4" | "webm";
+  const blobSpan = studioTrace.openExportChild("export.blob_create");
+  const blob = new Blob([buffer], { type: mime });
+  blobSpan?.setAttribute("byte_size", buffer.byteLength);
+  blobSpan?.setAttribute("container", plan.container);
+  blobSpan?.end("success");
   return {
-    blob: new Blob([buffer], { type: mime }),
+    blob,
     mime,
     extension,
     mode: "offline",
   };
 }
 
-async function probeExportCharacterPath(sink: VideoSampleSink, signal?: AbortSignal): Promise<ExportCharacterPath> {
-  throwIfAborted(signal);
-  const probe = {
+type ProbeFlags = {
+  copiedFirst: boolean;
+  copiedLater: boolean;
+  firstTimeOk: boolean;
+  laterTimeOk: boolean;
+  pixelsAdvanced: boolean;
+};
+
+function publishProbe(out: ProbeFlags | undefined, probe: ProbeFlags): void {
+  if (!out) return;
+  out.copiedFirst = probe.copiedFirst;
+  out.copiedLater = probe.copiedLater;
+  out.firstTimeOk = probe.firstTimeOk;
+  out.laterTimeOk = probe.laterTimeOk;
+  out.pixelsAdvanced = probe.pixelsAdvanced;
+}
+
+async function chooseCharacterPath(
+  frameSink: VideoSampleSink | null,
+  signal?: AbortSignal,
+): Promise<ExportCharacterPath> {
+  const flags: ProbeFlags = {
     copiedFirst: false,
     copiedLater: false,
     firstTimeOk: false,
     laterTimeOk: false,
     pixelsAdvanced: false,
   };
+  let timeoutWon = false;
+  const probeSpan = studioTrace.openExportChild("export.character_probe");
+  try {
+    const characterPath = frameSink
+      ? await firstResolved([
+          probeExportCharacterPath(frameSink, signal, flags),
+          sleep(EXPORT_PROBE_TIMEOUT_MS, signal).then(() => {
+            timeoutWon = true;
+            return EXPORT_CHARACTER_FALLBACK;
+          }),
+        ])
+      : EXPORT_CHARACTER_FALLBACK;
+    probeSpan?.setAttributes({
+      probe_outcome: characterPath,
+      character_path: characterPath,
+      timeout_won: timeoutWon,
+      copied_first: flags.copiedFirst,
+      copied_later: flags.copiedLater,
+      first_time_ok: flags.firstTimeOk,
+      later_time_ok: flags.laterTimeOk,
+      pixels_advanced: flags.pixelsAdvanced,
+    });
+    studioTrace.annotateExport({ character_path: characterPath });
+    probeSpan?.end("success");
+    return characterPath;
+  } catch (error) {
+    probeSpan?.end(isAbortError(error) ? "cancelled" : "error");
+    throw error;
+  }
+}
+
+async function probeExportCharacterPath(
+  sink: VideoSampleSink,
+  signal?: AbortSignal,
+  out?: ProbeFlags,
+): Promise<ExportCharacterPath> {
+  throwIfAborted(signal);
+  const probe: ProbeFlags = {
+    copiedFirst: false,
+    copiedLater: false,
+    firstTimeOk: false,
+    laterTimeOk: false,
+    pixelsAdvanced: false,
+  };
+  const finish = () => {
+    publishProbe(out, probe);
+    return chooseExportCharacterPath(probe);
+  };
   try {
     const first = await sink.getSample(0);
-    if (!first) return chooseExportCharacterPath(probe);
+    if (!first) return finish();
     try {
       const rgba0 = await copySampleRgba(first);
       probe.copiedFirst = true;
       probe.firstTimeOk = templateFrameMatchesTime(rgba0.timestamp, 0);
       const later = await sink.getSample(1);
-      if (!later) return chooseExportCharacterPath(probe);
+      if (!later) return finish();
       try {
         const rgba1 = await copySampleRgba(later);
         probe.copiedLater = true;
@@ -207,7 +297,50 @@ async function probeExportCharacterPath(sink: VideoSampleSink, signal?: AbortSig
     if (isAbortError(error)) throw error;
     // copyTo / PTS / decoder が WebKit で落ちても HTML video に落とす
   }
-  return chooseExportCharacterPath(probe);
+  return finish();
+}
+
+type FrameTrace = {
+  span: ReturnType<typeof studioTrace.openExportChild>;
+  acquire: StageStat;
+  rgba: StageStat;
+  compose: StageStat;
+  videoAdd: StageStat;
+  yield: StageStat;
+  roles: Map<number, "first" | "mid" | "last">;
+};
+
+function openFrameTrace(frameCount: number): FrameTrace | null {
+  const span = studioTrace.openExportChild("export.frames");
+  if (!span) return null;
+  return {
+    span,
+    acquire: createStageStat(),
+    rgba: createStageStat(),
+    compose: createStageStat(),
+    videoAdd: createStageStat(),
+    yield: createStageStat(),
+    roles: detailFrameRoles(frameCount),
+  };
+}
+
+function finishFrameTrace(trace: FrameTrace | null, outcome: TraceOutcome): void {
+  if (!trace) return;
+  trace.span?.setAttributes({
+    ...stageAttributePrefix("acquire", trace.acquire),
+    ...stageAttributePrefix("rgba", trace.rgba),
+    ...stageAttributePrefix("compose", trace.compose),
+    ...stageAttributePrefix("video_add", trace.videoAdd),
+    ...stageAttributePrefix("yield", trace.yield),
+  });
+  trace.span?.end(outcome);
+}
+
+function markStage(stat: StageStat | undefined, started: number): number {
+  if (!stat) return 0;
+  const elapsed = nowMs() - started;
+  noteStage(stat, elapsed);
+  return elapsed;
 }
 
 async function encodeWithRgbaFrames(options: {
@@ -225,45 +358,82 @@ async function encodeWithRgbaFrames(options: {
   if (!frameCtx) {
     throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
   }
+  const trace = openFrameTrace(times.length);
   let i = 0;
   let firstFingerprint: number | undefined;
-  for await (const sample of sink.samplesAtTimestamps(times)) {
-    if (signal?.aborted) {
-      sample?.close();
-      throwIfAborted(signal);
-    }
-    const time = times[i];
-    if (time === undefined) {
-      sample?.close();
-      break;
-    }
-    if (!sample) {
-      throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
-    }
-    try {
-      const rgba = await copySampleRgba(sample);
-      if (!templateFrameMatchesTime(rgba.timestamp, time)) {
+  let acquireStart = trace ? nowMs() : 0;
+  try {
+    for await (const sample of sink.samplesAtTimestamps(times)) {
+      const acquireMs = trace ? markStage(trace.acquire, acquireStart) : 0;
+      if (signal?.aborted) {
+        sample?.close();
+        throwIfAborted(signal);
+      }
+      const time = times[i];
+      if (time === undefined) {
+        sample?.close();
+        break;
+      }
+      if (!sample) {
         throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
       }
-      if (firstFingerprint === undefined) {
-        firstFingerprint = rgba.fingerprint;
-      } else {
-        assertCharacterAdvanced(firstFingerprint, rgba.fingerprint, time);
+      const role = trace?.roles.get(i);
+      const frameSpan = role ? trace?.span?.startChild("export.frame", { frame_role: role, frame_index: i }) : null;
+      let rgbaMs = 0;
+      let composeMs = 0;
+      let frameOutcome: TraceOutcome = "success";
+      try {
+        const rgbaStart = trace ? nowMs() : 0;
+        const rgba = await copySampleRgba(sample);
+        if (!templateFrameMatchesTime(rgba.timestamp, time)) {
+          throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+        }
+        if (firstFingerprint === undefined) {
+          firstFingerprint = rgba.fingerprint;
+        } else {
+          assertCharacterAdvanced(firstFingerprint, rgba.fingerprint, time);
+        }
+        putRgbaOnCanvas(frameCanvas, frameCtx, rgba);
+        rgbaMs = trace ? markStage(trace.rgba, rgbaStart) : 0;
+        const composeStart = trace ? nowMs() : 0;
+        const character = characterFrameFromCanvas(frameCanvas);
+        if (frameSpan) withComposeDetail(frameSpan, () => draw(time, character));
+        else draw(time, character);
+        composeMs = trace ? markStage(trace.compose, composeStart) : 0;
+      } catch (error) {
+        frameOutcome = isAbortError(error) ? "cancelled" : "error";
+        throw error;
+      } finally {
+        sample.close();
       }
-      putRgbaOnCanvas(frameCanvas, frameCtx, rgba);
-      draw(time, characterFrameFromCanvas(frameCanvas));
-    } finally {
-      sample.close();
+      const addStart = trace ? nowMs() : 0;
+      await videoSource.add(i * frameDuration, frameDuration);
+      const addMs = trace ? markStage(trace.videoAdd, addStart) : 0;
+      let yieldMs = 0;
+      if (i === 0 || i === times.length - 1 || i % 8 === 0) {
+        onProgress?.({ mode: "offline", current: i + 1, total: times.length });
+        const yieldStart = trace ? nowMs() : 0;
+        await yieldToUi(signal);
+        yieldMs = trace ? markStage(trace.yield, yieldStart) : 0;
+      }
+      frameSpan?.setAttributes({
+        acquire_ms: roundTraceMs(acquireMs),
+        rgba_ms: roundTraceMs(rgbaMs),
+        compose_ms: roundTraceMs(composeMs),
+        video_add_ms: roundTraceMs(addMs),
+        ...(yieldMs > 0 ? { yield_ms: roundTraceMs(yieldMs) } : {}),
+      });
+      frameSpan?.end(frameOutcome);
+      acquireStart = trace ? nowMs() : 0;
+      i += 1;
     }
-    await videoSource.add(i * frameDuration, frameDuration);
-    if (i === 0 || i === times.length - 1 || i % 8 === 0) {
-      onProgress?.({ mode: "offline", current: i + 1, total: times.length });
-      await yieldToUi(signal);
+    if (i !== times.length) {
+      throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
     }
-    i += 1;
-  }
-  if (i !== times.length) {
-    throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+    finishFrameTrace(trace, "success");
+  } catch (error) {
+    finishFrameTrace(trace, isAbortError(error) ? "cancelled" : "error");
+    throw error;
   }
 }
 
@@ -277,17 +447,50 @@ async function encodeWithHtmlVideo(options: {
   signal?: AbortSignal;
 }): Promise<void> {
   const { video, times, frameDuration, draw, videoSource, onProgress, signal } = options;
-  for (let i = 0; i < times.length; i += 1) {
-    throwIfAborted(signal);
-    const time = times[i]!;
-    // iOS フォールバックは #52 以前と同じ seeked のみ。毎フレーム rVFC すると 466×400ms になる。
-    await seekVideo(video, time, { waitForPresented: false });
-    draw(time);
-    await videoSource.add(i * frameDuration, frameDuration);
-    if (i === 0 || i === times.length - 1 || i % 8 === 0) {
-      onProgress?.({ mode: "offline", current: i + 1, total: times.length });
-      await yieldToUi(signal);
+  const trace = openFrameTrace(times.length);
+  try {
+    for (let i = 0; i < times.length; i += 1) {
+      throwIfAborted(signal);
+      const time = times[i]!;
+      const role = trace?.roles.get(i);
+      const frameSpan = role ? trace?.span?.startChild("export.frame", { frame_role: role, frame_index: i }) : null;
+      let frameOutcome: TraceOutcome = "success";
+      const acquireStart = trace ? nowMs() : 0;
+      try {
+        // iOS フォールバックは #52 以前と同じ seeked のみ。毎フレーム rVFC すると 466×400ms になる。
+        await seekVideo(video, time, { waitForPresented: false });
+      } catch (error) {
+        frameOutcome = isAbortError(error) ? "cancelled" : "error";
+        frameSpan?.end(frameOutcome);
+        throw error;
+      }
+      const acquireMs = trace ? markStage(trace.acquire, acquireStart) : 0;
+      const composeStart = trace ? nowMs() : 0;
+      if (frameSpan) withComposeDetail(frameSpan, () => draw(time));
+      else draw(time);
+      const composeMs = trace ? markStage(trace.compose, composeStart) : 0;
+      const addStart = trace ? nowMs() : 0;
+      await videoSource.add(i * frameDuration, frameDuration);
+      const addMs = trace ? markStage(trace.videoAdd, addStart) : 0;
+      let yieldMs = 0;
+      if (i === 0 || i === times.length - 1 || i % 8 === 0) {
+        onProgress?.({ mode: "offline", current: i + 1, total: times.length });
+        const yieldStart = trace ? nowMs() : 0;
+        await yieldToUi(signal);
+        yieldMs = trace ? markStage(trace.yield, yieldStart) : 0;
+      }
+      frameSpan?.setAttributes({
+        acquire_ms: roundTraceMs(acquireMs),
+        compose_ms: roundTraceMs(composeMs),
+        video_add_ms: roundTraceMs(addMs),
+        ...(yieldMs > 0 ? { yield_ms: roundTraceMs(yieldMs) } : {}),
+      });
+      frameSpan?.end(frameOutcome);
     }
+    finishFrameTrace(trace, "success");
+  } catch (error) {
+    finishFrameTrace(trace, isAbortError(error) ? "cancelled" : "error");
+    throw error;
   }
 }
 
@@ -303,6 +506,7 @@ async function attachTemplateAudio(
     if (!track) return null;
     const packetCodec = await track.getCodec();
     if (packetCodec && format.getSupportedAudioCodecs().includes(packetCodec)) {
+      studioTrace.annotateCurrent({ audio_codec: packetCodec, has_audio: true });
       const source = new EncodedAudioPacketSource(packetCodec);
       output.addAudioTrack(source);
       return async () => {
@@ -318,6 +522,7 @@ async function attachTemplateAudio(
     }
     const encodeCodec = await pickAudioCodec(format);
     if (!encodeCodec || !(await track.canDecode())) return null;
+    studioTrace.annotateCurrent({ audio_codec: encodeCodec, has_audio: true });
     const source = new AudioBufferSource({ codec: encodeCodec, quality: AUDIO_QUALITY });
     output.addAudioTrack(source);
     return async () => {
@@ -368,17 +573,28 @@ async function pickAudioCodec(format: OutputFormat): Promise<AudioCodec | null> 
 }
 
 async function openTemplateInput(src: string, signal?: AbortSignal): Promise<Input | null> {
-  if (!src) return null;
+  const span = studioTrace.openExportChild("export.template_open");
+  let opened = false;
+  let outcome: TraceOutcome = "success";
   try {
+    if (!src) return null;
     throwIfAborted(signal);
     const response = await fetch(src, signal ? { signal } : undefined);
     if (!response.ok) return null;
     const blob = await response.blob();
     throwIfAborted(signal);
-    return new Input({ source: new BlobSource(blob), formats: [MP4] });
+    const input = new Input({ source: new BlobSource(blob), formats: [MP4] });
+    opened = true;
+    return input;
   } catch (error) {
-    if (isAbortError(error)) throw error;
+    if (isAbortError(error)) {
+      outcome = "cancelled";
+      throw error;
+    }
     return null;
+  } finally {
+    span?.setAttribute("opened", opened);
+    span?.end(outcome);
   }
 }
 

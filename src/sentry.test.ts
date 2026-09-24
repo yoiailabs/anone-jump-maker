@@ -1,14 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_SENTRY_DSN,
+  PRODUCTION_TRACES_SAMPLE_RATE,
+  createSentryBrowserOptions,
   errorReportExtras,
   filterSentryEvent,
   isExpectedUxError,
+  pickTraceAttributes,
   reportError,
   resolveSentryDsn,
+  resolveTraceSampleRate,
   scrubSentryEvent,
+  scrubSentrySpan,
+  scrubSentryTransaction,
   sentryEnvironment,
   sentryEventHasExpectedUxError,
+  traceSampleRateForEnvironment,
 } from "./sentry.ts";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "./export.ts";
 import { MESSAGES } from "./messages.ts";
@@ -158,6 +165,166 @@ describe("filterSentryEvent", () => {
       },
     };
     expect(filterSentryEvent(event)).toBe(event);
+  });
+});
+
+describe("trace sampling", () => {
+  it("keeps the production rate at 0.1 and does not multiply a parent decision", () => {
+    expect(PRODUCTION_TRACES_SAMPLE_RATE).toBe(0.1);
+    expect(traceSampleRateForEnvironment("production")).toBe(0.1);
+    expect(traceSampleRateForEnvironment("preview")).toBe(0.1);
+    expect(traceSampleRateForEnvironment("development")).toBe(0.1);
+    expect(resolveTraceSampleRate({ environment: "production" })).toBe(0.1);
+    expect(resolveTraceSampleRate({ environment: "production", parentSampled: true })).toBe(true);
+    expect(resolveTraceSampleRate({ environment: "production", parentSampled: false })).toBe(false);
+
+    const options = createSentryBrowserOptions({ dsn: DEFAULT_SENTRY_DSN, environment: "production" });
+    expect(options.tracesSampleRate).toBe(0.1);
+    expect(
+      options.tracesSampler({
+        inheritOrSampleWith(rate) {
+          expect(rate).toBe(0.1);
+          return 1;
+        },
+      }),
+    ).toBe(1);
+    expect(options.tracesSampler({ parentSampled: true })).toBe(true);
+    expect(options.tracesSampler({ parentSampled: false })).toBe(false);
+    expect(options.tracesSampler({})).toBe(0.1);
+  });
+});
+
+describe("trace attribute allowlist", () => {
+  it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
+    expect(
+      pickTraceAttributes({
+        outcome: "success",
+        aspect: "landscape",
+        effect: "jump",
+        filter: "blur-weak",
+        character_size: "1.2",
+        character_path: "rgba-copyTo",
+        keying: "webgl",
+        container: "mp4",
+        video_codec: "avc",
+        width: 1280,
+        height: 720,
+        fps: 30,
+        has_photos: true,
+        paint_n: 4,
+        paint_avg_ms: 12.5,
+        acquire_count: 3,
+        acquire_total_ms: 40,
+        acquire_max_ms: 20,
+        photoName: "vacation.jpg",
+        filename: "face.png",
+        id: "vacation.jpg",
+        fingerprint: 987654,
+        vendor: "Google Inc.",
+        renderer: "ANGLE (Apple)",
+        message: "ユーザーの写真で失敗しました",
+        blob: "blob:http://localhost/abc",
+        src: "data:image/png;base64,aaaa",
+        nested: { aspect: "landscape" },
+        effect_bad: "data:image/png;base64,aaaa",
+      }),
+    ).toEqual({
+      outcome: "success",
+      aspect: "landscape",
+      effect: "jump",
+      filter: "blur-weak",
+      character_size: "1.2",
+      character_path: "rgba-copyTo",
+      keying: "webgl",
+      container: "mp4",
+      video_codec: "avc",
+      width: 1280,
+      height: 720,
+      fps: 30,
+      has_photos: true,
+      paint_n: 4,
+      paint_avg_ms: 12.5,
+      acquire_count: 3,
+      acquire_total_ms: 40,
+      acquire_max_ms: 20,
+    });
+  });
+
+  it("scrubs root transactions and every child span", () => {
+    const event = {
+      transaction: "export.generate",
+      user: { email: "a@b.com" },
+      message: "vacation.jpg を処理中",
+      breadcrumbs: [{ message: "blob:http://localhost/photo" }],
+      extra: { photoName: "vacation.jpg", ok: "fine" },
+      request: { url: "/studio", data: "secret", cookies: { sid: "1" } },
+      tags: { aspect: "portrait", filename: "secret.jpg" },
+      contexts: {
+        trace: {
+          op: "export.generate",
+          data: { export_path: "offline", fingerprint: 42, photoName: "vacation.jpg" },
+        },
+      },
+      spans: [
+        {
+          description: "export.frames",
+          op: "export.frames",
+          data: { acquire_count: 2, fingerprint: 99, id: "photo-1" },
+        },
+        {
+          description: "user photo vacation.jpg",
+          op: "db",
+          data: { filename: "vacation.jpg" },
+        },
+      ],
+    };
+
+    const scrubbed = scrubSentryTransaction(event);
+    expect(scrubbed?.user).toBeUndefined();
+    expect(scrubbed?.message).toBeUndefined();
+    expect(scrubbed?.breadcrumbs).toBeUndefined();
+    expect(scrubbed?.extra).toBeUndefined();
+    expect(scrubbed?.request).toEqual({ url: "/studio" });
+    expect(scrubbed?.tags).toEqual({ aspect: "portrait" });
+    expect(scrubbed?.contexts?.trace?.data).toEqual({ export_path: "offline" });
+    expect(scrubbed?.spans).toEqual([
+      {
+        description: "export.frames",
+        op: "export.frames",
+        data: { acquire_count: 2 },
+      },
+    ]);
+  });
+
+  it("drops unknown transactions and redacts unknown spans without returning null from beforeSendSpan", () => {
+    expect(scrubSentryTransaction({ transaction: "http.client", spans: [] })).toBeNull();
+    const span = scrubSentrySpan({
+      description: "LoadedPhoto vacation.jpg",
+      op: "custom",
+      data: { filename: "vacation.jpg", fingerprint: 5 },
+    });
+    expect(span).toEqual({
+      description: "redacted",
+      op: "redacted",
+      data: {},
+    });
+
+    const options = createSentryBrowserOptions({ dsn: DEFAULT_SENTRY_DSN, environment: "preview" });
+    expect(
+      options.beforeSendTransaction({
+        transaction: "preview.open",
+        tags: { entry: "initial", photoName: "a.jpg" },
+        spans: [{ description: "preview.resources", data: { timelines_ready: true, filename: "a.jpg" } }],
+      }),
+    ).toMatchObject({
+      transaction: "preview.open",
+      tags: { entry: "initial" },
+      spans: [{ description: "preview.resources", data: { timelines_ready: true } }],
+    });
+    expect(options.beforeSendSpan({ description: "media.rewind", data: { src: "blob:http://x/y" } })).toMatchObject({
+      description: "media.rewind",
+      data: {},
+    });
   });
 });
 

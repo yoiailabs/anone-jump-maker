@@ -63,7 +63,8 @@ import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
 import { HEIC_UNSUPPORTED_MESSAGE, loadPhotos, revokePhotos, selectImageFiles, type LoadedPhoto } from "./photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
-import { PREVIEW_FPS, startVideoPaintLoop } from "./playback.ts";
+import { PREVIEW_FPS, previewStartTrigger, startVideoPaintLoop } from "./playback.ts";
+import { studioTrace } from "./perf-trace.ts";
 import {
   formatPreviewClock,
   PREVIEW_MUTED_DEFAULT,
@@ -347,14 +348,32 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const paint = (time?: number, character?: CharacterFrame) => {
     if (!compositor || !timelines) return;
-    const started = benchFlags.bench ? performance.now() : 0;
+    const exporting = recording;
+    const watchPreview =
+      !exporting && (studioTrace.wantsPaintSample() || studioTrace.waitingForMovingPaint());
+    const timing = benchFlags.bench || watchPreview;
+    const started = timing ? performance.now() : 0;
     const cuts = timeline();
     compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize);
+    const duration = timing ? performance.now() - started : 0;
     if (benchFlags.bench) {
       if (paintClockStart === 0) paintClockStart = started;
-      paintSamples.push(performance.now() - started);
+      paintSamples.push(duration);
     }
     refreshBenchFlag();
+    if (exporting) return;
+    studioTrace.noteCompositePaint({
+      currentTime: video.currentTime,
+      paused: video.paused === true,
+      exporting: false,
+      templateReady: video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
+      hasPhotos: photos.length > 0,
+      timelinesReady: true,
+      compositorReady: true,
+    });
+    if (watchPreview && studioTrace.wantsPaintSample() && video.paused !== true) {
+      studioTrace.notePaintSample(duration);
+    }
   };
 
   const applyPhotoOrder = (ids: readonly string[]) => {
@@ -454,6 +473,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const stopPlayback = () => {
+    studioTrace.onPreviewStop("stop");
     playGen += 1;
     playbackBusy = false;
     playing = false;
@@ -464,6 +484,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const pausePlayback = () => {
+    studioTrace.onPreviewStop("stop");
     playGen += 1;
     playbackBusy = false;
     playing = false;
@@ -474,42 +495,79 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     refreshButtons();
   };
 
-  const startPlayback = async (fromStart: boolean) => {
+  const startPlayback = async (fromStart: boolean, entry: "user" | "aspect_resume" = "user") => {
     if (recording || playbackBusy || !canUse()) return;
     if (!fromStart && Date.now() < suppressPlayUntil) return;
     playbackBusy = true;
     const gen = (playGen += 1);
+    const durationAtStart = Number.isFinite(video.duration) ? video.duration : 0;
+    studioTrace.beginPreviewStart({
+      trigger: previewStartTrigger({
+        aspectResume: entry === "aspect_resume",
+        fromStart,
+        ended: video.ended,
+        currentTime: video.currentTime,
+        duration: durationAtStart,
+      }),
+      aspect: mode,
+      effect: swapStyle,
+      filter: imageFilter,
+      character_size: characterSize,
+      has_photos: photos.length > 0,
+    });
     try {
       await ensureTimelines();
-      if (gen !== playGen) return;
+      if (gen !== playGen) {
+        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        return;
+      }
       trackPreviewStart();
       applyPreviewMute();
-      if (
-        shouldSeekPreviewToStart({
-          fromStart,
-          ended: video.ended,
-          currentTime: video.currentTime,
-          duration: Number.isFinite(video.duration) ? video.duration : 0,
-        })
-      ) {
+      const rewindRequired = shouldSeekPreviewToStart({
+        fromStart,
+        ended: video.ended,
+        currentTime: video.currentTime,
+        duration: Number.isFinite(video.duration) ? video.duration : 0,
+      });
+      studioTrace.annotatePreviewStart({ rewind_required: rewindRequired });
+      if (rewindRequired) {
         compositor?.resetCharacter();
         await rewindCharacterVideo(video);
       }
       markCharacterVideoUsed(video);
-      if (gen !== playGen) return;
+      if (gen !== playGen) {
+        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        return;
+      }
       playing = true;
       clearFeedback("preview");
       refreshButtons();
       await startLoop();
-      if (gen !== playGen) return;
-      await video.play();
+      if (gen !== playGen) {
+        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        return;
+      }
+      const playSpan = studioTrace.openPreviewChild("preview.play_request");
+      try {
+        await video.play();
+        playSpan?.end("success");
+      } catch (error) {
+        playSpan?.end(error instanceof Error && error.name === "AbortError" ? "cancelled" : "error");
+        throw error;
+      }
       if (gen !== playGen) {
         video.pause();
+        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
         return;
       }
       video.blur();
+      studioTrace.armFirstMovingPaint(video.currentTime);
     } catch (error) {
-      if (gen !== playGen) return;
+      if (gen !== playGen) {
+        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        return;
+      }
+      studioTrace.finishPreviewStart("error");
       playing = false;
       previewTracked = false;
       haltLoop();
@@ -648,17 +706,22 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const armStudio = () => {
     beginTemplateVideoLoad(video);
+    const resources = studioTrace.openPreviewResourcesSpan();
     void ensureCompositor()
       .then(() => {
+        resources?.end("success");
         paint();
         syncSeek();
       })
       .catch((error: unknown) => {
+        resources?.end("error");
+        studioTrace.finishPreviewOpen("error");
         setErrorFeedback("preview", error, "statusPreviewOpenFailed");
       });
   };
 
   let communityMounted = false;
+  let studioEntered = false;
   let makerReactionsArmed = false;
   let activeView: AppView | null = null;
   let embedPaintGen = 0;
@@ -689,7 +752,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     communityView.hidden = view !== "community";
     document.title = documentTitleForView(view, locale);
     syncLanguageNav(root, locale, view);
+    const enteringStudio = view === "studio" && activeView !== "studio";
     if (view !== "studio") {
+      studioTrace.onLeaveStudio();
       stopPlayback();
       cancelExport();
       closeExportPanel();
@@ -731,6 +796,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       return;
     }
     if (view === "studio") {
+      if (enteringStudio) {
+        const entry = studioEntered ? "reopen" : "initial";
+        studioEntered = true;
+        studioTrace.beginPreviewOpen({
+          entry,
+          has_photos: photos.length > 0,
+          timelines_ready: timelines != null,
+          compositor_ready: compositor != null,
+          template_ready: video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
+        });
+      }
       armStudio();
       return;
     }
@@ -752,6 +828,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
+    studioTrace.onPreviewStop("settings");
     const inPreview = activeView === "studio";
     aspectResume = inPreview
       ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
@@ -779,6 +856,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applySwap = (next: SwapStyle) => {
     if (next === swapStyle) return;
+    studioTrace.onPreviewStop("settings");
     swapStyle = next;
     syncSwapRadios(swapStyle);
     paint();
@@ -786,6 +864,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applyFilter = (next: ImageFilter) => {
     if (next === imageFilter) return;
+    studioTrace.onPreviewStop("settings");
     imageFilter = next;
     syncFilterRadios(imageFilter);
     paint();
@@ -793,6 +872,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applyCharacterSize = (next: CharacterSize) => {
     if (next === characterSize) return;
+    studioTrace.onPreviewStop("settings");
     characterSize = next;
     syncCharacterRadios(characterSize);
     paint();
@@ -813,7 +893,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         await seekVideo(video, resume.time);
         paint();
         if (resume.play) {
-          await startPlayback(false);
+          await startPlayback(false, "aspect_resume");
         } else {
           refreshButtons();
         }
@@ -843,6 +923,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         if (gen !== playGen) video.pause();
       } catch (error) {
         if (gen !== playGen) return;
+        studioTrace.onPreviewStop("stop");
         playing = false;
         previewTracked = false;
         haltLoop();
@@ -1028,9 +1109,16 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     event.preventDefault();
     event.returnValue = "";
   });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") studioTrace.onHidden();
+  });
+  window.addEventListener("pagehide", (event) => {
+    studioTrace.onPageHide(event.persisted);
+  });
 
   const startSave = async () => {
     if (recording || sharingExport || photos.length === 0) return;
+    studioTrace.onGenerationStart();
     recording = true;
     stopPlayback();
     video.muted = false;
@@ -1044,21 +1132,38 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     trackEvent(GENERATE_START_EVENT, { count: photos.length });
     openExportPanel();
     try {
-      const cuts = (await ensureTimelines())[mode];
-      throwIfAborted(controller.signal);
-      const duration =
-        Number.isFinite(video.duration) && video.duration > 0 ? video.duration : cuts.duration;
-      const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
-      const comp = await ensureCompositor();
-      throwIfAborted(controller.signal);
-      comp.resetCharacter();
-      comp.setResolutionScale(1);
+      studioTrace.beginExport({
+        export_path: "offline",
+        aspect: mode,
+        effect: swapStyle,
+        filter: imageFilter,
+        character_size: characterSize,
+        has_photos: true,
+      });
+      const prepared = await studioTrace.withExportChild("export.prepare", async () => {
+        const cuts = (await ensureTimelines())[mode];
+        throwIfAborted(controller.signal);
+        const duration =
+          Number.isFinite(video.duration) && video.duration > 0 ? video.duration : cuts.duration;
+        const fps = cuts.fps && cuts.fps > 0 ? cuts.fps : EXPORT_FPS;
+        const comp = await ensureCompositor();
+        throwIfAborted(controller.signal);
+        comp.resetCharacter();
+        comp.setResolutionScale(1);
+        studioTrace.annotateExport({
+          width: comp.canvas.width,
+          height: comp.canvas.height,
+          fps,
+          duration_sec: Math.round(duration * 1000) / 1000,
+        });
+        return { duration, fps, comp };
+      });
       const result = await exportJumpVideo({
         video,
-        canvas: comp.canvas,
+        canvas: prepared.comp.canvas,
         draw: paint,
-        duration,
-        fps,
+        duration: prepared.duration,
+        fps: prepared.fps,
         signal: controller.signal,
         onProgress: (progress) => {
           setExportProgress(exportProgressPercent(progress.current, progress.total));
@@ -1068,16 +1173,20 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       pendingExport = { blob: result.blob, filename, mime: result.mime, extension: result.extension };
       exportAbort = null;
       showExportReady();
+      studioTrace.finishExport("success");
       if (exportPanel.dataset.open === "true") downloadExportBtn.focus({ preventScroll: true });
       revealExportPanel();
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) {
+        studioTrace.finishExport("cancelled");
         trackEvent(GENERATE_CANCEL_EVENT);
       } else {
+        studioTrace.finishExport("error");
         trackEvent(GENERATE_FAIL_EVENT, { reason: generateFailReason(error) });
         setErrorFeedback("save", error, "statusSaveFailed");
       }
     } finally {
+      studioTrace.finishExportIfOpen("error");
       exportAbort = null;
       compositor?.setResolutionScale(PREVIEW_RESOLUTION_SCALE);
       recording = false;
