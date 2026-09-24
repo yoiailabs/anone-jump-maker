@@ -16,7 +16,6 @@ const { title, description, url, image, imageAlt, siteName, lang, ogLocale, view
 const alternateLocales = isJapaneseOnlyView(view) ? (["ja"] as const) : LOCALES;
 const shortName = t(lang, "pwaShortName");
 const fontHref = googleFontsHref(lang);
-const activateStylesheet = "this.media='all'";
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -96,12 +95,10 @@ const jsonLd = JSON.stringify({
     <script type="application/ld+json" set:html={jsonLd} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {view === "maker" ? <link rel="preload" as="image" href="/jump-loop-still.png" /> : null}
+    <!-- Cloudflare Fonts は通常の stylesheet link だけを消してインライン化する。media=print や noscript の複製は残るので使わない。 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href={fontHref} media="print" onload={activateStylesheet} />
-    <noscript>
-      <link rel="stylesheet" href={fontHref} />
-    </noscript>
+    <link rel="stylesheet" href={fontHref} />
     <title>{title}</title>
   </head>
   <body>
