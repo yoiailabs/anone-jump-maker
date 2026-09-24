@@ -501,7 +501,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     playbackBusy = true;
     const gen = (playGen += 1);
     const durationAtStart = Number.isFinite(video.duration) ? video.duration : 0;
-    studioTrace.beginPreviewStart({
+    const attempt = studioTrace.beginPreviewStart({
       trigger: previewStartTrigger({
         aspectResume: entry === "aspect_resume",
         fromStart,
@@ -518,7 +518,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     try {
       await ensureTimelines();
       if (gen !== playGen) {
-        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        studioTrace.finishPreviewStartIfCurrent(attempt, "superseded", { end_reason: "superseded" });
         return;
       }
       trackPreviewStart();
@@ -536,7 +536,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       }
       markCharacterVideoUsed(video);
       if (gen !== playGen) {
-        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        studioTrace.finishPreviewStartIfCurrent(attempt, "superseded", { end_reason: "superseded" });
         return;
       }
       playing = true;
@@ -544,7 +544,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       refreshButtons();
       await startLoop();
       if (gen !== playGen) {
-        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        studioTrace.finishPreviewStartIfCurrent(attempt, "superseded", { end_reason: "superseded" });
         return;
       }
       const playSpan = studioTrace.openPreviewChild("preview.play_request");
@@ -557,17 +557,17 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       }
       if (gen !== playGen) {
         video.pause();
-        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        studioTrace.finishPreviewStartIfCurrent(attempt, "superseded", { end_reason: "superseded" });
         return;
       }
       video.blur();
       studioTrace.armFirstMovingPaint(video.currentTime);
     } catch (error) {
       if (gen !== playGen) {
-        studioTrace.finishPreviewStart("superseded", { end_reason: "superseded" });
+        studioTrace.finishPreviewStartIfCurrent(attempt, "superseded", { end_reason: "superseded" });
         return;
       }
-      studioTrace.finishPreviewStart("error");
+      studioTrace.finishPreviewStartIfCurrent(attempt, "error");
       playing = false;
       previewTracked = false;
       haltLoop();

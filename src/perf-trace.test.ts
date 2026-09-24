@@ -11,7 +11,7 @@ type RecordedSpan = {
   ended: boolean;
 };
 
-function installFakeTracing(): RecordedSpan[] {
+function installFakeTracing(recording: (name: string) => boolean = () => true): RecordedSpan[] {
   const records: RecordedSpan[] = [];
   const api: TracingApi = {
     getClient: () => ({}),
@@ -43,7 +43,7 @@ function installFakeTracing(): RecordedSpan[] {
         end() {
           record.ended = true;
         },
-        isRecording: () => true,
+        isRecording: () => recording(options.name),
       };
       return span;
     },
@@ -169,6 +169,48 @@ describe("studio transactions", () => {
     });
     expect(records.find((span) => span.name === "preview.render_window")?.attributes.window_complete).toBe(true);
     expect(studioTrace.wantsPaintSample()).toBe(false);
+  });
+
+  it("arms the playback window even when preview.start was not sampled", () => {
+    const records = installFakeTracing((name) => name !== "preview.start");
+    studioTrace.beginPreviewStart({ trigger: "play" });
+    const start = records.find((span) => span.name === "preview.start");
+    expect(start?.ended).toBe(true);
+    expect(start?.attributes.outcome).toBeUndefined();
+
+    studioTrace.armFirstMovingPaint(0);
+    expect(studioTrace.waitingForMovingPaint()).toBe(true);
+    studioTrace.noteCompositePaint({ ...readyPaint, currentTime: 0, paused: false });
+    expect(records.some((span) => span.name === "preview.playback")).toBe(false);
+
+    studioTrace.noteCompositePaint({ ...readyPaint, currentTime: 0.05, paused: false });
+    expect(studioTrace.wantsPaintSample()).toBe(true);
+    const playback = records.find((span) => span.name === "preview.playback");
+    expect(playback?.ended).toBe(false);
+    expect(playback?.forceTransaction).toBe(true);
+    expect(playback?.parent).toBeNull();
+    expect(records.find((span) => span.name === "preview.render_window")?.parent).toBe("preview.playback");
+    expect(records.some((span) => span.name === "preview.first_moving_paint")).toBe(false);
+  });
+
+  it("does not finish a newer preview.start from a stale attempt", () => {
+    const records = installFakeTracing();
+    const stale = studioTrace.beginPreviewStart({ trigger: "play" });
+    const current = studioTrace.beginPreviewStart({ trigger: "resume" });
+    studioTrace.finishPreviewStartIfCurrent(stale, "superseded", { end_reason: "superseded" });
+
+    const starts = records.filter((span) => span.name === "preview.start");
+    expect(starts).toHaveLength(2);
+    expect(starts[0]?.ended).toBe(true);
+    expect(starts[0]?.attributes.outcome).toBe("superseded");
+    expect(starts[1]?.ended).toBe(false);
+
+    studioTrace.armFirstMovingPaint(0);
+    studioTrace.noteCompositePaint({ ...readyPaint, currentTime: 0.05, paused: false });
+    expect(starts[1]?.attributes.outcome).toBe("success");
+    expect(records.find((span) => span.name === "preview.first_moving_paint")?.parent).toBe("preview.start");
+    expect(records.some((span) => span.name === "preview.playback")).toBe(true);
+    expect(current.id).not.toBe(stale.id);
   });
 
   it("finishes open roots on leave, hide, and export without a share-sheet span", () => {
