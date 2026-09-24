@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
+import {
+  PREVIEW_RENDER_WINDOW_MS,
+  readPreviewBenchFlags,
+  shouldRecordPreviewPaintSample,
+  summarizePaintSamples,
+} from "./preview-bench.ts";
 import { describeKeying } from "./compositor.ts";
 import { isSoftwareWebGLRenderer } from "./keying-gpu.ts";
 
@@ -19,6 +24,16 @@ describe("summarizePaintSamples", () => {
   it("returns zeros when there are no samples", () => {
     expect(summarizePaintSamples([], 0, 24).n).toBe(0);
     expect(summarizePaintSamples([], 0, 24).achievedFps).toBe(0);
+  });
+});
+
+describe("preview render window", () => {
+  it("observes five seconds of moving preview paints and skips paused or export draws", () => {
+    expect(PREVIEW_RENDER_WINDOW_MS).toBe(5000);
+    expect(shouldRecordPreviewPaintSample({ windowOpen: true, paused: false, exporting: false })).toBe(true);
+    expect(shouldRecordPreviewPaintSample({ windowOpen: true, paused: true, exporting: false })).toBe(false);
+    expect(shouldRecordPreviewPaintSample({ windowOpen: true, paused: false, exporting: true })).toBe(false);
+    expect(shouldRecordPreviewPaintSample({ windowOpen: false, paused: false, exporting: false })).toBe(false);
   });
 });
 

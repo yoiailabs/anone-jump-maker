@@ -4,6 +4,8 @@ import {
   PAINT_CLOCK,
   PREVIEW_FPS,
   PREVIEW_FRAME_INTERVAL,
+  isFirstMovingCompositePaint,
+  previewStartTrigger,
   shouldPaintPreviewFrame,
   startVideoPaintLoop,
   waitForPresentedFrame,
@@ -260,6 +262,35 @@ describe("startVideoPaintLoop", () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe("preview start measurement", () => {
+  it("names play, resume, restart, and aspect resume without treating a paused frame as moving", () => {
+    expect(
+      previewStartTrigger({ aspectResume: false, fromStart: false, ended: false, currentTime: 0, duration: 8 }),
+    ).toBe("play");
+    expect(
+      previewStartTrigger({ aspectResume: false, fromStart: false, ended: false, currentTime: 2.4, duration: 8 }),
+    ).toBe("resume");
+    expect(
+      previewStartTrigger({ aspectResume: false, fromStart: false, ended: true, currentTime: 8, duration: 8 }),
+    ).toBe("restart");
+    expect(
+      previewStartTrigger({ aspectResume: true, fromStart: false, ended: false, currentTime: 2, duration: 8 }),
+    ).toBe("aspect_resume");
+    expect(
+      isFirstMovingCompositePaint({ anchorTime: 1, currentTime: 1, paused: true, exporting: false }),
+    ).toBe(false);
+    expect(
+      isFirstMovingCompositePaint({ anchorTime: 1, currentTime: 1, paused: false, exporting: false }),
+    ).toBe(false);
+    expect(
+      isFirstMovingCompositePaint({ anchorTime: 1, currentTime: 1.2, paused: false, exporting: true }),
+    ).toBe(false);
+    expect(
+      isFirstMovingCompositePaint({ anchorTime: 1, currentTime: 1.04, paused: false, exporting: false }),
+    ).toBe(true);
   });
 });
 

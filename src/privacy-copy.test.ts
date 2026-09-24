@@ -57,8 +57,11 @@ describe("privacy policy copy", () => {
     expect(text).toContain("X／X Corp.");
     expect(text).toContain("運営名：Yoiailabs（個人制作者）");
     expect(text).toContain("最終改定日");
-    expect(privacyDocument("ja").revisedValue).toBe("2026年9月22日");
-    expect(privacyDocument("ja").effectiveValue).toBe("2026年9月22日");
+    expect(privacyDocument("ja").revisedValue).toBe("2026年9月24日");
+    expect(privacyDocument("ja").effectiveValue).toBe("2026年9月24日");
+    expect(text).toContain("プレビューと保存の性能計測");
+    expect(text).toContain("写真のファイル名や画像そのものは送らず");
+    expect(text).toContain("診断情報や通信に必要な情報まで全て送信しないという意味ではありません");
     expect(privacyDocument("en")).toEqual(privacyDocument("ja"));
     expect(privacyDocument("ko")).toEqual(privacyDocument("ja"));
     expect(privacyDocument("zh")).toEqual(privacyDocument("ja"));

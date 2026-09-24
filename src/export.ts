@@ -1,4 +1,5 @@
 import type { CharacterFrame } from "./compositor.ts";
+import { studioTrace } from "./perf-trace.ts";
 import { waitForPresentedFrame } from "./playback.ts";
 
 export const EXPORT_FPS = 30;
@@ -127,13 +128,20 @@ export function markCharacterVideoUsed(video: { dataset: { characterArmed?: stri
  * すでに末尾まで進んだ要素は load し直し、最終ポーズの画素を捨てる。
  */
 export async function rewindCharacterVideo(video: HTMLVideoElement): Promise<void> {
-  video.pause();
-  const src = video.currentSrc || video.src;
-  if (shouldReloadCharacterVideo(video) && src) {
-    video.dataset.characterArmed = "";
-    await reloadCharacterVideo(video, src);
+  const span = studioTrace.openRewindSpan();
+  try {
+    video.pause();
+    const src = video.currentSrc || video.src;
+    if (shouldReloadCharacterVideo(video) && src) {
+      video.dataset.characterArmed = "";
+      await reloadCharacterVideo(video, src);
+    }
+    await seekVideo(video, 0, { waitForPresented: true });
+    span?.end("success");
+  } catch (error) {
+    span?.end(error instanceof Error && error.name === "AbortError" ? "cancelled" : "error");
+    throw error;
   }
-  await seekVideo(video, 0, { waitForPresented: true });
 }
 
 async function reloadCharacterVideo(video: HTMLVideoElement, src: string): Promise<void> {
@@ -377,13 +385,23 @@ export async function exportJumpVideo(options: {
   if (!hasWebCodecsVideoEncoder()) {
     throw new Error(UNSUPPORTED_EXPORT_MESSAGE);
   }
-  const { pickOfflinePlan, encodeOffline } = await import("./offline-encode.ts");
+  const { pickOfflinePlan, encodeOffline } = await studioTrace.withExportChild("export.module_load", () =>
+    import("./offline-encode.ts"),
+  );
   throwIfAborted(options.signal);
-  const plan = await pickOfflinePlan(options.canvas.width, options.canvas.height);
+  const plan = await studioTrace.withExportChild("export.plan", () =>
+    pickOfflinePlan(options.canvas.width, options.canvas.height),
+  );
   throwIfAborted(options.signal);
   if (!plan) {
     throw new Error(UNSUPPORTED_EXPORT_MESSAGE);
   }
+  studioTrace.annotateExport({
+    container: plan.container,
+    video_codec: plan.videoCodec,
+    width: options.canvas.width,
+    height: options.canvas.height,
+  });
   return encodeOffline({ ...options, plan });
 }
 

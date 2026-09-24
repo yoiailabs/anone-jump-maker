@@ -40,6 +40,7 @@ import {
   type SwapFx,
   type SwapStyle,
 } from "./layout.ts";
+import { composeDetailActive, studioTrace, traceChildSync, traceCompose } from "./perf-trace.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import { DEFAULT_LOCALE, songCreditLine, type Locale } from "./i18n.ts";
 import { photoForSlot, slotForTime, type SlotTimeline } from "./timeline.ts";
@@ -133,7 +134,17 @@ export function createCompositor(options?: {
   createKeyer?: () => GpuKeyer | null;
   locale?: Locale;
 }): Compositor {
-  let gpuKeyer = (options?.createKeyer ?? createGpuKeyer)();
+  const measureKeyer = () => {
+    const create = options?.createKeyer ?? createGpuKeyer;
+    const parent = studioTrace.keyerParent();
+    if (!parent) return create();
+    return traceChildSync(parent, "compositor.keyer_init", (span) => {
+      const created = create();
+      span?.setAttribute("keying", pickKeyingBackend(created));
+      return created;
+    });
+  };
+  let gpuKeyer = measureKeyer();
   let keying = pickKeyingBackend(gpuKeyer);
   let keyingDebug = describeKeying(keying, gpuKeyer?.debug);
   let mode: AspectMode = DEFAULT_ASPECT;
@@ -233,7 +244,12 @@ export function createCompositor(options?: {
       imageFilter,
       characterSize,
     );
-    if (usesBlurBackdrop(mode)) {
+    if (composeDetailActive()) {
+      traceCompose("compose.output", () => {
+        if (usesBlurBackdrop(mode)) paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
+        else paintLandscape(ctx, main, w, h);
+      });
+    } else if (usesBlurBackdrop(mode)) {
       paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
       paintLandscape(ctx, main, w, h);
@@ -270,7 +286,7 @@ export function createCompositor(options?: {
     },
     resetCharacter() {
       dropGpuKeyer();
-      gpuKeyer = (options?.createKeyer ?? createGpuKeyer)();
+      gpuKeyer = measureKeyer();
       keying = pickKeyingBackend(gpuKeyer);
       keyingDebug = describeKeying(keying, gpuKeyer?.debug);
     },
@@ -339,22 +355,41 @@ function composeMain(
   mainCtx.fillRect(0, 0, mw, mh);
 
   if (plate) {
-    drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
-    applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
+    if (composeDetailActive()) {
+      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, plate, fx, style, mw, mh));
+      traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
+    } else {
+      drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
+      applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
+    }
   }
 
   if (character) {
-    drawCharacter(mainCtx, surfaces, character, mw, mh, mode, characterSize);
+    if (composeDetailActive()) {
+      traceCompose("compose.character", () => drawCharacter(mainCtx, surfaces, character, mw, mh, mode, characterSize));
+    } else {
+      drawCharacter(mainCtx, surfaces, character, mw, mh, mode, characterSize);
+    }
   }
 
-  if (hasFrameFx(fx)) {
-    applyFrameFx(main, mainCtx, surfaces, fx);
-  }
-
-  if (fx.flashGlobal > 0.002) {
-    resetCtx(mainCtx);
-    mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flashGlobal})`;
-    mainCtx.fillRect(0, 0, mw, mh);
+  if (composeDetailActive() && (hasFrameFx(fx) || fx.flashGlobal > 0.002)) {
+    traceCompose("compose.fx", () => {
+      if (hasFrameFx(fx)) applyFrameFx(main, mainCtx, surfaces, fx);
+      if (fx.flashGlobal > 0.002) {
+        resetCtx(mainCtx);
+        mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flashGlobal})`;
+        mainCtx.fillRect(0, 0, mw, mh);
+      }
+    });
+  } else {
+    if (hasFrameFx(fx)) {
+      applyFrameFx(main, mainCtx, surfaces, fx);
+    }
+    if (fx.flashGlobal > 0.002) {
+      resetCtx(mainCtx);
+      mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flashGlobal})`;
+      mainCtx.fillRect(0, 0, mw, mh);
+    }
   }
 }
 

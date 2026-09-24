@@ -108,6 +108,41 @@ export type PresentedFrameWait = {
 /** Half a 30fps frame. Tight enough to reject the previous pose, loose enough for snap. */
 export const PRESENTED_FRAME_TOLERANCE = 1 / 60;
 
+/** Media time must move at least this far after `play()` before a composite paint counts as moving. */
+export const MOVING_PAINT_EPSILON_SEC = 0.001;
+
+export type PreviewStartTrigger = "play" | "resume" | "restart" | "aspect_resume";
+
+/** Why a guarded `startPlayback()` ran. Auto-loop does not call this. */
+export function previewStartTrigger(input: {
+  aspectResume: boolean;
+  fromStart: boolean;
+  ended: boolean;
+  currentTime: number;
+  duration: number;
+}): PreviewStartTrigger {
+  if (input.aspectResume) return "aspect_resume";
+  if (input.fromStart || input.ended) return "restart";
+  if (input.duration > 0 && input.currentTime >= input.duration - 0.05) return "restart";
+  if (input.currentTime > 0.05) return "resume";
+  return "play";
+}
+
+/**
+ * First composite paint after a successful `play()` whose media clock moved.
+ * The paint loop also draws the paused frame before `play()`; that one does not count.
+ */
+export function isFirstMovingCompositePaint(input: {
+  anchorTime: number;
+  currentTime: number;
+  paused: boolean;
+  exporting: boolean;
+}): boolean {
+  if (input.exporting || input.paused) return false;
+  if (!Number.isFinite(input.anchorTime) || !Number.isFinite(input.currentTime)) return false;
+  return input.currentTime > input.anchorTime + MOVING_PAINT_EPSILON_SEC;
+}
+
 type VideoFrameCallbackMetadata = {
   mediaTime?: number;
 };
