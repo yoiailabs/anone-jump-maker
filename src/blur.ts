@@ -1,3 +1,5 @@
+import { ensureCanvasSize } from "./canvas-size.ts";
+
 /**
  * iOS / Safari は Canvas2D の `filter` が無効（caniuse: disabled by default）。
  * 縮小バッファへ箱型ぼかしを掛けてから戻す。
@@ -44,8 +46,7 @@ export function applySoftwareBlur(
   const down = softwareBlurDownscale(px);
   const sw = Math.max(8, Math.round(w * down));
   const sh = Math.max(8, Math.round(h * down));
-  scratch.width = sw;
-  scratch.height = sh;
+  ensureCanvasSize(scratch, sw, sh);
   scratchCtx.setTransform(1, 0, 0, 1, 0, 0);
   scratchCtx.filter = "none";
   scratchCtx.globalAlpha = 1;

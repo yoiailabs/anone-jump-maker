@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { beginTemplateVideoLoad, createTemplateVideo } from "./app.ts";
 import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
-import { createCompositor } from "./compositor.ts";
+import { createCompositor, type CharacterFrame, type Compositor } from "./compositor.ts";
 import {
   EXPORT_FPS,
   exportJumpVideo,
@@ -119,6 +119,36 @@ describe("createCompositor", () => {
     } finally {
       photo.bitmap.close();
       compositor.destroy();
+    }
+  });
+
+  it("reuses intermediate buffers without changing a later frame", async () => {
+    const red = await makePhoto("#e24a3d");
+    const blue = await makePhoto("#2450d0");
+    const opaque = characterPlate("#111111");
+    const keyedAway = characterPlate("#20b836");
+    const video = document.createElement("video");
+    const timeline = { slots: [0, 0.5] };
+    const first = { time: 0.5, photo: red, character: opaque };
+    const second = { time: 0.5 + 0.5 / 30, photo: blue, character: keyedAway };
+    const reused = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+    const fresh = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+    const resizeWrites = trackCanvasResizes();
+    try {
+      reused.setAspect("portrait");
+      fresh.setAspect("portrait");
+      drawPlate(reused, video, timeline, first);
+      resizeWrites.start();
+      drawPlate(reused, video, timeline, second);
+      expect(resizeWrites.count()).toBe(0);
+      drawPlate(fresh, video, timeline, second);
+      expect(mismatchCount(reused.canvas, fresh.canvas)).toBe(0);
+    } finally {
+      resizeWrites.stop();
+      red.bitmap.close();
+      blue.bitmap.close();
+      reused.destroy();
+      fresh.destroy();
     }
   });
 });
@@ -243,6 +273,87 @@ describe("seekVideo / exportJumpVideo", () => {
     expect([...ctx!.getImageData(0, 0, 1, 1).data]).toEqual([7, 8, 9, 255]);
   });
 });
+
+function characterPlate(color: string): CharacterFrame {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1280;
+  canvas.height = 720;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas");
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return { source: canvas, width: canvas.width, height: canvas.height };
+}
+
+function drawPlate(
+  compositor: Compositor,
+  video: HTMLVideoElement,
+  timeline: { slots: number[] },
+  frame: { time: number; photo: LoadedPhoto; character: CharacterFrame },
+): void {
+  compositor.draw(
+    video,
+    [frame.photo],
+    timeline,
+    frame.time,
+    "zoom",
+    "blur-weak",
+    frame.character,
+    "standard",
+  );
+}
+
+function mismatchCount(a: HTMLCanvasElement, b: HTMLCanvasElement): number {
+  const aCtx = a.getContext("2d");
+  const bCtx = b.getContext("2d");
+  if (!aCtx || !bCtx) throw new Error("canvas");
+  const pa = aCtx.getImageData(0, 0, a.width, a.height).data;
+  const pb = bCtx.getImageData(0, 0, b.width, b.height).data;
+  if (pa.length !== pb.length) return Math.max(pa.length, pb.length);
+  let mismatches = 0;
+  for (let i = 0; i < pa.length; i += 1) {
+    if (pa[i] !== pb[i]) mismatches += 1;
+  }
+  return mismatches;
+}
+
+function trackCanvasResizes(): { start: () => void; stop: () => void; count: () => number } {
+  const proto = HTMLCanvasElement.prototype;
+  const widthDesc = Object.getOwnPropertyDescriptor(proto, "width");
+  const heightDesc = Object.getOwnPropertyDescriptor(proto, "height");
+  if (!widthDesc?.set || !widthDesc.get || !heightDesc?.set || !heightDesc.get) {
+    throw new Error("canvas size accessors are not patchable");
+  }
+  let writes = 0;
+  let tracking = false;
+  const wrap = (name: "width" | "height", desc: PropertyDescriptor) => {
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      enumerable: desc.enumerable ?? true,
+      get() {
+        return desc.get!.call(this);
+      },
+      set(value: number) {
+        if (tracking) writes += 1;
+        desc.set!.call(this, value);
+      },
+    });
+  };
+  return {
+    start() {
+      writes = 0;
+      tracking = true;
+      wrap("width", widthDesc);
+      wrap("height", heightDesc);
+    },
+    stop() {
+      tracking = false;
+      Object.defineProperty(proto, "width", widthDesc);
+      Object.defineProperty(proto, "height", heightDesc);
+    },
+    count: () => writes,
+  };
+}
 
 async function makePhoto(color: string): Promise<LoadedPhoto> {
   const canvas = document.createElement("canvas");

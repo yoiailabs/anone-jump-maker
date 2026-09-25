@@ -346,11 +346,9 @@ function composeMain(
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
 ): void {
-  main.width = Math.max(1, Math.round(panel.w));
-  main.height = Math.max(1, Math.round(panel.h));
-  const mw = main.width;
-  const mh = main.height;
-  resetCtx(mainCtx);
+  const mw = Math.max(1, Math.round(panel.w));
+  const mh = Math.max(1, Math.round(panel.h));
+  sizeSurface(main, mainCtx, mw, mh);
   mainCtx.fillStyle = "#0a0806";
   mainCtx.fillRect(0, 0, mw, mh);
 
@@ -398,6 +396,31 @@ function resetCtx(ctx: CanvasRenderingContext2D): void {
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
+}
+
+/**
+ * 同じ寸法への width/height 代入はビットマップを破棄して確保し直す。
+ * 寸法が変わったときだけ張り替え、変わらないときは描画状態だけ初期化する。
+ */
+function sizeSurface(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+): void {
+  ensureCanvasSize(canvas, width, height);
+  resetCtx(ctx);
+}
+
+/** 前フレームの画素が残ると波・ブラー・縁が混ざる面は、再利用時も消去する。 */
+function sizeSurfaceCleared(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+): void {
+  sizeSurface(canvas, ctx, width, height);
+  ctx.clearRect(0, 0, width, height);
 }
 
 /** 写真の cover 矩形。`fx.scale` は基準 cover に対する倍率、`fx.dy` はパネル高さ比の縦ずれ。 */
@@ -490,9 +513,7 @@ function keyCharacterBand(
   }
 
   const { keyed, keyedCtx } = surfaces;
-  keyed.width = mw;
-  keyed.height = mh;
-  keyedCtx.clearRect(0, 0, mw, mh);
+  sizeSurfaceCleared(keyed, keyedCtx, mw, mh);
   keyedCtx.drawImage(character.source, band.x, band.y, band.w, band.h, 0, 0, mw, mh);
   const image = keyedCtx.getImageData(0, 0, mw, mh);
   keyImageData(image);
@@ -509,9 +530,7 @@ function paintCharacterOverlay(
   mode: AspectMode,
   characterSize: CharacterSize,
 ): void {
-  halo.width = mw;
-  halo.height = mh;
-  haloCtx.clearRect(0, 0, mw, mh);
+  sizeSurfaceCleared(halo, haloCtx, mw, mh);
   haloCtx.globalCompositeOperation = "source-over";
   haloCtx.drawImage(keyedSource, 0, 0);
   haloCtx.globalCompositeOperation = "source-in";
@@ -556,12 +575,8 @@ function applyFrameFx(
 ): void {
   const w = main.width;
   const h = main.height;
-  fxA.width = w;
-  fxA.height = h;
-  fxB.width = w;
-  fxB.height = h;
-  resetCtx(fxACtx);
-  resetCtx(fxBCtx);
+  sizeSurfaceCleared(fxA, fxACtx, w, h);
+  sizeSurfaceCleared(fxB, fxBCtx, w, h);
 
   // 1) 波打ち: 行帯ごとに横へずらしながら main → fxA
   const waveAmp = fx.wave * w;
@@ -673,10 +688,9 @@ function paintOutput(
   ctx.fillStyle = "#0a0806";
   ctx.fillRect(0, 0, w, h);
 
-  scratch.width = Math.max(40, Math.round(w * 0.28));
-  scratch.height = Math.max(40, Math.round(h * 0.28));
-  const sw = scratch.width;
-  const sh = scratch.height;
+  const sw = Math.max(40, Math.round(w * 0.28));
+  const sh = Math.max(40, Math.round(h * 0.28));
+  sizeSurface(scratch, scratchCtx, sw, sh);
   scratchCtx.fillStyle = "#0a0806";
   scratchCtx.fillRect(0, 0, sw, sh);
   const blurDest = coverDest(main.width, main.height, sw, sh, { scale: BLUR_COVER_SCALE });

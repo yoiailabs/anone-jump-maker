@@ -14,11 +14,14 @@ import {
   PHOTO_UPLOAD_PATH,
   SONG_CREDIT,
   blurTapCount,
+  createCompositor,
   plateDest,
   resolveCharacterSource,
   songCreditFontSize,
   songCreditLayout,
+  type CharacterFrame,
 } from "./compositor.ts";
+import type { LoadedPhoto } from "./photos.ts";
 import {
   CHAR_SCALE,
   DEFAULT_CHARACTER_SIZE,
@@ -265,3 +268,160 @@ describe("character size draw path", () => {
     expect(appSrc).toContain("applyCharacterSize");
   });
 });
+
+describe("intermediate canvas buffers", () => {
+  it("resizes compose surfaces only when the bitmap size changes, and still clears retained FX buffers", () => {
+    const previousDocument = globalThis.document;
+    const canvases: FakeCanvas[] = [];
+    Object.assign(globalThis, {
+      document: {
+        createElement(tag: string) {
+          if (tag !== "canvas") throw new Error(`unexpected element ${tag}`);
+          const canvas = new FakeCanvas();
+          canvases.push(canvas);
+          return canvas;
+        },
+      },
+    });
+    const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+    try {
+      const [output, main, keyed, scratch, halo, fxA, fxB, blur] = canvases;
+      expect(canvases).toHaveLength(8);
+      expect(output).toBeDefined();
+      expect(main).toBeDefined();
+      expect(keyed).toBeDefined();
+      expect(scratch).toBeDefined();
+      expect(halo).toBeDefined();
+      expect(fxA).toBeDefined();
+      expect(fxB).toBeDefined();
+      expect(blur).toBeDefined();
+
+      compositor.setAspect("portrait");
+      const draw = (time: number) =>
+        compositor.draw(fakeVideo(), [fakePhoto()], { slots: [0, 0.5] }, time, "zoom", "blur-weak", fakeCharacter());
+      draw(0.5);
+
+      expect(main!.width).toBe(608);
+      expect(main!.height).toBe(342);
+      expect(keyed!.width).toBe(608);
+      expect(halo!.width).toBe(608);
+      expect(fxA!.width).toBe(608);
+      expect(fxB!.height).toBe(342);
+      expect(scratch!.width).toBeGreaterThan(40);
+      expect(blur!.width).toBeGreaterThan(8);
+      for (const surface of [main, keyed, scratch, halo, fxA, fxB, blur]) {
+        expect(surface!.widthWrites).toBe(1);
+        expect(surface!.heightWrites).toBe(1);
+      }
+
+      const held = canvases.map((canvas) => ({
+        widthWrites: canvas.widthWrites,
+        heightWrites: canvas.heightWrites,
+        clears: canvas.clears,
+      }));
+      draw(0.5 + 0.5 / 30);
+      canvases.forEach((canvas, index) => {
+        expect(canvas.widthWrites).toBe(held[index]!.widthWrites);
+        expect(canvas.heightWrites).toBe(held[index]!.heightWrites);
+      });
+      expect(keyed!.clears).toBe(held[2]!.clears + 1);
+      expect(halo!.clears).toBe(held[4]!.clears + 1);
+      expect(fxA!.clears).toBe(held[5]!.clears + 1);
+      expect(fxB!.clears).toBe(held[6]!.clears + 1);
+
+      compositor.setAspect("landscape");
+      draw(0.5);
+      expect(main!.width).toBe(OUTPUTS.landscape.width);
+      expect(main!.height).toBe(OUTPUTS.landscape.height);
+      expect(main!.widthWrites).toBe(2);
+      expect(fxA!.widthWrites).toBe(2);
+      expect(blur!.widthWrites).toBe(2);
+      expect(output!.width).toBe(OUTPUTS.landscape.width);
+    } finally {
+      compositor.destroy();
+      if (previousDocument === undefined) Reflect.deleteProperty(globalThis, "document");
+      else globalThis.document = previousDocument;
+    }
+  });
+});
+
+class FakeCanvas {
+  className = "";
+  widthWrites = 0;
+  heightWrites = 0;
+  clears = 0;
+  private w = 0;
+  private h = 0;
+  private readonly ctx: CanvasRenderingContext2D;
+
+  constructor() {
+    const canvas = this;
+    this.ctx = new Proxy({} as Record<PropertyKey, unknown>, {
+      get(_target, prop) {
+        if (prop === "canvas") return canvas;
+        if (prop === "measureText") return () => ({ width: 8 });
+        if (prop === "getImageData") {
+          return (_x: number, _y: number, width: number, height: number) => ({
+            data: new Uint8ClampedArray(Math.max(0, width) * Math.max(0, height) * 4),
+            width,
+            height,
+          });
+        }
+        if (prop === "clearRect") {
+          return () => {
+            canvas.clears += 1;
+          };
+        }
+        return () => {};
+      },
+      set() {
+        return true;
+      },
+    }) as unknown as CanvasRenderingContext2D;
+  }
+
+  get width(): number {
+    return this.w;
+  }
+
+  set width(value: number) {
+    this.widthWrites += 1;
+    this.w = value;
+  }
+
+  get height(): number {
+    return this.h;
+  }
+
+  set height(value: number) {
+    this.heightWrites += 1;
+    this.h = value;
+  }
+
+  setAttribute(): void {}
+
+  getContext(): CanvasRenderingContext2D {
+    return this.ctx;
+  }
+}
+
+function fakeVideo(): HTMLVideoElement {
+  return { currentTime: 0 } as HTMLVideoElement;
+}
+
+function fakePhoto(): LoadedPhoto {
+  return {
+    id: "plate",
+    name: "plate.png",
+    bitmap: { width: 64, height: 40, close() {} } as ImageBitmap,
+    thumbUrl: "",
+  };
+}
+
+function fakeCharacter(): CharacterFrame {
+  return {
+    source: { width: 1280, height: 720 } as CanvasImageSource,
+    width: 1280,
+    height: 720,
+  };
+}
