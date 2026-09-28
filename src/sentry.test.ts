@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_SENTRY_DSN,
@@ -12,11 +13,18 @@ import {
   resolveTraceSampleRate,
   scrubSentryEvent,
   scrubSentrySpan,
-  scrubSentryTransaction,
   sentryEnvironment,
   sentryEventHasExpectedUxError,
   traceSampleRateForEnvironment,
 } from "./sentry.ts";
+
+const requireFromSentry = createRequire(import.meta.resolve("@sentry/browser"));
+const { shouldIgnoreSpan } = requireFromSentry("@sentry/core") as {
+  shouldIgnoreSpan: (
+    span: { description?: string; op?: string; attributes?: Record<string, unknown> },
+    ignoreSpans: ReadonlyArray<string | RegExp | Record<string, unknown>>,
+  ) => boolean;
+};
 import { UNSUPPORTED_EXPORT_MESSAGE } from "./export.ts";
 import { MESSAGES } from "./messages.ts";
 import { HEIC_UNSUPPORTED_MESSAGE, IMAGE_LOAD_ERROR } from "./photos.ts";
@@ -191,6 +199,11 @@ describe("trace sampling", () => {
     expect(options.tracesSampler({ parentSampled: true })).toBe(true);
     expect(options.tracesSampler({ parentSampled: false })).toBe(false);
     expect(options.tracesSampler({})).toBe(0.1);
+    expect(options.tracesSampler({ name: "preview.open" })).toBe(0.1);
+    expect(options.tracesSampler({ name: "export.generate", parentSampled: true })).toBe(true);
+    expect(options.tracesSampler({ name: "http.client" })).toBe(false);
+    expect(options.tracesSampler({ name: "export.frames" })).toBe(false);
+    expect(options.tracesSampler({ name: "Pageload" })).toBe(false);
   });
 });
 
@@ -250,81 +263,187 @@ describe("trace attribute allowlist", () => {
     });
   });
 
-  it("scrubs root transactions and every child span", () => {
-    const event = {
-      transaction: "export.generate",
-      user: { email: "a@b.com" },
-      message: "vacation.jpg を処理中",
-      breadcrumbs: [{ message: "blob:http://localhost/photo" }],
-      extra: { photoName: "vacation.jpg", ok: "fine" },
-      request: { url: "/studio", data: "secret", cookies: { sid: "1" } },
-      tags: { aspect: "portrait", filename: "secret.jpg" },
-      contexts: {
-        trace: {
-          op: "export.generate",
-          data: { export_path: "offline", fingerprint: 42, photoName: "vacation.jpg" },
+  it("scrubs streamed span names and attributes down to the allowlist", () => {
+    expect(
+      scrubSentrySpan({
+        name: "export.generate",
+        attributes: {
+          "sentry.op": "export.generate",
+          aspect: "portrait",
+          filename: "secret.jpg",
+          export_path: "offline",
+          fingerprint: 42,
+          photoName: "vacation.jpg",
         },
+      }),
+    ).toEqual({
+      name: "export.generate",
+      attributes: {
+        "sentry.op": "export.generate",
+        aspect: "portrait",
+        export_path: "offline",
       },
-      spans: [
-        {
-          description: "export.frames",
-          op: "export.frames",
-          data: { acquire_count: 2, fingerprint: 99, id: "photo-1" },
-        },
-        {
-          description: "user photo vacation.jpg",
-          op: "db",
-          data: { filename: "vacation.jpg" },
-        },
-      ],
-    };
+    });
 
-    const scrubbed = scrubSentryTransaction(event);
-    expect(scrubbed?.user).toBeUndefined();
-    expect(scrubbed?.message).toBeUndefined();
-    expect(scrubbed?.breadcrumbs).toBeUndefined();
-    expect(scrubbed?.extra).toBeUndefined();
-    expect(scrubbed?.request).toEqual({ url: "/studio" });
-    expect(scrubbed?.tags).toEqual({ aspect: "portrait" });
-    expect(scrubbed?.contexts?.trace?.data).toEqual({ export_path: "offline" });
-    expect(scrubbed?.spans).toEqual([
-      {
-        description: "export.frames",
-        op: "export.frames",
-        data: { acquire_count: 2 },
+    expect(
+      scrubSentrySpan({
+        name: "export.frames",
+        attributes: {
+          "sentry.op": "export.frames",
+          acquire_count: 2,
+          fingerprint: 99,
+          id: "photo-1",
+        },
+      }),
+    ).toEqual({
+      name: "export.frames",
+      attributes: {
+        "sentry.op": "export.frames",
+        acquire_count: 2,
       },
-    ]);
+    });
+
+    expect(
+      scrubSentrySpan({
+        name: "user photo vacation.jpg",
+        attributes: { "sentry.op": "db", filename: "vacation.jpg" },
+      }),
+    ).toEqual({
+      name: "redacted",
+      attributes: { "sentry.op": "redacted" },
+    });
   });
 
-  it("drops unknown transactions and redacts unknown spans without returning null from beforeSendSpan", () => {
-    expect(scrubSentryTransaction({ transaction: "http.client", spans: [] })).toBeNull();
-    const span = scrubSentrySpan({
-      description: "LoadedPhoto vacation.jpg",
-      op: "custom",
-      data: { filename: "vacation.jpg", fingerprint: 5 },
-    });
-    expect(span).toEqual({
-      description: "redacted",
-      op: "redacted",
-      data: {},
+  it("drops non-allowlisted span names and redacts streamed spans without returning null", () => {
+    const options = createSentryBrowserOptions({ dsn: DEFAULT_SENTRY_DSN, environment: "preview" });
+    expect(options.traceLifecycle).toBe("stream");
+    expect(Object.hasOwn(options, "beforeSendTransaction")).toBe(false);
+    expect(Object.hasOwn(options, "sendDefaultPii")).toBe(false);
+    expect(options.dataCollection).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: {
+        request: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+        response: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+      },
+      httpBodies: [],
+      urlQueryParams: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      graphQL: { document: false, variables: false },
+      queues: false,
+      stackFrameVariables: true,
+      frameContextLines: 7,
     });
 
-    const options = createSentryBrowserOptions({ dsn: DEFAULT_SENTRY_DSN, environment: "preview" });
+    const ignoreSpans = options.ignoreSpans ?? [];
+    expect(shouldIgnoreSpan({ description: "http.client", op: "http.client" }, ignoreSpans)).toBe(true);
+    expect(shouldIgnoreSpan({ description: "Pageload", op: "pageload" }, ignoreSpans)).toBe(true);
+    expect(shouldIgnoreSpan({ description: "preview.openapi", op: "preview.openapi" }, ignoreSpans)).toBe(true);
     expect(
-      options.beforeSendTransaction({
-        transaction: "preview.open",
-        tags: { entry: "initial", photoName: "a.jpg" },
-        spans: [{ description: "preview.resources", data: { timelines_ready: true, filename: "a.jpg" } }],
+      shouldIgnoreSpan(
+        { description: "preview.resources", op: "preview.resources", attributes: { timelines_ready: true } },
+        ignoreSpans,
+      ),
+    ).toBe(false);
+    expect(shouldIgnoreSpan({ description: "export.frames", op: "export.frames" }, ignoreSpans)).toBe(false);
+    expect(shouldIgnoreSpan({ description: "", op: "http.client" }, ignoreSpans)).toBe(false);
+
+    const streamed = {
+      trace_id: "a".repeat(32),
+      span_id: "b".repeat(16),
+      start_timestamp: 1,
+      status: "ok" as const,
+      is_segment: false,
+    };
+    expect(
+      options.beforeSendSpan({
+        ...streamed,
+        name: "media.rewind",
+        attributes: { "sentry.op": "blob:http://x/y", rewind_required: true, src: "blob:http://x/y" },
       }),
     ).toMatchObject({
-      transaction: "preview.open",
-      tags: { entry: "initial" },
-      spans: [{ description: "preview.resources", data: { timelines_ready: true } }],
+      name: "media.rewind",
+      attributes: { "sentry.op": "media.rewind", rewind_required: true },
     });
-    expect(options.beforeSendSpan({ description: "media.rewind", data: { src: "blob:http://x/y" } })).toMatchObject({
-      description: "media.rewind",
-      data: {},
+    const redacted = options.beforeSendSpan({
+      ...streamed,
+      name: "",
+      attributes: { "sentry.op": "http.client", url: "https://example.test/photo.jpg" },
     });
+    expect(redacted).not.toBeNull();
+    expect(redacted).toMatchObject({
+      name: "redacted",
+      attributes: { "sentry.op": "redacted" },
+    });
+  });
+
+  it("records only allowlisted spans and strips photo attributes when the v11 client sends them", async () => {
+    const Sentry = await import("@sentry/browser");
+    const envelopes: unknown[] = [];
+    const options = createSentryBrowserOptions({
+      dsn: "https://public@o0.ingest.sentry.io/1",
+      environment: "development",
+    });
+    Sentry.init({
+      ...options,
+      tracesSampler(samplingContext) {
+        const decision = options.tracesSampler(samplingContext);
+        return decision === false ? false : 1;
+      },
+      transport: () => ({
+        send: (envelope) => {
+          envelopes.push(envelope);
+          return Promise.resolve({});
+        },
+        flush: () => Promise.resolve(true),
+      }),
+    });
+
+    try {
+      expect(
+        Sentry.startInactiveSpan({ name: "http.client", op: "http.client", parentSpan: null }).isRecording(),
+      ).toBe(false);
+      expect(
+        Sentry.startInactiveSpan({ name: "export.frames", op: "export.frames", parentSpan: null }).isRecording(),
+      ).toBe(false);
+
+      const root = Sentry.startInactiveSpan({
+        name: "export.generate",
+        op: "export.generate",
+        parentSpan: null,
+        attributes: { filename: "secret.jpg", aspect: "portrait" },
+      });
+      const child = Sentry.startInactiveSpan({
+        name: "export.frames",
+        op: "export.frames",
+        parentSpan: root,
+        attributes: { filename: "vacation.jpg", acquire_count: 2 },
+      });
+      const dropped = Sentry.startInactiveSpan({
+        name: "user photo vacation.jpg",
+        op: "db",
+        parentSpan: root,
+      });
+      expect(root.isRecording()).toBe(true);
+      expect(child.isRecording()).toBe(true);
+      expect(dropped.isRecording()).toBe(false);
+      child.end();
+      dropped.end();
+      root.end();
+      await Sentry.flush(2000);
+
+      const payload = JSON.stringify(envelopes);
+      expect(payload).toContain("export.generate");
+      expect(payload).toContain("export.frames");
+      expect(payload).toContain("portrait");
+      expect(payload).not.toContain("filename");
+      expect(payload).not.toContain("secret.jpg");
+      expect(payload).not.toContain("vacation");
+      expect(payload).not.toContain("http.client");
+    } finally {
+      await Sentry.close(2000);
+    }
   });
 });
 
