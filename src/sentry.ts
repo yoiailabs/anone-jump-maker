@@ -1,3 +1,4 @@
+import type { BrowserOptions } from "@sentry/browser";
 import {
   ASPECT_MODES,
   CHARACTER_SIZES,
@@ -54,11 +55,16 @@ export function resolveTraceSampleRate(input: {
 }
 
 type SamplingContextLike = {
+  name?: string;
   parentSampled?: boolean;
   inheritOrSampleWith?: (fallbackSampleRate: number) => number;
 };
 
 export function sampleTrace(environment: SentryEnvironment, samplingContext: SamplingContextLike): number | boolean {
+  // v11 stream mode never calls beforeSendTransaction. tracesSampler runs only for segment spans.
+  if (typeof samplingContext.name === "string" && !isRootSpanName(samplingContext.name)) {
+    return false;
+  }
   const rate = traceSampleRateForEnvironment(environment);
   if (typeof samplingContext.inheritOrSampleWith === "function") {
     return samplingContext.inheritOrSampleWith(rate);
@@ -308,91 +314,56 @@ export function pickTraceAttributes(input: Record<string, unknown> | undefined):
   return out;
 }
 
-export type SpanScrubTarget = {
-  description?: string;
-  op?: string;
+const SENTRY_OP_ATTRIBUTE = "sentry.op";
+
+export type StreamedSpanScrubTarget = {
   name?: string;
-  data?: Record<string, unknown>;
   attributes?: Record<string, unknown>;
-  tags?: Record<string, unknown>;
 };
 
 const REDACTED_SPAN = "redacted";
 
-/** 子スパンの説明と属性を許可リストに合わせる。SDK 10 は null を捨てないので必ずスパンを返す。 */
-export function scrubSentrySpan<T extends SpanScrubTarget>(span: T): T {
-  const name = span.description || span.op || span.name || "";
+function spanOp(span: StreamedSpanScrubTarget): string | undefined {
+  const op = span.attributes?.[SENTRY_OP_ATTRIBUTE];
+  return typeof op === "string" ? op : undefined;
+}
+
+/**
+ * v11 `beforeSendSpan` receives `name` / `attributes['sentry.op']` / `attributes`.
+ * The callback cannot drop a span, so a name outside the allowlist is redacted.
+ */
+export function scrubSentrySpan<T extends StreamedSpanScrubTarget>(span: T): T {
+  const op = spanOp(span);
+  const name = span.name || op || "";
   if (!isAllowedSpanName(name)) {
-    if (span.description !== undefined) span.description = REDACTED_SPAN;
-    if (span.op !== undefined) span.op = REDACTED_SPAN;
-    if (span.name !== undefined) span.name = REDACTED_SPAN;
-    span.data = {};
-    if (span.attributes) span.attributes = {};
-    if (span.tags) span.tags = {};
+    span.name = REDACTED_SPAN;
+    span.attributes = { [SENTRY_OP_ATTRIBUTE]: REDACTED_SPAN };
     return span;
   }
-  if (span.description !== undefined && !isAllowedSpanName(span.description)) span.description = name;
-  if (span.op !== undefined && !isAllowedSpanName(span.op)) span.op = name;
-  if (span.name !== undefined && !isAllowedSpanName(span.name)) span.name = name;
-  if (span.data) span.data = pickTraceAttributes(span.data);
-  if (span.attributes) span.attributes = pickTraceAttributes(span.attributes);
-  if (span.tags) span.tags = pickTraceAttributes(span.tags);
+  const nextOp = op && isAllowedSpanName(op) ? op : name;
+  span.name = name;
+  span.attributes = {
+    ...pickTraceAttributes(span.attributes),
+    [SENTRY_OP_ATTRIBUTE]: nextOp,
+  };
   return span;
 }
 
-export type TransactionScrubTarget = ScrubEvent & {
-  transaction?: string;
-  message?: string;
-  logentry?: unknown;
-  breadcrumbs?: unknown;
-  fingerprint?: string[];
-  tags?: Record<string, unknown>;
-  measurements?: Record<string, unknown>;
-  spans?: SpanScrubTarget[];
-  contexts?: { trace?: { op?: string; description?: string; data?: Record<string, unknown> } };
-};
-
-function keepMeasurement(value: unknown): boolean {
-  if (typeof value === "number") return Number.isFinite(value);
-  if (!value || typeof value !== "object") return false;
-  const record = value as { value?: unknown };
-  return typeof record.value === "number" && Number.isFinite(record.value);
+function escapeTraceSpanName(name: string): string {
+  return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** ルートと子スパンの属性・説明を許可リストに合わせる。未知のトランザクションは送らない。 */
-export function scrubSentryTransaction<T extends TransactionScrubTarget>(event: T): T | null {
-  scrubSentryEvent(event);
-  delete event.extra;
-  delete event.breadcrumbs;
-  delete event.logentry;
-  delete event.message;
-  if (event.fingerprint) {
-    const kept = event.fingerprint.filter((item) => isAllowedSpanName(item));
-    if (kept.length === 0) delete event.fingerprint;
-    else event.fingerprint = kept;
-  }
-  if (!event.transaction || !isRootSpanName(event.transaction)) return null;
-  if (event.tags) event.tags = pickTraceAttributes(event.tags);
-  const trace = event.contexts?.trace;
-  if (trace) {
-    if (trace.data) trace.data = pickTraceAttributes(trace.data);
-    if (trace.op && !isAllowedSpanName(trace.op)) delete trace.op;
-    if (trace.description && !isAllowedSpanName(trace.description)) delete trace.description;
-  }
-  if (event.spans) {
-    event.spans = event.spans.filter((span) => {
-      const name = span.description || span.op || span.name || "";
-      return isAllowedSpanName(name);
-    });
-    for (const span of event.spans) scrubSentrySpan(span);
-  }
-  if (event.measurements) {
-    for (const [key, value] of Object.entries(event.measurements)) {
-      if (!keepMeasurement(value)) delete event.measurements[key];
-    }
-  }
-  return event;
+/**
+ * Matches every span name except the allowlist.
+ * `ignoreSpans` evaluates this at span start and ignores an empty description,
+ * so `scrubSentrySpan` still redacts that case.
+ */
+export function ignoredTraceSpanNamePattern(): RegExp {
+  const allowed = TRACE_SPAN_NAMES.map(escapeTraceSpanName).join("|");
+  return new RegExp(`^(?!(?:${allowed})$).*$`);
 }
+
+const V10_SENSITIVE_KEY_DENY = ["forwarded", "-ip", "remote-", "via", "-user"];
 
 export type TracingSpan = {
   setAttribute(key: string, value: TraceAttributeValue | undefined): void;
@@ -440,22 +411,36 @@ export function createSentryBrowserOptions(input: { dsn: string; environment: Se
   return {
     dsn: input.dsn,
     environment: input.environment,
+    traceLifecycle: "stream" as const,
     tracesSampleRate: PRODUCTION_TRACES_SAMPLE_RATE,
     tracesSampler(samplingContext: SamplingContextLike) {
       return sampleTrace(input.environment, samplingContext);
     },
-    sendDefaultPii: false as const,
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: {
+        request: { deny: [...V10_SENSITIVE_KEY_DENY] },
+        response: { deny: [...V10_SENSITIVE_KEY_DENY] },
+      },
+      httpBodies: [],
+      urlQueryParams: { deny: [...V10_SENSITIVE_KEY_DENY] },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      graphQL: { document: false, variables: false },
+      queues: false,
+      stackFrameVariables: true,
+      frameContextLines: 7,
+    },
     denyUrls: SENTRY_DENY_URLS,
+    ignoreSpans: [ignoredTraceSpanNamePattern()],
     beforeSend<T extends ScrubEvent & SentryExceptionEvent>(event: T) {
       return filterSentryEvent(scrubSentryEvent(event));
     },
-    beforeSendSpan<T extends SpanScrubTarget>(span: T) {
+    beforeSendSpan(span) {
       return scrubSentrySpan(span);
     },
-    beforeSendTransaction<T extends TransactionScrubTarget>(event: T) {
-      return scrubSentryTransaction(event);
-    },
-  };
+  } satisfies BrowserOptions;
 }
 
 type SentryBrowser = typeof import("@sentry/browser");
