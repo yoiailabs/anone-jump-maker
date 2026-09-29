@@ -73,7 +73,7 @@ GitHub Actions（`.github/workflows/test.yml`）が pull request と `main` へ�
 デプロイ（DNS は設定しない）:
 
 ```bash
-pnpm deploy         # = pnpm build && cf deploy（本体 anone）
+pnpm deploy         # = pnpm build && wrangler deploy（本体 anone。静的 Astro に BOS が無いあいだは wrangler）
 pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドルは Wrangler に委譲
 ```
 
