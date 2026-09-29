@@ -5,7 +5,7 @@
   "type": "module",
   "description": "あのねジャンプメーカー — ブラウザだけで写真を差し込むジャンプ動画メーカー（試作）",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "cf dev",
     "build": "astro check && tsc --noEmit -p worker/tsconfig.json && astro build",
     "preview": "astro preview --host 127.0.0.1 --port 4173",
     "check": "astro check && tsc --noEmit -p worker/tsconfig.json",
@@ -15,7 +15,8 @@
     "test:all": "pnpm test && pnpm test:browser && pnpm test:e2e",
     "og": "node scripts/render-og.mjs",
     "icons": "node scripts/render-pwa-icons.mjs",
-    "deploy": "pnpm build && wrangler deploy",
+    "types": "cf workers types",
+    "deploy": "pnpm build && cf deploy",
     "dev:worker": "pnpm build && wrangler dev -c wrangler.toml"
   },
   "devDependencies": {
@@ -27,6 +28,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitest/browser": "^4.1.11",
     "@vitest/browser-playwright": "^4.1.11",
+    "cf": "1.0.0-beta.5",
     "playwright": "^1.55.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
@@ -35,7 +37,7 @@
     "wrangler": "^4.139.0"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.18.0"
   },
   "packageManager": "pnpm@10.15.1",
   "pnpm": {

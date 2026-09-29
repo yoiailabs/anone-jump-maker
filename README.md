@@ -55,11 +55,12 @@
 
 ## 開発
 
-画面は Astro の静的 HTML（`src/pages/`）と React アイランド（`src/components/MakerApp.tsx`、shadcn/ui の Base UI）です。プレビューと動画生成の処理は従来どおり `src/app.ts` の `boot()` です。`pnpm dev` は `astro dev` を起動します。
+画面は Astro の静的 HTML（`src/pages/`）と React アイランド（`src/components/MakerApp.tsx`、shadcn/ui の Base UI）です。プレビューと動画生成の処理は従来どおり `src/app.ts` の `boot()` です。`pnpm dev` は `cf dev` 経由で Astro の開発サーバーを起動します。
 
 ```bash
 pnpm install   # または npm install
-pnpm dev       # または npm run dev
+pnpm dev       # cf dev（Astro の開発サーバー）
+pnpm types     # cf workers types
 pnpm test            # ユニット（Node / Vitest）
 pnpm test:browser    # Chromium + WebKit（Vitest Browser）
 pnpm test:e2e        # Playwright。Pixel 7 と iPhone 13 のエミュレーション含む
@@ -67,13 +68,13 @@ pnpm test:all
 pnpm build
 ```
 
-GitHub Actions（`.github/workflows/test.yml`）が pull request と `main` への push で `pnpm check`・ユニット・ブラウザ・e2e を回します。実機の iOS Safari / Android Chrome は CI に載せられないので、Playwright の WebKit（iPhone 13）と Chromium（Pixel 7）でプレビューと短い保存クリップを確認します。ブラウザテストの初回は `pnpm exec playwright install --with-deps chromium webkit` が必要です。
+GitHub Actions（`.github/workflows/test.yml`）が pull request と `main` への push で `pnpm types`・`pnpm check`・ユニット・ブラウザ・e2e を回します。実機の iOS Safari / Android Chrome は CI に載せられないので、Playwright の WebKit（iPhone 13）と Chromium（Pixel 7）でプレビューと短い保存クリップを確認します。ブラウザテストの初回は `pnpm exec playwright install --with-deps chromium webkit` が必要です。
 
 デプロイ（DNS は設定しない）:
 
 ```bash
-pnpm deploy         # = pnpm build && wrangler deploy（本体 anone）
-pnpm dev:worker     # ローカルで Worker + 静的アセットを起動
+pnpm deploy         # = pnpm build && cf deploy（本体 anone）
+pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドルは Wrangler に委譲
 ```
 
 本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。生成回数（「○回作られたよ」）と `/api/stats`、Durable Object（`GENERATE_STATS` / Worker `anone-stats`）は無料枠を消費していたため削除しました。ページ表示・プレビュー開始・保存の経路から DO は呼びません。件数は画面に出さず、Google Analytics 4（測定 ID `G-L8WKQQFBZC`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。
@@ -83,7 +84,7 @@ pnpm dev:worker     # ローカルで Worker + 静的アセットを起動
 
 パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
 
-Cloudflare 上に残っている `anone-stats` Worker（クラス `GenerateStats`）は、このリポジトリからは参照しません。クォータを完全に戻すには、ダッシュボードまたは `wrangler delete anone-stats` で一度だけ削除してください。
+Cloudflare 上に残っている `anone-stats` Worker（クラス `GenerateStats`）は、このリポジトリからは参照しません。クォータを完全に戻すには、ダッシュボードで一度だけ削除してください。
 
 カット表は向き別のファイルですが中身は同じ拍です（縦横テンプレは同じアニメーション）。
 

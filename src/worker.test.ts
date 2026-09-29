@@ -14,7 +14,7 @@ function assetsEnv(body = JA_HTML) {
 }
 
 describe("worker fetch", () => {
-  it("returns 404 for non-page paths so wrangler [assets] can serve them", async () => {
+  it("returns 404 for non-page paths so Workers assets can serve them", async () => {
     const response = await worker.fetch(new Request("https://anone.yoiailabs.com/og.png"));
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("Not found");
