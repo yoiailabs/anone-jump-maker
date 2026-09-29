@@ -1,3 +1,5 @@
+# cf の Worker 設定は cloudflare.config.ts。
+# Workers Builds の `wrangler versions upload` は、まだこのファイルを読む。
 name = "anone"
 main = "worker/index.ts"
 compatibility_date = "2026-09-16"

@@ -8,7 +8,7 @@ type AssetsEnv = {
 const VARY = "Cookie";
 
 /**
- * 静的アセットは wrangler の [assets] が配信する。
+ * 静的アセットは Workers の assets が配信する。
  * プレフィックスなしの `/` `/community` `/privacy` `/terms` は日本語 HTML（SEO / OGP）を返す。
  * ブラウザの言語寄せはクライアント JS。Cookie があるときだけ 302 する。
  * `/en/privacy` など規約・ポリシーの言語付き URL は日本語の正規 URL へ 302 する。

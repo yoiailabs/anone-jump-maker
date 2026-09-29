@@ -9,7 +9,7 @@ alwaysApply: true
 
 ## 取り方
 
-1. Workers Builds の Worker は `anone`（`preview_urls = true`）。非本番ブランチは `npx wrangler versions upload`。
+1. Workers Builds の Worker は `anone`（`cloudflare.config.ts` の `previewUrls: true`）。非本番ブランチのアップロードはビルドが行う（現状のプレビューコマンドは `npx wrangler versions upload` で、`wrangler.toml` を読む）。手動の本番デプロイはしない。
 2. Cloudflare-builds MCP で当該ブランチのビルドを特定し、ログから次の行を読む。
    - `Version Preview Alias URL:` … ブランチ固定の安定 URL（これを優先して伝える）
    - `Version Preview URL:` … そのコミット専用

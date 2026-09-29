@@ -1,0 +1,57 @@
+import { bindings, defineConfig } from "cf/config";
+
+export default defineConfig({
+	worker: {
+		name: "anone",
+		compatibilityDate: "2026-09-16",
+		entrypoint: "worker/index.ts",
+		workersDev: true,
+		previewUrls: true,
+		observability: {
+			enabled: true,
+		},
+		assets: {
+			htmlHandling: "auto-trailing-slash",
+			notFoundHandling: "single-page-application",
+			runWorkerFirst: [
+				"/",
+				"/make",
+				"/make/",
+				"/community",
+				"/community/",
+				"/ja",
+				"/ja/",
+				"/ja/make",
+				"/ja/make/",
+				"/ja/community",
+				"/ja/community/",
+				"/privacy",
+				"/privacy/",
+				"/ja/privacy",
+				"/ja/privacy/",
+				"/terms",
+				"/terms/",
+				"/ja/terms",
+				"/ja/terms/",
+				"/en/privacy",
+				"/en/privacy/",
+				"/ko/privacy",
+				"/ko/privacy/",
+				"/zh/privacy",
+				"/zh/privacy/",
+				"/en/terms",
+				"/en/terms/",
+				"/ko/terms",
+				"/ko/terms/",
+				"/zh/terms",
+				"/zh/terms/",
+			],
+		},
+		domains: [
+			"anone.yoiailabs.com",
+		],
+		env: {
+			ASSETS: bindings.assets(),
+		},
+	},
+});

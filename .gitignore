@@ -2,6 +2,7 @@ node_modules
 dist
 .astro
 .wrangler
+.cloudflare
 .dev.vars
 *.local
 .DS_Store
