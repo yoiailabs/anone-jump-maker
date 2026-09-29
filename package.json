@@ -16,7 +16,7 @@
     "og": "node scripts/render-og.mjs",
     "icons": "node scripts/render-pwa-icons.mjs",
     "types": "cf workers types",
-    "deploy": "pnpm build && cf deploy",
+    "deploy": "pnpm build && wrangler deploy",
     "dev:worker": "pnpm build && wrangler dev -c wrangler.toml"
   },
   "devDependencies": {
