@@ -9,6 +9,9 @@ export default defineConfig({
 		previewUrls: true,
 		observability: {
 			enabled: true,
+			issues: {
+				enabled: true,
+			},
 		},
 		assets: {
 			htmlHandling: "auto-trailing-slash",

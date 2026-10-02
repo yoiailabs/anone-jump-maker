@@ -15,6 +15,9 @@ routes = [
 [observability]
 enabled = true
 
+[observability.issues]
+enabled = true
+
 # Vite / Astro の dist を Workers 静的アセットとして配信する。
 # プレフィックスなしの `/` `/make` `/community` `/privacy` `/terms` と、
 # 規約・ポリシーの言語付き URL だけ Worker が先に受ける。
