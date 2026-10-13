@@ -11,7 +11,7 @@ export type Rect = {
   h: number;
 };
 
-/** 縦はテンプレ miWuv4NK9Qk と同じ 608×1080。横は 1280×720。保存はこのサイズ。 */
+/** 縦は 608×1080、横は 1280×720。保存はこのサイズ。 */
 export const OUTPUTS = {
   portrait: { width: 608, height: 1080 },
   landscape: { width: 1280, height: 720 },
@@ -26,7 +26,7 @@ export const STAGE_MAX_REM = {
   landscape: 26,
 } as const;
 
-/** 新テンプレ miWuv4NK9Qk / 参考 Short と同じ 608×1080。 */
+/** 縦出力の既定サイズ。写真はこのキャンバス全面に cover する。 */
 export const OUTPUT = OUTPUTS.portrait;
 
 export const TEMPLATES = {
@@ -34,11 +34,31 @@ export const TEMPLATES = {
   landscape: { video: "/template/landscape.mp4", cuts: "/template/landscape-cuts.json" },
 } as const;
 
-/** テンプレ緑 16:9 帯（実測 312–654、高さ 342 = 608×9/16）。 */
+/** 縦テンプレの緑 16:9 帯（実測 312–654、高さ 342 = 608×9/16）。キャラのクロマ源で、写真の枠ではない。 */
 export const TEMPLATE_BAND_Y = 312;
 export const TEMPLATE_BAND_H = 342;
 
-export const MAIN_PANEL_Y_FRAC = TEMPLATE_BAND_Y / OUTPUT.height;
+/** 帯の上端 1px は暗い罫、その下が混色なので、キーするとき上を 2px 切る。 */
+export const TEMPLATE_BAND_TOP_CROP = 2;
+
+/** 写真パネルは縦横ともキャンバス上端から全面。 */
+export const MAIN_PANEL_Y_FRAC = 0;
+
+/**
+ * 緑帯の中の線画（クロマ抜き後）。`vertical.mp4` frame 270（t=9s）の左右と、
+ * ほぼ全フレームで共通の水平カット下端。右・下は画素の外縁（exclusive）。下端は上端 2px を切った帯の中。
+ */
+export const PORTRAIT_INK_X0 = 138 / 608;
+export const PORTRAIT_INK_X1 = 431 / 608;
+export const PORTRAIT_INK_BOTTOM = (339 - TEMPLATE_BAND_TOP_CROP) / (TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP);
+
+/**
+ * 新縦テンプレ utNIG60-li0 の t=9s ステッカー（白縁込み）。
+ * x 9.3%–81.1%（幅 71.8%、中心 45.2%）、下端 75.8%。上端はポーズで動く。
+ */
+export const PORTRAIT_STICKER_LEFT = 0.093;
+export const PORTRAIT_STICKER_RIGHT = 0.811;
+export const PORTRAIT_STICKER_BOTTOM = 0.758;
 
 /**
  * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
@@ -91,7 +111,7 @@ export function isImageFilter(value: string): value is ImageFilter {
 
 /**
  * 線画キャラの大きさ。向き・切替・フィルターと独立。
- * キー済み 16:9 プレートの倍率。標準は公式テンプレと同じ等倍。
+ * キー済み 16:9 プレートの倍率。標準は各向きの基準配置（縦は新テンプレのステッカー、横はフレーム等倍）。
  */
 export type CharacterSize = "standard" | "1.2" | "1.4";
 
@@ -268,21 +288,8 @@ const NO_FX = {
 } as const;
 
 /**
- * 本編 16:9 をキャンバスへ cover する倍率。
- * 1 で本編上端→キャンバス上端、本編下端→キャンバス下端（参考と同じ）。
- */
-export const BLUR_COVER_SCALE = 1;
-
-/** 参考は本編上端の 1px 暗線。 */
-export const PANEL_DIVIDER_PX = 1;
-
-/** 上下帯の暗転。参考 Short の帯は本編の約 0.33–0.40 輝度。 */
-export const BLUR_DIM = "rgba(4, 3, 3, 0.62)";
-
-/**
- * 公式テンプレの本編キャラ。16:9 プレート（縦は緑帯、横は全面）に対して等倍。
- * 公式横（X 2100137115950653708 = landscape.mp4、CapCut 7593197705481030965）と
- * 縦テンプレ緑帯は同じ構図で、キャラを拡大していない。
+ * キャラ倍率の基準。横は公式 16:9 フレーム等倍。
+ * 縦の基準位置は `characterDest` が utNIG60-li0 に合わせ、この値は 1 のままサイズ倍率に掛ける。
  */
 export const CHAR_SCALE = 1;
 
@@ -301,8 +308,9 @@ export function isAspectMode(value: string): value is AspectMode {
   return (ASPECT_MODES as readonly string[]).includes(value);
 }
 
-export function usesBlurBackdrop(mode: AspectMode): boolean {
-  return mode === "portrait";
+/** 縦横とも写真がキャンバス全面。ぼかし背景・暗転・仕切り線は使わない。 */
+export function usesBlurBackdrop(_mode: AspectMode): boolean {
+  return false;
 }
 
 export function characterPlateScale(size: CharacterSize = DEFAULT_CHARACTER_SIZE): number {
@@ -323,15 +331,44 @@ export function characterShiftY(panelH: number, mode: AspectMode = "portrait"): 
   return CHAR_SHIFT_Y * (panelH / TEMPLATE_BAND_H);
 }
 
-/** キー済み 16:9 プレートを本編へ置く矩形。等倍ならパネル全体。`shiftY` で下へ。 */
-export function characterDest(panelW: number, panelH: number, scale = CHAR_SCALE, shiftY = 0): Rect {
-  const w = panelW * scale;
-  const h = panelH * scale;
+/**
+ * キー済み 16:9 プレートをキャンバスへ置く矩形。
+ * 横はフレーム等倍（拡大時は下端中央を固定）。
+ * 縦は緑帯プレートを utNIG60-li0 のステッカー位置へ。白縁はプレートの外にはみ出すので、
+ * インクをその分だけ内側に置き、基準ポーズの中心 x と水平カット下端を固定して拡大する。
+ */
+export function characterDest(
+  canvasW: number,
+  canvasH: number,
+  scale = CHAR_SCALE,
+  shiftY = 0,
+  mode: AspectMode = canvasW < canvasH ? "portrait" : "landscape",
+): Rect {
+  if (mode !== "portrait") {
+    const w = canvasW * scale;
+    const h = canvasH * scale;
+    return {
+      x: (canvasW - w) / 2,
+      y: canvasH - h + shiftY,
+      w,
+      h,
+    };
+  }
+  const outline = characterOutlinePx(canvasW);
+  const inkLeft = PORTRAIT_STICKER_LEFT * canvasW + outline;
+  const inkRight = PORTRAIT_STICKER_RIGHT * canvasW - outline;
+  const inkBottom = PORTRAIT_STICKER_BOTTOM * canvasH - outline;
+  const inkWFrac = PORTRAIT_INK_X1 - PORTRAIT_INK_X0;
+  const inkCxFrac = (PORTRAIT_INK_X0 + PORTRAIT_INK_X1) / 2;
+  const plateW = ((inkRight - inkLeft) / inkWFrac) * scale;
+  const bandH = TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP;
+  const plateH = plateW * (bandH / OUTPUT.width);
+  const anchorX = ((PORTRAIT_STICKER_LEFT + PORTRAIT_STICKER_RIGHT) / 2) * canvasW;
   return {
-    x: (panelW - w) / 2,
-    y: panelH - h + shiftY,
-    w,
-    h,
+    x: anchorX - inkCxFrac * plateW,
+    y: inkBottom - PORTRAIT_INK_BOTTOM * plateH + shiftY,
+    w: plateW,
+    h: plateH,
   };
 }
 
@@ -344,27 +381,23 @@ export function outputSize(mode: AspectMode = "portrait"): { width: number; heig
   return OUTPUTS[mode];
 }
 
-/** 縦: 中央のシャープな 16:9。横: キャンバス全体が本編。 */
-export function mainPanelRect(canvasW: number, canvasH: number, mode: AspectMode = "portrait"): Rect {
-  if (mode === "landscape") {
-    return { x: 0, y: 0, w: canvasW, h: canvasH };
-  }
-  const w = canvasW;
-  const h = canvasW * (TEMPLATE_BAND_H / OUTPUT.width);
-  const y = canvasH * (TEMPLATE_BAND_Y / OUTPUT.height);
-  return { x: 0, y: Math.round(y), w, h: Math.round(h) };
+/** 写真を cover する範囲。縦横ともキャンバス全面（ぼかし帯はない）。 */
+export function mainPanelRect(canvasW: number, canvasH: number, _mode: AspectMode = "portrait"): Rect {
+  return { x: 0, y: 0, w: canvasW, h: canvasH };
 }
 
-/** テンプレ映像から切り出す矩形。縦は緑 16:9 帯、横は全面。 */
+/** テンプレ映像から切り出す矩形。縦は緑帯（上の暗い罫は除く）、横は全面。 */
 export function templateBandRect(videoW: number, videoH: number, mode: AspectMode = "portrait"): Rect {
   if (mode === "landscape") {
     return { x: 0, y: 0, w: videoW, h: videoH };
   }
+  const scale = videoW / OUTPUT.width;
+  const crop = Math.round(TEMPLATE_BAND_TOP_CROP * scale);
   return {
     x: 0,
-    y: Math.round(videoH * (TEMPLATE_BAND_Y / OUTPUT.height)),
+    y: Math.round(videoH * (TEMPLATE_BAND_Y / OUTPUT.height)) + crop,
     w: videoW,
-    h: Math.round(videoW * (TEMPLATE_BAND_H / OUTPUT.width)),
+    h: Math.max(1, Math.round(videoW * (TEMPLATE_BAND_H / OUTPUT.width)) - crop),
   };
 }
 

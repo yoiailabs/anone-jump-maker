@@ -11,9 +11,6 @@ import {
 } from "./keying-gpu.ts";
 import { keyImageData } from "./keying.ts";
 import {
-  BLUR_COVER_SCALE,
-  BLUR_DIM,
-  PANEL_DIVIDER_PX,
   ZOOM_BACKDROP_BLUR_FRAC,
   characterDest,
   characterOutlinePx,
@@ -33,7 +30,6 @@ import {
   STAGE_MAX_REM,
   swapFx,
   templateBandRect,
-  usesBlurBackdrop,
   type AspectMode,
   type CharacterSize,
   type ImageFilter,
@@ -165,10 +161,6 @@ export function createCompositor(options?: {
   const keyedCtx = keyed.getContext("2d", { willReadFrequently: true });
   if (!keyedCtx) throw new Error("Canvas2D が使えません");
 
-  const scratch = document.createElement("canvas");
-  const scratchCtx = scratch.getContext("2d", { alpha: false });
-  if (!scratchCtx) throw new Error("Canvas2D が使えません");
-
   const halo = document.createElement("canvas");
   const haloCtx = halo.getContext("2d");
   if (!haloCtx) throw new Error("Canvas2D が使えません");
@@ -246,13 +238,10 @@ export function createCompositor(options?: {
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
-        if (usesBlurBackdrop(mode)) paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
-        else paintLandscape(ctx, main, w, h);
+        paintFrame(ctx, main, w, h);
       });
-    } else if (usesBlurBackdrop(mode)) {
-      paintOutput(ctx, scratch, scratchCtx, main, panel, w, h);
     } else {
-      paintLandscape(ctx, main, w, h);
+      paintFrame(ctx, main, w, h);
     }
     paintSongCredit(ctx, w, h, mode, locale);
     return slot;
@@ -298,8 +287,6 @@ export function createCompositor(options?: {
       main.height = 0;
       keyed.width = 0;
       keyed.height = 0;
-      scratch.width = 0;
-      scratch.height = 0;
       halo.width = 0;
       halo.height = 0;
       fxA.width = 0;
@@ -465,8 +452,12 @@ function drawCharacter(
   const vw = character.width || fallback.width;
   const vh = character.height || fallback.height;
   const band = templateBandRect(vw, vh, mode);
-  const keyedSource = keyCharacterBand(surfaces, character, band, mw, mh);
-  paintCharacterOverlay(mainCtx, surfaces, keyedSource, mw, mh, mode, characterSize);
+  const placed = characterDest(mw, mh, characterScale(mode, characterSize), characterShiftY(mh, mode), mode);
+  // 横は従来どおり本編サイズでキーしてから拡大する。縦は置いたプレートの解像度でキーする。
+  const keyW = mode === "portrait" ? Math.max(1, Math.round(placed.w)) : mw;
+  const keyH = mode === "portrait" ? Math.max(1, Math.round(placed.h)) : mh;
+  const keyedSource = keyCharacterBand(surfaces, character, band, keyW, keyH);
+  paintCharacterOverlay(mainCtx, surfaces, keyedSource, placed, keyW, keyH, mw);
 }
 
 function keyCharacterBand(
@@ -504,22 +495,21 @@ function paintCharacterOverlay(
   mainCtx: CanvasRenderingContext2D,
   { halo, haloCtx }: FxSurfaces,
   keyedSource: CanvasImageSource,
+  dest: { x: number; y: number; w: number; h: number },
+  keyW: number,
+  keyH: number,
   mw: number,
-  mh: number,
-  mode: AspectMode,
-  characterSize: CharacterSize,
 ): void {
-  halo.width = mw;
-  halo.height = mh;
-  haloCtx.clearRect(0, 0, mw, mh);
+  halo.width = keyW;
+  halo.height = keyH;
+  haloCtx.clearRect(0, 0, keyW, keyH);
   haloCtx.globalCompositeOperation = "source-over";
   haloCtx.drawImage(keyedSource, 0, 0);
   haloCtx.globalCompositeOperation = "source-in";
   haloCtx.fillStyle = "#ffffff";
-  haloCtx.fillRect(0, 0, mw, mh);
+  haloCtx.fillRect(0, 0, keyW, keyH);
   haloCtx.globalCompositeOperation = "source-over";
 
-  const dest = characterDest(mw, mh, characterScale(mode, characterSize), characterShiftY(mh, mode));
   const o = characterOutlinePx(mw);
   const ring: ReadonlyArray<readonly [number, number]> = [
     [-o, 0],
@@ -638,7 +628,7 @@ function applyFrameFx(
   }
 }
 
-function paintLandscape(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, w: number, h: number): void {
+function paintFrame(ctx: CanvasRenderingContext2D, main: HTMLCanvasElement, w: number, h: number): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = "none";
   ctx.drawImage(main, 0, 0, w, h);
@@ -657,45 +647,6 @@ function applyPhotoFilter(
   if (!hasImageFilter(filter)) return;
   const px = filterBlurPx(filter, Math.max(main.width, main.height));
   applySoftwareBlur(main, mainCtx, blur, blurCtx, px);
-}
-
-function paintOutput(
-  ctx: CanvasRenderingContext2D,
-  scratch: HTMLCanvasElement,
-  scratchCtx: CanvasRenderingContext2D,
-  main: HTMLCanvasElement,
-  panel: { x: number; y: number; w: number; h: number },
-  w: number,
-  h: number,
-): void {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.filter = "none";
-  ctx.fillStyle = "#0a0806";
-  ctx.fillRect(0, 0, w, h);
-
-  scratch.width = Math.max(40, Math.round(w * 0.28));
-  scratch.height = Math.max(40, Math.round(h * 0.28));
-  const sw = scratch.width;
-  const sh = scratch.height;
-  scratchCtx.fillStyle = "#0a0806";
-  scratchCtx.fillRect(0, 0, sw, sh);
-  const blurDest = coverDest(main.width, main.height, sw, sh, { scale: BLUR_COVER_SCALE });
-  scratchCtx.drawImage(main, blurDest.x, blurDest.y, blurDest.w, blurDest.h);
-
-  ctx.save();
-  ctx.filter = "blur(16px)";
-  ctx.drawImage(scratch, -24, -24, w + 48, h + 48);
-  ctx.filter = "none";
-  ctx.fillStyle = BLUR_DIM;
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
-
-  ctx.drawImage(main, panel.x, panel.y, panel.w, panel.h);
-
-  ctx.fillStyle = "rgba(8, 6, 4, 0.85)";
-  const half = PANEL_DIVIDER_PX / 2;
-  ctx.fillRect(0, panel.y - half, w, PANEL_DIVIDER_PX);
-  ctx.fillRect(0, panel.y + panel.h - half, w, PANEL_DIVIDER_PX);
 }
 
 export const SONG_CREDIT = songCreditLine();
@@ -727,8 +678,8 @@ export type SongCreditLayout = {
 };
 
 /**
- * 縦: 中央 16:9 本編の真下・下帯の右上。
- * 横: 画面全体の右下。どちらも小さな inset。
+ * 縦横とも画面右下。縦は全面写真の上なので、キャラの水平カット（y≈75.8%）より下に置く。
+ * どちらも小さな inset。縦の字の大きさはプレビューの見た目が横と揃うよう小さめ。
  */
 export function songCreditLayout(
   canvasW: number,
@@ -740,22 +691,10 @@ export function songCreditLayout(
   const resolutionScale = fullW > 0 ? canvasW / fullW : 1;
   const fontSize = songCreditFontSize(mode, resolutionScale);
   const pad = Math.max(8, Math.round(short * 0.016));
-  const x = canvasW - pad;
-  if (mode === "portrait") {
-    const panel = mainPanelRect(canvasW, canvasH, mode);
-    return {
-      fontSize,
-      pad,
-      x,
-      y: panel.y + panel.h + pad,
-      textAlign: "right",
-      textBaseline: "top",
-    };
-  }
   return {
     fontSize,
     pad,
-    x,
+    x: canvasW - pad,
     y: canvasH - pad,
     textAlign: "right",
     textBaseline: "bottom",

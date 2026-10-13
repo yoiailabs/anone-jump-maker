@@ -39,6 +39,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FPS = 30
 
+# Green chroma crop inside vertical.mp4. The portrait photo covers the full
+# 608×1080 frame; this band is only the character source (see src/layout.ts).
 PORTRAIT_BAND_Y = 312
 PORTRAIT_BAND_H = 342
 

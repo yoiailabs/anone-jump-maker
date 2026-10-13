@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  BLUR_COVER_SCALE,
   BLUR_SOURCE,
   CHARACTER_SIZES,
   CHARACTER_SIZE_SCALE,
@@ -24,9 +23,13 @@ import {
   OUTPUT,
   OUTPUTS,
   STAGE_MAX_REM,
-  PANEL_DIVIDER_PX,
+  PORTRAIT_INK_BOTTOM,
+  PORTRAIT_INK_X0,
+  PORTRAIT_INK_X1,
+  PORTRAIT_STICKER_BOTTOM,
+  PORTRAIT_STICKER_LEFT,
+  PORTRAIT_STICKER_RIGHT,
   TEMPLATE_BAND_H,
-  TEMPLATE_BAND_Y,
   TEMPLATE_FPS,
   ZOOM_IN_START,
   ZOOM_KEYS,
@@ -83,34 +86,52 @@ describe("output size", () => {
     expect(STAGE_MAX_REM.landscape).toBe(26);
   });
 
-  it("treats only portrait as a blur-band canvas", () => {
-    expect(usesBlurBackdrop("portrait")).toBe(true);
+  it("does not use a blur backdrop in either aspect", () => {
+    expect(usesBlurBackdrop("portrait")).toBe(false);
     expect(usesBlurBackdrop("landscape")).toBe(false);
     expect(isAspectMode("landscape")).toBe(true);
     expect(isAspectMode("square")).toBe(false);
   });
 
-  it("uses a main-frame blur with a 1px divider", () => {
-    expect(BLUR_COVER_SCALE).toBe(1);
-    expect(PANEL_DIVIDER_PX).toBe(1);
+  it("keeps zoom blur on the composited frame", () => {
     expect(BLUR_SOURCE).toBe("main-frame");
   });
 });
 
+function portraitSticker(dest: { x: number; y: number; w: number; h: number }, canvasW: number) {
+  const outline = characterOutlinePx(canvasW);
+  const left = dest.x + PORTRAIT_INK_X0 * dest.w - outline;
+  const right = dest.x + PORTRAIT_INK_X1 * dest.w + outline;
+  const bottom = dest.y + PORTRAIT_INK_BOTTOM * dest.h + outline;
+  return { left, right, bottom, width: right - left, center: (left + right) / 2 };
+}
+
 describe("characterDest", () => {
-  it("places the keyed 16:9 plate 1:1 on the official template", () => {
+  it("places the portrait sticker on the utNIG60-li0 box", () => {
     expect(CHAR_SCALE).toBe(1);
     expect(CHAR_OUTLINE_PX).toBe(2);
-    const dest = characterDest(608, 342);
-    expect(dest).toEqual({ x: 0, y: 0, w: 608, h: 342 });
+    const { width: canvasW, height: canvasH } = OUTPUTS.portrait;
+    const dest = characterDest(canvasW, canvasH, CHAR_SCALE, 0, "portrait");
+    expect(dest.w / dest.h).toBeCloseTo(OUTPUT.width / (TEMPLATE_BAND_H - 2), 5);
+    const sticker = portraitSticker(dest, canvasW);
+    expect(sticker.left / canvasW).toBeCloseTo(PORTRAIT_STICKER_LEFT, 5);
+    expect(sticker.right / canvasW).toBeCloseTo(PORTRAIT_STICKER_RIGHT, 5);
+    expect(sticker.width / canvasW).toBeCloseTo(PORTRAIT_STICKER_RIGHT - PORTRAIT_STICKER_LEFT, 5);
+    expect(sticker.center / canvasW).toBeCloseTo((PORTRAIT_STICKER_LEFT + PORTRAIT_STICKER_RIGHT) / 2, 5);
+    expect(sticker.bottom / canvasH).toBeCloseTo(PORTRAIT_STICKER_BOTTOM, 5);
+    expect(sticker.width / canvasW).toBeGreaterThan(0.7);
+    expect(sticker.width / canvasW).toBeLessThan(0.74);
+    expect(sticker.center / canvasW).toBeCloseTo(0.45, 2);
   });
 
-  it("does not extra-shift the official portrait plate", () => {
+  it("does not extra-shift the portrait plate", () => {
     expect(CHAR_SHIFT_Y).toBe(0);
     expect(characterShiftY(TEMPLATE_BAND_H, "portrait")).toBe(0);
     expect(characterShiftY(TEMPLATE_BAND_H, "landscape")).toBe(0);
-    const dest = characterDest(608, 342, CHAR_SCALE, characterShiftY(342, "portrait"));
-    expect(dest).toEqual({ x: 0, y: 0, w: 608, h: 342 });
+    const { width: canvasW, height: canvasH } = OUTPUTS.portrait;
+    const dest = characterDest(canvasW, canvasH, CHAR_SCALE, characterShiftY(canvasH, "portrait"), "portrait");
+    const still = characterDest(canvasW, canvasH, CHAR_SCALE, 0, "portrait");
+    expect(dest).toEqual(still);
   });
 
   it("uses the same 1:1 scale on landscape as the official 16:9 template", () => {
@@ -118,7 +139,7 @@ describe("characterDest", () => {
     expect(characterScale("landscape")).toBe(LANDSCAPE_CHAR_SCALE);
     expect(LANDSCAPE_CHAR_SCALE).toBe(1);
     expect(CHAR_SCALE).toBe(1);
-    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
+    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE, 0, "landscape");
     expect(dest).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
     expect(characterOutlinePx(608)).toBe(2);
     expect(characterOutlinePx(1280)).toBe(4);
@@ -154,14 +175,15 @@ describe("character size", () => {
       expect(characterScale("portrait", size)).toBeCloseTo(CHAR_SCALE * factor, 5);
       expect(characterScale("landscape", size)).toBeCloseTo(LANDSCAPE_CHAR_SCALE * factor, 5);
 
-      const portrait = mainPanelRect(OUTPUT.width, OUTPUT.height, "portrait");
-      const standardP = characterDest(portrait.w, portrait.h, characterScale("portrait", "standard"));
-      const scaledP = characterDest(portrait.w, portrait.h, characterScale("portrait", size));
-      expect(standardP).toEqual({ x: 0, y: 0, w: portrait.w, h: portrait.h });
+      const { width: canvasW, height: canvasH } = OUTPUTS.portrait;
+      const standardP = characterDest(canvasW, canvasH, characterScale("portrait", "standard"), 0, "portrait");
+      const scaledP = characterDest(canvasW, canvasH, characterScale("portrait", size), 0, "portrait");
       expect(scaledP.w).toBeCloseTo(standardP.w * factor, 5);
       expect(scaledP.h).toBeCloseTo(standardP.h * factor, 5);
-      expect(scaledP.x).toBeCloseTo((portrait.w - scaledP.w) / 2, 5);
-      expect(scaledP.y + scaledP.h).toBeCloseTo(portrait.h, 5);
+      const standardSticker = portraitSticker(standardP, canvasW);
+      const scaledSticker = portraitSticker(scaledP, canvasW);
+      expect(scaledSticker.center).toBeCloseTo(standardSticker.center, 4);
+      expect(scaledSticker.bottom).toBeCloseTo(standardSticker.bottom, 4);
 
       const standardL = characterDest(
         OUTPUTS.landscape.width,
@@ -182,15 +204,9 @@ describe("character size", () => {
 });
 
 describe("mainPanelRect", () => {
-  it("places a full-width 16:9 panel on the measured green band", () => {
-    const panel = mainPanelRect(OUTPUT.width, OUTPUT.height);
-    expect(panel.x).toBe(0);
-    expect(panel.w).toBe(608);
-    expect(panel.y).toBe(TEMPLATE_BAND_Y);
-    expect(panel.h).toBe(TEMPLATE_BAND_H);
-    expect(panel.w / panel.h).toBeCloseTo(16 / 9, 5);
-    expect(panel.y / OUTPUT.height).toBeCloseTo(0.2889, 3);
-    expect((panel.y + panel.h) / OUTPUT.height).toBeCloseTo(0.6056, 3);
+  it("covers the portrait canvas edge to edge", () => {
+    const panel = mainPanelRect(OUTPUT.width, OUTPUT.height, "portrait");
+    expect(panel).toEqual({ x: 0, y: 0, w: 608, h: 1080 });
   });
 
   it("fills the landscape canvas with the 16:9 main frame", () => {
@@ -202,7 +218,7 @@ describe("mainPanelRect", () => {
 describe("templateBandRect", () => {
   it("crops the same 16:9 band from the template", () => {
     const band = templateBandRect(608, 1080);
-    expect(band).toEqual({ x: 0, y: 312, w: 608, h: 342 });
+    expect(band).toEqual({ x: 0, y: 314, w: 608, h: 340 });
   });
 
   it("uses the full landscape template frame", () => {
@@ -216,13 +232,6 @@ describe("coverDest / sharpCoverScale", () => {
     expect(dest.h).toBeCloseTo(1080, 5);
     expect(dest.w).toBeGreaterThan(608);
     expect(dest.x).toBeLessThan(0);
-  });
-
-  it("cover-maps the 16:9 main frame onto the full canvas", () => {
-    const dest = coverDest(608, 342, 608, 1080, { scale: BLUR_COVER_SCALE });
-    expect(dest.h).toBeCloseTo(1080, 5);
-    expect(dest.w).toBeGreaterThan(608);
-    expect(dest.y).toBeCloseTo(0, 5);
   });
 
   it("gives the jump plate enough overscan that the measured drop never uncovers the panel", () => {
