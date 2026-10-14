@@ -24,12 +24,14 @@ import {
   OUTPUTS,
   STAGE_MAX_REM,
   PORTRAIT_INK_BOTTOM,
+  PORTRAIT_INK_BOTTOM_ROW,
   PORTRAIT_INK_X0,
   PORTRAIT_INK_X1,
   PORTRAIT_STICKER_BOTTOM,
   PORTRAIT_STICKER_LEFT,
   PORTRAIT_STICKER_RIGHT,
   TEMPLATE_BAND_H,
+  TEMPLATE_BAND_TOP_CROP,
   TEMPLATE_FPS,
   ZOOM_IN_START,
   ZOOM_KEYS,
@@ -121,6 +123,11 @@ describe("characterDest", () => {
     expect(sticker.center / canvasW).toBeCloseTo((PORTRAIT_STICKER_LEFT + PORTRAIT_STICKER_RIGHT) / 2, 5);
     expect(sticker.bottom / canvasH).toBeCloseTo(PORTRAIT_STICKER_BOTTOM, 5);
     expect(sticker.bottom).toBeCloseTo(PORTRAIT_STICKER_BOTTOM * canvasH, 5);
+    expect(PORTRAIT_INK_BOTTOM_ROW).toBe(TEMPLATE_BAND_H - 1);
+    expect(PORTRAIT_INK_BOTTOM).toBe(
+      (PORTRAIT_INK_BOTTOM_ROW + 1 - TEMPLATE_BAND_TOP_CROP) / (TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP),
+    );
+    expect(PORTRAIT_INK_BOTTOM).toBe(1);
     expect(sticker.width / canvasW).toBeGreaterThan(0.7);
     expect(sticker.width / canvasW).toBeLessThan(0.74);
     expect(sticker.center / canvasW).toBeCloseTo(0.45, 2);

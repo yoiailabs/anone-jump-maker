@@ -45,12 +45,16 @@ export const TEMPLATE_BAND_TOP_CROP = 2;
 export const MAIN_PANEL_Y_FRAC = 0;
 
 /**
- * 緑帯の中の線画（クロマ抜き後）。`vertical.mp4` frame 270（t=9s）の左右と、
- * ほぼ全フレームで共通の水平カット下端。右・下は画素の外縁（exclusive）。下端は上端 2px を切った帯の中。
+ * 緑帯の中の線画（クロマ抜き後）。左右は frame 270（t=9s）。
+ * 下端は帯の最終行（band 内 y=341、inclusive）。470 フレーム中 452 で、
+ * 幅 8% 以上の非緑ランがここで終わる。細いインクだけの 18 フレームは帯端より上で切れるが、基準は変えない。
+ * 右・下は画素の外縁（exclusive）。下端比は上端 2px を切った帯の中で、帯端までなので 1。
  */
 export const PORTRAIT_INK_X0 = 138 / 608;
 export const PORTRAIT_INK_X1 = 431 / 608;
-export const PORTRAIT_INK_BOTTOM = (339 - TEMPLATE_BAND_TOP_CROP) / (TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP);
+export const PORTRAIT_INK_BOTTOM_ROW = TEMPLATE_BAND_H - 1;
+export const PORTRAIT_INK_BOTTOM =
+  (PORTRAIT_INK_BOTTOM_ROW + 1 - TEMPLATE_BAND_TOP_CROP) / (TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP);
 
 /**
  * 新縦テンプレ utNIG60-li0 の t=9s ステッカー（白縁込み）。
