@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { PHOTO_MAX_COUNT } from "./photo-list.ts";
 import {
   TEMPLATE_PHOTO_COUNT,
   TEMPLATE_SLOT_PHOTO_ORDER,
@@ -38,7 +37,6 @@ describe("template photo order (colour-coded Short utNIG60-li0)", () => {
   it("records 10 colours over 32 slots in the measured reference sequence", () => {
     expect(TEMPLATE_PHOTO_COUNT).toBe(10);
     expect(TEMPLATE_SLOT_PHOTO_ORDER).toHaveLength(32);
-    expect(PHOTO_MAX_COUNT).toBe(TEMPLATE_SLOT_PHOTO_ORDER.length);
     expect(new Set(TEMPLATE_SLOT_PHOTO_ORDER).size).toBe(10);
     const letters = TEMPLATE_SLOT_PHOTO_ORDER.map((i) => "ABCDEFGHIJ"[i]).join("");
     expect(letters).toBe("ABCDEFGBEAHBAIFIBDHIGHJCHFIJGDAI");

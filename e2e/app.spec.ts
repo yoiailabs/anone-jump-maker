@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
+import { t } from "../src/i18n.ts";
+import { PHOTO_MAX_COUNT } from "../src/photo-list.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
 import { blockAnalytics, expectVisibleText, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
@@ -293,17 +295,38 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#previewTransport")).toBeHidden();
 });
 
-test("keeps at most 32 photos and disables adding at the cap", async ({ page }) => {
+test("keeps at most 16 photos and says when the selection overflowed", async ({ page }) => {
   await openStudio(page);
-  const files = await Promise.all(Array.from({ length: 33 }, (_, i) => jpegInput(`p${i}.jpg`)));
+  const files = await Promise.all(Array.from({ length: PHOTO_MAX_COUNT + 1 }, (_, i) => jpegInput(`p${i}.jpg`)));
   await page.locator("#picker").setInputFiles(files);
-  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(32, { timeout: 45_000 });
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(PHOTO_MAX_COUNT, { timeout: 45_000 });
+  await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "p0.jpg");
+  await expect(page.locator("#thumbs img").nth(PHOTO_MAX_COUNT - 1)).toHaveAttribute("alt", `p${PHOTO_MAX_COUNT - 1}.jpg`);
   await expect(page.locator(".thumb-add")).toBeDisabled();
-  await expect(page.locator("#pickerLabel")).toHaveText("32枚まで");
+  await expect(page.locator("#pickerLabel")).toHaveText(t("ja", "makerPhotosFull", { n: PHOTO_MAX_COUNT }));
   await expect
     .poll(async () => stripZwsp((await page.locator("#thumbsHint").textContent()) ?? ""))
-    .toContain("32枚が上限");
-  await expect(page.locator("#photoFeedback")).not.toContainText("失敗");
+    .toBe(t("ja", "makerThumbsHintFull", { n: PHOTO_MAX_COUNT }));
+  await expect(page.locator("#photoFeedback")).toHaveText(t("ja", "makerPhotosTrimmed", { n: PHOTO_MAX_COUNT }));
+});
+
+test("trims a later pick that would pass the photo cap", async ({ page }) => {
+  await openStudio(page);
+  const first = await Promise.all(
+    Array.from({ length: PHOTO_MAX_COUNT - 2 }, (_, i) => jpegInput(`a${i}.jpg`)),
+  );
+  await page.locator("#picker").setInputFiles(first);
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(PHOTO_MAX_COUNT - 2, { timeout: 45_000 });
+  await expect(page.locator("#photoFeedback")).toHaveText("");
+  await expect(page.locator(".thumb-add")).toBeEnabled();
+
+  const extra = await Promise.all(Array.from({ length: 4 }, (_, i) => jpegInput(`b${i}.jpg`)));
+  await page.locator("#picker").setInputFiles(extra);
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(PHOTO_MAX_COUNT, { timeout: 45_000 });
+  await expect(page.locator("#thumbs img").nth(PHOTO_MAX_COUNT - 2)).toHaveAttribute("alt", "b0.jpg");
+  await expect(page.locator("#thumbs img").nth(PHOTO_MAX_COUNT - 1)).toHaveAttribute("alt", "b1.jpg");
+  await expect(page.locator("#photoFeedback")).toHaveText(t("ja", "makerPhotosTrimmed", { n: PHOTO_MAX_COUNT }));
+  await expect(page.locator(".thumb-add")).toBeDisabled();
 });
 
 test("reorders photos by drag and drop", async ({ page }) => {

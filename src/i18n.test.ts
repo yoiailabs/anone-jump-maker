@@ -149,7 +149,11 @@ describe("messages", () => {
     expect(t("ko", "makerOnDevice")).toBe("영상 생성은 기기 안에서 이루어집니다. 이미지가 외부로 전송되지 않습니다.");
     expect(t("zh", "makerOnDevice")).toBe("视频在本设备内生成。图片不会发送到外部。");
     expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
-    expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
+    expect(t("ja", "makerPhotosAtCap", { n: 16 })).toBe("これ以上追加できません（16枚まで）");
+    expect(t("ja", "makerPhotosTrimmed", { n: 16 })).toBe("16枚が上限です。超えた分は入れませんでした。");
+    expect(t("en", "makerPhotosTrimmed", { n: 16 })).toBe("16 photos is the limit. The extras weren’t added.");
+    expect(t("ko", "makerPhotosTrimmed", { n: 16 })).toBe("최대 16장이에요. 넘는 장은 넣지 않았어요.");
+    expect(t("zh", "makerPhotosTrimmed", { n: 16 })).toBe("最多16张。超出的没有加入。");
     expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");
     expect(t("ja", "statusPhotoRemoved", { n: 2 })).toBe("写真を外しました（残り 2 枚）");
     expect(t("ja", "makerThumbsHint")).toBe("長押しして画像の順序を変更できます。");
