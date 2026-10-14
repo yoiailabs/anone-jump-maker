@@ -6,7 +6,7 @@ import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
-import { DEFAULT_ASPECT } from "../layout.ts";
+import { DEFAULT_ASPECT, DEFAULT_SWAP_STYLE } from "../layout.ts";
 import { JUMP_LOOP_WATCH_HREF, linkBannersHtml } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../share.ts";
@@ -351,8 +351,8 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                       name="swap"
                       ariaLabel={t(locale, "makerEffectLegend")}
                       options={[
-                        { value: "jump", label: t(locale, "makerJump"), defaultChecked: true },
-                        { value: "zoom", label: t(locale, "makerZoom") },
+                        { value: "zoom", label: t(locale, "makerZoom"), defaultChecked: DEFAULT_SWAP_STYLE === "zoom" },
+                        { value: "jump", label: t(locale, "makerJump"), defaultChecked: DEFAULT_SWAP_STYLE === "jump" },
                       ]}
                     />
                   </fieldset>

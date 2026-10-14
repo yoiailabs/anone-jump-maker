@@ -28,6 +28,7 @@ import {
 import {
   DEFAULT_ASPECT,
   DEFAULT_CHARACTER_SIZE,
+  DEFAULT_SWAP_STYLE,
   isAspectMode,
   isCharacterSize,
   isImageFilter,
@@ -181,7 +182,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const filterValue = checkedNamedValue(filterInputs, "filter");
   const characterValue = checkedNamedValue(characterInputs, "character");
   let mode: AspectMode = aspectValue && isAspectMode(aspectValue) ? aspectValue : DEFAULT_ASPECT;
-  let swapStyle: SwapStyle = swapValue && isSwapStyle(swapValue) ? swapValue : "jump";
+  let swapStyle: SwapStyle = swapValue && isSwapStyle(swapValue) ? swapValue : DEFAULT_SWAP_STYLE;
   let imageFilter: ImageFilter = filterValue && isImageFilter(filterValue) ? filterValue : "none";
   let characterSize: CharacterSize =
     characterValue && isCharacterSize(characterValue) ? characterValue : DEFAULT_CHARACTER_SIZE;

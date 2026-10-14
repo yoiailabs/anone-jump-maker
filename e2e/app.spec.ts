@@ -126,6 +126,7 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#restartBtn")).toHaveCount(0);
   await expect(page.locator("#aspectTab")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeVisible();
+  await expect(page.locator('#studioView input[name="swap"][value="zoom"]')).toBeChecked();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeHidden();
   await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
@@ -181,7 +182,15 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
   await page.locator("#swapTab").click();
-  await page.locator('#studioView label:has(input[name="swap"][value="zoom"])').click();
+  const zoomOption = page.locator('#studioView label:has(input[name="swap"][value="zoom"])');
+  const jumpOption = page.locator('#studioView label:has(input[name="swap"][value="jump"])');
+  await expect(zoomOption).toBeVisible();
+  await expect(jumpOption).toBeVisible();
+  expect((await zoomOption.boundingBox())?.x ?? Number.POSITIVE_INFINITY).toBeLessThan(
+    (await jumpOption.boundingBox())?.x ?? 0,
+  );
+  await jumpOption.click();
+  await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
   await page.locator("#filterTab").click();
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
   await page.locator("#characterTab").click();
@@ -416,7 +425,7 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
     await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
+    expect(download.suggestedFilename()).toMatch(/^anone-zoom-16x9\.(mp4|webm)$/);
     await expect(page.locator("#exportStatus")).toBeHidden();
     await expect(page.locator("#exportStatus")).toHaveText("");
     await expect(page.locator("#saveFeedback")).toBeHidden();
@@ -509,7 +518,7 @@ test("download opens a file share sheet when the browser can share files", async
         }
       ).__fileShareCalls[0],
   );
-  expect(payload?.name).toMatch(/^anone-jump-16x9\.(mp4|webm)$/);
+  expect(payload?.name).toMatch(/^anone-zoom-16x9\.(mp4|webm)$/);
   expect(payload?.type).toMatch(/^video\/(mp4|webm)$/);
   expect(payload?.size ?? 0).toBeGreaterThan(0);
   expect(payload?.text).toBe(SHARE_TEXT);

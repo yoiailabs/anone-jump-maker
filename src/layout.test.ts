@@ -8,6 +8,7 @@ import {
   CHAR_SHIFT_Y,
   DEFAULT_ASPECT,
   DEFAULT_CHARACTER_SIZE,
+  DEFAULT_SWAP_STYLE,
   ASPECT_MODES,
   LANDSCAPE_CHAR_SCALE,
   JUMP_COVER_SCALE,
@@ -53,6 +54,7 @@ import {
   isCharacterSize,
   isImageFilter,
   isSwapStyle,
+  SWAP_STYLES,
   jumpCycle,
   jumpFlashEnvelope,
   mainPanelRect,
@@ -72,6 +74,12 @@ describe("output size", () => {
   it("lists landscape first and uses it as the default", () => {
     expect(DEFAULT_ASPECT).toBe("landscape");
     expect(ASPECT_MODES).toEqual(["landscape", "portrait"]);
+  });
+
+  it("lists zoom first and uses it as the default effect", () => {
+    expect(SWAP_STYLES).toEqual(["zoom", "jump"]);
+    expect(DEFAULT_SWAP_STYLE).toBe("zoom");
+    expect(DEFAULT_SWAP_STYLE).toBe(SWAP_STYLES[0]);
   });
 
   it("matches the 608x1080 template", () => {

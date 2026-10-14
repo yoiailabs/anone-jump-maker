@@ -110,6 +110,9 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="studioHome"');
     expect(makerSrc).not.toContain("anone-logo-stacked");
     expect(makerSrc).toContain('useState<OptionTab>("aspect")');
+    expect(makerSrc.indexOf('value: "zoom"')).toBeLessThan(makerSrc.indexOf('value: "jump"'));
+    expect(makerSrc).toContain('defaultChecked: DEFAULT_SWAP_STYLE === "zoom"');
+    expect(appSrc).toContain("? swapValue : DEFAULT_SWAP_STYLE");
     expect(makerSrc.indexOf('["aspect", "studioTabAspect"')).toBeLessThan(makerSrc.indexOf('["swap", "studioTabEffect"'));
     expect(makerSrc.indexOf('["swap", "studioTabEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioTabFilter"'));
     expect(makerSrc.indexOf('["filter", "studioTabFilter"')).toBeLessThan(
