@@ -6,11 +6,11 @@ export const OFFICIAL_MV_WATCH_HREF = `https://www.youtube.com/watch?v=${OFFICIA
 export const OFFICIAL_MV_EMBED_SRC = `https://www.youtube-nocookie.com/embed/${OFFICIAL_MV_VIDEO_ID}`;
 
 /** トップのサムネイル（JumpLoop）を開いたとき、公式MVをこの秒から再生する。 */
-export const JUMP_LOOP_START_SECONDS = 60;
+export const JUMP_LOOP_START_SECONDS = 63;
 
 /**
  * YouTube の視聴 URL に再生開始秒を足す。
- * `youtube.com/watch` は `t=60s`、`youtu.be` は `t=60`。
+ * `youtube.com/watch` は `t=63s`、`youtu.be` は `t=63`。
  * 既存のクエリは値も並びもそのまま残し、開始秒（`t`）だけを差し替える。
  */
 export function youtubePlaybackUrl(href: string, startSeconds: number): string {
