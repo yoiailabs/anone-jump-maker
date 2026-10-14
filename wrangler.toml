@@ -20,7 +20,8 @@ enabled = true
 
 # Vite / Astro の dist を Workers 静的アセットとして配信する。
 # プレフィックスなしの `/` `/make` `/community` `/privacy` `/terms` と、
-# 規約・ポリシーの言語付き URL だけ Worker が先に受ける。
+# 規約・ポリシーの言語付き URL、それに `/_astro/*` を Worker が先に受ける。
+# `/_astro/*` は、無いチャンクが SPA の HTML として immutable キャッシュされるのを防ぐ。
 # Cookie があるとき `/` `/make` `/community` を /en /ko /zh へ寄せる。
 # `/privacy` `/terms` は日本語のまま。言語付き URL は日本語へ 302 する。
 # Accept-Language では寄せない
@@ -31,6 +32,7 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
 run_worker_first = [
+  "/_astro/*",
   "/",
   "/make",
   "/make/",

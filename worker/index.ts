@@ -19,6 +19,12 @@ export default {
       return new Response("Not found", { status: 404 });
     }
     const url = new URL(request.url);
+    // `/_astro/*` は _headers で 1 年 immutable。無いファイルは SPA が index.html を
+    // 200 text/html で返すので、そのまま渡すと HTML がスクリプト URL に張り付き、
+    // 起動せず写真を選んでも読み込まれない。HTML のときは no-store の 404 にする。
+    if (url.pathname.startsWith("/_astro/")) {
+      return hashedAsset(request, env);
+    }
     const parsed = parseAppPath(url.pathname);
     if (!parsed) {
       return new Response("Not found", { status: 404 });
@@ -67,3 +73,25 @@ export default {
     return new Response(asset.body, { status: asset.status, headers });
   },
 };
+
+async function hashedAsset(request: Request, env: AssetsEnv): Promise<Response> {
+  if (!env.ASSETS) return scriptMiss();
+  const asset = await env.ASSETS.fetch(request);
+  const contentType = asset.headers.get("content-type") ?? "";
+  if (contentType.toLowerCase().includes("text/html")) {
+    await asset.body?.cancel();
+    return scriptMiss();
+  }
+  return asset;
+}
+
+function scriptMiss(): Response {
+  return new Response("Not found", {
+    status: 404,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "text/plain; charset=utf-8",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}

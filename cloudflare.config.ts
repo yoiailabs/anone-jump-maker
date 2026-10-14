@@ -17,6 +17,7 @@ export default defineConfig({
 			htmlHandling: "auto-trailing-slash",
 			notFoundHandling: "single-page-application",
 			runWorkerFirst: [
+				"/_astro/*",
 				"/",
 				"/make",
 				"/make/",

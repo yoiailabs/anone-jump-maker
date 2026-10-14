@@ -20,6 +20,51 @@ describe("worker fetch", () => {
     expect(await response.text()).toBe("Not found");
   });
 
+  it("does not serve SPA HTML as an immutable hashed script", async () => {
+    const env = {
+      ASSETS: {
+        async fetch() {
+          return new Response("<!DOCTYPE html><html><body>fallback</body></html>", {
+            status: 200,
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+              "cache-control": "public, max-age=31536000, immutable",
+            },
+          });
+        },
+      },
+    };
+    const response = await worker.fetch(
+      new Request("https://anone.yoiailabs.com/_astro/MakerApp.missing.js"),
+      env,
+    );
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-type") ?? "").not.toContain("text/html");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.text()).toBe("Not found");
+  });
+
+  it("passes a real hashed script through with its cache header", async () => {
+    const env = {
+      ASSETS: {
+        async fetch() {
+          return new Response("export {}", {
+            status: 200,
+            headers: {
+              "content-type": "text/javascript",
+              "cache-control": "public, max-age=31536000, immutable",
+            },
+          });
+        },
+      },
+    };
+    const response = await worker.fetch(new Request("https://anone.yoiailabs.com/_astro/app.js"), env);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("javascript");
+    expect(response.headers.get("cache-control")).toContain("immutable");
+    expect(await response.text()).toBe("export {}");
+  });
+
   it("lets prefixed locales fall through to static HTML", async () => {
     const response = await worker.fetch(new Request("https://anone.yoiailabs.com/en"));
     expect(response.status).toBe(404);

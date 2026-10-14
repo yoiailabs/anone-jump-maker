@@ -1,5 +1,7 @@
 /* インストール条件用の fetch ハンドラ。テンプレ動画と Range は触らない。 */
-const CACHE_NAME = "anone-pwa-v1";
+import { shouldCache } from "./sw-policy.js";
+
+const CACHE_NAME = "anone-pwa-v2";
 const PRECACHE = [
   "/favicon.svg",
   "/icons/icon-192.png",
@@ -37,7 +39,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname === "/sw.js") return;
+  if (url.pathname === "/sw.js" || url.pathname === "/sw-policy.js") return;
   if (url.pathname.startsWith("/template/")) return;
 
   event.respondWith(networkFirst(request));
@@ -56,10 +58,4 @@ async function networkFirst(request) {
     if (cached) return cached;
     throw error;
   }
-}
-
-function shouldCache(request, response) {
-  if (!response.ok || response.type !== "basic") return false;
-  if (request.mode === "navigate" || request.destination === "document") return false;
-  return true;
 }

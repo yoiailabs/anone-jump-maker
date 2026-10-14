@@ -59,7 +59,7 @@ describe("registerPwa", () => {
     vi.stubGlobal("location", { protocol: "https:", hostname: "anone.yoiailabs.com" });
     try {
       registerPwa({ register });
-      expect(register).toHaveBeenCalledWith("/sw.js");
+      expect(register).toHaveBeenCalledWith("/sw.js", { type: "module" });
     } finally {
       vi.unstubAllGlobals();
     }
