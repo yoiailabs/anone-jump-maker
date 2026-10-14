@@ -73,3 +73,10 @@ export async function openStudio(page: Page): Promise<void> {
   await page.locator("#toStudio").click();
   await studio.waitFor({ state: "visible" });
 }
+
+/** 向きタブを開いて横または縦を選ぶ。初期値は縦。 */
+export async function selectAspect(page: Page, aspect: "portrait" | "landscape"): Promise<void> {
+  await page.locator("#aspectTab").click();
+  await page.locator(`#studioView label:has(input[name="aspect"][value="${aspect}"])`).click();
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", aspect);
+}

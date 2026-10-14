@@ -128,6 +128,7 @@ describe("portrait horizontal cut", () => {
     pctx.fillRect(400, 200, 480, 200);
     const video = document.createElement("video");
     try {
+      compositor.setAspect("landscape");
       compositor.draw(
         video,
         [photo],

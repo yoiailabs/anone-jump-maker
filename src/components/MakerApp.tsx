@@ -334,8 +334,8 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                       name="aspect"
                       ariaLabel={t(locale, "makerAspectLegend")}
                       options={[
-                        { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                        { value: "portrait", label: t(locale, "makerPortrait") },
+                        { value: "portrait", label: t(locale, "makerPortrait"), defaultChecked: true },
+                        { value: "landscape", label: t(locale, "makerLandscape") },
                       ]}
                     />
                   </fieldset>

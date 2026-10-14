@@ -55,23 +55,23 @@ describe("createCompositor", () => {
     const video = document.createElement("video");
     const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
     try {
-      expect(compositor.aspect()).toBe("landscape");
-      expect(compositor.canvas.width).toBe(640);
-      expect(compositor.canvas.height).toBe(360);
+      expect(compositor.aspect()).toBe("portrait");
+      expect(compositor.canvas.width).toBe(304);
+      expect(compositor.canvas.height).toBe(540);
       expect(compositor.keying).toBe("cpu");
 
       const slot = compositor.draw(video, [photo], timeline, 0, "jump", "none");
       expect(slot).toBe(0);
-      const landscape = sampleCenter(compositor.canvas);
-      expect(landscape[0]).toBeGreaterThan(80);
-      expect(landscape[3]).toBe(255);
-
-      compositor.setAspect("portrait");
-      compositor.draw(video, [photo], timeline, 0.12, "zoom", "blur-weak");
-      expect(compositor.canvas.width).toBe(304);
-      expect(compositor.canvas.height).toBe(540);
       const portrait = sampleCenter(compositor.canvas);
-      expect(portrait[0] + portrait[1] + portrait[2]).toBeGreaterThan(20);
+      expect(portrait[0]).toBeGreaterThan(80);
+      expect(portrait[3]).toBe(255);
+
+      compositor.setAspect("landscape");
+      compositor.draw(video, [photo], timeline, 0.12, "zoom", "blur-weak");
+      expect(compositor.canvas.width).toBe(640);
+      expect(compositor.canvas.height).toBe(360);
+      const landscape = sampleCenter(compositor.canvas);
+      expect(landscape[0] + landscape[1] + landscape[2]).toBeGreaterThan(20);
     } finally {
       photo.bitmap.close();
       compositor.destroy();
@@ -103,6 +103,7 @@ describe("createCompositor", () => {
     };
     const luma = (px: Uint8ClampedArray) => (px[0] ?? 0) + (px[1] ?? 0) + (px[2] ?? 0);
     try {
+      compositor.setAspect("landscape");
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "standard");
       const standardUpper = sample(640, 280);
       const standardLower = sample(640, 540);

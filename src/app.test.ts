@@ -110,6 +110,9 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="studioHome"');
     expect(makerSrc).not.toContain("anone-logo-stacked");
     expect(makerSrc).toContain('useState<OptionTab>("swap")');
+    expect(makerSrc.indexOf('{ value: "portrait", label: t(locale, "makerPortrait"), defaultChecked: true }')).toBeLessThan(
+      makerSrc.indexOf('{ value: "landscape", label: t(locale, "makerLandscape") }'),
+    );
     expect(makerSrc.indexOf('["aspect", "studioTabAspect"')).toBeLessThan(makerSrc.indexOf('["swap", "studioTabEffect"'));
     expect(makerSrc.indexOf('["swap", "studioTabEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioTabFilter"'));
     expect(makerSrc.indexOf('["filter", "studioTabFilter"')).toBeLessThan(

@@ -69,9 +69,9 @@ import {
 } from "./layout.ts";
 
 describe("output size", () => {
-  it("lists landscape first and uses it as the default", () => {
-    expect(DEFAULT_ASPECT).toBe("landscape");
-    expect(ASPECT_MODES).toEqual(["landscape", "portrait"]);
+  it("lists portrait first and uses it as the default", () => {
+    expect(DEFAULT_ASPECT).toBe("portrait");
+    expect(ASPECT_MODES).toEqual(["portrait", "landscape"]);
   });
 
   it("matches the 608x1080 template", () => {

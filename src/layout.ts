@@ -1,8 +1,8 @@
 export type AspectMode = "portrait" | "landscape";
 
-/** X 投稿でよく使う横を先に出し、初期選択にする。 */
-export const DEFAULT_ASPECT: AspectMode = "landscape";
-export const ASPECT_MODES: readonly AspectMode[] = ["landscape", "portrait"];
+/** 縦を先に出し、初期選択にする。 */
+export const DEFAULT_ASPECT: AspectMode = "portrait";
+export const ASPECT_MODES: readonly AspectMode[] = ["portrait", "landscape"];
 
 export type Rect = {
   x: number;

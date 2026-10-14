@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, expectVisibleText, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, expectVisibleText, jpegInput, openStudio, PHOTO_FILE, selectAspect, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -175,9 +175,12 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await mute.click();
   await expect(mute).toContainText(/音声オフ|音声オン/);
 
-  await page.locator("#aspectTab").click();
-  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+  await page.locator("#aspectTab").click();
+  await expect(page.locator('#studioView input[name="aspect"]').nth(0)).toHaveAttribute("value", "portrait");
+  await expect(page.locator('#studioView input[name="aspect"]').nth(1)).toHaveAttribute("value", "landscape");
+  await expect(page.locator('#studioView input[name="aspect"][value="portrait"]')).toBeChecked();
+  await selectAspect(page, "landscape");
   await page.locator("#swapTab").click();
   await page.locator('#studioView label:has(input[name="swap"][value="zoom"])').click();
   await page.locator("#filterTab").click();
@@ -386,6 +389,7 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   );
   await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
   await expect(page.locator("#exportProgressLabel")).toHaveText("0%");
+  await selectAspect(page, "landscape");
 
   // VideoEncoder があっても pickOfflinePlan が null なら未対応（WebKit でよくある）。
   let autoDownloaded = false;
@@ -461,6 +465,7 @@ test("download opens a file share sheet when the browser can share files", async
   await page.goto("/");
   await waitForAppReady(page);
   await uploadPhoto(page);
+  await selectAspect(page, "landscape");
   await expect(page.locator("#shareExportBtn")).toHaveCount(0);
   await expect(page.locator("#downloadExportBtn")).toBeHidden();
 
