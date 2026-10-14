@@ -84,10 +84,10 @@ type MakerAppProps = {
 };
 
 const OPTION_TABS = [
+  ["aspect", "studioTabAspect", "makerAspectLegend"],
   ["swap", "studioTabEffect", "makerEffectLegend"],
   ["filter", "studioTabFilter", "makerFilterLegend"],
   ["character", "studioTabCharacter", "makerCharacterLegend"],
-  ["aspect", "studioTabAspect", "makerAspectLegend"],
 ] as const;
 
 type OptionTab = (typeof OPTION_TABS)[number][0];
