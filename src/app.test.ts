@@ -110,12 +110,10 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="studioHome"');
     expect(makerSrc).not.toContain("anone-logo-stacked");
     expect(makerSrc).toContain('useState<OptionTab>("swap")');
+    expect(makerSrc.indexOf('["aspect", "studioTabAspect"')).toBeLessThan(makerSrc.indexOf('["swap", "studioTabEffect"'));
     expect(makerSrc.indexOf('["swap", "studioTabEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioTabFilter"'));
     expect(makerSrc.indexOf('["filter", "studioTabFilter"')).toBeLessThan(
       makerSrc.indexOf('["character", "studioTabCharacter"'),
-    );
-    expect(makerSrc.indexOf('["character", "studioTabCharacter"')).toBeLessThan(
-      makerSrc.indexOf('["aspect", "studioTabAspect"'),
     );
     expect(appSrc).not.toContain('msg("statusPaused")');
     expect(appSrc).not.toContain('msg("statusPreviewing")');
