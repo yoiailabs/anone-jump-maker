@@ -124,7 +124,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator(".preview-status-icon-play")).toBeHidden();
   await expect(page.locator("#previewStatusLabel")).toHaveCount(0);
   await expect(page.locator("#restartBtn")).toHaveCount(0);
-  await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeVisible();
+  await expect(page.locator("#aspectTab")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeVisible();
+  await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeHidden();
   await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
     await page.evaluate(() =>

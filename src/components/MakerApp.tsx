@@ -95,7 +95,7 @@ type OptionTab = (typeof OPTION_TABS)[number][0];
 export default function MakerApp({ initialView, locale, communityHtml = "" }: MakerAppProps) {
   const started = useRef(false);
   const landingLogoRef = useRef<HTMLImageElement>(null);
-  const [optionTab, setOptionTab] = useState<OptionTab>("swap");
+  const [optionTab, setOptionTab] = useState<OptionTab>("aspect");
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
