@@ -331,11 +331,17 @@ export function characterShiftY(panelH: number, mode: AspectMode = "portrait"): 
   return CHAR_SHIFT_Y * (panelH / TEMPLATE_BAND_H);
 }
 
+/** 縦プレートの水平カット。素材内の下端比は固定なので、画素を読まずにこの高さで切る。 */
+export function portraitCutY(dest: { y: number; h: number }): number {
+  return dest.y + PORTRAIT_INK_BOTTOM * dest.h;
+}
+
 /**
  * キー済み 16:9 プレートをキャンバスへ置く矩形。
  * 横はフレーム等倍（拡大時は下端中央を固定）。
- * 縦は緑帯プレートを utNIG60-li0 のステッカー位置へ。白縁はプレートの外にはみ出すので、
- * インクをその分だけ内側に置き、基準ポーズの中心 x と水平カット下端を固定して拡大する。
+ * 縦は緑帯プレートを utNIG60-li0 のステッカー位置へ。左右の白縁はプレートの外にはみ出すので、
+ * インクをその分だけ内側に置く。水平カットは縁の太さではずらさず、キャンバス高の 75.8% に置く。
+ * 拡大してもカットと中心 x は動かない。下方向の白縁は合成側でカットより下を描かない。
  */
 export function characterDest(
   canvasW: number,
@@ -357,7 +363,7 @@ export function characterDest(
   const outline = characterOutlinePx(canvasW);
   const inkLeft = PORTRAIT_STICKER_LEFT * canvasW + outline;
   const inkRight = PORTRAIT_STICKER_RIGHT * canvasW - outline;
-  const inkBottom = PORTRAIT_STICKER_BOTTOM * canvasH - outline;
+  const inkBottom = PORTRAIT_STICKER_BOTTOM * canvasH;
   const inkWFrac = PORTRAIT_INK_X1 - PORTRAIT_INK_X0;
   const inkCxFrac = (PORTRAIT_INK_X0 + PORTRAIT_INK_X1) / 2;
   const plateW = ((inkRight - inkLeft) / inkWFrac) * scale;

@@ -14,6 +14,7 @@ import {
   ZOOM_BACKDROP_BLUR_FRAC,
   characterDest,
   characterOutlinePx,
+  portraitCutY,
   characterScale,
   characterShiftY,
   coverDest,
@@ -491,35 +492,6 @@ function keyCharacterBand(
   return keyed;
 }
 
-/**
- * 一番下にある、横に長い不透明ランの行（inclusive）。
- * 縦テンプレの体はここで水平に切れていて、その下へ白縁を足すとテンプレに無い白線になる。
- * 点や短い突起は無視する。見つからなければ -1。
- */
-export function horizontalCutRow(
-  rgba: ArrayLike<number>,
-  width: number,
-  height: number,
-  alphaThreshold = 200,
-  minRunFrac = 0.08,
-): number {
-  if (width < 1 || height < 1) return -1;
-  const minRun = Math.max(6, Math.round(width * minRunFrac));
-  for (let y = height - 1; y >= 0; y -= 1) {
-    let run = 0;
-    const row = y * width * 4;
-    for (let x = 0; x < width; x += 1) {
-      if ((rgba[row + x * 4 + 3] ?? 0) > alphaThreshold) {
-        run += 1;
-        if (run >= minRun) return y;
-      } else {
-        run = 0;
-      }
-    }
-  }
-  return -1;
-}
-
 function paintCharacterOverlay(
   mainCtx: CanvasRenderingContext2D,
   { halo, haloCtx }: FxSurfaces,
@@ -551,13 +523,8 @@ function paintCharacterOverlay(
     [-o, o],
     [o, o],
   ];
-  // 縦だけ: 水平カットより下には白縁を描かない。横の縁と、カットより上のパーツの縁は残す。
-  let clipBottom: number | null = null;
-  if (mode === "portrait" && keyW > 0 && keyH > 0) {
-    const pixels = haloCtx.getImageData(0, 0, keyW, keyH);
-    const cut = horizontalCutRow(pixels.data, pixels.width, pixels.height);
-    if (cut >= 0) clipBottom = dest.y + ((cut + 1) / pixels.height) * dest.h;
-  }
+  // 縦だけ: 素材の固定カットより下には白縁を描かない。横の縁と、カットより上のパーツの縁は残す。
+  const clipBottom = mode === "portrait" ? portraitCutY(dest) : null;
   resetCtx(mainCtx);
   if (clipBottom != null) {
     mainCtx.save();

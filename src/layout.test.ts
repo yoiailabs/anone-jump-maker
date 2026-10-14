@@ -38,6 +38,7 @@ import {
   ZOOM_SWAP_DELAY_FRAMES,
   characterDest,
   characterOutlinePx,
+  portraitCutY,
   characterPlateScale,
   characterScale,
   characterShiftY,
@@ -102,7 +103,7 @@ function portraitSticker(dest: { x: number; y: number; w: number; h: number }, c
   const outline = characterOutlinePx(canvasW);
   const left = dest.x + PORTRAIT_INK_X0 * dest.w - outline;
   const right = dest.x + PORTRAIT_INK_X1 * dest.w + outline;
-  const bottom = dest.y + PORTRAIT_INK_BOTTOM * dest.h + outline;
+  const bottom = portraitCutY(dest);
   return { left, right, bottom, width: right - left, center: (left + right) / 2 };
 }
 
@@ -119,9 +120,28 @@ describe("characterDest", () => {
     expect(sticker.width / canvasW).toBeCloseTo(PORTRAIT_STICKER_RIGHT - PORTRAIT_STICKER_LEFT, 5);
     expect(sticker.center / canvasW).toBeCloseTo((PORTRAIT_STICKER_LEFT + PORTRAIT_STICKER_RIGHT) / 2, 5);
     expect(sticker.bottom / canvasH).toBeCloseTo(PORTRAIT_STICKER_BOTTOM, 5);
+    expect(sticker.bottom).toBeCloseTo(PORTRAIT_STICKER_BOTTOM * canvasH, 5);
     expect(sticker.width / canvasW).toBeGreaterThan(0.7);
     expect(sticker.width / canvasW).toBeLessThan(0.74);
     expect(sticker.center / canvasW).toBeCloseTo(0.45, 2);
+  });
+
+  it("keeps the cut on 75.8% when size, scale, and shift change", () => {
+    const canvases = [
+      OUTPUTS.portrait,
+      { width: 304, height: 540 },
+      { width: 1216, height: 2160 },
+    ];
+    for (const { width, height } of canvases) {
+      for (const scale of [1, 1.2, 1.4]) {
+        for (const shiftY of [0, 12, -8]) {
+          const dest = characterDest(width, height, scale, shiftY, "portrait");
+          const cut = portraitCutY(dest);
+          expect(cut).toBeCloseTo(dest.y + PORTRAIT_INK_BOTTOM * dest.h, 6);
+          expect(cut).toBeCloseTo(PORTRAIT_STICKER_BOTTOM * height + shiftY, 5);
+        }
+      }
+    }
   });
 
   it("does not extra-shift the portrait plate", () => {

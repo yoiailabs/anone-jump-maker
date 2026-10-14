@@ -14,7 +14,6 @@ import {
   PHOTO_UPLOAD_PATH,
   SONG_CREDIT,
   blurTapCount,
-  horizontalCutRow,
   plateDest,
   resolveCharacterSource,
   songCreditFontSize,
@@ -147,27 +146,6 @@ describe("swap fx draw path", () => {
     expect(swapFx(0.12, slots, "jump")).toEqual(swapFx(0.12, slots, "jump"));
     expect(swapFx(0.5, slots, "zoom")).toEqual(swapFx(0.5, slots, "zoom"));
     expect(swapFx(0.12, slots, "jump").flashAdd).toBe(0);
-  });
-});
-
-describe("horizontal cut", () => {
-  it("uses the lowest long opaque run and ignores specks under it", () => {
-    const width = 40;
-    const height = 12;
-    const rgba = new Uint8ClampedArray(width * height * 4);
-    const fill = (x0: number, x1: number, y: number) => {
-      for (let x = x0; x < x1; x += 1) rgba[(y * width + x) * 4 + 3] = 255;
-    };
-    fill(4, 36, 6);
-    fill(18, 21, 10);
-    expect(horizontalCutRow(rgba, width, height)).toBe(6);
-  });
-
-  it("returns -1 when nothing is wide enough to be a cut", () => {
-    const rgba = new Uint8ClampedArray(20 * 8 * 4);
-    rgba[(3 * 20 + 2) * 4 + 3] = 255;
-    expect(horizontalCutRow(rgba, 20, 8)).toBe(-1);
-    expect(horizontalCutRow(rgba, 0, 8)).toBe(-1);
   });
 });
 

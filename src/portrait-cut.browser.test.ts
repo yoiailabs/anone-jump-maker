@@ -1,6 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createCompositor } from "./compositor.ts";
-import { characterDest, characterOutlinePx, OUTPUTS, templateBandRect } from "./layout.ts";
+import {
+  characterDest,
+  characterOutlinePx,
+  characterScale,
+  OUTPUTS,
+  PORTRAIT_INK_BOTTOM,
+  PORTRAIT_STICKER_BOTTOM,
+  portraitCutY,
+  templateBandRect,
+  type CharacterSize,
+} from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 
 afterEach(() => {
@@ -10,7 +20,7 @@ afterEach(() => {
 const GREEN = "#14b636";
 const RED = "#ff5e5f";
 
-function paintPlate(cuts: readonly number[]): HTMLCanvasElement {
+function paintPlate(cutSrc: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = 608;
   canvas.height = 1080;
@@ -19,10 +29,8 @@ function paintPlate(cuts: readonly number[]): HTMLCanvasElement {
   ctx.fillStyle = GREEN;
   ctx.fillRect(0, 312, 608, 342);
   ctx.fillStyle = "#111111";
-  for (const bottom of cuts) {
-    ctx.fillRect(160, bottom - 80, 280, 80);
-  }
-  // カットより上の小さなパーツ。この下の白縁は残す。
+  ctx.fillRect(160, cutSrc - 80, 280, 80);
+  // 固定カットより上の小さなパーツ。この下の白縁は残す。
   ctx.fillRect(460, 360, 70, 50);
   return canvas;
 }
@@ -48,17 +56,21 @@ function isRed(px: Uint8ClampedArray): boolean {
 }
 
 describe("portrait horizontal cut", () => {
-  it("does not draw a white outline under the cut, and still outlines parts above it", async () => {
+  it("clips the outline at the fixed ink bottom for every character size", async () => {
     const photo = await redPhoto();
     const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
     compositor.setAspect("portrait");
     const video = document.createElement("video");
     const timeline = { slots: [0, 5] };
+    const { width, height } = OUTPUTS.portrait;
     const band = templateBandRect(608, 1080, "portrait");
-    const dest = characterDest(OUTPUTS.portrait.width, OUTPUTS.portrait.height, 1, 0, "portrait");
+    const cutSrc = band.y + PORTRAIT_INK_BOTTOM * band.h;
+    const plate = paintPlate(cutSrc);
     try {
-      for (const bottom of [560, 600, 630]) {
-        const plate = paintPlate([bottom]);
+      for (const size of ["standard", "1.2", "1.4"] as const satisfies readonly CharacterSize[]) {
+        const dest = characterDest(width, height, characterScale("portrait", size), 0, "portrait");
+        const cutY = portraitCutY(dest);
+        expect(cutY / height, size).toBeCloseTo(PORTRAIT_STICKER_BOTTOM, 5);
         compositor.draw(
           video,
           [photo],
@@ -67,33 +79,34 @@ describe("portrait horizontal cut", () => {
           "jump",
           "none",
           { source: plate, width: 608, height: 1080 },
-          "standard",
+          size,
         );
         const ctx = compositor.canvas.getContext("2d");
         if (!ctx) throw new Error("canvas");
         const at = (x: number, y: number) => ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
-        const cutY = dest.y + ((bottom - band.y) / band.h) * dest.h;
         const bodyX = dest.x + (300 / 608) * dest.w;
         let sawBody = false;
         let sawPhoto = false;
-        for (let dy = -6; dy <= characterOutlinePx(608) + 3; dy += 1) {
+        for (let dy = -6; dy <= characterOutlinePx(width) + 3; dy += 1) {
           const px = at(bodyX, cutY + dy);
-          expect(isWhite(px), `white under cut ${bottom} dy ${dy}`).toBe(false);
+          expect(isWhite(px), `white under cut ${size} dy ${dy}`).toBe(false);
           if (!isRed(px)) sawBody = true;
           if (sawBody && isRed(px)) sawPhoto = true;
         }
-        expect(sawBody, `body visible at cut ${bottom}`).toBe(true);
-        expect(sawPhoto, `photo resumes under cut ${bottom}`).toBe(true);
+        expect(sawBody, `body visible at ${size}`).toBe(true);
+        expect(sawPhoto, `photo resumes under cut ${size}`).toBe(true);
         const bodyLeft = dest.x + (160 / 608) * dest.w;
         // WebKit は縁を 1px ぼかすので、端のちょうど 1px ではなく数 px の範囲で白を探す。
         const sideOutline = [-3, -2, -1].some((dx) => isWhite(at(bodyLeft + dx, cutY - 24)));
-        expect(sideOutline, "side outline").toBe(true);
-        const handBottom = dest.y + ((410 - band.y) / band.h) * dest.h;
-        const handX = dest.x + (495 / 608) * dest.w;
-        const underHand = [-1, 0, 1, 2, 3].some((dy) =>
-          [-1, 0, 1].some((dx) => isWhite(at(handX + dx, handBottom + dy))),
-        );
-        expect(underHand, "outline under a part above the cut").toBe(true);
+        expect(sideOutline, `side outline ${size}`).toBe(true);
+        if (size === "standard") {
+          const handBottom = dest.y + ((410 - band.y) / band.h) * dest.h;
+          const handX = dest.x + (495 / 608) * dest.w;
+          const underHand = [-1, 0, 1, 2, 3].some((dy) =>
+            [-1, 0, 1].some((dx) => isWhite(at(handX + dx, handBottom + dy))),
+          );
+          expect(underHand, "outline under a part above the cut").toBe(true);
+        }
       }
     } finally {
       photo.bitmap.close();
