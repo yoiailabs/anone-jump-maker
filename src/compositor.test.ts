@@ -86,10 +86,10 @@ describe("swap fx draw path", () => {
     expect(IMAGE_FILTER_BLUR_IMPL).toBe("image-data-box");
   });
 
-  it("places the official 16:9 character 1:1 so it is not larger than the CapCut / X template", () => {
-    const dest = characterDest(608, 342);
+  it("places the official landscape character 1:1 on the 16:9 frame", () => {
+    const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, 1, 0, "landscape");
     expect(CHAR_SCALE).toBe(1);
-    expect(dest).toEqual({ x: 0, y: 0, w: 608, h: 342 });
+    expect(dest).toEqual({ x: 0, y: 0, w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height });
   });
 
   it("moves the jump plate down and shrinks it at the cut, in both aspects", () => {
@@ -106,7 +106,9 @@ describe("swap fx draw path", () => {
       expect(cut.w).toBeLessThan(still.w);
       // the measured drop is 17.5% of the panel height; the shrink about the centre lowers the top edge further
       expect(cut.y - still.y).toBeCloseTo(JUMP_DROP_FRAC * h + (still.h - cut.h) / 2, 3);
-      expect(still.w).toBeCloseTo(w * JUMP_COVER_SCALE, 3);
+      const cover = Math.max(w / 1920, h / 1080);
+      expect(still.w).toBeCloseTo(1920 * cover * JUMP_COVER_SCALE, 3);
+      expect(still.h).toBeCloseTo(1080 * cover * JUMP_COVER_SCALE, 3);
       // never uncover the panel
       expect(cut.y).toBeLessThanOrEqual(1e-6);
       expect(cut.y + cut.h).toBeGreaterThanOrEqual(h - 1e-6);
@@ -117,6 +119,7 @@ describe("swap fx draw path", () => {
 
   it("keeps landscape as a full 16:9 plate and lets zoom shrink it with a backdrop", () => {
     expect(usesBlurBackdrop("landscape")).toBe(false);
+    expect(usesBlurBackdrop("portrait")).toBe(false);
     const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE);
     expect(LANDSCAPE_CHAR_SCALE).toBe(1);
     expect(dest).toEqual({ x: 0, y: 0, w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height });
@@ -151,9 +154,8 @@ describe("song credit", () => {
     expect(SONG_CREDIT).toBe("♪ あのね - ナナツカゼ");
   });
 
-  it("sits just under the portrait 16:9 panel, top-right of the lower band", () => {
+  it("sits at the portrait bottom-right, under the character cut", () => {
     const { width: w, height: h } = OUTPUTS.portrait;
-    const panel = mainPanelRect(w, h, "portrait");
     const credit = songCreditLayout(w, h, "portrait");
     const landscape = songCreditLayout(OUTPUTS.landscape.width, OUTPUTS.landscape.height, "landscape");
     expect(credit.fontSize).toBe(songCreditFontSize("portrait"));
@@ -164,13 +166,12 @@ describe("song credit", () => {
     const landscapeVisual = landscape.fontSize * (STAGE_MAX_REM.landscape / OUTPUTS.landscape.width);
     expect(portraitVisual).toBeCloseTo(landscapeVisual, 1);
     expect(credit.x).toBe(w - credit.pad);
-    expect(credit.y).toBe(panel.y + panel.h + credit.pad);
+    expect(credit.y).toBe(h - credit.pad);
     expect(credit.pad).toBeGreaterThanOrEqual(8);
     expect(credit.pad).toBeLessThan(20);
-    expect(credit.y).toBeGreaterThan(panel.y + panel.h);
-    expect(credit.y + credit.fontSize).toBeLessThan(h);
+    expect(credit.y - credit.fontSize).toBeGreaterThan(h * 0.758);
     expect(credit.textAlign).toBe("right");
-    expect(credit.textBaseline).toBe("top");
+    expect(credit.textBaseline).toBe("bottom");
   });
 
   it("keeps landscape credit at the canvas bottom-right with a small inset", () => {
@@ -230,13 +231,16 @@ describe("character size draw path", () => {
     expect(characterScale("portrait", "standard")).toBe(CHAR_SCALE);
     expect(characterScale("landscape", "standard")).toBe(LANDSCAPE_CHAR_SCALE);
     const panel = mainPanelRect(608, 1080, "portrait");
-    const standard = characterDest(panel.w, panel.h, characterScale("portrait", "standard"));
-    expect(standard).toEqual({ x: 0, y: 0, w: panel.w, h: panel.h });
+    expect(panel).toEqual({ x: 0, y: 0, w: 608, h: 1080 });
+    const standard = characterDest(panel.w, panel.h, characterScale("portrait", "standard"), 0, "portrait");
+    expect(standard.w).toBeGreaterThan(panel.w);
+    expect(standard.h).toBeLessThan(panel.h);
+    expect(standard.w / standard.h).toBeCloseTo(608 / 340, 4);
     for (const [size, factor] of [
       ["1.2", 1.2],
       ["1.4", 1.4],
     ] as const) {
-      const scaled = characterDest(panel.w, panel.h, characterScale("portrait", size));
+      const scaled = characterDest(panel.w, panel.h, characterScale("portrait", size), 0, "portrait");
       expect(scaled.w / standard.w).toBeCloseTo(factor, 5);
       expect(scaled.h / standard.h).toBeCloseTo(factor, 5);
       const land = characterDest(
