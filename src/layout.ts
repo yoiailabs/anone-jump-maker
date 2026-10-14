@@ -78,7 +78,10 @@ export const TEMPLATE_FPS = 30;
  */
 export type SwapStyle = "jump" | "zoom";
 
-export const SWAP_STYLES = ["jump", "zoom"] as const;
+/** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
+export const SWAP_STYLES = ["zoom", "jump"] as const;
+
+export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
