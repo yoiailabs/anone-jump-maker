@@ -47,6 +47,27 @@ export function photoIndexForSlot(slot: number, photoCount: number): number {
   return slot % photoCount;
 }
 
+/** 縦横ともテンプレは 32 カット。`cuts.json` の slots 長と一致する。 */
+export const TEMPLATE_SLOT_COUNT = TEMPLATE_SLOT_PHOTO_ORDER.length;
+
+/**
+ * ある写真が映るカット番号（1 始まり）。
+ * 再生と同じく `photoIndexForSlot`（slot % 枚数）で 32 枠を順に埋める。
+ * 3 枚なら 1 枚目は 1, 4, 7, 10, …。
+ */
+export function playbackPositions(
+  photoIndex: number,
+  photoCount: number,
+  slotCount = TEMPLATE_SLOT_COUNT,
+): number[] {
+  if (photoCount <= 0 || photoIndex < 0 || photoIndex >= photoCount || slotCount <= 0) return [];
+  const positions: number[] = [];
+  for (let slot = 0; slot < slotCount; slot += 1) {
+    if (photoIndexForSlot(slot, photoCount) === photoIndex) positions.push(slot + 1);
+  }
+  return positions;
+}
+
 export function photoForSlot<T>(photos: readonly T[], slot: number): T | undefined {
   if (photos.length === 0) return undefined;
   return photos[photoIndexForSlot(slot, photos.length)];

@@ -310,6 +310,13 @@ html[lang="ja"] .ja-phrase {
   box-sizing: border-box;
 }
 
+.pick-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
 #makerView .hero + .maker-story {
   margin-top: calc(0.65rem - var(--section-gap));
 }
@@ -1494,10 +1501,21 @@ a.btn:focus-visible {
   -webkit-user-drag: none;
 }
 
-.thumb-index {
+.thumb-indexes {
   position: absolute;
   left: 0.32rem;
+  right: 0.32rem;
   bottom: 0.32rem;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 0.12rem;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.thumb-index {
+  flex: 0 0 auto;
   min-width: 1.2rem;
   height: 1.2rem;
   padding: 0 0.28rem;

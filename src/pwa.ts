@@ -24,7 +24,7 @@ export type PwaManifest = {
 };
 
 type ServiceWorkerContainerLike = {
-  register: (scriptURL: string) => Promise<unknown>;
+  register: (scriptURL: string, options?: { type?: WorkerType }) => Promise<unknown>;
 };
 
 /** Chrome のインストール条件を満たすか。足りない項目を返す。 */
@@ -73,7 +73,7 @@ export function registerPwa(
 ): void {
   if (!serviceWorker?.register) return;
   if (!canRegisterServiceWorker()) return;
-  void serviceWorker.register(PWA_SERVICE_WORKER_HREF).catch(() => {
+  void serviceWorker.register(PWA_SERVICE_WORKER_HREF, { type: "module" }).catch(() => {
     /* インストールは任意。SW 失敗でメーカーを止めない。 */
   });
 }

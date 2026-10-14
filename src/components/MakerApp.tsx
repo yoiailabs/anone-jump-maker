@@ -243,15 +243,21 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 locale={locale}
                 text={t(locale, "makerOnDevice")}
               />
-              <Label className="file-btn">
-                <input
-                  id="picker"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/*"
-                  multiple
-                />
-                <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
-              </Label>
+              <div className="pick-row">
+                <Label className="file-btn">
+                  <input
+                    id="picker"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+                    multiple
+                    aria-describedby="pickHint"
+                  />
+                  <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
+                </Label>
+                <p id="pickHint" className="make-note">
+                  {t(locale, "makerPhotoCountHint")}
+                </p>
+              </div>
               <LiveFeedback id="photoFeedback" place="photo" />
             </div>
             <PhotoThumbsSlot locale={locale} />

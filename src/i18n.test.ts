@@ -149,6 +149,10 @@ describe("messages", () => {
     expect(t("ko", "makerOnDevice")).toBe("영상 생성은 기기 안에서 이루어집니다. 이미지가 외부로 전송되지 않습니다.");
     expect(t("zh", "makerOnDevice")).toBe("视频在本设备内生成。图片不会发送到外部。");
     expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
+    expect(t("ja", "makerPhotoCountHint")).toBe("最大32枚まで選択できます");
+    expect(t("en", "makerPhotoCountHint")).toBe("You can choose up to 32 photos");
+    expect(t("ko", "makerPhotoCountHint")).toBe("최대 32장까지 고를 수 있어요");
+    expect(t("zh", "makerPhotoCountHint")).toBe("最多可以选择32张");
     expect(t("ja", "makerPhotosAtCap", { n: 32 })).toBe("これ以上追加できません（32枚まで）");
     expect(t("en", "statusPhotosAdded", { n: 1, total: 3 })).toBe("Added 1 photos (3 total)");
     expect(t("ja", "statusPhotoRemoved", { n: 2 })).toBe("写真を外しました（残り 2 枚）");

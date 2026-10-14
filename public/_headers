@@ -1,4 +1,6 @@
 # Hashed Astro/Vite chunks can be cached for a year.
+# A missing file still matches this rule, and SPA fallback would cache index.html
+# as immutable JavaScript. worker/index.ts turns that HTML into a no-store 404.
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 

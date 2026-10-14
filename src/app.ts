@@ -62,7 +62,13 @@ import {
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNearViewport } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
 import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
-import { HEIC_UNSUPPORTED_MESSAGE, loadPhotos, revokePhotos, selectImageFiles, type LoadedPhoto } from "./photos.ts";
+import {
+  HEIC_UNSUPPORTED_MESSAGE,
+  loadPhotos,
+  revokePhotos,
+  selectImageFiles,
+  type LoadedPhoto,
+} from "./photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
 import { PREVIEW_FPS, previewStartTrigger, startVideoPaintLoop } from "./playback.ts";
 import { studioTrace } from "./perf-trace.ts";

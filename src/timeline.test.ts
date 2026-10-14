@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { PHOTO_MAX_COUNT } from "./photo-list.ts";
+import portraitCuts from "../public/template/cuts.json" with { type: "json" };
 import {
   TEMPLATE_PHOTO_COUNT,
+  TEMPLATE_SLOT_COUNT,
   TEMPLATE_SLOT_PHOTO_ORDER,
   photoForSlot,
   photoIndexForSlot,
+  playbackPositions,
   slotForTime,
 } from "./timeline.ts";
 
@@ -38,7 +40,6 @@ describe("template photo order (colour-coded Short utNIG60-li0)", () => {
   it("records 10 colours over 32 slots in the measured reference sequence", () => {
     expect(TEMPLATE_PHOTO_COUNT).toBe(10);
     expect(TEMPLATE_SLOT_PHOTO_ORDER).toHaveLength(32);
-    expect(PHOTO_MAX_COUNT).toBe(TEMPLATE_SLOT_PHOTO_ORDER.length);
     expect(new Set(TEMPLATE_SLOT_PHOTO_ORDER).size).toBe(10);
     const letters = TEMPLATE_SLOT_PHOTO_ORDER.map((i) => "ABCDEFGHIJ"[i]).join("");
     expect(letters).toBe("ABCDEFGBEAHBAIFIBDHIGHJCHFIJGDAI");
@@ -99,6 +100,26 @@ describe("template photo order (colour-coded Short utNIG60-li0)", () => {
     for (let i = 1; i < seq.length; i += 1) expect(seq[i]).not.toBe(seq[i - 1]);
     expect(photoIndexForSlot(32, 3)).toBe(2);
     expect(photoIndexForSlot(33, 3)).toBe(0);
+  });
+
+  it("lists every 1-based cut a photo is shown on", () => {
+    expect(TEMPLATE_SLOT_COUNT).toBe(32);
+    expect(portraitCuts.slots).toHaveLength(TEMPLATE_SLOT_COUNT);
+    expect(playbackPositions(0, 3)).toEqual([1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31]);
+    expect(playbackPositions(1, 3)).toEqual([2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32]);
+    expect(playbackPositions(2, 3)).toEqual([3, 6, 9, 12, 15, 18, 21, 24, 27, 30]);
+    expect(playbackPositions(0, 1)).toEqual([...Array(TEMPLATE_SLOT_COUNT).keys()].map((slot) => slot + 1));
+    expect(playbackPositions(0, 32)).toEqual([1]);
+    expect(playbackPositions(31, 32)).toEqual([32]);
+    expect(playbackPositions(-1, 3)).toEqual([]);
+    expect(playbackPositions(3, 3)).toEqual([]);
+    expect(playbackPositions(0, 0)).toEqual([]);
+    for (let photo = 0; photo < 3; photo += 1) {
+      const fromCuts = portraitCuts.slots
+        .map((_, slot) => (photoIndexForSlot(slot, 3) === photo ? slot + 1 : 0))
+        .filter((position) => position > 0);
+      expect(playbackPositions(photo, 3, portraitCuts.slots.length)).toEqual(fromCuts);
+    }
   });
 
   it("wraps past the cut list and treats an empty selection as photo 0", () => {
