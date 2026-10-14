@@ -85,10 +85,14 @@ describe("portrait horizontal cut", () => {
         expect(sawBody, `body visible at cut ${bottom}`).toBe(true);
         expect(sawPhoto, `photo resumes under cut ${bottom}`).toBe(true);
         const bodyLeft = dest.x + (160 / 608) * dest.w;
-        expect(isWhite(at(bodyLeft - 1, cutY - 24)), "side outline").toBe(true);
+        // WebKit は縁を 1px ぼかすので、端のちょうど 1px ではなく数 px の範囲で白を探す。
+        const sideOutline = [-3, -2, -1].some((dx) => isWhite(at(bodyLeft + dx, cutY - 24)));
+        expect(sideOutline, "side outline").toBe(true);
         const handBottom = dest.y + ((410 - band.y) / band.h) * dest.h;
         const handX = dest.x + (495 / 608) * dest.w;
-        const underHand = [0, 1, 2].some((dy) => isWhite(at(handX, handBottom + dy)));
+        const underHand = [-1, 0, 1, 2, 3].some((dy) =>
+          [-1, 0, 1].some((dx) => isWhite(at(handX + dx, handBottom + dy))),
+        );
         expect(underHand, "outline under a part above the cut").toBe(true);
       }
     } finally {
