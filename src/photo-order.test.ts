@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import portraitCuts from "../public/template/cuts.json" with { type: "json" };
 import { EXPORT_FPS, frameTimes } from "./export.ts";
 import { TEMPLATE_FPS, swapFx, type SwapStyle } from "./layout.ts";
-import { capPhotoSelection, PHOTO_MAX_COUNT } from "./photo-list.ts";
+import { PHOTO_MAX_COUNT, takeUpToPhotoCap } from "./photo-list.ts";
 import {
   PHOTO_DECODE_CONCURRENCY,
   loadPhotos,
@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe("selection order through decode, preview, and export", () => {
-  it("keeps results in input order when a 2-wide pool finishes later tasks first", async () => {
+  it("keeps 32 results in input order when a 2-wide pool finishes later tasks first", async () => {
     expect(PHOTO_DECODE_CONCURRENCY).toBeGreaterThan(1);
     const gate = completionGate();
     const values = Array.from({ length: PHOTO_MAX_COUNT }, (_, index) => index);
@@ -43,8 +43,7 @@ describe("selection order through decode, preview, and export", () => {
     const picked = Array.from({ length: 40 }, (_, index) =>
       jpegFile(`roll-${String(40 - index).padStart(2, "0")}.jpg`, (index * 13) % 40),
     );
-    const { accepted: selected, overflow } = capPhotoSelection(0, picked);
-    expect(overflow).toBe(true);
+    const selected = takeUpToPhotoCap(0, picked);
     expect(selected.map((file) => file.name)).toEqual(picked.slice(0, PHOTO_MAX_COUNT).map((file) => file.name));
     const video = new File([new Uint8Array([0, 1, 2])], "clip.mp4", { type: "video/mp4" });
     expect(selectImageFiles([selected[0]!, video, selected[1]!]).map((file) => file.name)).toEqual([
@@ -64,13 +63,13 @@ describe("selection order through decode, preview, and export", () => {
     expect(names(photos)).not.toEqual(namesOf([...selected].sort((a, b) => a.lastModified - b.lastModified)));
 
     const oneIndexed = slotPlates(photos, "jump").map((name) => selected.findIndex((file) => file.name === name) + 1);
-    expect(oneIndexed).toEqual([...Array(SLOT_COUNT).keys()].map((slot) => (slot % selected.length) + 1));
+    expect(oneIndexed).toEqual([...Array(SLOT_COUNT).keys()].map((slot) => slot + 1));
     expect(oneIndexed).not.toEqual(REPORTED_SCRAMBLED_PLAYBACK);
     expectExportPlates(photos, "jump");
     expectExportPlates(photos, "zoom");
   });
 
-  it("drops one failed decode without letting the race reorder the rest", async () => {
+  it("drops one failed decode without letting the race reorder the other 31", async () => {
     const files = Array.from({ length: PHOTO_MAX_COUNT }, (_, index) =>
       jpegFile(`keep-${String(PHOTO_MAX_COUNT - index).padStart(2, "0")}.jpg`, (index * 5) % PHOTO_MAX_COUNT),
     );

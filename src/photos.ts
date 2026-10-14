@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 import { OUTPUTS } from "./layout.ts";
-import { capPhotoSelection, type CappedPhotos } from "./photo-list.ts";
 import { reportError } from "./sentry.ts";
 
 export type LoadedPhoto = {
@@ -274,14 +273,6 @@ export function isLikelyImageFile(file: { name: string; type: string }): boolean
 
 export function selectImageFiles(files: readonly File[]): File[] {
   return files.filter((file) => isLikelyImageFile(file));
-}
-
-/** 画像だけを選択順のまま上限まで残す。動画などは枚数に数えない。 */
-export function imageFilesWithinPhotoCap(
-  currentCount: number,
-  incoming: readonly File[],
-): CappedPhotos<File> {
-  return capPhotoSelection(currentCount, selectImageFiles(incoming));
 }
 
 /**

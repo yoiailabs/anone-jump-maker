@@ -1,14 +1,7 @@
 /** 選んだ写真の順番・追加・削除。UI と boot から共有する。 */
 
-/** ユーザーが一度に選べる写真の上限。テンプレは 32 カットで、足りない分は同じ順でくり返す。 */
-export const PHOTO_MAX_COUNT = 16;
-
-export type CappedPhotos<T> = {
-  /** 採用する先頭分。上限以内なら incoming 全部。 */
-  accepted: T[];
-  /** 上限を超えて後ろを落とした。 */
-  overflow: boolean;
-};
+/** テンプレは 32 カット。それ以上の写真はフレームに出ないので選ばせない。 */
+export const PHOTO_MAX_COUNT = 32;
 
 export function takeUpToPhotoCap<T>(
   currentCount: number,
@@ -17,16 +10,6 @@ export function takeUpToPhotoCap<T>(
 ): T[] {
   if (incoming.length === 0 || currentCount >= max) return [];
   return incoming.slice(0, max - currentCount);
-}
-
-/** いまの枚数に足して上限まで。超えた分は先頭側だけ残し、overflow を立てる。 */
-export function capPhotoSelection<T>(
-  currentCount: number,
-  incoming: readonly T[],
-  max = PHOTO_MAX_COUNT,
-): CappedPhotos<T> {
-  const accepted = takeUpToPhotoCap(currentCount, incoming, max);
-  return { accepted, overflow: accepted.length < incoming.length };
 }
 
 export function moveItem<T>(items: readonly T[], from: number, to: number): T[] {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   appendAll,
-  capPhotoSelection,
   insertionIndexByClientX,
   insertionIndexByPoint,
   moveItem,
@@ -53,44 +52,14 @@ describe("removeById / appendAll / orderByIds", () => {
     expect(appendAll(["a"], [])).toEqual(["a"]);
   });
 
-  it("keeps at most PHOTO_MAX_COUNT photos from the front", () => {
-    expect(PHOTO_MAX_COUNT).toBe(16);
+  it("keeps at most PHOTO_MAX_COUNT photos and drops the rest silently", () => {
+    expect(PHOTO_MAX_COUNT).toBe(32);
     expect(takeUpToPhotoCap(0, ["a", "b"])).toEqual(["a", "b"]);
-    expect(takeUpToPhotoCap(14, ["a", "b", "c", "d"])).toEqual(["a", "b"]);
-    expect(takeUpToPhotoCap(PHOTO_MAX_COUNT, ["a", "b"])).toEqual([]);
-    expect(takeUpToPhotoCap(0, Array.from({ length: 20 }, (_, i) => i))).toEqual(
-      Array.from({ length: PHOTO_MAX_COUNT }, (_, i) => i),
+    expect(takeUpToPhotoCap(30, ["a", "b", "c", "d"])).toEqual(["a", "b"]);
+    expect(takeUpToPhotoCap(32, ["a", "b"])).toEqual([]);
+    expect(takeUpToPhotoCap(0, Array.from({ length: 40 }, (_, i) => i))).toEqual(
+      Array.from({ length: 32 }, (_, i) => i),
     );
-  });
-
-  it("flags overflow when a fresh pick or a later pick passes the cap", () => {
-    const many = Array.from({ length: PHOTO_MAX_COUNT + 1 }, (_, i) => `p${i}`);
-    expect(capPhotoSelection(0, many)).toEqual({
-      accepted: many.slice(0, PHOTO_MAX_COUNT),
-      overflow: true,
-    });
-    expect(capPhotoSelection(0, many.slice(0, PHOTO_MAX_COUNT))).toEqual({
-      accepted: many.slice(0, PHOTO_MAX_COUNT),
-      overflow: false,
-    });
-
-    const extra = ["a", "b", "c", "d"];
-    expect(capPhotoSelection(PHOTO_MAX_COUNT - 2, extra)).toEqual({
-      accepted: ["a", "b"],
-      overflow: true,
-    });
-    expect(capPhotoSelection(PHOTO_MAX_COUNT - 1, ["a"])).toEqual({
-      accepted: ["a"],
-      overflow: false,
-    });
-    expect(capPhotoSelection(PHOTO_MAX_COUNT, extra)).toEqual({
-      accepted: [],
-      overflow: true,
-    });
-    expect(capPhotoSelection(PHOTO_MAX_COUNT, [])).toEqual({
-      accepted: [],
-      overflow: false,
-    });
   });
 
   it("reorders by id list and appends anything missing", () => {
