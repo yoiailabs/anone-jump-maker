@@ -287,8 +287,12 @@ function ThumbFace({
   const face = (
     <>
       <img src={photo.thumbUrl} alt={photo.name.trim() || t(locale, "makerPhotoAlt", { n: index + 1 })} draggable={false} />
-      <span className="thumb-index" aria-hidden="true">
-        {playbackPositions(index, photoCount).join(" ")}
+      <span className="thumb-indexes" aria-hidden="true">
+        {playbackPositions(index, photoCount).map((position) => (
+          <span key={position} className="thumb-index">
+            {position}
+          </span>
+        ))}
       </span>
       {floating || !onRemove ? null : (
         <button

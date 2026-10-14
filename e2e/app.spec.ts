@@ -267,6 +267,20 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
   await expect(page.locator("#pickHint")).toBeVisible();
   await expect(page.locator("#pickHint")).toHaveText(t("ja", "makerPhotoCountHint"));
+  await expect(page.locator("#pickHint")).toHaveClass(/\bmake-note\b/);
+  const hintType = await page.locator("#pickHint").evaluate((hint) => {
+    const note = document.querySelector("#onDeviceNote");
+    if (!note) return null;
+    const hintStyle = getComputedStyle(hint);
+    const noteStyle = getComputedStyle(note);
+    return {
+      fontSize: hintStyle.fontSize === noteStyle.fontSize,
+      fontWeight: hintStyle.fontWeight === noteStyle.fontWeight,
+      color: hintStyle.color === noteStyle.color,
+      lineHeight: hintStyle.lineHeight === noteStyle.lineHeight,
+    };
+  });
+  expect(hintType).toEqual({ fontSize: true, fontWeight: true, color: true, lineHeight: true });
   const labelBox = await page.locator("#pickerLabel").boundingBox();
   const hintBox = await page.locator("#pickHint").boundingBox();
   expect(labelBox && hintBox && hintBox.y >= labelBox.y + labelBox.height - 2).toBe(true);
@@ -299,8 +313,12 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await page.locator(".thumb").nth(0).press("ArrowRight");
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
   await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
-  await expect(page.locator(".thumb-index").nth(0)).toHaveText(playbackPositions(0, 2).join(" "));
-  await expect(page.locator(".thumb-index").nth(1)).toHaveText(playbackPositions(1, 2).join(" "));
+  await expect(page.locator(".thumb").nth(0).locator(".thumb-index")).toHaveText(
+    playbackPositions(0, 2).map(String),
+  );
+  await expect(page.locator(".thumb").nth(1).locator(".thumb-index")).toHaveText(
+    playbackPositions(1, 2).map(String),
+  );
 
   await page.locator(".thumb-remove").nth(0).click();
   await expect(page.locator("#photoFeedback")).toHaveText("");
@@ -338,27 +356,52 @@ test("shows each photo's playback positions on its thumbnail", async ({ page }) 
   const files = await Promise.all([jpegInput("a.jpg"), jpegInput("b.jpg"), jpegInput("c.jpg")]);
   await page.locator("#picker").setInputFiles(files);
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(3, { timeout: 20_000 });
-  await expect(page.locator(".thumb-index").nth(0)).toHaveText(playbackPositions(0, 3).join(" "));
-  await expect(page.locator(".thumb-index").nth(1)).toHaveText(playbackPositions(1, 3).join(" "));
-  await expect(page.locator(".thumb-index").nth(2)).toHaveText(playbackPositions(2, 3).join(" "));
+  await expect(page.locator(".thumb").nth(0).locator(".thumb-index")).toHaveText(
+    playbackPositions(0, 3).map(String),
+  );
+  await expect(page.locator(".thumb").nth(1).locator(".thumb-index")).toHaveText(
+    playbackPositions(1, 3).map(String),
+  );
+  await expect(page.locator(".thumb").nth(2).locator(".thumb-index")).toHaveText(
+    playbackPositions(2, 3).map(String),
+  );
   const clip = await page.locator(".thumb").nth(0).evaluate((thumb) => {
-    const badge = thumb.querySelector(".thumb-index");
-    if (!badge) return null;
-    const style = getComputedStyle(badge);
-    const badgeBox = badge.getBoundingClientRect();
+    const row = thumb.querySelector(".thumb-indexes");
+    const badges = [...thumb.querySelectorAll(".thumb-index")];
+    if (!row || badges.length < 2) return null;
+    const rowStyle = getComputedStyle(row);
+    const badgeStyle = getComputedStyle(badges[0]!);
+    const rowBox = row.getBoundingClientRect();
     const thumbBox = thumb.getBoundingClientRect();
+    const first = badges[0]!.getBoundingClientRect();
+    const second = badges[1]!.getBoundingClientRect();
     return {
-      overflow: style.overflow,
-      whiteSpace: style.whiteSpace,
+      display: rowStyle.display,
+      flexWrap: rowStyle.flexWrap,
+      overflow: rowStyle.overflow,
+      clipped: row.scrollWidth > row.clientWidth + 1,
       inside:
-        badgeBox.left >= thumbBox.left - 1 &&
-        badgeBox.right <= thumbBox.right + 1 &&
-        badgeBox.bottom <= thumbBox.bottom + 1,
+        rowBox.left >= thumbBox.left - 1 &&
+        rowBox.right <= thumbBox.right + 1 &&
+        rowBox.bottom <= thumbBox.bottom + 1,
+      separate: second.left >= first.right - 1,
+      badgeMinWidth: badgeStyle.minWidth,
+      badgeHeight: badgeStyle.height,
+      badgeRadius: badgeStyle.borderRadius,
+      badgeAlign: badgeStyle.textAlign,
+      rootPx: parseFloat(getComputedStyle(document.documentElement).fontSize),
     };
   });
+  expect(clip?.display).toBe("flex");
+  expect(clip?.flexWrap).toBe("nowrap");
   expect(clip?.overflow).toBe("hidden");
-  expect(clip?.whiteSpace).toBe("nowrap");
+  expect(clip?.clipped).toBe(true);
   expect(clip?.inside).toBe(true);
+  expect(clip?.separate).toBe(true);
+  expect(clip && Math.abs(parseFloat(clip.badgeMinWidth) - clip.rootPx * 1.2)).toBeLessThan(0.5);
+  expect(clip && Math.abs(parseFloat(clip.badgeHeight) - clip.rootPx * 1.2)).toBeLessThan(0.5);
+  expect(clip && Math.abs(parseFloat(clip.badgeRadius) - clip.rootPx * 0.4)).toBeLessThan(0.5);
+  expect(clip?.badgeAlign).toBe("center");
 });
 
 test("reorders photos by drag and drop", async ({ page }) => {
@@ -381,8 +424,12 @@ test("reorders photos by drag and drop", async ({ page }) => {
 
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
   await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
-  await expect(page.locator(".thumb-index").nth(0)).toHaveText(playbackPositions(0, 2).join(" "));
-  await expect(page.locator(".thumb-index").nth(1)).toHaveText(playbackPositions(1, 2).join(" "));
+  await expect(page.locator(".thumb").nth(0).locator(".thumb-index")).toHaveText(
+    playbackPositions(0, 2).map(String),
+  );
+  await expect(page.locator(".thumb").nth(1).locator(".thumb-index")).toHaveText(
+    playbackPositions(1, 2).map(String),
+  );
 
   const thumbsStyle = await page.locator("#thumbs").evaluate((el) => {
     const style = getComputedStyle(el);

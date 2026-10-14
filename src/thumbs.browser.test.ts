@@ -70,10 +70,12 @@ describe("PhotoThumbs", () => {
     });
     expect(idsOf()).toEqual(["b", "a"]);
     expect(onReorder).toHaveBeenCalledWith(["b", "a"]);
-    const labels = [...document.querySelectorAll(".thumb-index")].map((el) => el.textContent);
+    const labels = [...document.querySelectorAll(".thumb[data-photo-id]")].map((thumb) =>
+      [...thumb.querySelectorAll(".thumb-index")].map((el) => el.textContent),
+    );
     expect(labels).toEqual([
-      playbackPositions(0, 2).join(" "),
-      playbackPositions(1, 2).join(" "),
+      playbackPositions(0, 2).map(String),
+      playbackPositions(1, 2).map(String),
     ]);
 
     act(() => {

@@ -254,7 +254,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                   />
                   <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
                 </Label>
-                <p id="pickHint" className="pick-hint">
+                <p id="pickHint" className="make-note">
                   {t(locale, "makerPhotoCountHint")}
                 </p>
               </div>
