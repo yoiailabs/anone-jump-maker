@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { t } from "./i18n.ts";
 import { PHOTO_MAX_COUNT } from "./photo-list.ts";
+import { playbackPositions } from "./timeline.ts";
 import { PhotoThumbs } from "./components/PhotoThumbs.tsx";
 import {
   resetPhotoThumbsState,
@@ -69,6 +70,11 @@ describe("PhotoThumbs", () => {
     });
     expect(idsOf()).toEqual(["b", "a"]);
     expect(onReorder).toHaveBeenCalledWith(["b", "a"]);
+    const labels = [...document.querySelectorAll(".thumb-index")].map((el) => el.textContent);
+    expect(labels).toEqual([
+      playbackPositions(0, 2).join(" "),
+      playbackPositions(1, 2).join(" "),
+    ]);
 
     act(() => {
       document.querySelector<HTMLButtonElement>(".thumb-remove")!.click();

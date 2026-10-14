@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import portraitCuts from "../public/template/cuts.json" with { type: "json" };
 import { EXPORT_FPS, frameTimes } from "./export.ts";
 import { TEMPLATE_FPS, swapFx, type SwapStyle } from "./layout.ts";
-import { capPhotoSelection, PHOTO_MAX_COUNT } from "./photo-list.ts";
+import { PHOTO_MAX_COUNT, takeUpToPhotoCap } from "./photo-list.ts";
 import {
   PHOTO_DECODE_CONCURRENCY,
   loadPhotos,
@@ -43,8 +43,7 @@ describe("selection order through decode, preview, and export", () => {
     const picked = Array.from({ length: 40 }, (_, index) =>
       jpegFile(`roll-${String(40 - index).padStart(2, "0")}.jpg`, (index * 13) % 40),
     );
-    const { accepted: selected, overflow } = capPhotoSelection(0, picked);
-    expect(overflow).toBe(true);
+    const selected = takeUpToPhotoCap(0, picked);
     expect(selected.map((file) => file.name)).toEqual(picked.slice(0, PHOTO_MAX_COUNT).map((file) => file.name));
     const video = new File([new Uint8Array([0, 1, 2])], "clip.mp4", { type: "video/mp4" });
     expect(selectImageFiles([selected[0]!, video, selected[1]!]).map((file) => file.name)).toEqual([

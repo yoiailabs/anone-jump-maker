@@ -16,6 +16,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { t, type Locale } from "../i18n.ts";
 import { PHOTO_MAX_COUNT } from "../photo-list.ts";
+import { playbackPositions } from "../timeline.ts";
 import {
   getPhotoThumbsHandlers,
   getPhotoThumbsState,
@@ -112,6 +113,7 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
                 key={photo.id}
                 photo={photo}
                 index={index}
+                photoCount={items.length}
                 locale={locale}
                 locked={locked}
                 onRemove={() => getPhotoThumbsHandlers().onRemove(photo.id)}
@@ -130,6 +132,7 @@ export function PhotoThumbs({ locale }: { locale: Locale }) {
             <ThumbFace
               photo={activePhoto}
               index={activeIndex < 0 ? 0 : activeIndex}
+              photoCount={items.length}
               locale={locale}
               floating
             />
@@ -203,6 +206,7 @@ function PlusIcon() {
 function SortableThumb({
   photo,
   index,
+  photoCount,
   locale,
   locked,
   onRemove,
@@ -210,6 +214,7 @@ function SortableThumb({
 }: {
   photo: ThumbPhoto;
   index: number;
+  photoCount: number;
   locale: Locale;
   locked: boolean;
   onRemove: () => void;
@@ -250,7 +255,14 @@ function SortableThumb({
         }
       }}
     >
-      <ThumbFace photo={photo} index={index} locale={locale} locked={locked} onRemove={onRemove} />
+      <ThumbFace
+        photo={photo}
+        index={index}
+        photoCount={photoCount}
+        locale={locale}
+        locked={locked}
+        onRemove={onRemove}
+      />
     </div>
   );
 }
@@ -258,6 +270,7 @@ function SortableThumb({
 function ThumbFace({
   photo,
   index,
+  photoCount,
   locale,
   locked = false,
   floating = false,
@@ -265,6 +278,7 @@ function ThumbFace({
 }: {
   photo: ThumbPhoto;
   index: number;
+  photoCount: number;
   locale: Locale;
   locked?: boolean;
   floating?: boolean;
@@ -274,7 +288,7 @@ function ThumbFace({
     <>
       <img src={photo.thumbUrl} alt={photo.name.trim() || t(locale, "makerPhotoAlt", { n: index + 1 })} draggable={false} />
       <span className="thumb-index" aria-hidden="true">
-        {index + 1}
+        {playbackPositions(index, photoCount).join(" ")}
       </span>
       {floating || !onRemove ? null : (
         <button

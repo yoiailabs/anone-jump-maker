@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { PHOTO_MAX_COUNT } from "./photo-list.ts";
 import {
   HEIC_UNSUPPORTED_MESSAGE,
   IMAGE_LOAD_ERROR,
@@ -15,7 +14,6 @@ import {
   guessImageMime,
   isExpectedPhotoLoadError,
   isHeicLike,
-  imageFilesWithinPhotoCap,
   isLikelyImageFile,
   loadPhotos,
   mapLimit,
@@ -133,22 +131,6 @@ describe("isLikelyImageFile / selectImageFiles", () => {
       file("also.png", "image/png"),
     ]);
     expect(kept.map((item) => item.name)).toEqual(["ok.jpg", "also.png"]);
-  });
-
-  it("keeps the first PHOTO_MAX_COUNT images and ignores non-images in the count", () => {
-    const images = Array.from({ length: PHOTO_MAX_COUNT + 1 }, (_, i) => file(`p${i}.jpg`, "image/jpeg"));
-    const fresh = imageFilesWithinPhotoCap(0, images);
-    expect(fresh.overflow).toBe(true);
-    expect(fresh.accepted.map((item) => item.name)).toEqual(images.slice(0, PHOTO_MAX_COUNT).map((item) => item.name));
-
-    const mixed = [
-      file("clip.mp4", "video/mp4"),
-      ...images.slice(0, 3),
-      file("notes.pdf", "application/pdf"),
-    ];
-    const added = imageFilesWithinPhotoCap(PHOTO_MAX_COUNT - 2, mixed);
-    expect(added.overflow).toBe(true);
-    expect(added.accepted.map((item) => item.name)).toEqual(["p0.jpg", "p1.jpg"]);
   });
 });
 

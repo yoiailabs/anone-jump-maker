@@ -61,12 +61,12 @@ import {
 } from "./nav.ts";
 import { reactionEmbedHtml, remountReactionEmbed, whenEmbedHostVisible, whenNearViewport } from "./reactions.ts";
 import { exportFileName } from "./modes.ts";
-import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder } from "./photo-list.ts";
+import { appendAll, orderByIds, PHOTO_MAX_COUNT, removeById, sameIdOrder, takeUpToPhotoCap } from "./photo-list.ts";
 import {
   HEIC_UNSUPPORTED_MESSAGE,
-  imageFilesWithinPhotoCap,
   loadPhotos,
   revokePhotos,
+  selectImageFiles,
   type LoadedPhoto,
 } from "./photos.ts";
 import { setPhotoThumbsHandlers, setPhotoThumbsState } from "./photo-thumbs-store.ts";
@@ -987,13 +987,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const ingestPhotoFiles = async (incoming: readonly File[]) => {
     if (photosLocked()) return;
     if (incoming.length === 0) return;
-    if (photos.length >= PHOTO_MAX_COUNT) {
+    const capped = takeUpToPhotoCap(photos.length, incoming);
+    if (capped.length === 0) {
       rejectPhotos("at_cap");
       setFeedback("photo", msg("makerPhotosAtCap", { n: PHOTO_MAX_COUNT }), "error");
       return;
     }
-    const { accepted, overflow } = imageFilesWithinPhotoCap(photos.length, incoming);
-    if (accepted.length === 0) {
+    const imageFiles = selectImageFiles(capped);
+    if (imageFiles.length === 0) {
       rejectPhotos("not_image");
       setFeedback("photo", msg("statusPickImages"), "error");
       return;
@@ -1004,7 +1005,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     setFeedback("photo", msg("statusPhotosLoading"), "busy");
     try {
       const compositorReady = ensureCompositor();
-      const added = await loadPhotos(accepted, {
+      const added = await loadPhotos(imageFiles, {
         onProgress: (current, total) => {
           setFeedback("photo", msg("statusPhotosLoadingProgress", { current, total }), "busy");
         },
@@ -1020,11 +1021,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         return;
       }
       trackEvent(PHOTOS_SELECTED_EVENT, { count: added.length });
-      if (overflow) {
-        setFeedback("photo", msg("makerPhotosTrimmed", { n: PHOTO_MAX_COUNT }), "error");
-      } else {
-        clearFeedback("photo");
-      }
+      clearFeedback("photo");
     } catch (error) {
       renderThumbs();
       paint();

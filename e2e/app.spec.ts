@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { t } from "../src/i18n.ts";
 import { PHOTO_MAX_COUNT } from "../src/photo-list.ts";
+import { playbackPositions } from "../src/timeline.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
 import { blockAnalytics, expectVisibleText, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
@@ -298,8 +299,8 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await page.locator(".thumb").nth(0).press("ArrowRight");
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
   await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
-  await expect(page.locator(".thumb-index").nth(0)).toHaveText("1");
-  await expect(page.locator(".thumb-index").nth(1)).toHaveText("2");
+  await expect(page.locator(".thumb-index").nth(0)).toHaveText(playbackPositions(0, 2).join(" "));
+  await expect(page.locator(".thumb-index").nth(1)).toHaveText(playbackPositions(1, 2).join(" "));
 
   await page.locator(".thumb-remove").nth(0).click();
   await expect(page.locator("#photoFeedback")).toHaveText("");
@@ -317,7 +318,7 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#previewTransport")).toBeHidden();
 });
 
-test("keeps at most 16 photos and says when the selection overflowed", async ({ page }) => {
+test("keeps at most 32 photos and disables adding at the cap", async ({ page }) => {
   await openStudio(page);
   const files = await Promise.all(Array.from({ length: PHOTO_MAX_COUNT + 1 }, (_, i) => jpegInput(`p${i}.jpg`)));
   await page.locator("#picker").setInputFiles(files);
@@ -329,26 +330,35 @@ test("keeps at most 16 photos and says when the selection overflowed", async ({ 
   await expect
     .poll(async () => stripZwsp((await page.locator("#thumbsHint").textContent()) ?? ""))
     .toBe(t("ja", "makerThumbsHintFull", { n: PHOTO_MAX_COUNT }));
-  await expect(page.locator("#photoFeedback")).toHaveText(t("ja", "makerPhotosTrimmed", { n: PHOTO_MAX_COUNT }));
+  await expect(page.locator("#photoFeedback")).not.toContainText("失敗");
 });
 
-test("trims a later pick that would pass the photo cap", async ({ page }) => {
+test("shows each photo's playback positions on its thumbnail", async ({ page }) => {
   await openStudio(page);
-  const first = await Promise.all(
-    Array.from({ length: PHOTO_MAX_COUNT - 2 }, (_, i) => jpegInput(`a${i}.jpg`)),
-  );
-  await page.locator("#picker").setInputFiles(first);
-  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(PHOTO_MAX_COUNT - 2, { timeout: 45_000 });
-  await expect(page.locator("#photoFeedback")).toHaveText("");
-  await expect(page.locator(".thumb-add")).toBeEnabled();
-
-  const extra = await Promise.all(Array.from({ length: 4 }, (_, i) => jpegInput(`b${i}.jpg`)));
-  await page.locator("#picker").setInputFiles(extra);
-  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(PHOTO_MAX_COUNT, { timeout: 45_000 });
-  await expect(page.locator("#thumbs img").nth(PHOTO_MAX_COUNT - 2)).toHaveAttribute("alt", "b0.jpg");
-  await expect(page.locator("#thumbs img").nth(PHOTO_MAX_COUNT - 1)).toHaveAttribute("alt", "b1.jpg");
-  await expect(page.locator("#photoFeedback")).toHaveText(t("ja", "makerPhotosTrimmed", { n: PHOTO_MAX_COUNT }));
-  await expect(page.locator(".thumb-add")).toBeDisabled();
+  const files = await Promise.all([jpegInput("a.jpg"), jpegInput("b.jpg"), jpegInput("c.jpg")]);
+  await page.locator("#picker").setInputFiles(files);
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(3, { timeout: 20_000 });
+  await expect(page.locator(".thumb-index").nth(0)).toHaveText(playbackPositions(0, 3).join(" "));
+  await expect(page.locator(".thumb-index").nth(1)).toHaveText(playbackPositions(1, 3).join(" "));
+  await expect(page.locator(".thumb-index").nth(2)).toHaveText(playbackPositions(2, 3).join(" "));
+  const clip = await page.locator(".thumb").nth(0).evaluate((thumb) => {
+    const badge = thumb.querySelector(".thumb-index");
+    if (!badge) return null;
+    const style = getComputedStyle(badge);
+    const badgeBox = badge.getBoundingClientRect();
+    const thumbBox = thumb.getBoundingClientRect();
+    return {
+      overflow: style.overflow,
+      whiteSpace: style.whiteSpace,
+      inside:
+        badgeBox.left >= thumbBox.left - 1 &&
+        badgeBox.right <= thumbBox.right + 1 &&
+        badgeBox.bottom <= thumbBox.bottom + 1,
+    };
+  });
+  expect(clip?.overflow).toBe("hidden");
+  expect(clip?.whiteSpace).toBe("nowrap");
+  expect(clip?.inside).toBe(true);
 });
 
 test("reorders photos by drag and drop", async ({ page }) => {
@@ -371,8 +381,8 @@ test("reorders photos by drag and drop", async ({ page }) => {
 
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "extra.jpg");
   await expect(page.locator("#thumbs img").nth(1)).toHaveAttribute("alt", "photo.jpg");
-  await expect(page.locator(".thumb-index").nth(0)).toHaveText("1");
-  await expect(page.locator(".thumb-index").nth(1)).toHaveText("2");
+  await expect(page.locator(".thumb-index").nth(0)).toHaveText(playbackPositions(0, 2).join(" "));
+  await expect(page.locator(".thumb-index").nth(1)).toHaveText(playbackPositions(1, 2).join(" "));
 
   const thumbsStyle = await page.locator("#thumbs").evaluate((el) => {
     const style = getComputedStyle(el);
