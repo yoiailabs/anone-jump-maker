@@ -312,23 +312,18 @@ html[lang="ja"] .ja-phrase {
 
 .pick-row {
   display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.make-cta .pick-row .file-btn {
-  width: auto;
-  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
 }
 
 .pick-hint {
   margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
   color: var(--ink);
   font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.3;
+  text-align: center;
 }
 
 #makerView .hero + .maker-story {

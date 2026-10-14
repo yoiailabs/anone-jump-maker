@@ -268,11 +268,12 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#pickHint")).toHaveText(t("ja", "makerPhotoCountHint"));
   const labelBox = await page.locator("#pickerLabel").boundingBox();
   const hintBox = await page.locator("#pickHint").boundingBox();
-  expect(labelBox && hintBox && hintBox.x >= labelBox.x + labelBox.width - 2).toBe(true);
+  expect(labelBox && hintBox && hintBox.y >= labelBox.y + labelBox.height - 2).toBe(true);
   expect(
     labelBox &&
       hintBox &&
-      Math.abs(hintBox.y + hintBox.height / 2 - (labelBox.y + labelBox.height / 2)) < 24,
+      hintBox.x < labelBox.x + labelBox.width &&
+      hintBox.x + hintBox.width > labelBox.x,
   ).toBe(true);
   await expect(page.locator("#thumbs")).toBeHidden();
   await expect(page.locator("#thumbsHint")).toBeHidden();
