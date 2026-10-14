@@ -54,44 +54,44 @@ describe("official link banners", () => {
 });
 
 describe("youtube playback url", () => {
-  it("starts a watch URL at 60 seconds and keeps existing query params", () => {
-    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=M-IayQIR0XA", 60)).toBe(
-      "https://www.youtube.com/watch?v=M-IayQIR0XA&t=60s",
+  it("starts a watch URL at 63 seconds and keeps existing query params", () => {
+    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=M-IayQIR0XA", 63)).toBe(
+      "https://www.youtube.com/watch?v=M-IayQIR0XA&t=63s",
     );
-    expect(youtubePlaybackUrl("https://youtube.com/watch?v=M-IayQIR0XA&list=PLabc&index=2", 60)).toBe(
-      "https://youtube.com/watch?v=M-IayQIR0XA&list=PLabc&index=2&t=60s",
+    expect(youtubePlaybackUrl("https://youtube.com/watch?v=M-IayQIR0XA&list=PLabc&index=2", 63)).toBe(
+      "https://youtube.com/watch?v=M-IayQIR0XA&list=PLabc&index=2&t=63s",
     );
-    expect(youtubePlaybackUrl("https://m.youtube.com/watch?v=M-IayQIR0XA&feature=share", 60)).toBe(
-      "https://m.youtube.com/watch?v=M-IayQIR0XA&feature=share&t=60s",
+    expect(youtubePlaybackUrl("https://m.youtube.com/watch?v=M-IayQIR0XA&feature=share", 63)).toBe(
+      "https://m.youtube.com/watch?v=M-IayQIR0XA&feature=share&t=63s",
     );
   });
 
-  it("starts a youtu.be URL at 60 seconds and keeps existing query params", () => {
-    expect(youtubePlaybackUrl("https://youtu.be/M-IayQIR0XA", 60)).toBe("https://youtu.be/M-IayQIR0XA?t=60");
-    expect(youtubePlaybackUrl("https://www.youtu.be/M-IayQIR0XA?si=sharetoken", 60)).toBe(
-      "https://www.youtu.be/M-IayQIR0XA?si=sharetoken&t=60",
+  it("starts a youtu.be URL at 63 seconds and keeps existing query params", () => {
+    expect(youtubePlaybackUrl("https://youtu.be/M-IayQIR0XA", 63)).toBe("https://youtu.be/M-IayQIR0XA?t=63");
+    expect(youtubePlaybackUrl("https://www.youtu.be/M-IayQIR0XA?si=sharetoken", 63)).toBe(
+      "https://www.youtu.be/M-IayQIR0XA?si=sharetoken&t=63",
     );
   });
 
   it("leaves encoded query values untouched", () => {
     expect(
-      youtubePlaybackUrl("https://www.youtube.com/watch?v=abc&list=PL%2Fabc%3D&q=a+b&q=c%20d", 60),
-    ).toBe("https://www.youtube.com/watch?v=abc&list=PL%2Fabc%3D&q=a+b&q=c%20d&t=60s");
+      youtubePlaybackUrl("https://www.youtube.com/watch?v=abc&list=PL%2Fabc%3D&q=a+b&q=c%20d", 63),
+    ).toBe("https://www.youtube.com/watch?v=abc&list=PL%2Fabc%3D&q=a+b&q=c%20d&t=63s");
   });
 
   it("replaces an existing start time and keeps the fragment", () => {
-    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=M-IayQIR0XA&t=10s&list=PLabc#comments", 60)).toBe(
-      "https://www.youtube.com/watch?v=M-IayQIR0XA&t=60s&list=PLabc#comments",
+    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=M-IayQIR0XA&t=10s&list=PLabc#comments", 63)).toBe(
+      "https://www.youtube.com/watch?v=M-IayQIR0XA&t=63s&list=PLabc#comments",
     );
-    expect(youtubePlaybackUrl("https://youtu.be/M-IayQIR0XA?t=12&si=sharetoken#clip", 60)).toBe(
-      "https://youtu.be/M-IayQIR0XA?t=60&si=sharetoken#clip",
+    expect(youtubePlaybackUrl("https://youtu.be/M-IayQIR0XA?t=12&si=sharetoken#clip", 63)).toBe(
+      "https://youtu.be/M-IayQIR0XA?t=63&si=sharetoken#clip",
     );
-    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=abc&t=1&list=PL&t=2", 60)).toBe(
-      "https://www.youtube.com/watch?v=abc&t=60s&list=PL",
+    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=abc&t=1&list=PL&t=2", 63)).toBe(
+      "https://www.youtube.com/watch?v=abc&t=63s&list=PL",
     );
   });
 
-  it("points the JumpLoop at the official MV from 1:00", () => {
-    expect(JUMP_LOOP_WATCH_HREF).toBe("https://www.youtube.com/watch?v=M-IayQIR0XA&t=60s");
+  it("points the JumpLoop at the official MV from 1:03", () => {
+    expect(JUMP_LOOP_WATCH_HREF).toBe("https://www.youtube.com/watch?v=M-IayQIR0XA&t=63s");
   });
 });
