@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { t } from "./i18n.ts";
 import { PHOTO_MAX_COUNT } from "./photo-list.ts";
 import { PhotoThumbs } from "./components/PhotoThumbs.tsx";
 import {
@@ -98,7 +99,7 @@ describe("PhotoThumbs", () => {
     expect(document.querySelector<HTMLButtonElement>(".thumb-add")?.disabled).toBe(true);
   });
 
-  it("disables the add tile at the 32-photo cap and shows the limit", async () => {
+  it("disables the add tile at the photo cap and shows the limit", async () => {
     await mount();
     const picker = document.createElement("input");
     picker.id = "picker";
@@ -120,10 +121,10 @@ describe("PhotoThumbs", () => {
     const add = document.querySelector<HTMLButtonElement>(".thumb-add")!;
     expect(add.disabled).toBe(true);
     expect(add.classList.contains("is-cap")).toBe(true);
-    expect(add.getAttribute("aria-label")).toBe("これ以上追加できません（32枚まで）");
-    expect(add.textContent).toContain("32");
+    expect(add.getAttribute("aria-label")).toBe(t("ja", "makerPhotosAtCap", { n: PHOTO_MAX_COUNT }));
+    expect(add.textContent).toContain(String(PHOTO_MAX_COUNT));
     expect(document.querySelector("#thumbsHint")?.textContent?.replaceAll("\u200b", "")).toBe(
-      "32枚が上限です。×で外すと追加できます。",
+      t("ja", "makerThumbsHintFull", { n: PHOTO_MAX_COUNT }),
     );
     act(() => {
       add.click();
