@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { linkBannersHtml, OFFICIAL_LINKS, OFFICIAL_MV_WATCH_HREF } from "./links.ts";
+import {
+  JUMP_LOOP_WATCH_HREF,
+  linkBannersHtml,
+  OFFICIAL_LINKS,
+  OFFICIAL_MV_WATCH_HREF,
+  youtubePlaybackUrl,
+} from "./links.ts";
 
 describe("official link banners", () => {
   it("covers the official SNS and streaming services once each", () => {
@@ -42,7 +48,50 @@ describe("official link banners", () => {
     );
   });
 
-  it("shares the official MV watch URL with the JumpLoop", () => {
+  it("keeps the official MV watch URL without a start time", () => {
     expect(OFFICIAL_MV_WATCH_HREF).toBe("https://www.youtube.com/watch?v=M-IayQIR0XA");
+  });
+});
+
+describe("youtube playback url", () => {
+  it("starts a watch URL at 60 seconds and keeps existing query params", () => {
+    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=M-IayQIR0XA", 60)).toBe(
+      "https://www.youtube.com/watch?v=M-IayQIR0XA&t=60s",
+    );
+    expect(youtubePlaybackUrl("https://youtube.com/watch?v=M-IayQIR0XA&list=PLabc&index=2", 60)).toBe(
+      "https://youtube.com/watch?v=M-IayQIR0XA&list=PLabc&index=2&t=60s",
+    );
+    expect(youtubePlaybackUrl("https://m.youtube.com/watch?v=M-IayQIR0XA&feature=share", 60)).toBe(
+      "https://m.youtube.com/watch?v=M-IayQIR0XA&feature=share&t=60s",
+    );
+  });
+
+  it("starts a youtu.be URL at 60 seconds and keeps existing query params", () => {
+    expect(youtubePlaybackUrl("https://youtu.be/M-IayQIR0XA", 60)).toBe("https://youtu.be/M-IayQIR0XA?t=60");
+    expect(youtubePlaybackUrl("https://www.youtu.be/M-IayQIR0XA?si=sharetoken", 60)).toBe(
+      "https://www.youtu.be/M-IayQIR0XA?si=sharetoken&t=60",
+    );
+  });
+
+  it("leaves encoded query values untouched", () => {
+    expect(
+      youtubePlaybackUrl("https://www.youtube.com/watch?v=abc&list=PL%2Fabc%3D&q=a+b&q=c%20d", 60),
+    ).toBe("https://www.youtube.com/watch?v=abc&list=PL%2Fabc%3D&q=a+b&q=c%20d&t=60s");
+  });
+
+  it("replaces an existing start time and keeps the fragment", () => {
+    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=M-IayQIR0XA&t=10s&list=PLabc#comments", 60)).toBe(
+      "https://www.youtube.com/watch?v=M-IayQIR0XA&t=60s&list=PLabc#comments",
+    );
+    expect(youtubePlaybackUrl("https://youtu.be/M-IayQIR0XA?t=12&si=sharetoken#clip", 60)).toBe(
+      "https://youtu.be/M-IayQIR0XA?t=60&si=sharetoken#clip",
+    );
+    expect(youtubePlaybackUrl("https://www.youtube.com/watch?v=abc&t=1&list=PL&t=2", 60)).toBe(
+      "https://www.youtube.com/watch?v=abc&t=60s&list=PL",
+    );
+  });
+
+  it("points the JumpLoop at the official MV from 1:00", () => {
+    expect(JUMP_LOOP_WATCH_HREF).toBe("https://www.youtube.com/watch?v=M-IayQIR0XA&t=60s");
   });
 });
