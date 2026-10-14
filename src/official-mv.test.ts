@@ -45,7 +45,7 @@ describe("official Anone MV embed", () => {
   });
 
   it("sits after the SNS banners and before reactions, without removing JumpLoop", () => {
-    expect(makerSrc).toContain("href={OFFICIAL_MV_WATCH_HREF}");
+    expect(makerSrc).toContain("href={JUMP_LOOP_WATCH_HREF}");
     expect(makerSrc).toMatch(/<JumpLoop\b/);
     expect(makerSrc).toMatch(
       /className="link-banners"[^/]*\/>\s*<OfficialMvEmbed\b/,

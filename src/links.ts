@@ -5,6 +5,40 @@ export const OFFICIAL_MV_VIDEO_ID = "M-IayQIR0XA";
 export const OFFICIAL_MV_WATCH_HREF = `https://www.youtube.com/watch?v=${OFFICIAL_MV_VIDEO_ID}`;
 export const OFFICIAL_MV_EMBED_SRC = `https://www.youtube-nocookie.com/embed/${OFFICIAL_MV_VIDEO_ID}`;
 
+/** トップのサムネイル（JumpLoop）を開いたとき、公式MVをこの秒から再生する。 */
+export const JUMP_LOOP_START_SECONDS = 60;
+
+/**
+ * YouTube の視聴 URL に再生開始秒を足す。
+ * `youtube.com/watch` は `t=60s`、`youtu.be` は `t=60`。
+ * 既存のクエリは値も並びもそのまま残し、開始秒（`t`）だけを差し替える。
+ */
+export function youtubePlaybackUrl(href: string, startSeconds: number): string {
+  const url = new URL(href);
+  const short = url.hostname.toLowerCase().replace(/^www\./, "") === "youtu.be";
+  const value = short ? String(startSeconds) : `${startSeconds}s`;
+
+  const hashIndex = href.indexOf("#");
+  const hash = hashIndex === -1 ? "" : href.slice(hashIndex);
+  const beforeHash = hashIndex === -1 ? href : href.slice(0, hashIndex);
+  const queryIndex = beforeHash.indexOf("?");
+  const path = queryIndex === -1 ? beforeHash : beforeHash.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : beforeHash.slice(queryIndex + 1);
+  const parts = query === "" ? [] : query.split("&");
+
+  let replaced = false;
+  const next = parts.flatMap((part) => {
+    if (part.split("=", 1)[0] !== "t") return [part];
+    if (replaced) return [];
+    replaced = true;
+    return [`t=${value}`];
+  });
+  if (!replaced) next.push(`t=${value}`);
+  return `${path}?${next.join("&")}${hash}`;
+}
+
+export const JUMP_LOOP_WATCH_HREF = youtubePlaybackUrl(OFFICIAL_MV_WATCH_HREF, JUMP_LOOP_START_SECONDS);
+
 /** 画面最下部に置くナナツカゼさんの公式リンク。ファン制作なので出典として並べる。 */
 export type OfficialLink = {
   /** CSS のアクセント色とアイコンの引き当てに使う。 */

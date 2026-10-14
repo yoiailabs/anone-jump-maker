@@ -7,7 +7,7 @@ import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
 import { DEFAULT_ASPECT } from "../layout.ts";
-import { linkBannersHtml, OFFICIAL_MV_WATCH_HREF } from "../links.ts";
+import { JUMP_LOOP_WATCH_HREF, linkBannersHtml } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../share.ts";
 import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT } from "../preview.ts";
@@ -160,7 +160,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             </h1>
             <div className="loop-wrap">
               <JumpLoop
-                href={OFFICIAL_MV_WATCH_HREF}
+                href={JUMP_LOOP_WATCH_HREF}
                 ariaLabel={t(locale, "makerPvAria", { song: t(locale, "songTitle") })}
               />
             </div>

@@ -564,7 +564,7 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(page.locator("#officialMvTitle")).toHaveText("「あのね」MV");
   await expect(page.locator("#makerView .loop-link")).toHaveAttribute(
     "href",
-    "https://www.youtube.com/watch?v=M-IayQIR0XA",
+    "https://www.youtube.com/watch?v=M-IayQIR0XA&t=60s",
   );
   const bannersBox = await page.locator("#makerView nav.links .link-banners").boundingBox();
   const mvBox = await page.locator("#officialMv").boundingBox();
