@@ -310,6 +310,27 @@ html[lang="ja"] .ja-phrase {
   box-sizing: border-box;
 }
 
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.make-cta .pick-row .file-btn {
+  width: auto;
+  flex: 0 1 auto;
+}
+
+.pick-hint {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 #makerView .hero + .maker-story {
   margin-top: calc(0.65rem - var(--section-gap));
 }

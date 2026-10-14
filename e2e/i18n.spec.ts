@@ -319,6 +319,7 @@ test.describe("on-device note phrase wrapping", () => {
       wordBreak: getComputedStyle(el).wordBreak,
     }));
     expect(en.text).toBe(t("en", "makerOnDevice"));
+    await expect(page.locator("#pickHint")).toHaveText(t("en", "makerPhotoCountHint"));
     expect(en.text).not.toContain("\u200b");
     expect(en.wordBreak).not.toBe("auto-phrase");
   });

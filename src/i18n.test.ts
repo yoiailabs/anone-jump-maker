@@ -149,6 +149,10 @@ describe("messages", () => {
     expect(t("ko", "makerOnDevice")).toBe("영상 생성은 기기 안에서 이루어집니다. 이미지가 외부로 전송되지 않습니다.");
     expect(t("zh", "makerOnDevice")).toBe("视频在本设备内生成。图片不会发送到外部。");
     expect(t("ja", "makerAddPhotos")).toBe("写真を追加");
+    expect(t("ja", "makerPhotoCountHint")).toBe("オススメは10-16枚!!");
+    expect(t("en", "makerPhotoCountHint")).toBe("10-16 photos recommended!!");
+    expect(t("ko", "makerPhotoCountHint")).toBe("10-16장을 추천해요!!");
+    expect(t("zh", "makerPhotoCountHint")).toBe("推荐10-16张!!");
     expect(t("ja", "makerPhotosAtCap", { n: 16 })).toBe("これ以上追加できません（16枚まで）");
     expect(t("ja", "makerPhotosTrimmed", { n: 16 })).toBe("16枚が上限です。超えた分は入れませんでした。");
     expect(t("en", "makerPhotosTrimmed", { n: 16 })).toBe("16 photos is the limit. The extras weren’t added.");

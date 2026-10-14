@@ -262,12 +262,24 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
 });
 
 test("adds, reorders, and removes photos after the first pick", async ({ page }) => {
+  await openStudio(page);
   await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
+  await expect(page.locator("#pickHint")).toBeVisible();
+  await expect(page.locator("#pickHint")).toHaveText(t("ja", "makerPhotoCountHint"));
+  const labelBox = await page.locator("#pickerLabel").boundingBox();
+  const hintBox = await page.locator("#pickHint").boundingBox();
+  expect(labelBox && hintBox && hintBox.x >= labelBox.x + labelBox.width - 2).toBe(true);
+  expect(
+    labelBox &&
+      hintBox &&
+      Math.abs(hintBox.y + hintBox.height / 2 - (labelBox.y + labelBox.height / 2)) < 24,
+  ).toBe(true);
   await expect(page.locator("#thumbs")).toBeHidden();
   await expect(page.locator("#thumbsHint")).toBeHidden();
 
   await uploadPhoto(page);
   await expect(page.locator("#pickerLabel")).toHaveText("写真を追加");
+  await expect(page.locator("#pickHint")).toHaveText(t("ja", "makerPhotoCountHint"));
   await expectVisibleText(page.locator("#thumbsHint"), "長押しして画像の順序を変更できます。");
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
   await expect(page.locator(".thumb-add")).toBeVisible();
