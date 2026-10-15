@@ -509,11 +509,14 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(port(0).blur).toBeCloseTo(land(0).blur, 6);
     expect(port(0).lift).toBeCloseTo(land(0).lift, 6);
 
-    // the new photo still arrives one frame later, in both aspects
-    expect(port(F).plateSlot).toBe(1);
+    // landscape swaps one frame after the pose cut; portrait swaps at that same curve point
     expect(land(F).plateSlot).toBe(1);
-    expect(port(F).scale).toBeCloseTo(1 + ZOOM_IN_START, 6);
     expect(land(F).scale).toBeCloseTo(1 + ZOOM_IN_START, 6);
+    expect(port(F).plateSlot).toBe(0);
+    expect(port(F).scale).toBeCloseTo(land(F / scale).scale, 5);
+    expect(port((scale - 0.05) * F).plateSlot).toBe(0);
+    expect(port((scale + 0.05) * F).plateSlot).toBe(1);
+    expect(port((scale + 0.05) * F).scale).toBeCloseTo(land(((scale + 0.05) / scale) * F).scale, 5);
 
     // where landscape is still full size, portrait has already shrunk
     expect(land(-3 * F).scale).toBe(1);
@@ -558,12 +561,32 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(settled.scale).toBeCloseTo(1, 2);
     expect((next - afterFx) * TEMPLATE_FPS).toBeGreaterThan(ZOOM_OUT_FRAMES * scale);
 
-    for (let frame = 0; frame < portraitCuts.slotFrames.at(-1)!; frame += 1) {
-      const time = frame / TEMPLATE_FPS;
-      const portrait = swapFx(time, slots, "zoom", "portrait");
-      const landscape = swapFx(time, slots, "zoom", "landscape");
-      expect(portrait.plateSlot, `frame ${frame}`).toBe(landscape.plateSlot);
+  });
+
+  it("samples portrait zoom as the landscape curve stretched by 1080/608", () => {
+    const scale = 1080 / 608;
+    expect(zoomTransitionScale("portrait")).toBeCloseTo(scale, 12);
+    const slots = [0, 40 * F, 80 * F];
+    const S = 40 * F;
+    const keys = ["scale", "blur", "rgb", "lift", "haze", "wave"] as const;
+    for (let step = -16; step <= 24; step += 1) {
+      const tau = step / 4;
+      const land = swapFx(S + tau * F, slots, "zoom", "landscape");
+      const port = swapFx(S + tau * scale * F, slots, "zoom", "portrait");
+      expect(port.plateSlot, `plate at τ=${tau}`).toBe(land.plateSlot);
+      expect(port.backdrop, `backdrop at τ=${tau}`).toBe(land.backdrop);
+      expect(port.dy, `dy at τ=${tau}`).toBe(land.dy);
+      expect(port.flashAdd, `flash at τ=${tau}`).toBe(land.flashAdd);
+      for (const key of keys) {
+        expect(port[key], `${key} at τ=${tau}`).toBeCloseTo(land[key], 5);
+      }
     }
+    const dip = swapFx(S, slots, "zoom", "portrait");
+    const punch = swapFx(S + scale * F, slots, "zoom", "portrait");
+    expect(dip.scale).toBeCloseTo(1 - ZOOM_OUT_SHRINK, 6);
+    expect(punch.scale).toBeCloseTo(1 + ZOOM_IN_START, 5);
+    expect(dip.scale).toBeCloseTo(swapFx(S, slots, "zoom", "landscape").scale, 6);
+    expect(punch.scale).toBeCloseTo(swapFx(S + F, slots, "zoom", "landscape").scale, 5);
   });
 
   it("is available in both aspects (2x2 matrix)", () => {
