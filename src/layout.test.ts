@@ -65,6 +65,7 @@ import {
   swapFx,
   templateBandRect,
   usesBlurBackdrop,
+  ZOOM_PORTRAIT_TIME_SCALE,
   zoomEdgeTravelOverShortSide,
   zoomInScale,
   zoomKeyAt,
@@ -477,20 +478,24 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(hasFrameFx(opening)).toBe(false);
   });
 
-  it("stretches portrait zoom by the short-side edge speed and keeps the cut", () => {
+  it("stretches portrait zoom by the tuned short-side time scale and keeps the cut", () => {
     const { width: pw, height: ph } = OUTPUTS.portrait;
     const { width: lw, height: lh } = OUTPUTS.landscape;
     const edge = (width: number, height: number) => height / Math.min(width, height);
-    const scale = edge(pw, ph) / edge(lw, lh);
+    const derived = edge(pw, ph) / edge(lw, lh);
     expect(zoomEdgeTravelOverShortSide("portrait")).toBeCloseTo(edge(pw, ph), 12);
     expect(zoomEdgeTravelOverShortSide("landscape")).toBe(1);
     expect(zoomEdgeTravelOverShortSide("landscape")).toBeCloseTo(edge(lw, lh), 12);
-    expect(zoomTransitionScale("portrait")).toBeCloseTo(ph / pw, 12);
-    expect(zoomTransitionScale("portrait")).toBeCloseTo(scale, 12);
+    expect(derived).toBeCloseTo(ph / pw, 12);
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBe(1.4);
+    expect(zoomTransitionScale("portrait")).toBe(ZOOM_PORTRAIT_TIME_SCALE);
     expect(zoomTransitionScale("landscape")).toBe(1);
     expect(zoomTransitionScale()).toBe(1);
-    expect(scale).toBeGreaterThan(1.7);
-    expect(scale).toBeLessThan(1.8);
+    // 1.4 sits near the midpoint of 1× and the 1080/608 edge-speed ratio, and short of that ratio.
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBeGreaterThan(Math.sqrt(derived));
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBeLessThan(derived);
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBeCloseTo((1 + derived) / 2, 1);
+    const scale = ZOOM_PORTRAIT_TIME_SCALE;
     expect(zoomReferenceTau(3, "landscape")).toBe(3);
     expect(zoomReferenceTau(-ZOOM_OUT_FRAMES * scale, "portrait")).toBeCloseTo(-ZOOM_OUT_FRAMES, 6);
 
@@ -549,7 +554,7 @@ describe("zoom cycle (hagikaze_sami)", () => {
     const scale = zoomTransitionScale("portrait");
     const tail = ZOOM_KEYS[ZOOM_KEYS.length - 1]![0];
     const windowFrames = ZOOM_OUT_FRAMES * scale + tail * scale;
-    expect(windowFrames).toBeGreaterThan(10);
+    expect(windowFrames).toBeCloseTo((ZOOM_OUT_FRAMES + tail) * ZOOM_PORTRAIT_TIME_SCALE, 6);
     expect(windowFrames).toBeLessThan(shortest);
     // the 13-frame cut (192→205) has finished the previous zoom before the next shrink
     const slots = portraitCuts.slots;
@@ -563,9 +568,9 @@ describe("zoom cycle (hagikaze_sami)", () => {
 
   });
 
-  it("samples portrait zoom as the landscape curve stretched by 1080/608", () => {
-    const scale = 1080 / 608;
-    expect(zoomTransitionScale("portrait")).toBeCloseTo(scale, 12);
+  it("samples portrait zoom as the landscape curve stretched by the tuned time scale", () => {
+    const scale = ZOOM_PORTRAIT_TIME_SCALE;
+    expect(zoomTransitionScale("portrait")).toBe(scale);
     const slots = [0, 40 * F, 80 * F];
     const S = 40 * F;
     const keys = ["scale", "blur", "rgb", "lift", "haze", "wave"] as const;

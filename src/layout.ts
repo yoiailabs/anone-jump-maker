@@ -267,17 +267,18 @@ export function zoomEdgeTravelOverShortSide(mode: AspectMode): number {
 }
 
 /**
- * ズーム遷移の長さ。横の実測カーブを 1 とする。
+ * 縦ズームの時間倍率。横の実測カーブを 1 とする。形と振幅は同じで、カットからの時間だけ割る。
  *
- * 縦は zoomEdgeTravelOverShortSide の比だけ遅くし、短辺に対する縁の速さを横と揃える。
- * 横は height/height = 1。縦は height/width = 1080/608。
- * 縦の時刻 t の見た目は、横の時刻 (t − S) / (1080/608) と一致する（振幅も入れ替わりも）。
- * 最短カットは 13 フレ（slotFrames 192→205）。1080/608 倍でも縮み 3 フレ＋FX の尾 τ=+3 は
- * 約 10.7 フレで、隣のカットの縮みより先に縁の動きが終わる。
+ * 短辺に対する縁の速さは `zoomEdgeTravelOverShortSide`。横は 1、縦は 1080/608 ≈ 1.776。
+ * その倍率はプレビューで長く感じたので、1 と 1.776 のほぼ中間へ知覚調整する。
+ * 算術平均は (1 + 1080/608) / 2 ≈ 1.39、幾何平均は sqrt(1080/608) ≈ 1.33。ここは 1.4。
+ * 最短カットは 13 フレ。1.4 倍でも縮み 3 フレ＋FX の尾 τ=+3 は 8.4 フレで、隣のカットに被らない。
  */
+export const ZOOM_PORTRAIT_TIME_SCALE = 1.4;
+
 export function zoomTransitionScale(mode: AspectMode = "landscape"): number {
   if (mode !== "portrait") return 1;
-  return zoomEdgeTravelOverShortSide("portrait") / zoomEdgeTravelOverShortSide("landscape");
+  return ZOOM_PORTRAIT_TIME_SCALE;
 }
 
 /** カットからの実フレームを、横の実測カーブ上の τ に写す。τ=0 はカットのまま。 */
@@ -571,7 +572,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
- *   横は前後 2〜3 フレ。縦はカットからの時間を 1080/608 で割り、横と同じカーブを引く。
+ *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
  *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
@@ -603,14 +604,14 @@ export function swapFx(
     };
   }
 
-  // zoom: 横の実測 τ をそのまま使う。縦はカットからの実フレームを 1080/608 で割ってから、
+  // zoom: 横の実測 τ をそのまま使う。縦はカットからの実フレームを ZOOM_PORTRAIT_TIME_SCALE で割ってから、
   // 同じ分岐（縮み・S+1 の写真入れ替わり・寄り）に入れる。振幅は分岐の中で変わらない。
   const next = slots[index + 1];
   const untilNext = next === undefined ? Number.POSITIVE_INFINITY : (next - time) * TEMPLATE_FPS;
   const kRef = zoomReferenceTau(k, mode);
   const untilNextRef = zoomReferenceTau(untilNext, mode);
   if (index > 0 && kRef < ZOOM_SWAP_DELAY_FRAMES - FRAME_EPS) {
-    // S..S+1（縦はその時間を 1080/608 倍）: 前の写真が縮み切ったまま残る。
+    // S..S+1（縦はその時間を ZOOM_PORTRAIT_TIME_SCALE 倍）: 前の写真が縮み切ったまま残る。
     const key = zoomKeyAt(kRef);
     return {
       ...key,
@@ -625,7 +626,7 @@ export function swapFx(
     };
   }
   if (next !== undefined && untilNextRef <= ZOOM_OUT_FRAMES + FRAME_EPS) {
-    // 次のカットへ向かって縮む。横は 3 フレ、縦は 3×1080/608 フレ。
+    // 次のカットへ向かって縮む。横は 3 フレ、縦は 3×ZOOM_PORTRAIT_TIME_SCALE フレ。
     const tau = -untilNextRef;
     const key = zoomKeyAt(tau);
     const scale = zoomOutScale(tau);
