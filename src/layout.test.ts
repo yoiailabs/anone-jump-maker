@@ -39,7 +39,6 @@ import {
   ZOOM_OUT_FRAMES,
   ZOOM_OUT_SHRINK,
   ZOOM_SWAP_DELAY_FRAMES,
-  ZOOM_TRANSITION_SCALE,
   characterDest,
   characterOutlinePx,
   portraitCutY,
@@ -66,6 +65,7 @@ import {
   swapFx,
   templateBandRect,
   usesBlurBackdrop,
+  zoomEdgeTravelWidths,
   zoomInScale,
   zoomKeyAt,
   zoomOutScale,
@@ -477,13 +477,20 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(hasFrameFx(opening)).toBe(false);
   });
 
-  it("plays the same zoom curve 1.5× slower in portrait and keeps the cut", () => {
-    expect(ZOOM_TRANSITION_SCALE).toEqual({ landscape: 1, portrait: 1.5 });
+  it("stretches portrait zoom by the width-normalized edge speed and keeps the cut", () => {
+    const { width: pw, height: ph } = OUTPUTS.portrait;
+    const { width: lw, height: lh } = OUTPUTS.landscape;
+    const edge = (width: number, height: number) => Math.hypot(width, height) / width;
+    const scale = edge(pw, ph) / edge(lw, lh);
+    expect(zoomEdgeTravelWidths("portrait")).toBeCloseTo(edge(pw, ph), 12);
+    expect(zoomEdgeTravelWidths("landscape")).toBeCloseTo(edge(lw, lh), 12);
+    expect(zoomTransitionScale("portrait")).toBeCloseTo(scale, 12);
     expect(zoomTransitionScale("landscape")).toBe(1);
-    expect(zoomTransitionScale("portrait")).toBe(1.5);
     expect(zoomTransitionScale()).toBe(1);
+    expect(scale).toBeGreaterThan(1.7);
+    expect(scale).toBeLessThan(1.8);
     expect(zoomReferenceTau(3, "landscape")).toBe(3);
-    expect(zoomReferenceTau(-4.5, "portrait")).toBeCloseTo(-3, 6);
+    expect(zoomReferenceTau(-ZOOM_OUT_FRAMES * scale, "portrait")).toBeCloseTo(-ZOOM_OUT_FRAMES, 6);
 
     const slots = [0, 15 * F, 30 * F];
     const S = 15 * F;
@@ -506,17 +513,17 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(port(F).scale).toBeCloseTo(1 + ZOOM_IN_START, 6);
     expect(land(F).scale).toBeCloseTo(1 + ZOOM_IN_START, 6);
 
-    // where landscape is still full size, portrait has already shrunk (the extra 1.5 frames)
+    // where landscape is still full size, portrait has already shrunk
     expect(land(-3 * F).scale).toBe(1);
     expect(land(-3 * F).backdrop).toBe(false);
-    expect(port(-3 * F).scale).toBeCloseTo(land(-2 * F).scale, 5);
     expect(port(-3 * F).scale).toBeLessThan(0.995);
     expect(port(-3 * F).backdrop).toBe(true);
     expect(port(-3 * F).plateSlot).toBe(land(-3 * F).plateSlot);
 
-    // portrait at 1.5× the sample matches the landscape curve
-    expect(port(-1.5 * F).scale).toBeCloseTo(land(-1 * F).scale, 5);
-    expect(port(-1.5 * F).blur).toBeCloseTo(land(-1 * F).blur, 5);
+    // the same reference τ is the landscape sample stretched by the aspect ratio
+    expect(port(-2 * scale * F).scale).toBeCloseTo(land(-2 * F).scale, 5);
+    expect(port(-1 * scale * F).scale).toBeCloseTo(land(-1 * F).scale, 5);
+    expect(port(-1 * scale * F).blur).toBeCloseTo(land(-1 * F).blur, 5);
 
     // landscape has settled by +4; portrait is still coming in
     expect(land(4 * F).scale).toBeCloseTo(1, 2);
@@ -534,13 +541,21 @@ describe("zoom cycle (hagikaze_sami)", () => {
     const gaps = portraitCuts.slotFrames.slice(1).map((frame, i) => frame - portraitCuts.slotFrames[i]!);
     const shortest = Math.min(...gaps);
     expect(shortest).toBe(13);
-    const scale = ZOOM_TRANSITION_SCALE.portrait;
+    const scale = zoomTransitionScale("portrait");
     const tail = ZOOM_KEYS[ZOOM_KEYS.length - 1]![0];
     const windowFrames = ZOOM_OUT_FRAMES * scale + tail * scale;
-    expect(windowFrames).toBe(9);
+    expect(windowFrames).toBeGreaterThan(10);
     expect(windowFrames).toBeLessThan(shortest);
-
+    // the 13-frame cut (192→205) has finished the previous zoom before the next shrink
     const slots = portraitCuts.slots;
+    const cut = 192 / TEMPLATE_FPS;
+    const next = 205 / TEMPLATE_FPS;
+    const afterFx = cut + (tail * scale + 0.25) / TEMPLATE_FPS;
+    const settled = swapFx(afterFx, slots, "zoom", "portrait");
+    expect(hasFrameFx(settled)).toBe(false);
+    expect(settled.scale).toBeCloseTo(1, 2);
+    expect((next - afterFx) * TEMPLATE_FPS).toBeGreaterThan(ZOOM_OUT_FRAMES * scale);
+
     for (let frame = 0; frame < portraitCuts.slotFrames.at(-1)!; frame += 1) {
       const time = frame / TEMPLATE_FPS;
       const portrait = swapFx(time, slots, "zoom", "portrait");

@@ -221,7 +221,7 @@ export const JUMP_REST_SHIFT_FRAC = -0.07;
  *   scale  .988   .947   .866 | 1.115  1.025  1.004  1
  *
  * 出ていく写真は S まで表示され（S でポーズは新、写真は旧）、新写真は S+1 から。
- * このカーブは横の実測。縦は同じ形を ZOOM_TRANSITION_SCALE 倍の時間で再生する。
+ * このカーブは横の実測。縦は同じ形を zoomTransitionScale 倍の時間で再生する。
  * τ=0（ブラー頂点・縮み切り）と写真の入れ替わり（S+1）はカット時刻に固定し、長さだけ伸ばす。
  * 全面（写真＋キャラ）に横方向のモーションブラー・RGB 横ずれ・明度リフトが乗る:
  *   横ブラー長   −1: ≈10px  0: ≈35px  +1: ≈18px      （幅 1280 比 0.008 / 0.027 / 0.014）
@@ -253,22 +253,32 @@ export const ZOOM_KEYS: ReadonlyArray<readonly [tau: number, key: ZoomKey]> = [
 ];
 
 /**
- * ズーム遷移の長さ。横は実測どおり 1。縦は同じカーブを 1.5 倍の時間で再生する。
+ * 幅を 1 としたときの、中心ズームで縁が動く速さ（倍率 1 あたり）。
  *
- * テンプレの最短カットは 13 フレ（slotFrames 192→205、30fps）。
- * 横の窓は縮み 3 フレ＋FX の尾 τ=+3。1.5 倍でも 4.5+4.5=9 フレで、隣のカットに被らない。
- * 2 倍だと入りの収束（τ≈5.4）が最短カットの次の縮み（6 フレ前）に食い込む。
+ * 倍率の変化 ds で、左右の縁は幅の ds/2、上下の縁は高さの ds/2 だけ動く。
+ * 視聴は幅で揃う。縦は幅が狭いので、同じ ds でも上下の縁が幅に対して大きく動いて速く見える。
+ * 左右と上下を合わせた縁の速さは、幅で割った対角
+ *   hypot(width, height) / width = sqrt(1 + (height/width)^2)
+ * になる。フレームの画素サイズとアスペクト（height/width）だけで決まる。
+ */
+export function zoomEdgeTravelWidths(mode: AspectMode): number {
+  const { width, height } = OUTPUTS[mode];
+  return Math.hypot(width, height) / width;
+}
+
+/**
+ * ズーム遷移の長さ。横の実測カーブを 1 とする。
  *
+ * 縦は zoomEdgeTravelWidths の比だけ遅くし、同じ視聴幅での縁の速さを横と揃える。
+ * 608×1080 と 1280×720 では sqrt(1+(1080/608)^2) / sqrt(1+(720/1280)^2) ≈ 1.78。
  * 写真の入れ替わりは伸ばさない。縦横ともカットの 1 フレ後（ZOOM_SWAP_DELAY_FRAMES）。
  * 遅延まで伸ばすと旧写真が保存フレームでもう 1 枚残り、ポーズ切替とずれる。
+ * 最短カットは 13 フレ（slotFrames 192→205）。約 1.78 倍でも縮み 3 フレ＋FX の尾 τ=+3 は
+ * 約 10.7 フレで、隣のカットの縮みより先に縁の動きが終わる。
  */
-export const ZOOM_TRANSITION_SCALE: Record<AspectMode, number> = {
-  landscape: 1,
-  portrait: 1.5,
-};
-
 export function zoomTransitionScale(mode: AspectMode = "landscape"): number {
-  return ZOOM_TRANSITION_SCALE[mode];
+  if (mode !== "portrait") return 1;
+  return zoomEdgeTravelWidths("portrait") / zoomEdgeTravelWidths("landscape");
 }
 
 /** カットからの実フレームを、横の実測カーブ上の τ に写す。τ=0 はカットのまま。 */
@@ -562,7 +572,8 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
- *   横は前後 2〜3 フレ、縦はその 1.5 倍、全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ *   横は前後 2〜3 フレ。縦は同じ形を zoomTransitionScale 倍の時間に引き伸ばす。
+ *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
  *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
 export function swapFx(
@@ -594,7 +605,7 @@ export function swapFx(
   }
 
   // zoom: 直前のカット S=start に対して τ=k、次のカットに対して τ=k−len。
-  // 縦は実フレームを ZOOM_TRANSITION_SCALE で割ってから実測カーブを引く。写真の切替だけは割らない。
+  // 縦は実フレームを zoomTransitionScale で割ってから実測カーブを引く。写真の切替だけは割らない。
   const next = slots[index + 1];
   const untilNext = next === undefined ? Number.POSITIVE_INFINITY : (next - time) * TEMPLATE_FPS;
   const outFrames = ZOOM_OUT_FRAMES * zoomTransitionScale(mode);
@@ -614,7 +625,7 @@ export function swapFx(
     };
   }
   if (next !== undefined && untilNext <= outFrames + FRAME_EPS) {
-    // 次のカットへ向かって縮む。縦は 4.5 フレ、横は 3 フレ。
+    // 次のカットへ向かって縮む。横は 3 フレ、縦はその zoomTransitionScale 倍。
     const tau = zoomReferenceTau(-untilNext, mode);
     const key = zoomKeyAt(tau);
     const scale = zoomOutScale(tau);
