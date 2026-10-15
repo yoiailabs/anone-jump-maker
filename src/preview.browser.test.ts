@@ -11,7 +11,7 @@ import {
   UNSUPPORTED_EXPORT_MESSAGE,
 } from "./export.ts";
 import { createGpuKeyer } from "./keying-gpu.ts";
-import { TEMPLATES } from "./layout.ts";
+import { JUMP_DROP_FRAC, JUMP_DROP_FRAC_PORTRAIT, OUTPUTS, TEMPLATES } from "./layout.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import { loadPhotos, type LoadedPhoto } from "./photos.ts";
 
@@ -72,6 +72,34 @@ describe("createCompositor", () => {
       expect(compositor.canvas.height).toBe(540);
       const portrait = sampleCenter(compositor.canvas);
       expect(portrait[0] + portrait[1] + portrait[2]).toBeGreaterThan(20);
+    } finally {
+      photo.bitmap.close();
+      compositor.destroy();
+    }
+  });
+
+  it("uses the smaller portrait jump amplitude on the shared preview and export draw path", async () => {
+    const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+    const photo = await makeStripePhoto();
+    const video = document.createElement("video");
+    const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
+    const restTime = 7 / 30;
+    const shift = (mode: "portrait" | "landscape") => {
+      compositor.setAspect(mode);
+      compositor.draw(video, [photo], timeline, restTime, "jump", "none");
+      const rest = markerRow(compositor.canvas);
+      compositor.draw(video, [photo], timeline, 0, "jump", "none");
+      const cut = markerRow(compositor.canvas);
+      return cut - rest;
+    };
+    try {
+      const landscape = shift("landscape");
+      const portrait = shift("portrait");
+      expect(landscape).toBeCloseTo(JUMP_DROP_FRAC * OUTPUTS.landscape.height, 0);
+      expect(portrait).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT * OUTPUTS.portrait.height, 0);
+      expect(portrait / OUTPUTS.portrait.height).toBeCloseTo(JUMP_DROP_FRAC / 2, 3);
+      expect(landscape / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 3);
+      expect(portrait).toBeLessThan(landscape);
     } finally {
       photo.bitmap.close();
       compositor.destroy();
@@ -243,6 +271,46 @@ describe("seekVideo / exportJumpVideo", () => {
     expect([...ctx!.getImageData(0, 0, 1, 1).data]).toEqual([7, 8, 9, 255]);
   });
 });
+
+async function makeStripePhoto(): Promise<LoadedPhoto> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1920;
+  canvas.height = 1080;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas");
+  ctx.fillStyle = "#101010";
+  ctx.fillRect(0, 0, 1920, 1080);
+  ctx.fillStyle = "#ff00ff";
+  ctx.fillRect(0, 536, 1920, 8);
+  const bg = ctx.getImageData(10, 10, 1, 1).data;
+  const stripe = ctx.getImageData(10, 540, 1, 1).data;
+  if ((bg[0] ?? 0) > 40 || (stripe[0] ?? 0) < 250 || (stripe[1] ?? 255) > 5) {
+    throw new Error(`source bg=${[...bg]} stripe=${[...stripe]}`);
+  }
+  const bitmap = await createImageBitmap(canvas);
+  return { id: "stripe", name: "stripe.png", bitmap, thumbUrl: canvas.toDataURL("image/png") };
+}
+
+function markerRow(canvas: HTMLCanvasElement): number {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas");
+  const x = Math.floor(canvas.width / 2);
+  const column = ctx.getImageData(x, 0, 1, canvas.height).data;
+  let weight = 0;
+  let sum = 0;
+  for (let y = 0; y < canvas.height; y += 1) {
+    const i = y * 4;
+    const r = column[i] ?? 0;
+    const g = column[i + 1] ?? 0;
+    const b = column[i + 2] ?? 0;
+    // Magenta stripe. The cut flash lifts green, so score magenta against gray.
+    const mag = Math.max(0, r + b - g * 2 - 80);
+    weight += mag;
+    sum += mag * (y + 0.5);
+  }
+  if (weight === 0) throw new Error("jump marker missing");
+  return sum / weight;
+}
 
 async function makePhoto(color: string): Promise<LoadedPhoto> {
   const canvas = document.createElement("canvas");

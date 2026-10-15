@@ -182,8 +182,25 @@ export const JUMP_CYCLE_FRAMES = 15;
 /** カットから元の位置へ戻るまでのフレーム数。 */
 export const JUMP_RISE_FRAMES = 7;
 
-/** カット瞬間の下ずれ（本編パネル高さに対する比）。35.4 / 202.7。 */
+/** カット瞬間の下ずれ（本編パネル高さに対する比）。35.4 / 202.7。横はこの実測のまま。 */
 export const JUMP_DROP_FRAC = 0.175;
+
+/**
+ * 縦だけのカット瞬間の下ずれ（パネル高さ比）。横のちょうど半分。
+ *
+ * `dy` はパネル高さに対する比なので、同じ 0.175 だとピーク移動は
+ * 横 720×0.175 = 126px、縦 1080×0.175 = 189px になる。縦は 9:16 全面の
+ * cover で被写体が画面いっぱいに見えるため、この移動が揺れとして強く出る。
+ * 半分の 0.0875 なら縦のピークは 1080×0.0875 ≈ 95px（画面高の 8.75%）で、
+ * 跳ねは残るが横の 126px / 17.5% より控えめになる。縮み（JUMP_SHRINK）は変えない。
+ * 上余白は dy が小さいほど増えるので、カバー倍率はそのまま隙間が出ない。
+ */
+export const JUMP_DROP_FRAC_PORTRAIT = JUMP_DROP_FRAC / 2;
+
+/** ジャンプの縦振幅。未指定は横の実測（ロゴの跳ねや既存呼び出しを変えない）。 */
+export function jumpDropFrac(mode: AspectMode = "landscape"): number {
+  return mode === "portrait" ? JUMP_DROP_FRAC_PORTRAIT : JUMP_DROP_FRAC;
+}
 
 /** カット瞬間の縮み。1 − 0.947。 */
 export const JUMP_SHRINK = 0.053;
@@ -470,21 +487,23 @@ function slotAt(time: number, slots: readonly number[]): { start: number; index:
  * ジャンプ系の写真の位置と倍率。k = カットからのフレーム（小数可）。
  * 0..7 で跳ね戻り、7..15 で二次曲線で沈む。15 以降（長いスロット）は沈み切った位置で待つ。
  * 先頭スロットもテンプレ開始をカットとして同じサイクルを踏む（参考 Short は 0 秒からこの動き）。
+ * 縦振幅だけ向きで変える（縦は JUMP_DROP_FRAC_PORTRAIT）。縮みのカーブは共通。
  */
-export function jumpCycle(k: number): { scale: number; dy: number } {
+export function jumpCycle(k: number, mode: AspectMode = "landscape"): { scale: number; dy: number } {
+  const drop = jumpDropFrac(mode);
   if (k < 0) return { scale: 1, dy: 0 };
   if (k < JUMP_RISE_FRAMES - FRAME_EPS) {
     const r = 1 - k / JUMP_RISE_FRAMES;
     return {
       scale: 1 - JUMP_SHRINK * r ** JUMP_RISE_SCALE_POW,
-      dy: JUMP_DROP_FRAC * r ** JUMP_RISE_POW,
+      dy: drop * r ** JUMP_RISE_POW,
     };
   }
   const v = clamp01((k - JUMP_RISE_FRAMES) / (JUMP_CYCLE_FRAMES - JUMP_RISE_FRAMES));
   if (v < FRAME_EPS) return { scale: 1, dy: 0 };
   return {
     scale: 1 - JUMP_SHRINK * v * v,
-    dy: JUMP_DROP_FRAC * v * v,
+    dy: drop * v * v,
   };
 }
 
@@ -535,10 +554,16 @@ export function zoomKeyAt(tau: number): ZoomKey {
 /**
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
+ *   縦の下ずれだけ JUMP_DROP_FRAC_PORTRAIT。横は実測の JUMP_DROP_FRAC。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
- *   前後 2〜3 フレは全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ *   前後 2〜3 フレは全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。向きでは変えない。
  */
-export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
+export function swapFx(
+  time: number,
+  slots: readonly number[],
+  style: SwapStyle = "jump",
+  mode: AspectMode = "landscape",
+): SwapFx {
   if (slots.length === 0) {
     return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
   }
@@ -547,7 +572,7 @@ export function swapFx(time: number, slots: readonly number[], style: SwapStyle 
 
   if (style === "jump") {
     // 参考 Short は 0 秒の先頭スロットも同じサイクル＋フラッシュで始まる。
-    const motion = jumpCycle(k);
+    const motion = jumpCycle(k, mode);
     const env = jumpFlashEnvelope(k);
     return {
       ...NO_FX,

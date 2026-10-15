@@ -14,6 +14,7 @@ import {
   JUMP_COVER_SCALE,
   JUMP_CYCLE_FRAMES,
   JUMP_DROP_FRAC,
+  JUMP_DROP_FRAC_PORTRAIT,
   JUMP_FLASH_ADD,
   JUMP_FLASH_FRAMES,
   JUMP_FLASH_GLOBAL,
@@ -56,6 +57,7 @@ import {
   isSwapStyle,
   SWAP_STYLES,
   jumpCycle,
+  jumpDropFrac,
   jumpFlashEnvelope,
   mainPanelRect,
   outputSize,
@@ -342,6 +344,52 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
     expect(jumpCycle(-1)).toEqual({ scale: 1, dy: 0 });
   });
 
+  it("halves only the portrait vertical amplitude and keeps the landscape measurement", () => {
+    // 0.175 / 2 = 0.0875. Peak travel at export size: portrait 1080×0.0875 ≈ 94.5px,
+    // landscape 720×0.175 = 126px. Shrink curve stays shared.
+    expect(JUMP_DROP_FRAC_PORTRAIT).toBe(JUMP_DROP_FRAC / 2);
+    expect(JUMP_DROP_FRAC_PORTRAIT).toBeCloseTo(0.0875, 6);
+    expect(jumpDropFrac("landscape")).toBe(JUMP_DROP_FRAC);
+    expect(jumpDropFrac("portrait")).toBe(JUMP_DROP_FRAC_PORTRAIT);
+    expect(jumpDropFrac()).toBe(JUMP_DROP_FRAC);
+
+    const landscape = jumpCycle(0, "landscape");
+    const portrait = jumpCycle(0, "portrait");
+    expect(landscape.dy).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(portrait.dy).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT, 6);
+    expect(portrait.dy).toBeCloseTo(landscape.dy / 2, 8);
+    expect(portrait.scale).toBeCloseTo(landscape.scale, 8);
+    expect(jumpCycle(0)).toEqual(landscape);
+
+    for (const k of [1, 4, 7, 10, 14, 15]) {
+      const wide = jumpCycle(k, "landscape");
+      const tall = jumpCycle(k, "portrait");
+      expect(tall.dy).toBeCloseTo(wide.dy / 2, 8);
+      expect(tall.scale).toBeCloseTo(wide.scale, 8);
+    }
+    expect(jumpCycle(7, "portrait")).toEqual({ scale: 1, dy: 0 });
+    expect(jumpCycle(-1, "portrait")).toEqual({ scale: 1, dy: 0 });
+
+    const slots = [0, 15 * F, 30 * F];
+    const atLandscape = swapFx(15 * F, slots, "jump", "landscape");
+    const atPortrait = swapFx(15 * F, slots, "jump", "portrait");
+    expect(atLandscape.dy).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(atPortrait.dy).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT, 6);
+    expect(atPortrait.scale).toBeCloseTo(atLandscape.scale, 8);
+    expect(atPortrait.flashAdd).toBeCloseTo(atLandscape.flashAdd, 8);
+    expect(swapFx(15 * F, slots, "jump").dy).toBeCloseTo(atLandscape.dy, 8);
+    expect(swapFx(0, slots, "jump", "portrait").dy).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT, 6);
+    expect(swapFx(15 * F + 7 * F, slots, "jump", "portrait").dy).toBe(0);
+
+    const zoomPortrait = swapFx(15 * F, slots, "zoom", "portrait");
+    const zoomLandscape = swapFx(15 * F, slots, "zoom", "landscape");
+    expect(zoomPortrait).toEqual(zoomLandscape);
+    expect(zoomPortrait.dy).toBe(0);
+
+    expect(JUMP_DROP_FRAC_PORTRAIT * OUTPUTS.portrait.height).toBeCloseTo(94.5, 3);
+    expect(JUMP_DROP_FRAC * OUTPUTS.landscape.height).toBeCloseTo(126, 3);
+  });
+
   it("flashes only after the cut and dies within 3 frames", () => {
     expect(JUMP_FLASH_FRAMES).toBe(3);
     expect(jumpFlashEnvelope(-0.5)).toBe(0);
@@ -481,16 +529,20 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(isImageFilter("blur-strong")).toBe(true);
     expect(isImageFilter("blur-weak")).toBe(true);
     expect(isImageFilter("blur")).toBe(false);
-    // the fx model is aspect-agnostic: fractions of panel size
+    // zoom stays aspect-agnostic. jump dy is a fraction of panel height, smaller on portrait.
     const slots = [0, 0.5, 1.0];
-    const zoom = swapFx(0.5, slots, "zoom");
-    const jump = swapFx(0.5, slots, "jump");
-    for (const [w, h] of [
-      [OUTPUT.width, mainPanelRect(OUTPUT.width, OUTPUT.height).h],
-      [OUTPUTS.landscape.width, OUTPUTS.landscape.height],
+    const zoom = swapFx(0.5, slots, "zoom", "portrait");
+    expect(zoom).toEqual(swapFx(0.5, slots, "zoom", "landscape"));
+    const portraitJump = swapFx(0.5, slots, "jump", "portrait");
+    const landscapeJump = swapFx(0.5, slots, "jump", "landscape");
+    expect(portraitJump.dy).toBeCloseTo(landscapeJump.dy / 2, 6);
+    expect(portraitJump.scale).toBeCloseTo(landscapeJump.scale, 8);
+    for (const [w, h, fx] of [
+      [OUTPUT.width, mainPanelRect(OUTPUT.width, OUTPUT.height).h, portraitJump],
+      [OUTPUTS.landscape.width, OUTPUTS.landscape.height, landscapeJump],
     ] as const) {
       expect(zoom.blur * w).toBeGreaterThan(5);
-      expect(Math.abs(jump.dy) * h).toBeGreaterThan(20);
+      expect(Math.abs(fx.dy) * h).toBeGreaterThan(20);
     }
   });
 });
