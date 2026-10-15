@@ -344,27 +344,35 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
     expect(jumpCycle(-1)).toEqual({ scale: 1, dy: 0 });
   });
 
-  it("halves only the portrait vertical amplitude and keeps the landscape measurement", () => {
-    // 0.175 / 2 = 0.0875. Peak travel at export size: portrait 1080×0.0875 ≈ 94.5px,
-    // landscape 720×0.175 = 126px. Shrink curve stays shared.
-    expect(JUMP_DROP_FRAC_PORTRAIT).toBe(JUMP_DROP_FRAC / 2);
-    expect(JUMP_DROP_FRAC_PORTRAIT).toBeCloseTo(0.0875, 6);
+  it("matches portrait jump amplitude to the same fraction of the shorter side", () => {
+    // dy = JUMP_DROP_FRAC × (shorterSide / frameHeight)
+    // landscape shorter side is the height, so the fraction stays 0.175.
+    // portrait shorter side is the width: 0.175 × 608/1080.
+    const portraitAspect = OUTPUTS.portrait.width / OUTPUTS.portrait.height;
+    expect(JUMP_DROP_FRAC_PORTRAIT).toBeCloseTo(JUMP_DROP_FRAC * portraitAspect, 8);
+    expect(JUMP_DROP_FRAC_PORTRAIT).toBe(jumpDropFrac("portrait"));
     expect(jumpDropFrac("landscape")).toBe(JUMP_DROP_FRAC);
-    expect(jumpDropFrac("portrait")).toBe(JUMP_DROP_FRAC_PORTRAIT);
     expect(jumpDropFrac()).toBe(JUMP_DROP_FRAC);
+
+    const landscapeTravel = jumpDropFrac("landscape") * OUTPUTS.landscape.height;
+    const portraitTravel = jumpDropFrac("portrait") * OUTPUTS.portrait.height;
+    expect(landscapeTravel / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 8);
+    expect(portraitTravel / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 8);
+    expect(portraitTravel).toBeCloseTo(106.4, 3);
+    expect(landscapeTravel).toBeCloseTo(126, 3);
 
     const landscape = jumpCycle(0, "landscape");
     const portrait = jumpCycle(0, "portrait");
     expect(landscape.dy).toBeCloseTo(JUMP_DROP_FRAC, 6);
     expect(portrait.dy).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT, 6);
-    expect(portrait.dy).toBeCloseTo(landscape.dy / 2, 8);
+    expect(portrait.dy).toBeCloseTo(landscape.dy * portraitAspect, 8);
     expect(portrait.scale).toBeCloseTo(landscape.scale, 8);
     expect(jumpCycle(0)).toEqual(landscape);
 
     for (const k of [1, 4, 7, 10, 14, 15]) {
       const wide = jumpCycle(k, "landscape");
       const tall = jumpCycle(k, "portrait");
-      expect(tall.dy).toBeCloseTo(wide.dy / 2, 8);
+      expect(tall.dy).toBeCloseTo(wide.dy * portraitAspect, 8);
       expect(tall.scale).toBeCloseTo(wide.scale, 8);
     }
     expect(jumpCycle(7, "portrait")).toEqual({ scale: 1, dy: 0 });
@@ -386,8 +394,21 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
     expect(zoomPortrait).toEqual(zoomLandscape);
     expect(zoomPortrait.dy).toBe(0);
 
-    expect(JUMP_DROP_FRAC_PORTRAIT * OUTPUTS.portrait.height).toBeCloseTo(94.5, 3);
-    expect(JUMP_DROP_FRAC * OUTPUTS.landscape.height).toBeCloseTo(126, 3);
+    // Cover overscan was sized for the landscape 17.5% drop. The smaller portrait
+    // drop keeps the plate inside that margin (top slack stays positive).
+    const slack = (mode: "portrait" | "landscape", dy: number) => {
+      const { width, height } = OUTPUTS[mode];
+      const cut = coverDest(1920, 1080, width, height, {
+        scale: JUMP_COVER_SCALE * (1 - JUMP_SHRINK),
+        offsetY: (JUMP_REST_SHIFT_FRAC + dy) * height,
+      });
+      return -cut.y / height;
+    };
+    const portraitSlack = slack("portrait", JUMP_DROP_FRAC_PORTRAIT);
+    const landscapeSlack = slack("landscape", JUMP_DROP_FRAC);
+    expect(portraitSlack).toBeGreaterThan(0);
+    expect(landscapeSlack).toBeGreaterThan(0);
+    expect(portraitSlack).toBeGreaterThan(landscapeSlack);
   });
 
   it("flashes only after the cut and dies within 3 frames", () => {
@@ -535,7 +556,10 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(zoom).toEqual(swapFx(0.5, slots, "zoom", "landscape"));
     const portraitJump = swapFx(0.5, slots, "jump", "portrait");
     const landscapeJump = swapFx(0.5, slots, "jump", "landscape");
-    expect(portraitJump.dy).toBeCloseTo(landscapeJump.dy / 2, 6);
+    expect(portraitJump.dy).toBeCloseTo(
+      landscapeJump.dy * (OUTPUTS.portrait.width / OUTPUTS.portrait.height),
+      6,
+    );
     expect(portraitJump.scale).toBeCloseTo(landscapeJump.scale, 8);
     for (const [w, h, fx] of [
       [OUTPUT.width, mainPanelRect(OUTPUT.width, OUTPUT.height).h, portraitJump],

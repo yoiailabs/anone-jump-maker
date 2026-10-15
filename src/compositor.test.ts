@@ -122,9 +122,11 @@ describe("swap fx draw path", () => {
     }
     const portraitPx = cases[0].drop * cases[0].h;
     const landscapePx = cases[1].drop * cases[1].h;
-    expect(portraitPx).toBeCloseTo(94.5, 3);
+    // both peaks are JUMP_DROP_FRAC of the frame's shorter side
+    expect(portraitPx / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(landscapePx / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(portraitPx).toBeCloseTo(106.4, 3);
     expect(landscapePx).toBeCloseTo(126, 3);
-    expect(portraitPx).toBeLessThan(landscapePx);
     // preview and export both call compositor.draw, which threads the current aspect into swapFx
     expect(compositorSrc).toContain("swapFx(time, slots, swapStyle, mode)");
   });

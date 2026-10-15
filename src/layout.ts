@@ -186,21 +186,30 @@ export const JUMP_RISE_FRAMES = 7;
 export const JUMP_DROP_FRAC = 0.175;
 
 /**
- * 縦だけのカット瞬間の下ずれ（パネル高さ比）。横のちょうど半分。
+ * 向きごとのジャンプ縦振幅（パネル高さ比）。
  *
- * `dy` はパネル高さに対する比なので、同じ 0.175 だとピーク移動は
- * 横 720×0.175 = 126px、縦 1080×0.175 = 189px になる。縦は 9:16 全面の
- * cover で被写体が画面いっぱいに見えるため、この移動が揺れとして強く出る。
- * 半分の 0.0875 なら縦のピークは 1080×0.0875 ≈ 95px（画面高の 8.75%）で、
- * 跳ねは残るが横の 126px / 17.5% より控えめになる。縮み（JUMP_SHRINK）は変えない。
- * 上余白は dy が小さいほど増えるので、カバー倍率はそのまま隙間が出ない。
+ * 見えの揺れは、視聴者から見たフレームの短辺に対する移動で揃える。
+ * 実測 `JUMP_DROP_FRAC` は横のフレーム高さに対する比で、横の短辺は高さそのもの。
+ * だからピーク移動 / 短辺 = 0.175。縦の短辺は幅なので、同じ比を高さ比へ直す。
+ *
+ *   dy = JUMP_DROP_FRAC × (shorterSide / frameHeight)
+ *
+ * 横: shorterSide = height → dy = 0.175。ピークは 720×0.175 = 126px。
+ * 縦: shorterSide / frameHeight = width / height = 608/1080。
+ *     dy = 0.175 × 608/1080 ≈ 0.09852。ピークは 608×0.175 = 106.4px
+ *     （高さの 9.85%。同じ 0.175 のままだと 189px で、縦長フレームでは大きく見える）。
+ *
+ * カバー 1.32 と上寄せ 0.07 は、横の 17.5% 沈みでも端が出ない余白
+ * （カット時の上 ≈ 2%）を前提にしている。縦の dy はそれより小さいので、
+ * 被写体はその安全域の内側に残る。縮み（JUMP_SHRINK）は変えない。
  */
-export const JUMP_DROP_FRAC_PORTRAIT = JUMP_DROP_FRAC / 2;
-
-/** ジャンプの縦振幅。未指定は横の実測（ロゴの跳ねや既存呼び出しを変えない）。 */
 export function jumpDropFrac(mode: AspectMode = "landscape"): number {
-  return mode === "portrait" ? JUMP_DROP_FRAC_PORTRAIT : JUMP_DROP_FRAC;
+  const { width, height } = OUTPUTS[mode];
+  return JUMP_DROP_FRAC * (Math.min(width, height) / height);
 }
+
+/** 縦のカット瞬間の下ずれ。`jumpDropFrac("portrait")`。 */
+export const JUMP_DROP_FRAC_PORTRAIT = jumpDropFrac("portrait");
 
 /** カット瞬間の縮み。1 − 0.947。 */
 export const JUMP_SHRINK = 0.053;
@@ -554,7 +563,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
 /**
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
- *   縦の下ずれだけ JUMP_DROP_FRAC_PORTRAIT。横は実測の JUMP_DROP_FRAC。
+ *   縦の下ずれは jumpDropFrac（短辺比を高さ比に直した値）。横は実測の JUMP_DROP_FRAC。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   前後 2〜3 フレは全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。向きでは変えない。
  */

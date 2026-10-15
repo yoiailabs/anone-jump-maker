@@ -78,7 +78,7 @@ describe("createCompositor", () => {
     }
   });
 
-  it("uses the smaller portrait jump amplitude on the shared preview and export draw path", async () => {
+  it("matches portrait jump travel to the short side on the shared preview and export draw path", async () => {
     const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
     const photo = await makeStripePhoto();
     const video = document.createElement("video");
@@ -97,7 +97,8 @@ describe("createCompositor", () => {
       const portrait = shift("portrait");
       expect(landscape).toBeCloseTo(JUMP_DROP_FRAC * OUTPUTS.landscape.height, 0);
       expect(portrait).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT * OUTPUTS.portrait.height, 0);
-      expect(portrait / OUTPUTS.portrait.height).toBeCloseTo(JUMP_DROP_FRAC / 2, 3);
+      // travel / shorter side matches the landscape measurement
+      expect(portrait / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 3);
       expect(landscape / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 3);
       expect(portrait).toBeLessThan(landscape);
     } finally {
