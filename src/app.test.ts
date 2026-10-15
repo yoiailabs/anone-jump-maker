@@ -183,4 +183,10 @@ describe("preview save CTA", () => {
     expect(compositorSrc).toContain("resetCharacter()");
     expect(compositorSrc).toContain("dropGpuKeyer()");
   });
+
+  it("feeds portrait and landscape zoom timing through the shared preview and export draw", () => {
+    expect(compositorSrc).toContain("swapFx(time, slots, swapStyle, mode)");
+    expect(appSrc).toContain("compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize)");
+    expect(appSrc).toContain("draw: paint");
+  });
 });

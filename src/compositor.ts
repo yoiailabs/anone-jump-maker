@@ -220,7 +220,7 @@ export function createCompositor(options?: {
     const w = canvas.width;
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
-    const fx = swapFx(time, slots, swapStyle);
+    const fx = swapFx(time, slots, swapStyle, mode);
     const plate = photoForSlot(photos, fx.plateSlot);
     const characterSource = resolveCharacterSource(video, character);
 

@@ -67,7 +67,7 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 /**
  * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
  * スロット時刻 S（cuts.json）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
- * ジャンプは S に新写真、ズームは S+1 に新写真（S はブラー頂点）。
+ * ジャンプは S に新写真、ズームは縦横とも S+1 に新写真（S はブラー頂点）。
  */
 export const TEMPLATE_FPS = 30;
 
@@ -221,6 +221,8 @@ export const JUMP_REST_SHIFT_FRAC = -0.07;
  *   scale  .988   .947   .866 | 1.115  1.025  1.004  1
  *
  * 出ていく写真は S まで表示され（S でポーズは新、写真は旧）、新写真は S+1 から。
+ * このカーブは横の実測。縦は同じ形を ZOOM_TRANSITION_SCALE 倍の時間で再生する。
+ * τ=0（ブラー頂点・縮み切り）と写真の入れ替わり（S+1）はカット時刻に固定し、長さだけ伸ばす。
  * 全面（写真＋キャラ）に横方向のモーションブラー・RGB 横ずれ・明度リフトが乗る:
  *   横ブラー長   −1: ≈10px  0: ≈35px  +1: ≈18px      （幅 1280 比 0.008 / 0.027 / 0.014）
  *   RGB ずれ     −1: ≈2px   0: ≈8px   +1: ≈5px       （R が右・B が左）
@@ -249,6 +251,30 @@ export const ZOOM_KEYS: ReadonlyArray<readonly [tau: number, key: ZoomKey]> = [
   [2, { blur: 0.002, rgb: 0.0005, lift: 0, haze: 0.08, wave: 0 }],
   [3, { blur: 0, rgb: 0, lift: 0, haze: 0, wave: 0 }],
 ];
+
+/**
+ * ズーム遷移の長さ。横は実測どおり 1。縦は同じカーブを 1.5 倍の時間で再生する。
+ *
+ * テンプレの最短カットは 13 フレ（slotFrames 192→205、30fps）。
+ * 横の窓は縮み 3 フレ＋FX の尾 τ=+3。1.5 倍でも 4.5+4.5=9 フレで、隣のカットに被らない。
+ * 2 倍だと入りの収束（τ≈5.4）が最短カットの次の縮み（6 フレ前）に食い込む。
+ *
+ * 写真の入れ替わりは伸ばさない。縦横ともカットの 1 フレ後（ZOOM_SWAP_DELAY_FRAMES）。
+ * 遅延まで伸ばすと旧写真が保存フレームでもう 1 枚残り、ポーズ切替とずれる。
+ */
+export const ZOOM_TRANSITION_SCALE: Record<AspectMode, number> = {
+  landscape: 1,
+  portrait: 1.5,
+};
+
+export function zoomTransitionScale(mode: AspectMode = "landscape"): number {
+  return ZOOM_TRANSITION_SCALE[mode];
+}
+
+/** カットからの実フレームを、横の実測カーブ上の τ に写す。τ=0 はカットのまま。 */
+export function zoomReferenceTau(framesFromCut: number, mode: AspectMode = "landscape"): number {
+  return framesFromCut / zoomTransitionScale(mode);
+}
 
 /** 縮んだ出ていく写真の後ろに敷く、同じ写真の cover ぼかし（黒帯を見せない）。幅比。 */
 export const ZOOM_BACKDROP_BLUR_FRAC = 0.02;
@@ -536,9 +562,15 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
- *   前後 2〜3 フレは全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ *   横は前後 2〜3 フレ、縦はその 1.5 倍、全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
-export function swapFx(time: number, slots: readonly number[], style: SwapStyle = "jump"): SwapFx {
+export function swapFx(
+  time: number,
+  slots: readonly number[],
+  style: SwapStyle = "jump",
+  mode: AspectMode = "landscape",
+): SwapFx {
   if (slots.length === 0) {
     return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
   }
@@ -562,11 +594,13 @@ export function swapFx(time: number, slots: readonly number[], style: SwapStyle 
   }
 
   // zoom: 直前のカット S=start に対して τ=k、次のカットに対して τ=k−len。
+  // 縦は実フレームを ZOOM_TRANSITION_SCALE で割ってから実測カーブを引く。写真の切替だけは割らない。
   const next = slots[index + 1];
   const untilNext = next === undefined ? Number.POSITIVE_INFINITY : (next - time) * TEMPLATE_FPS;
+  const outFrames = ZOOM_OUT_FRAMES * zoomTransitionScale(mode);
   if (index > 0 && k < ZOOM_SWAP_DELAY_FRAMES - FRAME_EPS) {
-    // S..S+1: 前の写真が縮み切ったまま残る（ポーズだけ新）。
-    const key = zoomKeyAt(k);
+    // S..S+1: 前の写真が縮み切ったまま残る（ポーズだけ新）。縦横とも 1 フレ。
+    const key = zoomKeyAt(zoomReferenceTau(k, mode));
     return {
       ...key,
       plateSlot: index - 1,
@@ -579,9 +613,9 @@ export function swapFx(time: number, slots: readonly number[], style: SwapStyle 
       cutIndex: index,
     };
   }
-  if (next !== undefined && untilNext <= ZOOM_OUT_FRAMES + FRAME_EPS) {
-    // 次のカットへ向かって縮む。
-    const tau = -untilNext;
+  if (next !== undefined && untilNext <= outFrames + FRAME_EPS) {
+    // 次のカットへ向かって縮む。縦は 4.5 フレ、横は 3 フレ。
+    const tau = zoomReferenceTau(-untilNext, mode);
     const key = zoomKeyAt(tau);
     const scale = zoomOutScale(tau);
     return {
@@ -597,12 +631,13 @@ export function swapFx(time: number, slots: readonly number[], style: SwapStyle 
     };
   }
   if (index > 0) {
-    // S+1 以降: 新写真が寄りから引く。
-    const key = zoomKeyAt(k);
+    // S+1 以降: 新写真が寄りから引く。ピークは同じで、縦は収束までが長い。
+    const tau = zoomReferenceTau(k, mode);
+    const key = zoomKeyAt(tau);
     return {
       ...key,
       plateSlot: index,
-      scale: zoomInScale(k),
+      scale: zoomInScale(tau),
       dy: 0,
       flashAdd: 0,
       flashScreen: 0,
