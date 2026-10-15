@@ -253,32 +253,32 @@ export const ZOOM_KEYS: ReadonlyArray<readonly [tau: number, key: ZoomKey]> = [
 ];
 
 /**
- * 幅を 1 としたときの、中心ズームで縁が動く速さ（倍率 1 あたり）。
+ * 上下の縁の移動を、フレームの短辺で割った速さ（倍率 1 あたり。共通の 1/2 は省く）。
  *
- * 倍率の変化 ds で、左右の縁は幅の ds/2、上下の縁は高さの ds/2 だけ動く。
- * 視聴は幅で揃う。縦は幅が狭いので、同じ ds でも上下の縁が幅に対して大きく動いて速く見える。
- * 左右と上下を合わせた縁の速さは、幅で割った対角
- *   hypot(width, height) / width = sqrt(1 + (height/width)^2)
- * になる。フレームの画素サイズとアスペクト（height/width）だけで決まる。
+ * 見えの速さは短辺に対する移動で揃える。倍率の変化 ds で上下の縁は高さの ds/2 動く。
+ * 横の短辺は高さそのものなので、縁 / 短辺 = 1。
+ * 縦の短辺は幅。同じ ds でも上下の縁は背の高さ分動き、狭い幅で割ると大きく見える。
+ *
+ *   speed = frameHeight / shorterSide
  */
-export function zoomEdgeTravelWidths(mode: AspectMode): number {
+export function zoomEdgeTravelOverShortSide(mode: AspectMode): number {
   const { width, height } = OUTPUTS[mode];
-  return Math.hypot(width, height) / width;
+  return height / Math.min(width, height);
 }
 
 /**
  * ズーム遷移の長さ。横の実測カーブを 1 とする。
  *
- * 縦は zoomEdgeTravelWidths の比だけ遅くし、同じ視聴幅での縁の速さを横と揃える。
- * 608×1080 と 1280×720 では sqrt(1+(1080/608)^2) / sqrt(1+(720/1280)^2) ≈ 1.78。
+ * 縦は zoomEdgeTravelOverShortSide の比だけ遅くし、短辺に対する縁の速さを横と揃える。
+ * 横は height/height = 1。縦は height/width = 1080/608 ≈ 1.776。
  * 写真の入れ替わりは伸ばさない。縦横ともカットの 1 フレ後（ZOOM_SWAP_DELAY_FRAMES）。
  * 遅延まで伸ばすと旧写真が保存フレームでもう 1 枚残り、ポーズ切替とずれる。
- * 最短カットは 13 フレ（slotFrames 192→205）。約 1.78 倍でも縮み 3 フレ＋FX の尾 τ=+3 は
+ * 最短カットは 13 フレ（slotFrames 192→205）。1080/608 倍でも縮み 3 フレ＋FX の尾 τ=+3 は
  * 約 10.7 フレで、隣のカットの縮みより先に縁の動きが終わる。
  */
 export function zoomTransitionScale(mode: AspectMode = "landscape"): number {
   if (mode !== "portrait") return 1;
-  return zoomEdgeTravelWidths("portrait") / zoomEdgeTravelWidths("landscape");
+  return zoomEdgeTravelOverShortSide("portrait") / zoomEdgeTravelOverShortSide("landscape");
 }
 
 /** カットからの実フレームを、横の実測カーブ上の τ に写す。τ=0 はカットのまま。 */

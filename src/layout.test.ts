@@ -65,7 +65,7 @@ import {
   swapFx,
   templateBandRect,
   usesBlurBackdrop,
-  zoomEdgeTravelWidths,
+  zoomEdgeTravelOverShortSide,
   zoomInScale,
   zoomKeyAt,
   zoomOutScale,
@@ -477,13 +477,15 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(hasFrameFx(opening)).toBe(false);
   });
 
-  it("stretches portrait zoom by the width-normalized edge speed and keeps the cut", () => {
+  it("stretches portrait zoom by the short-side edge speed and keeps the cut", () => {
     const { width: pw, height: ph } = OUTPUTS.portrait;
     const { width: lw, height: lh } = OUTPUTS.landscape;
-    const edge = (width: number, height: number) => Math.hypot(width, height) / width;
+    const edge = (width: number, height: number) => height / Math.min(width, height);
     const scale = edge(pw, ph) / edge(lw, lh);
-    expect(zoomEdgeTravelWidths("portrait")).toBeCloseTo(edge(pw, ph), 12);
-    expect(zoomEdgeTravelWidths("landscape")).toBeCloseTo(edge(lw, lh), 12);
+    expect(zoomEdgeTravelOverShortSide("portrait")).toBeCloseTo(edge(pw, ph), 12);
+    expect(zoomEdgeTravelOverShortSide("landscape")).toBe(1);
+    expect(zoomEdgeTravelOverShortSide("landscape")).toBeCloseTo(edge(lw, lh), 12);
+    expect(zoomTransitionScale("portrait")).toBeCloseTo(ph / pw, 12);
     expect(zoomTransitionScale("portrait")).toBeCloseTo(scale, 12);
     expect(zoomTransitionScale("landscape")).toBe(1);
     expect(zoomTransitionScale()).toBe(1);
