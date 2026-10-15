@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import appSrc from "./app.ts?raw";
+import compositorSrc from "./compositor.ts?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
 import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -24,6 +25,7 @@ import {
   DEFAULT_CHARACTER_SIZE,
   JUMP_COVER_SCALE,
   JUMP_DROP_FRAC,
+  JUMP_DROP_FRAC_PORTRAIT,
   LANDSCAPE_CHAR_SCALE,
   OUTPUTS,
   STAGE_MAX_REM,
@@ -92,20 +94,23 @@ describe("swap fx draw path", () => {
     expect(dest).toEqual({ x: 0, y: 0, w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height });
   });
 
-  it("moves the jump plate down and shrinks it at the cut, in both aspects", () => {
+  it("moves the jump plate down and shrinks it at the cut, with a smaller portrait drop", () => {
     const slots = [0, 15 * F, 30 * F];
-    const at = swapFx(15 * F, slots, "jump");
-    const rest = swapFx(15 * F + 7 * F, slots, "jump");
-    for (const [w, h, style] of [
-      [608, mainPanelRect(608, 1080).h, "jump"],
-      [OUTPUTS.landscape.width, OUTPUTS.landscape.height, "jump"],
-    ] as const) {
-      const cut = plateDest(1920, 1080, w, h, at, style);
-      const still = plateDest(1920, 1080, w, h, rest, style);
+    const cases = [
+      { w: 608, h: mainPanelRect(608, 1080).h, mode: "portrait", drop: JUMP_DROP_FRAC_PORTRAIT },
+      { w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height, mode: "landscape", drop: JUMP_DROP_FRAC },
+    ] as const;
+    for (const { w, h, mode, drop } of cases) {
+      const at = swapFx(15 * F, slots, "jump", mode);
+      const rest = swapFx(15 * F + 7 * F, slots, "jump", mode);
+      expect(at.dy).toBeCloseTo(drop, 6);
+      expect(rest.dy).toBe(0);
+      const cut = plateDest(1920, 1080, w, h, at, "jump");
+      const still = plateDest(1920, 1080, w, h, rest, "jump");
       expect(cut.y).toBeGreaterThan(still.y);
       expect(cut.w).toBeLessThan(still.w);
-      // the measured drop is 17.5% of the panel height; the shrink about the centre lowers the top edge further
-      expect(cut.y - still.y).toBeCloseTo(JUMP_DROP_FRAC * h + (still.h - cut.h) / 2, 3);
+      // drop is a fraction of panel height; the shrink about the centre lowers the top edge further
+      expect(cut.y - still.y).toBeCloseTo(drop * h + (still.h - cut.h) / 2, 3);
       const cover = Math.max(w / 1920, h / 1080);
       expect(still.w).toBeCloseTo(1920 * cover * JUMP_COVER_SCALE, 3);
       expect(still.h).toBeCloseTo(1080 * cover * JUMP_COVER_SCALE, 3);
@@ -115,6 +120,15 @@ describe("swap fx draw path", () => {
       expect(still.y).toBeLessThanOrEqual(1e-6);
       expect(still.y + still.h).toBeGreaterThanOrEqual(h - 1e-6);
     }
+    const portraitPx = cases[0].drop * cases[0].h;
+    const landscapePx = cases[1].drop * cases[1].h;
+    // both peaks are JUMP_DROP_FRAC of the frame's shorter side
+    expect(portraitPx / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(landscapePx / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 6);
+    expect(portraitPx).toBeCloseTo(106.4, 3);
+    expect(landscapePx).toBeCloseTo(126, 3);
+    // preview and export both call compositor.draw, which threads the current aspect into swapFx
+    expect(compositorSrc).toContain("swapFx(time, slots, swapStyle, mode)");
   });
 
   it("keeps landscape as a full 16:9 plate and lets zoom shrink it with a backdrop", () => {
