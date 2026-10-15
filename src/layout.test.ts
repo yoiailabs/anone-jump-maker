@@ -67,10 +67,15 @@ import {
   swapFx,
   templateBandRect,
   usesBlurBackdrop,
+  ZOOM_PORTRAIT_TIME_SCALE,
+  zoomEdgeTravelOverShortSide,
   zoomInScale,
   zoomKeyAt,
   zoomOutScale,
+  zoomReferenceTau,
+  zoomTransitionScale,
 } from "./layout.ts";
+import portraitCuts from "../public/template/cuts.json" with { type: "json" };
 
 describe("output size", () => {
   it("lists landscape first and uses it as the default", () => {
@@ -542,6 +547,127 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(hasFrameFx(opening)).toBe(false);
   });
 
+  it("stretches portrait zoom by the tuned short-side time scale and keeps the cut", () => {
+    const { width: pw, height: ph } = OUTPUTS.portrait;
+    const { width: lw, height: lh } = OUTPUTS.landscape;
+    const edge = (width: number, height: number) => height / Math.min(width, height);
+    const derived = edge(pw, ph) / edge(lw, lh);
+    expect(zoomEdgeTravelOverShortSide("portrait")).toBeCloseTo(edge(pw, ph), 12);
+    expect(zoomEdgeTravelOverShortSide("landscape")).toBe(1);
+    expect(zoomEdgeTravelOverShortSide("landscape")).toBeCloseTo(edge(lw, lh), 12);
+    expect(derived).toBeCloseTo(ph / pw, 12);
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBe(1.4);
+    expect(zoomTransitionScale("portrait")).toBe(ZOOM_PORTRAIT_TIME_SCALE);
+    expect(zoomTransitionScale("landscape")).toBe(1);
+    expect(zoomTransitionScale()).toBe(1);
+    // 1.4 sits near the midpoint of 1× and the 1080/608 edge-speed ratio, and short of that ratio.
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBeGreaterThan(Math.sqrt(derived));
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBeLessThan(derived);
+    expect(ZOOM_PORTRAIT_TIME_SCALE).toBeCloseTo((1 + derived) / 2, 1);
+    const scale = ZOOM_PORTRAIT_TIME_SCALE;
+    expect(zoomReferenceTau(3, "landscape")).toBe(3);
+    expect(zoomReferenceTau(-ZOOM_OUT_FRAMES * scale, "portrait")).toBeCloseTo(-ZOOM_OUT_FRAMES, 6);
+
+    const slots = [0, 15 * F, 30 * F];
+    const S = 15 * F;
+    const land = (dt: number) => swapFx(S + dt, slots, "zoom", "landscape");
+    const port = (dt: number) => swapFx(S + dt, slots, "zoom", "portrait");
+
+    // omitted aspect is the measured landscape curve
+    expect(swapFx(S, slots, "zoom")).toEqual(land(0));
+    expect(swapFx(S - 2 * F, slots, "zoom").scale).toBeCloseTo(0.988, 2);
+
+    // blur peak and fully shrunk plate stay on the pose-change frame
+    expect(port(0).plateSlot).toBe(0);
+    expect(port(0).scale).toBeCloseTo(land(0).scale, 6);
+    expect(port(0).blur).toBeCloseTo(land(0).blur, 6);
+    expect(port(0).lift).toBeCloseTo(land(0).lift, 6);
+
+    // landscape swaps one frame after the pose cut; portrait swaps at that same curve point
+    expect(land(F).plateSlot).toBe(1);
+    expect(land(F).scale).toBeCloseTo(1 + ZOOM_IN_START, 6);
+    expect(port(F).plateSlot).toBe(0);
+    expect(port(F).scale).toBeCloseTo(land(F / scale).scale, 5);
+    expect(port((scale - 0.05) * F).plateSlot).toBe(0);
+    expect(port((scale + 0.05) * F).plateSlot).toBe(1);
+    expect(port((scale + 0.05) * F).scale).toBeCloseTo(land(((scale + 0.05) / scale) * F).scale, 5);
+
+    // where landscape is still full size, portrait has already shrunk
+    expect(land(-3 * F).scale).toBe(1);
+    expect(land(-3 * F).backdrop).toBe(false);
+    expect(port(-3 * F).scale).toBeLessThan(0.995);
+    expect(port(-3 * F).backdrop).toBe(true);
+    expect(port(-3 * F).plateSlot).toBe(land(-3 * F).plateSlot);
+
+    // the same reference τ is the landscape sample stretched by the aspect ratio
+    expect(port(-2 * scale * F).scale).toBeCloseTo(land(-2 * F).scale, 5);
+    expect(port(-1 * scale * F).scale).toBeCloseTo(land(-1 * F).scale, 5);
+    expect(port(-1 * scale * F).blur).toBeCloseTo(land(-1 * F).blur, 5);
+
+    // landscape has settled by +4; portrait is still coming in
+    expect(land(4 * F).scale).toBeCloseTo(1, 2);
+    expect(hasFrameFx(land(4 * F))).toBe(false);
+    expect(port(4 * F).scale).toBeGreaterThan(1.005);
+    expect(hasFrameFx(port(4 * F))).toBe(true);
+    expect(port(4 * F).plateSlot).toBe(land(4 * F).plateSlot);
+
+    // jump timing and scale stay put; only the drop follows the short side
+    const jumpPort = swapFx(S, slots, "jump", "portrait");
+    const jumpLand = swapFx(S, slots, "jump", "landscape");
+    expect(jumpPort.plateSlot).toBe(jumpLand.plateSlot);
+    expect(jumpPort.scale).toBeCloseTo(jumpLand.scale, 8);
+    expect(jumpPort.flashAdd).toBeCloseTo(jumpLand.flashAdd, 8);
+    expect(jumpPort.dy).toBeCloseTo(jumpLand.dy * (OUTPUTS.portrait.width / OUTPUTS.portrait.height), 8);
+    expect(swapFx(S, slots, "jump")).toEqual(jumpLand);
+  });
+
+  it("keeps the longer portrait zoom inside the shortest template cut", () => {
+    const gaps = portraitCuts.slotFrames.slice(1).map((frame, i) => frame - portraitCuts.slotFrames[i]!);
+    const shortest = Math.min(...gaps);
+    expect(shortest).toBe(13);
+    const scale = zoomTransitionScale("portrait");
+    const tail = ZOOM_KEYS[ZOOM_KEYS.length - 1]![0];
+    const windowFrames = ZOOM_OUT_FRAMES * scale + tail * scale;
+    expect(windowFrames).toBeCloseTo((ZOOM_OUT_FRAMES + tail) * ZOOM_PORTRAIT_TIME_SCALE, 6);
+    expect(windowFrames).toBeLessThan(shortest);
+    // the 13-frame cut (192→205) has finished the previous zoom before the next shrink
+    const slots = portraitCuts.slots;
+    const cut = 192 / TEMPLATE_FPS;
+    const next = 205 / TEMPLATE_FPS;
+    const afterFx = cut + (tail * scale + 0.25) / TEMPLATE_FPS;
+    const settled = swapFx(afterFx, slots, "zoom", "portrait");
+    expect(hasFrameFx(settled)).toBe(false);
+    expect(settled.scale).toBeCloseTo(1, 2);
+    expect((next - afterFx) * TEMPLATE_FPS).toBeGreaterThan(ZOOM_OUT_FRAMES * scale);
+
+  });
+
+  it("samples portrait zoom as the landscape curve stretched by the tuned time scale", () => {
+    const scale = ZOOM_PORTRAIT_TIME_SCALE;
+    expect(zoomTransitionScale("portrait")).toBe(scale);
+    const slots = [0, 40 * F, 80 * F];
+    const S = 40 * F;
+    const keys = ["scale", "blur", "rgb", "lift", "haze", "wave"] as const;
+    for (let step = -16; step <= 24; step += 1) {
+      const tau = step / 4;
+      const land = swapFx(S + tau * F, slots, "zoom", "landscape");
+      const port = swapFx(S + tau * scale * F, slots, "zoom", "portrait");
+      expect(port.plateSlot, `plate at τ=${tau}`).toBe(land.plateSlot);
+      expect(port.backdrop, `backdrop at τ=${tau}`).toBe(land.backdrop);
+      expect(port.dy, `dy at τ=${tau}`).toBe(land.dy);
+      expect(port.flashAdd, `flash at τ=${tau}`).toBe(land.flashAdd);
+      for (const key of keys) {
+        expect(port[key], `${key} at τ=${tau}`).toBeCloseTo(land[key], 5);
+      }
+    }
+    const dip = swapFx(S, slots, "zoom", "portrait");
+    const punch = swapFx(S + scale * F, slots, "zoom", "portrait");
+    expect(dip.scale).toBeCloseTo(1 - ZOOM_OUT_SHRINK, 6);
+    expect(punch.scale).toBeCloseTo(1 + ZOOM_IN_START, 5);
+    expect(dip.scale).toBeCloseTo(swapFx(S, slots, "zoom", "landscape").scale, 6);
+    expect(punch.scale).toBeCloseTo(swapFx(S + F, slots, "zoom", "landscape").scale, 5);
+  });
+
   it("is available in both aspects (2x2 matrix)", () => {
     expect(isSwapStyle("jump")).toBe(true);
     expect(isSwapStyle("zoom")).toBe(true);
@@ -550,7 +676,8 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(isImageFilter("blur-strong")).toBe(true);
     expect(isImageFilter("blur-weak")).toBe(true);
     expect(isImageFilter("blur")).toBe(false);
-    // zoom stays aspect-agnostic. jump dy is a fraction of panel height, smaller on portrait.
+    // At the cut, portrait zoom matches landscape. Off the cut it is stretched by
+    // ZOOM_PORTRAIT_TIME_SCALE. Jump dy is a fraction of panel height, smaller on portrait.
     const slots = [0, 0.5, 1.0];
     const zoom = swapFx(0.5, slots, "zoom", "portrait");
     expect(zoom).toEqual(swapFx(0.5, slots, "zoom", "landscape"));

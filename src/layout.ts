@@ -67,7 +67,7 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 /**
  * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
  * スロット時刻 S（cuts.json）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
- * ジャンプは S に新写真、ズームは S+1 に新写真（S はブラー頂点）。
+ * ジャンプは S に新写真、ズームは縦横とも S+1 に新写真（S はブラー頂点）。
  */
 export const TEMPLATE_FPS = 30;
 
@@ -247,6 +247,8 @@ export const JUMP_REST_SHIFT_FRAC = -0.07;
  *   scale  .988   .947   .866 | 1.115  1.025  1.004  1
  *
  * 出ていく写真は S まで表示され（S でポーズは新、写真は旧）、新写真は S+1 から。
+ * このカーブは横の実測。縦は同じ値を、カットからの時間だけ zoomTransitionScale 倍に引き伸ばす。
+ * 振幅（縮み 0.866、寄り 1.115）は向きで変えない。写真の入れ替わりも S+1 を同じ倍率で遅らせる。
  * 全面（写真＋キャラ）に横方向のモーションブラー・RGB 横ずれ・明度リフトが乗る:
  *   横ブラー長   −1: ≈10px  0: ≈35px  +1: ≈18px      （幅 1280 比 0.008 / 0.027 / 0.014）
  *   RGB ずれ     −1: ≈2px   0: ≈8px   +1: ≈5px       （R が右・B が左）
@@ -275,6 +277,40 @@ export const ZOOM_KEYS: ReadonlyArray<readonly [tau: number, key: ZoomKey]> = [
   [2, { blur: 0.002, rgb: 0.0005, lift: 0, haze: 0.08, wave: 0 }],
   [3, { blur: 0, rgb: 0, lift: 0, haze: 0, wave: 0 }],
 ];
+
+/**
+ * 上下の縁の移動を、フレームの短辺で割った速さ（倍率 1 あたり。共通の 1/2 は省く）。
+ *
+ * 見えの速さは短辺に対する移動で揃える。倍率の変化 ds で上下の縁は高さの ds/2 動く。
+ * 横の短辺は高さそのものなので、縁 / 短辺 = 1。
+ * 縦の短辺は幅。同じ ds でも上下の縁は背の高さ分動き、狭い幅で割ると大きく見える。
+ *
+ *   speed = frameHeight / shorterSide
+ */
+export function zoomEdgeTravelOverShortSide(mode: AspectMode): number {
+  const { width, height } = OUTPUTS[mode];
+  return height / Math.min(width, height);
+}
+
+/**
+ * 縦ズームの時間倍率。横の実測カーブを 1 とする。形と振幅は同じで、カットからの時間だけ割る。
+ *
+ * 短辺に対する縁の速さは `zoomEdgeTravelOverShortSide`。横は 1、縦は 1080/608 ≈ 1.776。
+ * その倍率はプレビューで長く感じたので、1 と 1.776 のほぼ中間へ知覚調整する。
+ * 算術平均は (1 + 1080/608) / 2 ≈ 1.39、幾何平均は sqrt(1080/608) ≈ 1.33。ここは 1.4。
+ * 最短カットは 13 フレ。1.4 倍でも縮み 3 フレ＋FX の尾 τ=+3 は 8.4 フレで、隣のカットに被らない。
+ */
+export const ZOOM_PORTRAIT_TIME_SCALE = 1.4;
+
+export function zoomTransitionScale(mode: AspectMode = "landscape"): number {
+  if (mode !== "portrait") return 1;
+  return ZOOM_PORTRAIT_TIME_SCALE;
+}
+
+/** カットからの実フレームを、横の実測カーブ上の τ に写す。τ=0 はカットのまま。 */
+export function zoomReferenceTau(framesFromCut: number, mode: AspectMode = "landscape"): number {
+  return framesFromCut / zoomTransitionScale(mode);
+}
 
 /** 縮んだ出ていく写真の後ろに敷く、同じ写真の cover ぼかし（黒帯を見せない）。幅比。 */
 export const ZOOM_BACKDROP_BLUR_FRAC = 0.02;
@@ -565,7 +601,9 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
  *   縦の下ずれは jumpDropFrac（短辺比を高さ比に直した値）。横は実測の JUMP_DROP_FRAC。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
- *   前後 2〜3 フレは全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。向きでは変えない。
+ *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
+ *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
 export function swapFx(
   time: number,
@@ -595,12 +633,15 @@ export function swapFx(
     };
   }
 
-  // zoom: 直前のカット S=start に対して τ=k、次のカットに対して τ=k−len。
+  // zoom: 横の実測 τ をそのまま使う。縦はカットからの実フレームを ZOOM_PORTRAIT_TIME_SCALE で割ってから、
+  // 同じ分岐（縮み・S+1 の写真入れ替わり・寄り）に入れる。振幅は分岐の中で変わらない。
   const next = slots[index + 1];
   const untilNext = next === undefined ? Number.POSITIVE_INFINITY : (next - time) * TEMPLATE_FPS;
-  if (index > 0 && k < ZOOM_SWAP_DELAY_FRAMES - FRAME_EPS) {
-    // S..S+1: 前の写真が縮み切ったまま残る（ポーズだけ新）。
-    const key = zoomKeyAt(k);
+  const kRef = zoomReferenceTau(k, mode);
+  const untilNextRef = zoomReferenceTau(untilNext, mode);
+  if (index > 0 && kRef < ZOOM_SWAP_DELAY_FRAMES - FRAME_EPS) {
+    // S..S+1（縦はその時間を ZOOM_PORTRAIT_TIME_SCALE 倍）: 前の写真が縮み切ったまま残る。
+    const key = zoomKeyAt(kRef);
     return {
       ...key,
       plateSlot: index - 1,
@@ -613,9 +654,9 @@ export function swapFx(
       cutIndex: index,
     };
   }
-  if (next !== undefined && untilNext <= ZOOM_OUT_FRAMES + FRAME_EPS) {
-    // 次のカットへ向かって縮む。
-    const tau = -untilNext;
+  if (next !== undefined && untilNextRef <= ZOOM_OUT_FRAMES + FRAME_EPS) {
+    // 次のカットへ向かって縮む。横は 3 フレ、縦は 3×ZOOM_PORTRAIT_TIME_SCALE フレ。
+    const tau = -untilNextRef;
     const key = zoomKeyAt(tau);
     const scale = zoomOutScale(tau);
     return {
@@ -631,12 +672,12 @@ export function swapFx(
     };
   }
   if (index > 0) {
-    // S+1 以降: 新写真が寄りから引く。
-    const key = zoomKeyAt(k);
+    // S+1 以降: 新写真が寄りから引く。縦はこの減衰も同じ倍率で遅い。
+    const key = zoomKeyAt(kRef);
     return {
       ...key,
       plateSlot: index,
-      scale: zoomInScale(k),
+      scale: zoomInScale(kRef),
       dy: 0,
       flashAdd: 0,
       flashScreen: 0,

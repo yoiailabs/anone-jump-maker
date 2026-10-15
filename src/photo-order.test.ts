@@ -106,10 +106,16 @@ function expectExportPlates(photos: readonly LoadedPhoto[], style: SwapStyle): v
     const current = photoIndexForSlot(slot, count);
     const previous = photoIndexForSlot(Math.max(0, slot - 1), count);
     const plate = photoIndexForSlot(swapFx(time, portraitCuts.slots, style).plateSlot, count);
+    const portraitPlate = photoIndexForSlot(
+      swapFx(time, portraitCuts.slots, style, "portrait").plateSlot,
+      count,
+    );
     if (style === "jump") {
+      expect(portraitPlate, `portrait ${style} frame ${time}`).toBe(plate);
       expect(plate, `${style} frame ${time}`).toBe(current);
     } else {
       expect([current, previous], `${style} frame ${time}`).toContain(plate);
+      expect([current, previous], `portrait ${style} frame ${time}`).toContain(portraitPlate);
     }
   }
   for (let slot = 1; slot < portraitCuts.slots.length; slot += 1) {
