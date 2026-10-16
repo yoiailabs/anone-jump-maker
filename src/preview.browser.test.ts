@@ -37,12 +37,19 @@ describe("createTemplateVideo", () => {
 describe("beginTemplateVideoLoad", () => {
   it("assigns src and switches preload to auto once", () => {
     const video = createTemplateVideo("portrait");
-    beginTemplateVideoLoad(video);
-    expect(video.preload).toBe("auto");
-    expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
-    beginTemplateVideoLoad(video);
-    expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
-    video.remove();
+    try {
+      beginTemplateVideoLoad(video);
+      expect(video.preload).toBe("auto");
+      expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
+      beginTemplateVideoLoad(video);
+      expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
+    } finally {
+      // Detached, so remove() does not stop the decoder. WebKit aborts if that decode
+      // is still running when a later test allocates a 1080p canvas.
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    }
   });
 });
 
