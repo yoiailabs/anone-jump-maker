@@ -173,6 +173,20 @@ describe("preview save CTA", () => {
     expect(appSrc).not.toContain("sharePendingExport");
   });
 
+  it("starts portrait audio inside the user gesture and releases it before export seeks", () => {
+    const start = appSrc.indexOf("const startPlayback = async");
+    const firstAwait = appSrc.indexOf("await ensureTimelines()", start);
+    const gesturePlay = appSrc.indexOf('userGesture: entry === "user"', start);
+    expect(gesturePlay).toBeGreaterThan(start);
+    expect(gesturePlay).toBeLessThan(firstAwait);
+    const save = appSrc.indexOf("const startSave = async");
+    const release = appSrc.indexOf("await releaseTemplateAudio()", save);
+    const encode = appSrc.indexOf("exportJumpVideo(", save);
+    expect(release).toBeGreaterThan(save);
+    expect(release).toBeLessThan(encode);
+    expect(appSrc).not.toContain("audio.play().catch(() => {})");
+  });
+
   it("rewinds the character and drops the keyed texture before another export or preview", () => {
     expect(appSrc).toContain("compositor?.resetCharacter()");
     expect(appSrc).toContain("await rewindCharacterVideo(video)");
