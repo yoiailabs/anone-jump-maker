@@ -304,8 +304,8 @@ describe("seekVideo / exportJumpVideo", () => {
       try {
         const track = await input.getPrimaryVideoTrack();
         expect(track).toBeTruthy();
-        expect(track?.displayWidth).toBe(1080);
-        expect(track?.displayHeight).toBe(1920);
+        expect(await track?.getDisplayWidth()).toBe(1080);
+        expect(await track?.getDisplayHeight()).toBe(1920);
       } finally {
         input.dispose();
       }
