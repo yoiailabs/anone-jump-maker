@@ -40,6 +40,7 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import { persistLocale, syncLanguageNav } from "./i18n-client.ts";
+import { templateAudioIsSeparate, templateAudioNeedsSeek, templatePictureMuted } from "./template-audio.ts";
 import { applyJaPhrasePolyfill } from "./ja-phrase.ts";
 import {
   DEFAULT_LOCALE,
@@ -193,8 +194,55 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let characterSize: CharacterSize =
     characterValue && isCharacterSize(characterValue) ? characterValue : DEFAULT_CHARACTER_SIZE;
   const video = createTemplateVideo(mode);
+  const audio = document.createElement("audio");
+  audio.className = "offscreen-video";
+  audio.preload = "none";
+  audio.crossOrigin = "anonymous";
   stage.dataset.aspect = mode;
-  document.body.append(video);
+  document.body.append(video, audio);
+
+  const syncTemplateAudioSrc = () => {
+    if (!templateAudioIsSeparate(mode)) {
+      audio.pause();
+      audio.removeAttribute("src");
+      return;
+    }
+    const src = TEMPLATES[mode].audio;
+    if (audio.getAttribute("src") === src && audio.preload === "auto") return;
+    audio.preload = "auto";
+    audio.src = src;
+    audio.load();
+  };
+
+  const seekTemplateAudio = () => {
+    if (!templateAudioIsSeparate(mode)) return;
+    if (audio.readyState < HTMLMediaElement.HAVE_METADATA) return;
+    audio.currentTime = video.currentTime;
+  };
+
+  const alignTemplateAudio = () => {
+    if (!templateAudioNeedsSeek(audio.currentTime, video.currentTime)) return;
+    seekTemplateAudio();
+  };
+
+  const playTemplateAudio = () => {
+    if (!templateAudioIsSeparate(mode) || video.paused) return;
+    audio.muted = previewMuted;
+    seekTemplateAudio();
+    void audio.play().catch(() => {});
+  };
+
+  video.addEventListener("play", () => {
+    if (!templateAudioIsSeparate(mode)) return;
+    syncTemplateAudioSrc();
+    if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) playTemplateAudio();
+    else audio.addEventListener("loadedmetadata", playTemplateAudio, { once: true });
+  });
+  video.addEventListener("pause", () => {
+    audio.pause();
+  });
+  video.addEventListener("seeked", seekTemplateAudio);
+  video.addEventListener("timeupdate", alignTemplateAudio);
 
   const attachCompositorCanvas = (created: Compositor) => {
     if (created.canvas.isConnected) return;
@@ -463,8 +511,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const applyPreviewMute = () => {
-    video.muted = previewMuted;
+    video.muted = templatePictureMuted(mode, previewMuted);
     video.volume = 1;
+    audio.muted = previewMuted;
+    audio.volume = 1;
+    if (!templateAudioIsSeparate(mode)) audio.pause();
     syncMuteControl(muteBtn, previewMuted, locale);
     muteBtn.setAttribute("aria-pressed", previewMuted ? "false" : "true");
   };
@@ -713,6 +764,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const armStudio = () => {
     beginTemplateVideoLoad(video);
+    syncTemplateAudioSrc();
     const resources = studioTrace.openPreviewResourcesSpan();
     void ensureCompositor()
       .then(() => {
@@ -854,8 +906,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     stage.dataset.aspect = mode;
     syncAspectRadios(mode);
     video.dataset.templateSrc = TEMPLATES[mode].video;
+    video.dataset.templateAudio = TEMPLATES[mode].audio;
     video.removeAttribute("src");
     video.preload = "none";
+    syncTemplateAudioSrc();
+    applyPreviewMute();
     if (photos.length > 0 || activeView === "studio" || recording) {
       beginTemplateVideoLoad(video);
     }
@@ -1001,6 +1056,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       return;
     }
     beginTemplateVideoLoad(video);
+    syncTemplateAudioSrc();
     photosBusy = true;
     refreshButtons();
     setFeedback("photo", msg("statusPhotosLoading"), "busy");
@@ -1129,7 +1185,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     studioTrace.onGenerationStart();
     recording = true;
     stopPlayback();
-    video.muted = false;
+    video.muted = templatePictureMuted(mode, false);
     playing = false;
     previewTracked = false;
     video.pause();
@@ -1172,6 +1228,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         draw: paint,
         duration: prepared.duration,
         fps: prepared.fps,
+        audioSrc: TEMPLATES[mode].audio,
         signal: controller.signal,
         onProgress: (progress) => {
           setExportProgress(exportProgressPercent(progress.current, progress.total));
@@ -1282,6 +1339,7 @@ export async function loadTimeline(url: string): Promise<CutTimeline> {
 export function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   const video = document.createElement("video");
   video.dataset.templateSrc = TEMPLATES[mode].video;
+  video.dataset.templateAudio = TEMPLATES[mode].audio;
   video.playsInline = true;
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");

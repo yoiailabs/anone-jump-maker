@@ -93,6 +93,24 @@ export async function pickOfflinePlan(width: number, height: number): Promise<Of
   return null;
 }
 
+/** 映像 URL と音声 URL が同じファイルなら、開いた Input を音声にも使う。 */
+export function resolveTemplateAudioSrc(pictureSrc: string, audioSrc?: string): string {
+  if (!audioSrc || sameTemplateMedia(pictureSrc, audioSrc)) return pictureSrc;
+  return audioSrc;
+}
+
+function sameTemplateMedia(a: string, b: string): boolean {
+  if (a === b) return true;
+  const pathOf = (value: string) => {
+    try {
+      return new URL(value, "https://anone.local").pathname;
+    } catch {
+      return value;
+    }
+  };
+  return pathOf(a) === pathOf(b);
+}
+
 export async function encodeOffline(options: {
   video: HTMLVideoElement;
   canvas: HTMLCanvasElement;
@@ -100,6 +118,7 @@ export async function encodeOffline(options: {
   duration: number;
   fps: number;
   plan: OfflinePlan;
+  audioSrc?: string;
   onProgress?: (progress: ExportProgress) => void;
   signal?: AbortSignal;
 }): Promise<ExportResult> {
@@ -118,7 +137,10 @@ export async function encodeOffline(options: {
   });
   output.addVideoTrack(videoSource, { frameRate: fps > 0 ? fps : EXPORT_FPS });
 
-  const template = await openTemplateInput(video.currentSrc || video.src, signal);
+  const pictureSrc = video.currentSrc || video.src;
+  const audioSrc = resolveTemplateAudioSrc(pictureSrc, options.audioSrc);
+  const template = await openTemplateInput(pictureSrc, signal);
+  const audioInput = audioSrc === pictureSrc ? template : await openTemplateInput(audioSrc, signal);
   throwIfAborted(signal);
   video.pause();
   video.muted = true;
@@ -129,9 +151,9 @@ export async function encodeOffline(options: {
     throwIfAborted(signal);
     const characterPath = await chooseCharacterPath(frameSink, signal);
     throwIfAborted(signal);
-    const pumpAudio = template
+    const pumpAudio = audioInput
       ? await studioTrace.withExportChild("export.audio_prepare", () =>
-          attachTemplateAudio(output, plan.format, template, signal),
+          attachTemplateAudio(output, plan.format, audioInput, signal),
         )
       : null;
     await output.start();
@@ -176,6 +198,7 @@ export async function encodeOffline(options: {
   } finally {
     markCharacterVideoUsed(video);
     template?.dispose();
+    if (audioInput && audioInput !== template) audioInput.dispose();
   }
 
   const buffer = target.buffer;
