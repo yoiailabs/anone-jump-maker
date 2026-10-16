@@ -24,6 +24,7 @@ import {
   JUMP_SHRINK,
   OUTPUT,
   OUTPUTS,
+  PORTRAIT_TEMPLATE,
   STAGE_MAX_REM,
   PORTRAIT_INK_BOTTOM,
   PORTRAIT_INK_BOTTOM_ROW,
@@ -89,11 +90,12 @@ describe("output size", () => {
     expect(DEFAULT_SWAP_STYLE).toBe(SWAP_STYLES[0]);
   });
 
-  it("matches the 608x1080 template", () => {
-    expect(outputSize()).toEqual({ width: 608, height: 1080 });
-    expect(outputSize("portrait")).toEqual({ width: 608, height: 1080 });
-    expect(OUTPUT).toEqual({ width: 608, height: 1080 });
-    expect(OUTPUT.width / OUTPUT.height).toBeCloseTo(608 / 1080, 5);
+  it("exports portrait at 1080x1920 and keeps the 608x1080 template frame", () => {
+    expect(outputSize()).toEqual({ width: 1080, height: 1920 });
+    expect(outputSize("portrait")).toEqual({ width: 1080, height: 1920 });
+    expect(OUTPUT).toEqual({ width: 1080, height: 1920 });
+    expect(OUTPUT.width / OUTPUT.height).toBeCloseTo(9 / 16, 5);
+    expect(PORTRAIT_TEMPLATE).toEqual({ width: 608, height: 1080 });
   });
 
   it("uses 1280x720 for landscape export size", () => {
@@ -130,7 +132,7 @@ describe("characterDest", () => {
     expect(CHAR_OUTLINE_PX).toBe(2);
     const { width: canvasW, height: canvasH } = OUTPUTS.portrait;
     const dest = characterDest(canvasW, canvasH, CHAR_SCALE, 0, "portrait");
-    expect(dest.w / dest.h).toBeCloseTo(OUTPUT.width / (TEMPLATE_BAND_H - 2), 5);
+    expect(dest.w / dest.h).toBeCloseTo(PORTRAIT_TEMPLATE.width / (TEMPLATE_BAND_H - 2), 5);
     const sticker = portraitSticker(dest, canvasW);
     expect(sticker.left / canvasW).toBeCloseTo(PORTRAIT_STICKER_LEFT, 5);
     expect(sticker.right / canvasW).toBeCloseTo(PORTRAIT_STICKER_RIGHT, 5);
@@ -151,8 +153,8 @@ describe("characterDest", () => {
   it("keeps the cut on 75.8% when size, scale, and shift change", () => {
     const canvases = [
       OUTPUTS.portrait,
-      { width: 304, height: 540 },
-      { width: 1216, height: 2160 },
+      { width: 360, height: 640 },
+      { width: 608, height: 1080 },
     ];
     for (const { width, height } of canvases) {
       for (const scale of [1, 1.2, 1.4]) {
@@ -184,6 +186,7 @@ describe("characterDest", () => {
     const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE, 0, "landscape");
     expect(dest).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
     expect(characterOutlinePx(608)).toBe(2);
+    expect(characterOutlinePx(OUTPUTS.portrait.width)).toBe(4);
     expect(characterOutlinePx(1280)).toBe(4);
   });
 });
@@ -248,7 +251,7 @@ describe("character size", () => {
 describe("mainPanelRect", () => {
   it("covers the portrait canvas edge to edge", () => {
     const panel = mainPanelRect(OUTPUT.width, OUTPUT.height, "portrait");
-    expect(panel).toEqual({ x: 0, y: 0, w: 608, h: 1080 });
+    expect(panel).toEqual({ x: 0, y: 0, w: 1080, h: 1920 });
   });
 
   it("fills the landscape canvas with the 16:9 main frame", () => {
@@ -269,10 +272,10 @@ describe("templateBandRect", () => {
 });
 
 describe("coverDest / sharpCoverScale", () => {
-  it("covers a landscape photo onto 608x1080 by cropping the sides", () => {
-    const dest = coverDest(1920, 1080, 608, 1080);
-    expect(dest.h).toBeCloseTo(1080, 5);
-    expect(dest.w).toBeGreaterThan(608);
+  it("covers a landscape photo onto 1080x1920 by cropping the sides", () => {
+    const dest = coverDest(1920, 1080, OUTPUT.width, OUTPUT.height);
+    expect(dest.h).toBeCloseTo(OUTPUT.height, 5);
+    expect(dest.w).toBeGreaterThan(OUTPUT.width);
     expect(dest.x).toBeLessThan(0);
   });
 
@@ -352,7 +355,7 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
   it("matches portrait jump amplitude to the same fraction of the shorter side", () => {
     // dy = JUMP_DROP_FRAC × (shorterSide / frameHeight)
     // landscape shorter side is the height, so the fraction stays 0.175.
-    // portrait shorter side is the width: 0.175 × 608/1080.
+    // portrait shorter side is the width: 0.175 × 1080/1920.
     const portraitAspect = OUTPUTS.portrait.width / OUTPUTS.portrait.height;
     expect(JUMP_DROP_FRAC_PORTRAIT).toBeCloseTo(JUMP_DROP_FRAC * portraitAspect, 8);
     expect(JUMP_DROP_FRAC_PORTRAIT).toBe(jumpDropFrac("portrait"));
@@ -363,7 +366,7 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
     const portraitTravel = jumpDropFrac("portrait") * OUTPUTS.portrait.height;
     expect(landscapeTravel / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 8);
     expect(portraitTravel / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 8);
-    expect(portraitTravel).toBeCloseTo(106.4, 3);
+    expect(portraitTravel).toBeCloseTo(189, 3);
     expect(landscapeTravel).toBeCloseTo(126, 3);
 
     const landscape = jumpCycle(0, "landscape");
@@ -560,7 +563,7 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(zoomTransitionScale("portrait")).toBe(ZOOM_PORTRAIT_TIME_SCALE);
     expect(zoomTransitionScale("landscape")).toBe(1);
     expect(zoomTransitionScale()).toBe(1);
-    // 1.4 sits near the midpoint of 1× and the 1080/608 edge-speed ratio, and short of that ratio.
+    // 1.4 sits near the midpoint of 1× and the 1920/1080 edge-speed ratio, and short of that ratio.
     expect(ZOOM_PORTRAIT_TIME_SCALE).toBeGreaterThan(Math.sqrt(derived));
     expect(ZOOM_PORTRAIT_TIME_SCALE).toBeLessThan(derived);
     expect(ZOOM_PORTRAIT_TIME_SCALE).toBeCloseTo((1 + derived) / 2, 1);

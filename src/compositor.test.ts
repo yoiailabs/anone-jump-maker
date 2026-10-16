@@ -97,7 +97,7 @@ describe("swap fx draw path", () => {
   it("moves the jump plate down and shrinks it at the cut, with a smaller portrait drop", () => {
     const slots = [0, 15 * F, 30 * F];
     const cases = [
-      { w: 608, h: mainPanelRect(608, 1080).h, mode: "portrait", drop: JUMP_DROP_FRAC_PORTRAIT },
+      { w: OUTPUTS.portrait.width, h: OUTPUTS.portrait.height, mode: "portrait" as const, drop: JUMP_DROP_FRAC_PORTRAIT },
       { w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height, mode: "landscape", drop: JUMP_DROP_FRAC },
     ] as const;
     for (const { w, h, mode, drop } of cases) {
@@ -125,7 +125,7 @@ describe("swap fx draw path", () => {
     // both peaks are JUMP_DROP_FRAC of the frame's shorter side
     expect(portraitPx / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 6);
     expect(landscapePx / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 6);
-    expect(portraitPx).toBeCloseTo(106.4, 3);
+    expect(portraitPx).toBeCloseTo(189, 3);
     expect(landscapePx).toBeCloseTo(126, 3);
     // preview and export both call compositor.draw, which threads the current aspect into swapFx
     expect(compositorSrc).toContain("swapFx(time, slots, swapStyle, mode)");
@@ -173,9 +173,8 @@ describe("song credit", () => {
     const credit = songCreditLayout(w, h, "portrait");
     const landscape = songCreditLayout(OUTPUTS.landscape.width, OUTPUTS.landscape.height, "landscape");
     expect(credit.fontSize).toBe(songCreditFontSize("portrait"));
-    expect(credit.fontSize).toBeLessThan(landscape.fontSize);
     expect(credit.fontSize).toBeGreaterThanOrEqual(12);
-    expect(credit.fontSize).toBeLessThanOrEqual(28);
+    expect(credit.fontSize).toBeLessThanOrEqual(48);
     const portraitVisual = credit.fontSize * (STAGE_MAX_REM.portrait / w);
     const landscapeVisual = landscape.fontSize * (STAGE_MAX_REM.landscape / OUTPUTS.landscape.width);
     expect(portraitVisual).toBeCloseTo(landscapeVisual, 1);
@@ -244,8 +243,8 @@ describe("character size draw path", () => {
   it("keeps the keyed plate at 1× for 標準 and at 1.2 / 1.4", () => {
     expect(characterScale("portrait", "standard")).toBe(CHAR_SCALE);
     expect(characterScale("landscape", "standard")).toBe(LANDSCAPE_CHAR_SCALE);
-    const panel = mainPanelRect(608, 1080, "portrait");
-    expect(panel).toEqual({ x: 0, y: 0, w: 608, h: 1080 });
+    const panel = mainPanelRect(OUTPUTS.portrait.width, OUTPUTS.portrait.height, "portrait");
+    expect(panel).toEqual({ x: 0, y: 0, w: OUTPUTS.portrait.width, h: OUTPUTS.portrait.height });
     const standard = characterDest(panel.w, panel.h, characterScale("portrait", "standard"), 0, "portrait");
     expect(standard.w).toBeGreaterThan(panel.w);
     expect(standard.h).toBeLessThan(panel.h);

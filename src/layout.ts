@@ -11,11 +11,17 @@ export type Rect = {
   h: number;
 };
 
-/** 縦は 608×1080、横は 1280×720。保存はこのサイズ。 */
+/** 縦は 1080×1920（Shorts）、横は 1280×720。保存はこのサイズ。 */
 export const OUTPUTS = {
-  portrait: { width: 608, height: 1080 },
+  portrait: { width: 1080, height: 1920 },
   landscape: { width: 1280, height: 720 },
 } as const;
+
+/**
+ * 縦テンプレ動画のフレーム。緑帯の実測（312, 342）と線画の画素位置はこのサイズ基準。
+ * 書き出しを 1080×1920 にしても、クロマ源は今の vertical.mp4（608×1080）のまま。
+ */
+export const PORTRAIT_TEMPLATE = { width: 608, height: 1080 } as const;
 
 /**
  * `.stage` の max-width（styles.css と揃える）。
@@ -50,8 +56,8 @@ export const MAIN_PANEL_Y_FRAC = 0;
  * 幅 8% 以上の非緑ランがここで終わる。細いインクだけの 18 フレームは帯端より上で切れるが、基準は変えない。
  * 右・下は画素の外縁（exclusive）。下端比は上端 2px を切った帯の中で、帯端までなので 1。
  */
-export const PORTRAIT_INK_X0 = 138 / 608;
-export const PORTRAIT_INK_X1 = 431 / 608;
+export const PORTRAIT_INK_X0 = 138 / PORTRAIT_TEMPLATE.width;
+export const PORTRAIT_INK_X1 = 431 / PORTRAIT_TEMPLATE.width;
 export const PORTRAIT_INK_BOTTOM_ROW = TEMPLATE_BAND_H - 1;
 export const PORTRAIT_INK_BOTTOM =
   (PORTRAIT_INK_BOTTOM_ROW + 1 - TEMPLATE_BAND_TOP_CROP) / (TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP);
@@ -195,9 +201,9 @@ export const JUMP_DROP_FRAC = 0.175;
  *   dy = JUMP_DROP_FRAC × (shorterSide / frameHeight)
  *
  * 横: shorterSide = height → dy = 0.175。ピークは 720×0.175 = 126px。
- * 縦: shorterSide / frameHeight = width / height = 608/1080。
- *     dy = 0.175 × 608/1080 ≈ 0.09852。ピークは 608×0.175 = 106.4px
- *     （高さの 9.85%。同じ 0.175 のままだと 189px で、縦長フレームでは大きく見える）。
+ * 縦: shorterSide / frameHeight = width / height = 1080/1920 = 9/16。
+ *     dy = 0.175 × 1080/1920 = 0.0984375。ピークは 1080×0.175 = 189px
+ *     （高さの 9.84%。同じ 0.175 のままだと 336px で、縦長フレームでは大きく見える）。
  *
  * カバー 1.32 と上寄せ 0.07 は、横の 17.5% 沈みでも端が出ない余白
  * （カット時の上 ≈ 2%）を前提にしている。縦の dy はそれより小さいので、
@@ -295,9 +301,9 @@ export function zoomEdgeTravelOverShortSide(mode: AspectMode): number {
 /**
  * 縦ズームの時間倍率。横の実測カーブを 1 とする。形と振幅は同じで、カットからの時間だけ割る。
  *
- * 短辺に対する縁の速さは `zoomEdgeTravelOverShortSide`。横は 1、縦は 1080/608 ≈ 1.776。
- * その倍率はプレビューで長く感じたので、1 と 1.776 のほぼ中間へ知覚調整する。
- * 算術平均は (1 + 1080/608) / 2 ≈ 1.39、幾何平均は sqrt(1080/608) ≈ 1.33。ここは 1.4。
+ * 短辺に対する縁の速さは `zoomEdgeTravelOverShortSide`。横は 1、縦は 1920/1080 ≈ 1.778。
+ * その倍率はプレビューで長く感じたので、1 と 1.778 のほぼ中間へ知覚調整する。
+ * 算術平均は (1 + 1920/1080) / 2 ≈ 1.39、幾何平均は sqrt(1920/1080) ≈ 1.33。ここは 1.4。
  * 最短カットは 13 フレ。1.4 倍でも縮み 3 フレ＋FX の尾 τ=+3 は 8.4 フレで、隣のカットに被らない。
  */
 export const ZOOM_PORTRAIT_TIME_SCALE = 1.4;
@@ -368,7 +374,7 @@ export const CHAR_SHIFT_Y = 0;
 /** 横も公式 16:9 と同じ等倍。 */
 export const LANDSCAPE_CHAR_SCALE = 1;
 
-/** 公式のステッカー縁（白、縦本編 608px 幅でのピクセル）。 */
+/** 公式のステッカー縁（白）。テンプレ幅 608px で 2px。書き出し幅では比例して太る。 */
 export const CHAR_OUTLINE_PX = 2;
 
 export const BLUR_SOURCE = "main-frame" as const;
@@ -437,7 +443,7 @@ export function characterDest(
   const inkCxFrac = (PORTRAIT_INK_X0 + PORTRAIT_INK_X1) / 2;
   const plateW = ((inkRight - inkLeft) / inkWFrac) * scale;
   const bandH = TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP;
-  const plateH = plateW * (bandH / OUTPUT.width);
+  const plateH = plateW * (bandH / PORTRAIT_TEMPLATE.width);
   const anchorX = ((PORTRAIT_STICKER_LEFT + PORTRAIT_STICKER_RIGHT) / 2) * canvasW;
   return {
     x: anchorX - inkCxFrac * plateW,
@@ -447,9 +453,9 @@ export function characterDest(
   };
 }
 
-/** 本編幅に合わせてステッカー縁を太らせる。縦 608 では 2px のまま。 */
+/** 本編幅に合わせてステッカー縁を太らせる。テンプレ幅 608 で 2px、書き出し 1080 では 4px。 */
 export function characterOutlinePx(panelW: number): number {
-  return Math.max(CHAR_OUTLINE_PX, Math.round((CHAR_OUTLINE_PX * panelW) / OUTPUT.width));
+  return Math.max(CHAR_OUTLINE_PX, Math.round((CHAR_OUTLINE_PX * panelW) / PORTRAIT_TEMPLATE.width));
 }
 
 export function outputSize(mode: AspectMode = "portrait"): { width: number; height: number } {
@@ -466,13 +472,13 @@ export function templateBandRect(videoW: number, videoH: number, mode: AspectMod
   if (mode === "landscape") {
     return { x: 0, y: 0, w: videoW, h: videoH };
   }
-  const scale = videoW / OUTPUT.width;
+  const scale = videoW / PORTRAIT_TEMPLATE.width;
   const crop = Math.round(TEMPLATE_BAND_TOP_CROP * scale);
   return {
     x: 0,
-    y: Math.round(videoH * (TEMPLATE_BAND_Y / OUTPUT.height)) + crop,
+    y: Math.round(videoH * (TEMPLATE_BAND_Y / PORTRAIT_TEMPLATE.height)) + crop,
     w: videoW,
-    h: Math.max(1, Math.round(videoW * (TEMPLATE_BAND_H / OUTPUT.width)) - crop),
+    h: Math.max(1, Math.round(videoW * (TEMPLATE_BAND_H / PORTRAIT_TEMPLATE.width)) - crop),
   };
 }
 

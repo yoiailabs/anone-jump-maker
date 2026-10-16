@@ -12,10 +12,11 @@ export type LoadedPhoto = {
 };
 
 /**
- * 本編の最大辺。横 1280 にズームアウト寄り（~1.8）と cover の余裕を足す。
- * 元の 12MP 級を枚数分持たない。
+ * 本編の最大辺。縦 1080×1920 のジャンプ cover 1.32 で、
+ * 4:3 写真がおおむね 1 倍前後（横 4:3 で約 1.17、縦 4:3 で約 0.88）に収まる長さ。
+ * 1 枚あたり 4:3 で約 25MB。12MP そのものは持たない。
  */
-export const PHOTO_MAX_EDGE = 1920;
+export const PHOTO_MAX_EDGE = 2880;
 
 /** サムネは CSS 6rem 程度。3x でも足りる小さい辺。 */
 export const PHOTO_THUMB_EDGE = 240;
@@ -663,5 +664,10 @@ export function revokePhotos(photos: readonly LoadedPhoto[]): void {
   }
 }
 
-/** 横 1280 をカバーできること。テストとコメント用。 */
-export const PHOTO_OUTPUT_EDGE = Math.max(OUTPUTS.portrait.width, OUTPUTS.landscape.width);
+/** 書き出しの最長辺。写真ビットマップはこの近くに収める。 */
+export const PHOTO_OUTPUT_EDGE = Math.max(
+  OUTPUTS.portrait.width,
+  OUTPUTS.portrait.height,
+  OUTPUTS.landscape.width,
+  OUTPUTS.landscape.height,
+);
