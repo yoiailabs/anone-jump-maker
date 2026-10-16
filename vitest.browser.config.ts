@@ -13,6 +13,10 @@ export default defineConfig({
     name: "browser",
     include: ["src/**/*.browser.test.ts"],
     testTimeout: 30_000,
+    // One browser at a time. Chromium and WebKit both drawing 1080p canvases
+    // in parallel aborts the WebKit process on a smaller CI runner.
+    fileParallelism: false,
+    maxWorkers: 1,
     browser: {
       enabled: true,
       provider: playwright(),

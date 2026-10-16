@@ -35,7 +35,7 @@ describe("createTemplateVideo", () => {
 });
 
 describe("beginTemplateVideoLoad", () => {
-  it("assigns src and switches preload to auto once", () => {
+  it("assigns src and switches preload to auto once", async () => {
     const video = createTemplateVideo("portrait");
     try {
       beginTemplateVideoLoad(video);
@@ -44,14 +44,27 @@ describe("beginTemplateVideoLoad", () => {
       beginTemplateVideoLoad(video);
       expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
     } finally {
-      // Detached, so remove() does not stop the decoder. WebKit aborts if that decode
-      // is still running when a later test allocates a 1080p canvas.
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
+      await releaseDetachedVideo(video);
     }
   });
 });
+
+/** The video is not in the document, so remove() leaves the decoder running. WebKit aborts if that overlaps a later 1080p canvas. */
+function releaseDetachedVideo(video: HTMLVideoElement): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    video.addEventListener("emptied", finish, { once: true });
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    setTimeout(finish, 1000);
+  });
+}
 
 describe("createCompositor", () => {
   it("paints a photo plate at preview resolution in both aspects", async () => {
