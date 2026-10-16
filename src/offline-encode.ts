@@ -143,7 +143,9 @@ export async function encodeOffline(options: {
   const audioInput = audioSrc === pictureSrc ? template : await openTemplateInput(audioSrc, signal);
   throwIfAborted(signal);
   video.pause();
-  video.muted = true;
+  // muted を false→true にしない。WebKit は 1px・opacity 0 の video でその代入のあと
+  // seeking が true のまま seeked を出さず、フレームごとに 2.5s 待つ。
+  video.volume = 0;
   try {
     await rewindCharacterVideo(video);
     throwIfAborted(signal);

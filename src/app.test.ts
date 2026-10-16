@@ -185,6 +185,18 @@ describe("preview save CTA", () => {
     expect(release).toBeGreaterThan(save);
     expect(release).toBeLessThan(encode);
     expect(appSrc).not.toContain("audio.play().catch(() => {})");
+    expect(appSrc).not.toContain("video.muted = templatePictureMuted");
+    expect(offlineSrc).toContain("video.volume = 0");
+    expect(offlineSrc).not.toContain("video.muted = true");
+    const aspect = appSrc.indexOf("const applyAspect = (next: AspectMode)");
+    const pin = appSrc.indexOf("pinnedAudioTime =", aspect);
+    const clearSrc = appSrc.indexOf('video.removeAttribute("src")', aspect);
+    expect(pin).toBeGreaterThan(aspect);
+    expect(pin).toBeLessThan(clearSrc);
+    expect(appSrc).toContain("templateAudioClock(video.currentTime, pinnedAudioTime)");
+    const loaded = appSrc.indexOf('video.addEventListener("loadeddata"');
+    const resumeSeek = appSrc.indexOf("await seekVideo(video, resume.time)", loaded);
+    expect(appSrc.indexOf("pinnedAudioTime = null", resumeSeek)).toBeGreaterThan(resumeSeek);
   });
 
   it("rewinds the character and drops the keyed texture before another export or preview", () => {

@@ -16,6 +16,14 @@ export function templateAudioNeedsSeek(audioTime: number, videoTime: number): bo
   return Number.isFinite(audioTime) && Number.isFinite(videoTime) && Math.abs(audioTime - videoTime) > TEMPLATE_AUDIO_DRIFT_SEC;
 }
 
+/**
+ * 画角を変えて src を外すと映像の currentTime は 0 になる。
+ * 再生を続けるときは、外す前に控えた時刻を音声の時計にする。0 も有効な時刻。
+ */
+export function templateAudioClock(videoTime: number, pinnedTime: number | null): number {
+  return pinnedTime == null || !Number.isFinite(pinnedTime) ? videoTime : pinnedTime;
+}
+
 export type TemplateAudioFollow = {
   mode: AspectMode;
   previewMuted: boolean;

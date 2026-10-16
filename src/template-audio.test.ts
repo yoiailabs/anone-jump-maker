@@ -3,6 +3,7 @@ import { TEMPLATES } from "./layout.ts";
 import {
   TEMPLATE_AUDIO_DRIFT_SEC,
   planTemplateAudio,
+  templateAudioClock,
   templateAudioIsSeparate,
   templateAudioNeedsSeek,
   templatePictureMuted,
@@ -37,6 +38,13 @@ describe("template audio", () => {
     expect(templatePictureMuted("portrait", true)).toBe(true);
     expect(templatePictureMuted("landscape", false)).toBe(false);
     expect(templatePictureMuted("landscape", true)).toBe(true);
+  });
+
+  it("keeps the soundtrack on the saved time after the picture clock drops to zero", () => {
+    expect(templateAudioClock(0, 2.4)).toBe(2.4);
+    expect(templateAudioClock(5, 0)).toBe(0);
+    expect(templateAudioClock(2.4, null)).toBe(2.4);
+    expect(templateAudioClock(1, Number.NaN)).toBe(1);
   });
 
   it("seeks the audio element only after it drifts", () => {
