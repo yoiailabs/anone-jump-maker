@@ -140,7 +140,10 @@ describe("portrait horizontal cut", () => {
       );
       const ctx = compositor.canvas.getContext("2d");
       if (!ctx) throw new Error("canvas");
-      const under = ctx.getImageData(640, 401, 1, 1).data;
+      // The plate is 16:9 and fills the frame, so the old 1280×720 sample stays at the same fraction.
+      const x = Math.round(compositor.canvas.width * (640 / 1280));
+      const y = Math.round(compositor.canvas.height * (401 / 720));
+      const under = ctx.getImageData(x, y, 1, 1).data;
       expect(isWhite(under)).toBe(true);
     } finally {
       photo.bitmap.close();

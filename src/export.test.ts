@@ -50,11 +50,11 @@ describe("offline export plan", () => {
   it("keeps full template resolution and 30fps for offline save", () => {
     expect(EXPORT_FPS).toBe(30);
     expect(outputSize("portrait")).toEqual({ width: 1080, height: 1920 });
-    expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
+    expect(outputSize("landscape")).toEqual({ width: 1920, height: 1080 });
     expect(scaleCanvasSize(1080, 1920, 1)).toEqual({ width: 1080, height: 1920 });
-    expect(scaleCanvasSize(1280, 720, 1)).toEqual({ width: 1280, height: 720 });
+    expect(scaleCanvasSize(1920, 1080, 1)).toEqual({ width: 1920, height: 1080 });
     expect(PREVIEW_RESOLUTION_SCALE).toBeLessThan(1);
-    expect(scaleCanvasSize(1280, 720, PREVIEW_RESOLUTION_SCALE)).not.toEqual({ width: 1280, height: 720 });
+    expect(scaleCanvasSize(1920, 1080, PREVIEW_RESOLUTION_SCALE)).toEqual({ width: 640, height: 360 });
     expect(PREVIEW_FPS).toBe(24);
     expect(PREVIEW_FPS).not.toBe(EXPORT_FPS);
   });

@@ -136,26 +136,26 @@ describe("createCompositor", () => {
     const character = { source: characterCanvas, width: 1280, height: 720 };
     const video = document.createElement("video");
     const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
-    const sample = (x: number, y: number) => {
+    const sample = (xFrac: number, yFrac: number) => {
       const ctx = compositor.canvas.getContext("2d");
       if (!ctx) throw new Error("canvas");
+      const x = Math.round(compositor.canvas.width * xFrac);
+      const y = Math.round(compositor.canvas.height * yFrac);
       return ctx.getImageData(x, y, 1, 1).data;
     };
     const luma = (px: Uint8ClampedArray) => (px[0] ?? 0) + (px[1] ?? 0) + (px[2] ?? 0);
     try {
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "standard");
-      const standardUpper = sample(640, 280);
-      const standardLower = sample(640, 540);
-      expect(luma(standardUpper)).toBeGreaterThan(80);
-      expect(luma(standardLower)).toBeLessThan(80);
+      expect(luma(sample(0.5, 280 / 720))).toBeGreaterThan(80);
+      expect(luma(sample(0.5, 540 / 720))).toBeLessThan(80);
 
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.2");
-      expect(luma(sample(640, 250))).toBeGreaterThan(80);
-      expect(luma(sample(640, 400))).toBeLessThan(80);
+      expect(luma(sample(0.5, 250 / 720))).toBeGreaterThan(80);
+      expect(luma(sample(0.5, 400 / 720))).toBeLessThan(80);
 
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.4");
-      expect(luma(sample(640, 280))).toBeLessThan(80);
-      expect(luma(sample(640, 540))).toBeLessThan(80);
+      expect(luma(sample(0.5, 280 / 720))).toBeLessThan(80);
+      expect(luma(sample(0.5, 540 / 720))).toBeLessThan(80);
     } finally {
       photo.bitmap.close();
       compositor.destroy();
@@ -269,22 +269,25 @@ describe("seekVideo / exportJumpVideo", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  it("renders a portrait export at 1080x1920", async () => {
+  it.each([
+    ["portrait", 1080, 1920],
+    ["landscape", 1920, 1080],
+  ] as const)("renders a %s export at %ix%i", async (mode, width, height) => {
     const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
-    compositor.setAspect("portrait");
+    compositor.setAspect(mode);
     const photo = await makePhoto("#3d8bff");
     const video = document.createElement("video");
     const timeline = { slots: [0, 0.5] };
     try {
       compositor.draw(video, [photo], timeline, 0, "zoom", "none");
-      expect(compositor.canvas.width).toBe(OUTPUTS.portrait.width);
-      expect(compositor.canvas.height).toBe(OUTPUTS.portrait.height);
-      expect(compositor.canvas.width).toBe(1080);
-      expect(compositor.canvas.height).toBe(1920);
+      expect(compositor.canvas.width).toBe(OUTPUTS[mode].width);
+      expect(compositor.canvas.height).toBe(OUTPUTS[mode].height);
+      expect(compositor.canvas.width).toBe(width);
+      expect(compositor.canvas.height).toBe(height);
 
       const encoder = hasWebCodecsVideoEncoder();
-      const plan = encoder ? await pickOfflinePlan(compositor.canvas.width, compositor.canvas.height) : null;
-      console.info(`portrait-export encoder=${encoder} plan=${plan?.videoCodec ?? "none"}`);
+      const plan = encoder ? await pickOfflinePlan(width, height) : null;
+      console.info(`${mode}-export encoder=${encoder} plan=${plan?.videoCodec ?? "none"}`);
       if (!plan) return;
 
       const exportVideo = stubSeekableVideo(1);
@@ -304,14 +307,13 @@ describe("seekVideo / exportJumpVideo", () => {
       try {
         const track = await input.getPrimaryVideoTrack();
         expect(track).toBeTruthy();
-        expect(await track?.getDisplayWidth()).toBe(1080);
-        expect(await track?.getDisplayHeight()).toBe(1920);
+        expect(await track?.getDisplayWidth()).toBe(width);
+        expect(await track?.getDisplayHeight()).toBe(height);
       } finally {
         input.dispose();
       }
-      // One second stands in for the 15.7s template. Logged for the size/time note.
       console.info(
-        `portrait-export-1s bytes=${result.blob.size} ms=${Math.round(elapsedMs)} codec=${plan.videoCodec}`,
+        `${mode}-export-1s bytes=${result.blob.size} ms=${Math.round(elapsedMs)} codec=${plan.videoCodec}`,
       );
     } finally {
       photo.bitmap.close();

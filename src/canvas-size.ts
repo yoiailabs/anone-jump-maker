@@ -1,13 +1,13 @@
 import type { AspectMode } from "./layout.ts";
 
-/** 横プレビュー。1280×720 の半分で 640×360。 */
-export const PREVIEW_RESOLUTION_SCALE = 0.5;
-
 /**
- * 縦プレビュー。1080×1920 の 1/3 で 360×640。
- * 横プレビューと同じ画素数（230400）にし、縦だけ重くしない。
+ * プレビューは書き出しの 1/3。
+ * 横 1920×1080 → 640×360、縦 1080×1920 → 360×640。画素数は同じ（230400）。
  */
-export const PORTRAIT_PREVIEW_RESOLUTION_SCALE = 1 / 3;
+export const PREVIEW_RESOLUTION_SCALE = 1 / 3;
+
+/** 縦プレビュー。横と同じ 1/3。 */
+export const PORTRAIT_PREVIEW_RESOLUTION_SCALE = PREVIEW_RESOLUTION_SCALE;
 
 /** ライブ合成の内部解像度。保存は 1 のまま。 */
 export function previewResolutionScale(mode: AspectMode): number {
@@ -28,7 +28,7 @@ export function ensureCanvasSize(
   return true;
 }
 
-/** 出力サイズに倍率を掛ける。横プレビューは 0.5、縦プレビューは 1/3、保存は 1。 */
+/** 出力サイズに倍率を掛ける。プレビューは 1/3、保存は 1。 */
 export function scaleCanvasSize(
   width: number,
   height: number,

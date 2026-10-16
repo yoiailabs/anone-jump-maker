@@ -98,9 +98,9 @@ describe("output size", () => {
     expect(PORTRAIT_TEMPLATE).toEqual({ width: 608, height: 1080 });
   });
 
-  it("uses 1280x720 for landscape export size", () => {
-    expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
-    expect(OUTPUTS.landscape).toEqual({ width: 1280, height: 720 });
+  it("uses 1920x1080 for landscape export size", () => {
+    expect(outputSize("landscape")).toEqual({ width: 1920, height: 1080 });
+    expect(OUTPUTS.landscape).toEqual({ width: 1920, height: 1080 });
     expect(OUTPUTS.landscape.width / OUTPUTS.landscape.height).toBeCloseTo(16 / 9, 5);
     expect(STAGE_MAX_REM.portrait).toBe(21);
     expect(STAGE_MAX_REM.landscape).toBe(26);
@@ -184,10 +184,10 @@ describe("characterDest", () => {
     expect(LANDSCAPE_CHAR_SCALE).toBe(1);
     expect(CHAR_SCALE).toBe(1);
     const dest = characterDest(OUTPUTS.landscape.width, OUTPUTS.landscape.height, LANDSCAPE_CHAR_SCALE, 0, "landscape");
-    expect(dest).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
+    expect(dest).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
     expect(characterOutlinePx(608)).toBe(2);
     expect(characterOutlinePx(OUTPUTS.portrait.width)).toBe(4);
-    expect(characterOutlinePx(1280)).toBe(4);
+    expect(characterOutlinePx(OUTPUTS.landscape.width)).toBe(6);
   });
 });
 
@@ -256,7 +256,7 @@ describe("mainPanelRect", () => {
 
   it("fills the landscape canvas with the 16:9 main frame", () => {
     const panel = mainPanelRect(OUTPUTS.landscape.width, OUTPUTS.landscape.height, "landscape");
-    expect(panel).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
+    expect(panel).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
   });
 });
 
@@ -367,7 +367,7 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
     expect(landscapeTravel / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 8);
     expect(portraitTravel / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 8);
     expect(portraitTravel).toBeCloseTo(189, 3);
-    expect(landscapeTravel).toBeCloseTo(126, 3);
+    expect(landscapeTravel).toBeCloseTo(189, 3);
 
     const landscape = jumpCycle(0, "landscape");
     const portrait = jumpCycle(0, "portrait");

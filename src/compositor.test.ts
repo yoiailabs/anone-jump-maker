@@ -126,7 +126,7 @@ describe("swap fx draw path", () => {
     expect(portraitPx / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 6);
     expect(landscapePx / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 6);
     expect(portraitPx).toBeCloseTo(189, 3);
-    expect(landscapePx).toBeCloseTo(126, 3);
+    expect(landscapePx).toBeCloseTo(189, 3);
     // preview and export both call compositor.draw, which threads the current aspect into swapFx
     expect(compositorSrc).toContain("swapFx(time, slots, swapStyle, mode)");
   });
@@ -139,17 +139,18 @@ describe("swap fx draw path", () => {
     expect(dest).toEqual({ x: 0, y: 0, w: OUTPUTS.landscape.width, h: OUTPUTS.landscape.height });
     const slots = [0, 15 * F, 30 * F];
     const peak = swapFx(15 * F, slots, "zoom");
-    const plate = plateDest(1920, 1080, 1280, 720, peak, "zoom");
-    expect(plate.w).toBeCloseTo(1280 * 0.866, 0);
+    const { width: lw, height: lh } = OUTPUTS.landscape;
+    const plate = plateDest(lw, lh, lw, lh, peak, "zoom");
+    expect(plate.w).toBeCloseTo(lw * 0.866, 0);
     expect(plate.x).toBeGreaterThan(0);
     expect(peak.backdrop).toBe(true);
-    const rest = plateDest(1920, 1080, 1280, 720, swapFx(0.2, slots, "zoom"), "zoom");
-    expect(rest).toEqual({ x: 0, y: 0, w: 1280, h: 720 });
+    const rest = plateDest(lw, lh, lw, lh, swapFx(0.2, slots, "zoom"), "zoom");
+    expect(rest).toEqual({ x: 0, y: 0, w: lw, h: lh });
   });
 
   it("uses more blur taps for longer streaks, and none when there is no streak", () => {
     expect(blurTapCount(0)).toBe(1);
-    expect(blurTapCount(0.027 * 1280)).toBeGreaterThanOrEqual(9);
+    expect(blurTapCount(0.027 * OUTPUTS.landscape.width)).toBeGreaterThanOrEqual(9);
     expect(blurTapCount(0.027 * 608)).toBeGreaterThanOrEqual(5);
     expect(blurTapCount(500)).toBeLessThanOrEqual(15);
     expect(blurTapCount(20) % 2).toBe(1);
@@ -190,8 +191,8 @@ describe("song credit", () => {
   it("keeps landscape credit at the canvas bottom-right with a small inset", () => {
     const { width: w, height: h } = OUTPUTS.landscape;
     const credit = songCreditLayout(w, h, "landscape");
-    expect(credit.fontSize).toBeGreaterThanOrEqual(32);
-    expect(credit.fontSize).toBeLessThanOrEqual(48);
+    expect(credit.fontSize).toBeGreaterThanOrEqual(48);
+    expect(credit.fontSize).toBeLessThanOrEqual(64);
     expect(credit.x).toBe(w - credit.pad);
     expect(credit.y).toBe(h - credit.pad);
     expect(credit.pad).toBeGreaterThanOrEqual(8);

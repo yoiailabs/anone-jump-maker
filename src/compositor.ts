@@ -665,7 +665,7 @@ export const SONG_CREDIT = songCreditLine();
 /** 横短辺×この比。縦はプレビュー CSS スケールで横と同じ見た目になるよう小さくする。 */
 export const SONG_CREDIT_FONT_FRAC = 0.055;
 
-/** 横プレビュー（26rem / 1280）でのクレジットの画面上サイズに、縦を合わせる。 */
+/** 横プレビュー（26rem / 1920）でのクレジットの画面上サイズに、縦を合わせる。 */
 export function songCreditFontSize(mode: AspectMode, resolutionScale = 1): number {
   const landscapeShort = Math.min(OUTPUTS.landscape.width, OUTPUTS.landscape.height);
   const landscapeFont = Math.max(12, Math.round(landscapeShort * SONG_CREDIT_FONT_FRAC));

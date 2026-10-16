@@ -11,10 +11,10 @@ export type Rect = {
   h: number;
 };
 
-/** 縦は 1080×1920（Shorts）、横は 1280×720。保存はこのサイズ。 */
+/** 縦は 1080×1920（Shorts）、横は 1920×1080。保存はこのサイズ。 */
 export const OUTPUTS = {
   portrait: { width: 1080, height: 1920 },
-  landscape: { width: 1280, height: 720 },
+  landscape: { width: 1920, height: 1080 },
 } as const;
 
 /**
@@ -200,7 +200,7 @@ export const JUMP_DROP_FRAC = 0.175;
  *
  *   dy = JUMP_DROP_FRAC × (shorterSide / frameHeight)
  *
- * 横: shorterSide = height → dy = 0.175。ピークは 720×0.175 = 126px。
+ * 横: shorterSide = height → dy = 0.175。ピークは 1080×0.175 = 189px。
  * 縦: shorterSide / frameHeight = width / height = 1080/1920 = 9/16。
  *     dy = 0.175 × 1080/1920 = 0.0984375。ピークは 1080×0.175 = 189px
  *     （高さの 9.84%。同じ 0.175 のままだと 336px で、縦長フレームでは大きく見える）。
@@ -246,7 +246,7 @@ export const JUMP_COVER_SCALE = 1.32;
 export const JUMP_REST_SHIFT_FRAC = -0.07;
 
 /*
- * ───────────── ズーム系（参考投稿 hagikaze_sami、1280×720・30fps）─────────────
+ * ───────────── ズーム系（参考投稿 hagikaze_sami、16:9・30fps。実測は 1280×720）─────────────
  * τ = テンプレのポーズ切替フレーム S からのフレーム数。写真の倍率（キャラは拡縮されない）:
  *
  *   τ      −2     −1     0    | +1     +2     +3    +4
@@ -256,7 +256,7 @@ export const JUMP_REST_SHIFT_FRAC = -0.07;
  * このカーブは横の実測。縦は同じ値を、カットからの時間だけ zoomTransitionScale 倍に引き伸ばす。
  * 振幅（縮み 0.866、寄り 1.115）は向きで変えない。写真の入れ替わりも S+1 を同じ倍率で遅らせる。
  * 全面（写真＋キャラ）に横方向のモーションブラー・RGB 横ずれ・明度リフトが乗る:
- *   横ブラー長   −1: ≈10px  0: ≈35px  +1: ≈18px      （幅 1280 比 0.008 / 0.027 / 0.014）
+ *   横ブラー長   −1: ≈10px  0: ≈35px  +1: ≈18px      （実測幅 1280 比 0.008 / 0.027 / 0.014。書き出し幅でもこの比）
  *   RGB ずれ     −1: ≈2px   0: ≈8px   +1: ≈5px       （R が右・B が左）
  *   明度         −1: +12    0: 中間調 +90（std 保持＝加算）  +1: 0.7L+30（灰 100 へ 25%）
  *   波打ち       0 で数 px（幅の 0.4% 程度）。
@@ -453,7 +453,7 @@ export function characterDest(
   };
 }
 
-/** 本編幅に合わせてステッカー縁を太らせる。テンプレ幅 608 で 2px、書き出し 1080 では 4px。 */
+/** 本編幅に合わせてステッカー縁を太らせる。テンプレ幅 608 で 2px、縦 1080 では 4px、横 1920 では 6px。 */
 export function characterOutlinePx(panelW: number): number {
   return Math.max(CHAR_OUTLINE_PX, Math.round((CHAR_OUTLINE_PX * panelW) / PORTRAIT_TEMPLATE.width));
 }

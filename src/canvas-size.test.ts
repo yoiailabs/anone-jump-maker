@@ -35,23 +35,22 @@ describe("ensureCanvasSize", () => {
 
   it("resizes when the aspect changes", () => {
     const canvas = { width: 608, height: 1080 };
-    expect(ensureCanvasSize(canvas, 1280, 720)).toBe(true);
-    expect(canvas).toEqual({ width: 1280, height: 720 });
+    expect(ensureCanvasSize(canvas, 1920, 1080)).toBe(true);
+    expect(canvas).toEqual({ width: 1920, height: 1080 });
   });
 });
 
 describe("PREVIEW_RESOLUTION_SCALE", () => {
-  it("keeps landscape at half and portrait at a third", () => {
-    expect(PREVIEW_RESOLUTION_SCALE).toBe(0.5);
-    expect(PORTRAIT_PREVIEW_RESOLUTION_SCALE).toBeCloseTo(1 / 3, 12);
+  it("previews both aspects at one third of the export frame", () => {
+    expect(PREVIEW_RESOLUTION_SCALE).toBeCloseTo(1 / 3, 12);
+    expect(PORTRAIT_PREVIEW_RESOLUTION_SCALE).toBe(PREVIEW_RESOLUTION_SCALE);
     expect(previewResolutionScale("landscape")).toBe(PREVIEW_RESOLUTION_SCALE);
     expect(previewResolutionScale("portrait")).toBe(PORTRAIT_PREVIEW_RESOLUTION_SCALE);
-    expect(previewResolutionScale("portrait")).toBeLessThan(previewResolutionScale("landscape"));
   });
 
-  it("matches landscape preview pixels and leaves export at 1080x1920", () => {
+  it("matches preview pixels and leaves export at full size", () => {
     expect(outputSize("portrait")).toEqual({ width: 1080, height: 1920 });
-    expect(outputSize("landscape")).toEqual({ width: 1280, height: 720 });
+    expect(outputSize("landscape")).toEqual({ width: 1920, height: 1080 });
     const portrait = scaleCanvasSize(
       OUTPUTS.portrait.width,
       OUTPUTS.portrait.height,
@@ -65,12 +64,12 @@ describe("PREVIEW_RESOLUTION_SCALE", () => {
     expect(portrait).toEqual({ width: 360, height: 640 });
     expect(landscape).toEqual({ width: 640, height: 360 });
     expect(portrait.width * portrait.height).toBe(landscape.width * landscape.height);
-    expect(scaleCanvasSize(1280, 720, 1)).toEqual({ width: 1280, height: 720 });
+    expect(scaleCanvasSize(1920, 1080, 1)).toEqual({ width: 1920, height: 1080 });
     expect(scaleCanvasSize(1080, 1920, 1)).toEqual({ width: 1080, height: 1920 });
   });
 
   it("rejects a non-positive scale so a caller cannot shrink export to zero", () => {
-    expect(scaleCanvasSize(1280, 720, 0)).toEqual({ width: 1280, height: 720 });
-    expect(scaleCanvasSize(1280, 720, Number.NaN)).toEqual({ width: 1280, height: 720 });
+    expect(scaleCanvasSize(1920, 1080, 0)).toEqual({ width: 1920, height: 1080 });
+    expect(scaleCanvasSize(1920, 1080, Number.NaN)).toEqual({ width: 1920, height: 1080 });
   });
 });
