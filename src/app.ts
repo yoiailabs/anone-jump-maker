@@ -12,7 +12,7 @@ import {
   VIDEO_SAVE_EVENT,
   videoEventParams,
 } from "./analytics.ts";
-import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
+import { previewResolutionScale } from "./canvas-size.ts";
 import type { CharacterFrame, Compositor } from "./compositor.ts";
 import { readPreviewBenchFlags, summarizePaintSamples } from "./preview-bench.ts";
 import {
@@ -208,7 +208,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       .then(({ createCompositor }) => {
         const created = createCompositor({
           locale,
-          resolutionScale: PREVIEW_RESOLUTION_SCALE,
+          resolutionScale: previewResolutionScale(mode),
           createKeyer: benchFlags.forceCpuKeying ? () => null : undefined,
         });
         if (mode !== DEFAULT_ASPECT) created.setAspect(mode);
@@ -422,7 +422,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     return {
       keying: compositor?.keying ?? "cpu",
       forcedCpu: benchFlags.forceCpuKeying,
-      resolutionScale: compositor?.resolutionScale() ?? PREVIEW_RESOLUTION_SCALE,
+      resolutionScale: compositor?.resolutionScale() ?? previewResolutionScale(mode),
       aspect: mode,
       ...debug,
       paints,
@@ -850,6 +850,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
     mode = next;
     compositor?.setAspect(mode);
+    if (!recording) compositor?.setResolutionScale(previewResolutionScale(mode));
     stage.dataset.aspect = mode;
     syncAspectRadios(mode);
     video.dataset.templateSrc = TEMPLATES[mode].video;
@@ -1195,7 +1196,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     } finally {
       studioTrace.finishExportIfOpen("error");
       exportAbort = null;
-      compositor?.setResolutionScale(PREVIEW_RESOLUTION_SCALE);
+      compositor?.setResolutionScale(previewResolutionScale(mode));
       recording = false;
       playing = false;
       previewTracked = false;

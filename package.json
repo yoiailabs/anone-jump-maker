@@ -10,7 +10,7 @@
     "preview": "astro preview --host 127.0.0.1 --port 4173",
     "check": "astro check && tsc --noEmit -p worker/tsconfig.json",
     "test": "vitest run",
-    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:browser": "ANONE_BROWSER=chromium vitest run --config vitest.browser.config.ts && ANONE_BROWSER=webkit vitest run --config vitest.browser.config.ts",
     "test:e2e": "playwright test",
     "test:all": "pnpm test && pnpm test:browser && pnpm test:e2e",
     "og": "node scripts/render-og.mjs",

@@ -28,6 +28,7 @@ import {
   type ErrorWithPhotoExtras,
   type LoadedPhoto,
 } from "./photos.ts";
+import { JUMP_COVER_SCALE, OUTPUTS } from "./layout.ts";
 import { reportError } from "./sentry.ts";
 
 describe("photoFitSize", () => {
@@ -56,13 +57,22 @@ describe("photoFitSize", () => {
 
 describe("photo memory budget", () => {
   it("keeps a working bitmap near export size, not the original 12MP", () => {
-    expect(PHOTO_OUTPUT_EDGE).toBe(1280);
+    expect(PHOTO_OUTPUT_EDGE).toBe(1920);
+    expect(PHOTO_MAX_EDGE).toBe(2880);
     expect(PHOTO_MAX_EDGE).toBeGreaterThanOrEqual(PHOTO_OUTPUT_EDGE);
-    expect(PHOTO_MAX_EDGE).toBeLessThanOrEqual(PHOTO_OUTPUT_EDGE * 2);
+    expect(PHOTO_MAX_EDGE).toBeLessThanOrEqual(PHOTO_OUTPUT_EDGE * 1.5);
     expect(PHOTO_THUMB_EDGE).toBeLessThan(256);
     expect(PHOTO_THUMB_EDGE).toBeLessThan(PHOTO_MAX_EDGE / 4);
     expect(PHOTO_DECODE_CONCURRENCY).toBeGreaterThanOrEqual(1);
     expect(PHOTO_DECODE_CONCURRENCY).toBeLessThanOrEqual(3);
+    const wide = photoFitSize(4032, 3024, PHOTO_MAX_EDGE);
+    const tall = photoFitSize(3024, 4032, PHOTO_MAX_EDGE);
+    expect(wide.width * wide.height * 4).toBeLessThan(26 * 1024 * 1024);
+    const { width, height } = OUTPUTS.portrait;
+    const jump = (w: number, h: number) => Math.max(width / w, height / h) * JUMP_COVER_SCALE;
+    expect(jump(wide.width, wide.height)).toBeGreaterThan(1);
+    expect(jump(wide.width, wide.height)).toBeLessThan(1.25);
+    expect(jump(tall.width, tall.height)).toBeLessThanOrEqual(1);
   });
 });
 

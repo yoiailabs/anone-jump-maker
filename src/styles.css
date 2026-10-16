@@ -710,9 +710,9 @@ html[lang="ja"] .ja-phrase {
 .stage {
   display: block;
   position: relative;
-  width: min(100%, 16rem, calc((100svh - 20rem) * 608 / 1080));
+  width: min(100%, 16rem, calc((100svh - 20rem) * 1080 / 1920));
   max-height: calc(100svh - 20rem);
-  aspect-ratio: 608 / 1080;
+  aspect-ratio: 1080 / 1920;
   height: auto;
   flex: 0 0 auto;
   padding: 0;
@@ -785,7 +785,7 @@ html[lang="ja"] .ja-phrase {
 
 /* 縦だけ一段大きく。横は下の landscape 指定のまま。画面の約 55svh、幅は列を超えない。 */
 #studioView .stage {
-  width: min(100%, 86vw, 18rem, calc(55svh * 608 / 1080));
+  width: min(100%, 86vw, 18rem, calc(55svh * 1080 / 1920));
   max-height: 55svh;
 }
 
@@ -1195,7 +1195,7 @@ html[lang="ja"] .ja-phrase {
   border: 0;
 }
 
-/* 内部ビットマップは PREVIEW_RESOLUTION_SCALE。表示は .stage の大きさへ拡大する。 */
+/* 内部ビットマップは向きごとのプレビュー倍率。表示は .stage の大きさへ拡大する。 */
 .stage-canvas {
   display: block;
   width: 100%;

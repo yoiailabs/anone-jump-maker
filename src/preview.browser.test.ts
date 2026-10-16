@@ -1,6 +1,7 @@
+import { ALL_FORMATS, BlobSource, Input } from "mediabunny";
 import { afterEach, describe, expect, it } from "vitest";
 import { beginTemplateVideoLoad, createTemplateVideo } from "./app.ts";
-import { PREVIEW_RESOLUTION_SCALE } from "./canvas-size.ts";
+import { previewResolutionScale } from "./canvas-size.ts";
 import { createCompositor } from "./compositor.ts";
 import {
   EXPORT_FPS,
@@ -34,21 +35,41 @@ describe("createTemplateVideo", () => {
 });
 
 describe("beginTemplateVideoLoad", () => {
-  it("assigns src and switches preload to auto once", () => {
+  it("assigns src and switches preload to auto once", async () => {
     const video = createTemplateVideo("portrait");
-    beginTemplateVideoLoad(video);
-    expect(video.preload).toBe("auto");
-    expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
-    beginTemplateVideoLoad(video);
-    expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
-    video.remove();
+    try {
+      beginTemplateVideoLoad(video);
+      expect(video.preload).toBe("auto");
+      expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
+      beginTemplateVideoLoad(video);
+      expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
+    } finally {
+      await releaseDetachedVideo(video);
+    }
   });
 });
+
+/** The video is not in the document, so remove() leaves the decoder running. WebKit aborts if that overlaps a later 1080p canvas. */
+function releaseDetachedVideo(video: HTMLVideoElement): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    video.addEventListener("emptied", finish, { once: true });
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    setTimeout(finish, 1000);
+  });
+}
 
 describe("createCompositor", () => {
   it("paints a photo plate at preview resolution in both aspects", async () => {
     const compositor = createCompositor({
-      resolutionScale: PREVIEW_RESOLUTION_SCALE,
+      resolutionScale: previewResolutionScale("landscape"),
       createKeyer: () => null,
     });
     const photo = await makePhoto("#e24a3d");
@@ -67,9 +88,11 @@ describe("createCompositor", () => {
       expect(landscape[3]).toBe(255);
 
       compositor.setAspect("portrait");
+      compositor.setResolutionScale(previewResolutionScale("portrait"));
       compositor.draw(video, [photo], timeline, 0.12, "zoom", "blur-weak");
-      expect(compositor.canvas.width).toBe(304);
-      expect(compositor.canvas.height).toBe(540);
+      expect(compositor.canvas.width).toBe(360);
+      expect(compositor.canvas.height).toBe(640);
+      expect(compositor.canvas.width * compositor.canvas.height).toBe(640 * 360);
       const portrait = sampleCenter(compositor.canvas);
       expect(portrait[0] + portrait[1] + portrait[2]).toBeGreaterThan(20);
     } finally {
@@ -78,29 +101,37 @@ describe("createCompositor", () => {
     }
   });
 
-  it("matches portrait jump travel to the short side on the shared preview and export draw path", async () => {
-    const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+  it("matches portrait jump travel to the short side on the preview draw path", async () => {
+    const compositor = createCompositor({
+      resolutionScale: previewResolutionScale("landscape"),
+      createKeyer: () => null,
+    });
     const photo = await makeStripePhoto();
     const video = document.createElement("video");
     const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
     const restTime = 7 / 30;
     const shift = (mode: "portrait" | "landscape") => {
       compositor.setAspect(mode);
+      compositor.setResolutionScale(previewResolutionScale(mode));
       compositor.draw(video, [photo], timeline, restTime, "jump", "none");
       const rest = markerRow(compositor.canvas);
       compositor.draw(video, [photo], timeline, 0, "jump", "none");
       const cut = markerRow(compositor.canvas);
-      return cut - rest;
+      return {
+        travel: cut - rest,
+        width: compositor.canvas.width,
+        height: compositor.canvas.height,
+      };
     };
     try {
       const landscape = shift("landscape");
       const portrait = shift("portrait");
-      expect(landscape).toBeCloseTo(JUMP_DROP_FRAC * OUTPUTS.landscape.height, 0);
-      expect(portrait).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT * OUTPUTS.portrait.height, 0);
-      // travel / shorter side matches the landscape measurement
-      expect(portrait / OUTPUTS.portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 3);
-      expect(landscape / OUTPUTS.landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 3);
-      expect(portrait).toBeLessThan(landscape);
+      expect(landscape).toMatchObject({ width: 640, height: 360 });
+      expect(portrait).toMatchObject({ width: 360, height: 640 });
+      expect(landscape.travel).toBeCloseTo(JUMP_DROP_FRAC * landscape.height, 0);
+      expect(portrait.travel).toBeCloseTo(JUMP_DROP_FRAC_PORTRAIT * portrait.height, 0);
+      expect(portrait.travel / portrait.width).toBeCloseTo(JUMP_DROP_FRAC, 3);
+      expect(landscape.travel / landscape.height).toBeCloseTo(JUMP_DROP_FRAC, 3);
     } finally {
       photo.bitmap.close();
       compositor.destroy();
@@ -125,26 +156,26 @@ describe("createCompositor", () => {
     const character = { source: characterCanvas, width: 1280, height: 720 };
     const video = document.createElement("video");
     const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
-    const sample = (x: number, y: number) => {
+    const sample = (xFrac: number, yFrac: number) => {
       const ctx = compositor.canvas.getContext("2d");
       if (!ctx) throw new Error("canvas");
+      const x = Math.round(compositor.canvas.width * xFrac);
+      const y = Math.round(compositor.canvas.height * yFrac);
       return ctx.getImageData(x, y, 1, 1).data;
     };
     const luma = (px: Uint8ClampedArray) => (px[0] ?? 0) + (px[1] ?? 0) + (px[2] ?? 0);
     try {
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "standard");
-      const standardUpper = sample(640, 280);
-      const standardLower = sample(640, 540);
-      expect(luma(standardUpper)).toBeGreaterThan(80);
-      expect(luma(standardLower)).toBeLessThan(80);
+      expect(luma(sample(0.5, 280 / 720))).toBeGreaterThan(80);
+      expect(luma(sample(0.5, 540 / 720))).toBeLessThan(80);
 
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.2");
-      expect(luma(sample(640, 250))).toBeGreaterThan(80);
-      expect(luma(sample(640, 400))).toBeLessThan(80);
+      expect(luma(sample(0.5, 250 / 720))).toBeGreaterThan(80);
+      expect(luma(sample(0.5, 400 / 720))).toBeLessThan(80);
 
       compositor.draw(video, [photo], timeline, 0.2, "zoom", "none", character, "1.4");
-      expect(luma(sample(640, 280))).toBeLessThan(80);
-      expect(luma(sample(640, 540))).toBeLessThan(80);
+      expect(luma(sample(0.5, 280 / 720))).toBeLessThan(80);
+      expect(luma(sample(0.5, 540 / 720))).toBeLessThan(80);
     } finally {
       photo.bitmap.close();
       compositor.destroy();
@@ -257,6 +288,58 @@ describe("seekVideo / exportJumpVideo", () => {
       }),
     ).rejects.toMatchObject({ name: "AbortError" });
   });
+
+  it.each([
+    ["portrait", 1080, 1920],
+    ["landscape", 1920, 1080],
+  ] as const)("renders a %s export at %ix%i", async (mode, width, height) => {
+    const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+    compositor.setAspect(mode);
+    const photo = await makePhoto("#3d8bff");
+    const video = document.createElement("video");
+    const timeline = { slots: [0, 0.5] };
+    try {
+      compositor.draw(video, [photo], timeline, 0, "zoom", "none");
+      expect(compositor.canvas.width).toBe(OUTPUTS[mode].width);
+      expect(compositor.canvas.height).toBe(OUTPUTS[mode].height);
+      expect(compositor.canvas.width).toBe(width);
+      expect(compositor.canvas.height).toBe(height);
+
+      const encoder = hasWebCodecsVideoEncoder();
+      const plan = encoder ? await pickOfflinePlan(width, height) : null;
+      console.info(`${mode}-export encoder=${encoder} plan=${plan?.videoCodec ?? "none"}`);
+      if (!plan) return;
+
+      const exportVideo = stubSeekableVideo(1);
+      const started = performance.now();
+      const result = await exportJumpVideo({
+        video: exportVideo,
+        canvas: compositor.canvas,
+        draw: (time) => {
+          compositor.draw(video, [photo], timeline, time, "zoom", "none");
+        },
+        duration: 1,
+        fps: EXPORT_FPS,
+      });
+      const elapsedMs = performance.now() - started;
+      expect(result.blob.size).toBeGreaterThan(1000);
+      const input = new Input({ source: new BlobSource(result.blob), formats: ALL_FORMATS });
+      try {
+        const track = await input.getPrimaryVideoTrack();
+        expect(track).toBeTruthy();
+        expect(await track?.getDisplayWidth()).toBe(width);
+        expect(await track?.getDisplayHeight()).toBe(height);
+      } finally {
+        input.dispose();
+      }
+      console.info(
+        `${mode}-export-1s bytes=${result.blob.size} ms=${Math.round(elapsedMs)} codec=${plan.videoCodec}`,
+      );
+    } finally {
+      photo.bitmap.close();
+      compositor.destroy();
+    }
+  }, 120_000);
 
   it("puts packed RGBA onto a canvas", () => {
     const canvas = document.createElement("canvas");

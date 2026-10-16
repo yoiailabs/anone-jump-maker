@@ -1,5 +1,18 @@
-/** 画面上のライブ合成だけ内部解像度を下げる。保存は 1。 */
-export const PREVIEW_RESOLUTION_SCALE = 0.5;
+import type { AspectMode } from "./layout.ts";
+
+/**
+ * プレビューは書き出しの 1/3。
+ * 横 1920×1080 → 640×360、縦 1080×1920 → 360×640。画素数は同じ（230400）。
+ */
+export const PREVIEW_RESOLUTION_SCALE = 1 / 3;
+
+/** 縦プレビュー。横と同じ 1/3。 */
+export const PORTRAIT_PREVIEW_RESOLUTION_SCALE = PREVIEW_RESOLUTION_SCALE;
+
+/** ライブ合成の内部解像度。保存は 1 のまま。 */
+export function previewResolutionScale(mode: AspectMode): number {
+  return mode === "portrait" ? PORTRAIT_PREVIEW_RESOLUTION_SCALE : PREVIEW_RESOLUTION_SCALE;
+}
 
 /** Assigning `canvas.width` even to the same value resets the bitmap. */
 export function ensureCanvasSize(
@@ -15,7 +28,7 @@ export function ensureCanvasSize(
   return true;
 }
 
-/** 出力サイズに倍率を掛ける。プレビューは 0.5、保存は 1。 */
+/** 出力サイズに倍率を掛ける。プレビューは 1/3、保存は 1。 */
 export function scaleCanvasSize(
   width: number,
   height: number,
