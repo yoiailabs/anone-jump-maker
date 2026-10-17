@@ -33,7 +33,7 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect(page.locator("#makerTitle")).toBeVisible();
   const heroLogo = page.locator("#makerTitle .hero-logo");
   await expect(heroLogo).toBeVisible();
-  await expect(heroLogo).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
+  await expect(heroLogo).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked.svg");
   await expect(heroLogo).toHaveAttribute("alt", "あのねジャンプメーカー");
   await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
   const logoBox = await heroLogo.boundingBox();
@@ -43,10 +43,10 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect
     .poll(async () => page.locator("#makerTitle").evaluate((el) => getComputedStyle(el).outlineStyle))
     .toBe("none");
-  await expect(page.locator("img.loop")).toHaveAttribute("src", "/jump-loop-still.png");
+  await expect(page.locator("img.loop")).toHaveAttribute("src", "/official-assets/jump-loop-still.png");
   await expect(page.locator('link[rel="preload"][as="image"]')).toHaveAttribute(
     "href",
-    "/jump-loop-still.png",
+    "/official-assets/jump-loop-still.png",
   );
   await expect(page.locator("#samplePhotosBtn")).toHaveCount(0);
   const makeCta = page.locator("#toStudio");
@@ -71,13 +71,13 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   expect(html).not.toContain("Noto+Sans+KR");
   expect(html).not.toContain("Noto+Sans+SC");
   expect(html).not.toContain("communityJumpsTitle");
-  expect(html).not.toContain('src="/jump-loop.mp4"');
+  expect(html).not.toContain('src="/official-assets/jump-loop.mp4"');
   expect(html).not.toContain("youtube-nocookie.com");
   expect(html).not.toContain("youtube.com/embed");
   const firstLoad = await page.evaluate(() => {
     const resources = performance.getEntriesByType("resource").map((entry) => entry.name);
     return {
-      templateVideo: resources.some((name) => /\/template\/(landscape|vertical)\.mp4/.test(name)),
+      templateVideo: resources.some((name) => /\/official-assets\/template\/(landscape|vertical)\.mp4/.test(name)),
       widgets: Boolean(document.getElementById("twitter-wjs")),
       gtagScript: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
       officialMv: Boolean(document.querySelector("#officialMv iframe")),
@@ -134,7 +134,7 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
     await page.evaluate(() =>
-      performance.getEntriesByType("resource").some((entry) => /\/template\/(landscape|vertical)\.mp4/.test(entry.name)),
+      performance.getEntriesByType("resource").some((entry) => /\/official-assets\/template\/(landscape|vertical)\.mp4/.test(entry.name)),
     ),
   ).toBe(true);
 
@@ -222,7 +222,7 @@ test("opens a generation modal from the preview save button", async ({ page }) =
 
 test("opens a generation modal with progress and cancel", async ({ page }) => {
   await uploadPhoto(page);
-  await page.route("**/template/*.mp4", async (route) => {
+  await page.route("**/official-assets/template/*.mp4", async (route) => {
     await new Promise((resolve) => {
       setTimeout(resolve, 8_000);
     });
@@ -973,7 +973,7 @@ test("opens /community directly and moves leftover hashes onto the path", async 
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
-    "https://anone.yoiailabs.com/og.png",
+    "https://anone.yoiailabs.com/official-assets/og.png",
   );
 
   await page.goto("/#community");
@@ -990,7 +990,7 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   const landingLogo = page.locator("#makerTitle .hero-logo");
   await expect(lockup).toBeVisible();
   await expect(lockup).toHaveAttribute("href", "/");
-  await expect(lockup.locator("img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
+  await expect(lockup.locator("img")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked.svg");
   await expect(lockup.locator("img")).toHaveAttribute("src", (await landingLogo.getAttribute("src")) ?? "");
   await expect(lockup.locator("img")).toHaveAttribute("width", (await landingLogo.getAttribute("width")) ?? "");
   await expect(lockup.locator("img")).toHaveAttribute("height", (await landingLogo.getAttribute("height")) ?? "");
@@ -1026,7 +1026,7 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   await waitForAppReady(page);
   await lockup.click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
+  await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked.svg");
 });
 
 async function headerAlign(page: Page, header: string, lockupSel: string, titleSel: string) {

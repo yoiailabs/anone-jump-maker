@@ -21,17 +21,17 @@ import {
   makerLogoStackedSrc,
 } from "./brand.ts";
 
-const logoSrc = readFileSync(new URL("../public/brand/anone-logo-stacked.svg", import.meta.url), "utf8");
-const logoEnSrc = readFileSync(new URL("../public/brand/anone-logo-stacked-en.svg", import.meta.url), "utf8");
-const horizontalSrc = readFileSync(new URL("../public/brand/anone-logo-horizontal.svg", import.meta.url), "utf8");
-const horizontalEnSrc = readFileSync(new URL("../public/brand/anone-logo-horizontal-en.svg", import.meta.url), "utf8");
+const logoSrc = readFileSync(new URL("../public/official-assets/brand/anone-logo-stacked.svg", import.meta.url), "utf8");
+const logoEnSrc = readFileSync(new URL("../public/official-assets/brand/anone-logo-stacked-en.svg", import.meta.url), "utf8");
+const horizontalSrc = readFileSync(new URL("../public/official-assets/brand/anone-logo-horizontal.svg", import.meta.url), "utf8");
+const horizontalEnSrc = readFileSync(new URL("../public/official-assets/brand/anone-logo-horizontal-en.svg", import.meta.url), "utf8");
 const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 const ogHtml = readFileSync(new URL("../scripts/og.html", import.meta.url), "utf8");
 const renderOg = readFileSync(new URL("../scripts/render-og.mjs", import.meta.url), "utf8");
 
 describe("stacked maker hero logo", () => {
   it("ships the stacked wordmark only (640×365)", () => {
-    expect(MAKER_LOGO_STACKED_SRC).toBe("/brand/anone-logo-stacked.svg");
+    expect(MAKER_LOGO_STACKED_SRC).toBe("/official-assets/brand/anone-logo-stacked.svg");
     expect(MAKER_LOGO_STACKED_SIZE).toEqual({ width: 640, height: 365 });
     expect(logoSrc).toContain('viewBox="0 0 640 365"');
     expect(logoSrc).toContain('width="640"');
@@ -108,8 +108,8 @@ describe("stacked maker hero logo", () => {
   });
 
   it("uses the horizontal wordmark on legal headers and the stacked hero on studio", () => {
-    expect(MAKER_LOGO_HORIZONTAL_SRC).toBe("/brand/anone-logo-horizontal.svg");
-    expect(MAKER_LOGO_HORIZONTAL_EN_SRC).toBe("/brand/anone-logo-horizontal-en.svg");
+    expect(MAKER_LOGO_HORIZONTAL_SRC).toBe("/official-assets/brand/anone-logo-horizontal.svg");
+    expect(MAKER_LOGO_HORIZONTAL_EN_SRC).toBe("/official-assets/brand/anone-logo-horizontal-en.svg");
     expect(MAKER_LOGO_HORIZONTAL_SIZE).toEqual({ width: 720, height: 165 });
     expect(MAKER_LOGO_HORIZONTAL_EN_SIZE).toEqual({ width: 720, height: 176 });
     expect(makerLogoHorizontalSrc("ja")).toBe(MAKER_LOGO_HORIZONTAL_SRC);
@@ -157,7 +157,7 @@ describe("stacked maker hero logo", () => {
   });
 
   it("uses the Japanese stacked mark on ja and the English mark on en/ko/zh", () => {
-    expect(MAKER_LOGO_STACKED_EN_SRC).toBe("/brand/anone-logo-stacked-en.svg");
+    expect(MAKER_LOGO_STACKED_EN_SRC).toBe("/official-assets/brand/anone-logo-stacked-en.svg");
     expect(MAKER_LOGO_STACKED_EN_SIZE).toEqual({ width: 640, height: 390 });
     expect(makerLogoStackedSrc("ja")).toBe(MAKER_LOGO_STACKED_SRC);
     expect(makerLogoStackedSrc("en")).toBe(MAKER_LOGO_STACKED_EN_SRC);
@@ -165,8 +165,8 @@ describe("stacked maker hero logo", () => {
     expect(makerLogoStackedSrc("zh")).toBe(MAKER_LOGO_STACKED_EN_SRC);
     expect(makerLogoStackedSize("ja")).toEqual(MAKER_LOGO_STACKED_SIZE);
     expect(makerLogoStackedSize("en")).toEqual(MAKER_LOGO_STACKED_EN_SIZE);
-    expect(existsSync(new URL("../public/brand/anone-logo-stacked-ko.svg", import.meta.url))).toBe(false);
-    expect(existsSync(new URL("../public/brand/anone-logo-stacked-zh.svg", import.meta.url))).toBe(false);
+    expect(existsSync(new URL("../public/official-assets/brand/anone-logo-stacked-ko.svg", import.meta.url))).toBe(false);
+    expect(existsSync(new URL("../public/official-assets/brand/anone-logo-stacked-zh.svg", import.meta.url))).toBe(false);
     expect(logoEnSrc).toContain('viewBox="0 0 640 390"');
     expect(logoEnSrc).toContain('width="640"');
     expect(logoEnSrc).toContain('height="390"');
@@ -192,8 +192,8 @@ describe("stacked OGP wordmark", () => {
     expect(ogHtml).toMatch(/\.hero-logo\[height="390"\]\s*\{[^}]*aspect-ratio:\s*640\s*\/\s*390/);
     expect(ogHtml).not.toMatch(/<h1 id="ogTitle">[^<]*<\/h1>/);
     expect(ogHtml).not.toContain("document.getElementById(\"ogTitle\").textContent");
-    expect(renderOg).toContain("/brand/anone-logo-stacked.svg");
-    expect(renderOg).toContain("/brand/anone-logo-stacked-en.svg");
+    expect(renderOg).toContain("/official-assets/brand/anone-logo-stacked.svg");
+    expect(renderOg).toContain("/official-assets/brand/anone-logo-stacked-en.svg");
     expect(renderOg).toContain("anone-logo-stacked-en.svg");
     for (const locale of LOCALES) {
       expect(ogHtml).toContain(t(locale, "makerTitle"));

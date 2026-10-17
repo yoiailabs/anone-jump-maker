@@ -6,11 +6,11 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const htmlPath = path.join(root, "scripts", "og.html");
-const brandDir = path.join(root, "public", "brand");
+const brandDir = path.join(root, "public", "official-assets", "brand");
 const html = await readFile(htmlPath);
 const brandFiles = {
-  "/brand/anone-logo-stacked.svg": await readFile(path.join(brandDir, "anone-logo-stacked.svg")),
-  "/brand/anone-logo-stacked-en.svg": await readFile(path.join(brandDir, "anone-logo-stacked-en.svg")),
+  "/official-assets/brand/anone-logo-stacked.svg": await readFile(path.join(brandDir, "anone-logo-stacked.svg")),
+  "/official-assets/brand/anone-logo-stacked-en.svg": await readFile(path.join(brandDir, "anone-logo-stacked-en.svg")),
 };
 const includeJa = process.argv.includes("--ja");
 const locales = includeJa ? ["ja", "en", "ko", "zh"] : ["en", "ko", "zh"];
@@ -50,7 +50,7 @@ const page = await browser.newPage({
 try {
   for (const locale of locales) {
     const outName = locale === "ja" ? "og.png" : `og-${locale}.png`;
-    const out = path.join(root, "public", outName);
+    const out = path.join(root, "public", "official-assets", outName);
     const expectedLogo = locale === "ja" ? "anone-logo-stacked.svg" : "anone-logo-stacked-en.svg";
     await page.goto(`http://127.0.0.1:${port}/og.html?locale=${locale}`, { waitUntil: "networkidle" });
     await page.locator("img.hero-logo").waitFor();

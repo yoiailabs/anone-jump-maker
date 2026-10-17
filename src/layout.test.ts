@@ -81,7 +81,7 @@ import {
   zoomReferenceTau,
   zoomTransitionScale,
 } from "./layout.ts";
-import portraitCuts from "../public/template/cuts.json" with { type: "json" };
+import portraitCuts from "../public/official-assets/template/cuts.json" with { type: "json" };
 
 describe("output size", () => {
   it("lists landscape first and uses it as the default", () => {
@@ -267,10 +267,10 @@ describe("mainPanelRect", () => {
 
 describe("templateBandRect", () => {
   it("takes the landscape frame for the portrait character and keeps vertical audio", () => {
-    expect(TEMPLATES.portrait.video).toBe("/template/landscape.mp4");
-    expect(TEMPLATES.portrait.audio).toBe("/template/vertical.mp4");
-    expect(TEMPLATES.portrait.cuts).toBe("/template/cuts.json");
-    expect(TEMPLATES.landscape.video).toBe("/template/landscape.mp4");
+    expect(TEMPLATES.portrait.video).toBe("/official-assets/template/landscape.mp4");
+    expect(TEMPLATES.portrait.audio).toBe("/official-assets/template/vertical.mp4");
+    expect(TEMPLATES.portrait.cuts).toBe("/official-assets/template/cuts.json");
+    expect(TEMPLATES.landscape.video).toBe("/official-assets/template/landscape.mp4");
     expect(TEMPLATES.landscape.audio).toBe(TEMPLATES.landscape.video);
     expect(PORTRAIT_CHROMA_FRAME).toEqual({ width: 1920, height: 1080 });
     expect(PORTRAIT_CHROMA_Y).toBe(6);

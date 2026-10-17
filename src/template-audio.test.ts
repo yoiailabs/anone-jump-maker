@@ -31,8 +31,8 @@ function follow(patch: Partial<TemplateAudioFollow> = {}): TemplateAudioFollow {
 describe("template audio", () => {
   it("plays vertical.mp4 under the portrait picture and keeps landscape audio on its own file", () => {
     expect(templateAudioIsSeparate("portrait")).toBe(true);
-    expect(TEMPLATES.portrait.audio).toBe("/template/vertical.mp4");
-    expect(TEMPLATES.portrait.video).toBe("/template/landscape.mp4");
+    expect(TEMPLATES.portrait.audio).toBe("/official-assets/template/vertical.mp4");
+    expect(TEMPLATES.portrait.video).toBe("/official-assets/template/landscape.mp4");
     expect(templateAudioIsSeparate("landscape")).toBe(false);
     expect(templatePictureMuted("portrait", false)).toBe(true);
     expect(templatePictureMuted("portrait", true)).toBe(true);

@@ -7,17 +7,17 @@
 /icons/*
   Cache-Control: public, max-age=604800
 
-/jump-loop-still.png
+/official-assets/jump-loop-still.png
   Cache-Control: public, max-age=604800
 
-/jump-loop.mp4
+/official-assets/jump-loop.mp4
   Cache-Control: public, max-age=604800
 
 /favicon.svg
   Cache-Control: public, max-age=604800
 
-/brand/*
+/official-assets/brand/*
   Cache-Control: public, max-age=604800
 
-/template/*
+/official-assets/template/*
   Cache-Control: public, max-age=86400

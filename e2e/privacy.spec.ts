@@ -63,7 +63,7 @@ test.describe("privacy policy", () => {
     await expect(page.locator("#playBtn")).toHaveCount(0);
     await expect(page.locator("#legalHome")).toHaveAttribute("href", "/");
     await expect(page.locator("#legalHome")).toHaveAttribute("aria-label", "トップへ戻る");
-    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/brand/anone-logo-horizontal.svg");
+    await expect(page.locator("#legalHome img")).toHaveAttribute("src", "/official-assets/brand/anone-logo-horizontal.svg");
     await expect(page.locator("#legalHome img")).toHaveAttribute("alt", "あのねジャンプメーカー");
     await expect(page.locator("#legalHome .hero-logo")).toHaveCount(0);
     await expect(page.locator("#privacyBack")).toHaveAttribute("href", "/");
@@ -99,7 +99,7 @@ test.describe("privacy logo", () => {
     await page.locator("#legalHome").click();
     await expect(page).toHaveURL(/\/$/);
     await waitForAppReady(page);
-    await expect(page.locator("#makerTitle img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
+    await expect(page.locator("#makerTitle img")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked.svg");
   });
 });
 

@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Yoiailabs / Shuhei Akutagawa (aku11i)
+Copyright (c) 2026 Shuhei Akutagawa
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,6 @@ SOFTWARE.
 
 ---
 
-The MIT License above applies to the source code only. It does NOT cover the
-official assets of ナナツカゼ (Nanatsukaze) bundled in this repository, such as
-the song 「あのね」, the jumping character and its videos, and the logo. See
-NOTICE.md for the full list. No license to those assets is granted.
+The MIT License above applies to this repository except the files listed in
+public/official-assets/LICENSE.md. Those files are excluded. No license to
+them is granted. See public/official-assets/LICENSE.md.

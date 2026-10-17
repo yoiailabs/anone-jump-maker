@@ -40,14 +40,14 @@ export const OUTPUT = OUTPUTS.portrait;
 
 export const TEMPLATES = {
   portrait: {
-    video: "/template/landscape.mp4",
-    audio: "/template/vertical.mp4",
-    cuts: "/template/cuts.json",
+    video: "/official-assets/template/landscape.mp4",
+    audio: "/official-assets/template/vertical.mp4",
+    cuts: "/official-assets/template/cuts.json",
   },
   landscape: {
-    video: "/template/landscape.mp4",
-    audio: "/template/landscape.mp4",
-    cuts: "/template/landscape-cuts.json",
+    video: "/official-assets/template/landscape.mp4",
+    audio: "/official-assets/template/landscape.mp4",
+    cuts: "/official-assets/template/landscape-cuts.json",
   },
 } as const;
 

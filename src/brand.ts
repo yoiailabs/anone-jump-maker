@@ -1,5 +1,5 @@
-export const MAKER_LOGO_HORIZONTAL_SRC = "/brand/anone-logo-horizontal.svg";
-export const MAKER_LOGO_HORIZONTAL_EN_SRC = "/brand/anone-logo-horizontal-en.svg";
+export const MAKER_LOGO_HORIZONTAL_SRC = "/official-assets/brand/anone-logo-horizontal.svg";
+export const MAKER_LOGO_HORIZONTAL_EN_SRC = "/official-assets/brand/anone-logo-horizontal-en.svg";
 export const MAKER_LOGO_HORIZONTAL_SIZE = { width: 720, height: 165 } as const;
 export const MAKER_LOGO_HORIZONTAL_EN_SIZE = { width: 720, height: 176 } as const;
 
@@ -14,8 +14,8 @@ export function makerLogoHorizontalSize(locale: "ja" | "en" | "ko" | "zh"): {
   return locale === "ja" ? MAKER_LOGO_HORIZONTAL_SIZE : MAKER_LOGO_HORIZONTAL_EN_SIZE;
 }
 
-export const MAKER_LOGO_STACKED_SRC = "/brand/anone-logo-stacked.svg";
-export const MAKER_LOGO_STACKED_EN_SRC = "/brand/anone-logo-stacked-en.svg";
+export const MAKER_LOGO_STACKED_SRC = "/official-assets/brand/anone-logo-stacked.svg";
+export const MAKER_LOGO_STACKED_EN_SRC = "/official-assets/brand/anone-logo-stacked-en.svg";
 export const MAKER_LOGO_STACKED_SIZE = { width: 640, height: 365 } as const;
 export const MAKER_LOGO_STACKED_EN_SIZE = { width: 640, height: 390 } as const;
 

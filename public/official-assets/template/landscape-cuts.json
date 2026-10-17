@@ -1,5 +1,5 @@
 {
-  "source": "public/template/landscape.mp4",
+  "source": "public/official-assets/template/landscape.mp4",
   "note": "色分け Short utNIG60-li0（10 色＝10 枚のスロット）の色が切り替わるフレームをテンプレ時刻に合わせた 30fps の拍。 値は frame/30。slotPhotoOrder は各カットに入る写真番号（0..9）。",
   "duration": 15.667,
   "fps": 30,

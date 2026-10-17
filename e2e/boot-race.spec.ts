@@ -32,16 +32,16 @@ test("binds controls and the picker before cuts.json returns", async ({ page }) 
     },
   });
 
-  await page.route("**/template/cuts.json", async (route) => {
+  await page.route("**/official-assets/template/cuts.json", async (route) => {
     await cutsHeld;
     await route.fulfill({ json: SHORT_CUTS });
   });
-  await page.route("**/template/landscape-cuts.json", async (route) => {
+  await page.route("**/official-assets/template/landscape-cuts.json", async (route) => {
     await cutsHeld;
     await route.fulfill({ json: SHORT_CUTS });
   });
-  await page.route("**/template/vertical.mp4", (route) => route.fulfill(serveClip()));
-  await page.route("**/template/landscape.mp4", (route) => route.fulfill(serveClip()));
+  await page.route("**/official-assets/template/vertical.mp4", (route) => route.fulfill(serveClip()));
+  await page.route("**/official-assets/template/landscape.mp4", (route) => route.fulfill(serveClip()));
 
   await page.goto("/");
   await page.locator("#toStudio").waitFor({ state: "attached" });
