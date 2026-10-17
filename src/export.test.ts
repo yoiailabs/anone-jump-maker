@@ -494,6 +494,9 @@ describe("decoded export frames", () => {
     expect(assigned.every((timestamp, index) => timestamp === times[index])).toBe(true);
     expect(frameIsCurrentForTime(89 / 30, 89 / 30, 1 / 30)).toBe(true);
     expect(frameIsCurrentForTime(90 / 30, 89 / 30, 1 / 30)).toBe(false);
+    const tail = assignFramesToTimes([0, 1 / 30, 2 / 30], [0, 1 / 30, 2 / 30, 3 / 30], 1 / 30);
+    expect(tail).toEqual([0, 1 / 30, 2 / 30, 2 / 30]);
+    expect(assignFramesToTimes([0], [0, 0.2], 1 / 30)[1]).toBeNull();
   });
 
   it("rejects an I420 layout that does not cover the frame", () => {
