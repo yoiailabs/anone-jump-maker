@@ -17,21 +17,24 @@ afterEach(() => {
   document.querySelectorAll("canvas, video").forEach((el) => el.remove());
 });
 
-const GREEN = "#14b636";
+const GREEN = "#20d03a";
 const RED = "#ff5e5f";
+const PLATE_W = 1920;
+const PLATE_H = 1080;
 
 function paintPlate(cutSrc: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = 608;
-  canvas.height = 1080;
+  canvas.width = PLATE_W;
+  canvas.height = PLATE_H;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas");
+  const sx = PLATE_W / 608;
   ctx.fillStyle = GREEN;
-  ctx.fillRect(0, 312, 608, 342);
+  ctx.fillRect(0, 6, PLATE_W, 1074);
   ctx.fillStyle = "#111111";
-  ctx.fillRect(160, cutSrc - 80, 280, 80);
+  ctx.fillRect(160 * sx, cutSrc - 80, 280 * sx, 80);
   // 固定カットより上の小さなパーツ。この下の白縁は残す。
-  ctx.fillRect(460, 360, 70, 50);
+  ctx.fillRect(460 * sx, 360, 70 * sx, 50);
   return canvas;
 }
 
@@ -63,7 +66,8 @@ describe("portrait horizontal cut", () => {
     const video = document.createElement("video");
     const timeline = { slots: [0, 5] };
     const { width, height } = OUTPUTS.portrait;
-    const band = templateBandRect(608, 1080, "portrait");
+    const band = templateBandRect(PLATE_W, PLATE_H, "portrait");
+    expect(band).toEqual({ x: 0, y: 6, w: PLATE_W, h: 1074 });
     const cutSrc = band.y + PORTRAIT_INK_BOTTOM * band.h;
     const plate = paintPlate(cutSrc);
     try {
@@ -78,7 +82,7 @@ describe("portrait horizontal cut", () => {
           7 / 30,
           "jump",
           "none",
-          { source: plate, width: 608, height: 1080 },
+          { source: plate, width: PLATE_W, height: PLATE_H },
           size,
         );
         const ctx = compositor.canvas.getContext("2d");
@@ -95,6 +99,8 @@ describe("portrait horizontal cut", () => {
         }
         expect(sawBody, `body visible at ${size}`).toBe(true);
         expect(sawPhoto, `photo resumes under cut ${size}`).toBe(true);
+        const field = at(width / 2, dest.y + dest.h * 0.08);
+        expect(isRed(field), `green keyed at ${size}`).toBe(true);
         const bodyLeft = dest.x + (160 / 608) * dest.w;
         // WebKit は縁を 1px ぼかすので、端のちょうど 1px ではなく数 px の範囲で白を探す。
         const sideOutline = [-3, -2, -1].some((dx) => isWhite(at(bodyLeft + dx, cutY - 24)));

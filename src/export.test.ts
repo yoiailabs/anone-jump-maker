@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PREVIEW_RESOLUTION_SCALE, scaleCanvasSize } from "./canvas-size.ts";
 import { swapFx, outputSize } from "./layout.ts";
 import { PREVIEW_FPS } from "./playback.ts";
-import { pickOfflinePlan } from "./offline-encode.ts";
+import { pickOfflinePlan, resolveTemplateAudioSrc } from "./offline-encode.ts";
 import { slotForTime } from "./timeline.ts";
 import {
   EXPORT_ABORTED_MESSAGE,
@@ -61,6 +61,16 @@ describe("offline export plan", () => {
 
   it("muxes template-file audio so preview mute cannot silence a saved video", () => {
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
+  });
+
+  it("keeps portrait audio on vertical.mp4 when the picture is landscape.mp4", () => {
+    const picture = "https://anone.local/template/landscape.mp4";
+    expect(resolveTemplateAudioSrc(picture, "/template/vertical.mp4")).toBe("/template/vertical.mp4");
+    expect(resolveTemplateAudioSrc(picture, "/template/landscape.mp4")).toBe(picture);
+    expect(resolveTemplateAudioSrc(picture)).toBe(picture);
+    expect(resolveTemplateAudioSrc("/template/landscape.mp4", "/template/landscape.mp4")).toBe(
+      "/template/landscape.mp4",
+    );
   });
 
   it("keys the saved character from a file-decoded frame when that path works", () => {
