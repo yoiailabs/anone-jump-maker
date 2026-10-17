@@ -77,14 +77,12 @@ pnpm deploy         # = pnpm build && wrangler deploy（本体 anone。静的 As
 pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドルは Wrangler に委譲
 ```
 
-本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。生成回数（「○回作られたよ」）と `/api/stats`、Durable Object（`GENERATE_STATS` / Worker `anone-stats`）は無料枠を消費していたため削除しました。ページ表示・プレビュー開始・保存の経路から DO は呼びません。件数は画面に出さず、Google Analytics 4（測定 ID `G-L8WKQQFBZC`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。
+本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。ページ表示・プレビュー開始・保存の経路でサーバー側の集計は呼びません。件数は画面に出さず、Google Analytics 4（`src/analytics-config.ts`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。GA4 と Sentry は本番ホスト `anone.yoiailabs.com` でだけ有効で、fork・ローカル・Preview では何も送りません（下の「fork・セルフホスト」）。
 
 - `video_preview` … プレビュー再生の開始時（旧カウンタと同じ。同じ再生中の再スタートや一時停止からの再開は送らない。閉じてから開き直せば再送）
 - `video_save` … 動画の保存が成功したあと
 
-パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
-
-Cloudflare 上に残っている `anone-stats` Worker（クラス `GenerateStats`）は、このリポジトリからは参照しません。クォータを完全に戻すには、ダッシュボードで一度だけ削除してください。
+パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境（本番以外のホストを含む）では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
 
 カット表は向き別のファイルですが中身は同じ拍です（縦横テンプレは同じアニメーション）。
 
@@ -92,6 +90,24 @@ Cloudflare 上に残っている `anone-stats` Worker（クラス `GenerateStats
 - 拍の出どころは色分け Short（utNIG60-li0）。テンプレの 10 スロットにそれぞれ単色を入れて書き出したもので、色の切り替わりが写真の切替そのものです。ffmpeg で全フレームを抜き、キャラのシルエット差分の相互相関でテンプレに合わせ（テンプレフレーム＝動画フレーム +1、相関 0.92）、切替は「S−1: 旧色＋白、S: 旧新の混色（ポーズも切替）、S+1: 新色」の 2 フレのディップで、`slots` は S です（`slotFrames`、値は frame/30）。写真の参考 2 本もこれと ±1 フレで一致します（ジャンプは S に新写真＋フラッシュ、ズームは S でブラー頂点・S+1 で新写真）。
 - 同じ動画から写真の枚数と並びも取っています。色は 10 種類で、32 カットに `A B C D E F G B E A H B A I F I B D H I G H J C H F I J G D A I` の順に入ります（`photoCount` / `slotPhotoOrder`）。これは参照動画の計測結果です。メーカーのプレビューと書き出しは、選んだ写真の順をそのまま使います（1 枚目が最初のカット）。枚数がカット数より少ないときは同じ順で先頭からくり返します。ファイル名・更新日時・デコード完了順では並べ替えません。
 - テンプレだけの画素差から拍を拾うのは当てになりません。キャラは 3 フレ刻みの独自の間隔で動くので、写真の切替が最寄りのポーズ切替から 1〜2 フレ外れることがあります（233 と 236、426 と 424 など）。`scripts/analyze-cuts.py` は測った拍と並びを書き出すだけにし、`--check` でテンプレの差分ピークとの位置関係を確認できます。
+
+## fork・セルフホスト
+
+fork して自分の環境で動かすときは、次を差し替えてください。
+
+- **公式素材。** `public/template/*.mp4`、`public/jump-loop*`、`public/brand/*.svg`、`public/og*.png` は MIT License の対象外で、再配布・転用できません（[NOTICE.md](./NOTICE.md)）。自分で権利を持つ素材に差し替えるか取り除いてください。
+- **Cloudflare アカウント。** `wrangler login` で自分のアカウントにデプロイします。`wrangler.toml` の `routes` と `cloudflare.config.ts` の `domains`（どちらも `anone.yoiailabs.com` のカスタムドメイン）は、自分のドメインに書き換えるか消してください。Worker 名 `anone` も必要なら変えます。消しても `workers_dev = true` なので `*.workers.dev` で開けます。
+- **URL と表記。** 正規 URL・OGP は `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN`、本番ホストの判定は `src/analytics-config.ts` の `PRODUCTION_HOST` です。
+- **利用規約・プライバシーポリシー。** `src/terms-copy.ts`、`src/privacy-copy.ts`（と各言語版）は Yoiailabs が運営する本番サイト用です。そのまま使わず、自分の運営内容に合わせて書き直してください。
+- **計測。** GA4（`G-L8WKQQFBZC`）と Sentry は本番ホストでだけ動くので、fork では何も送りません。自分の計測を使うときはビルド時に `PUBLIC_GA4_MEASUREMENT_ID` と `VITE_SENTRY_DSN` を指定します（指定するとホストに関係なく有効になります）。
+
+## 素材とライセンス
+
+ソースコードは [MIT License](./LICENSE) です。楽曲「あのね」、ジャンプするキャラクターおよびその映像（`public/template/*.mp4`、`public/jump-loop.mp4`、`public/jump-loop-still.png`）、`public/brand/` のロゴとそれを使った OGP 画像（`public/og*.png`）は **MIT License の対象外** で、著作権はナナツカゼに帰属します。運営者は公式素材の利用を許諾・再許諾しておらず、再配布・転用はできません。「反応」「みんなの #あのねジャンプ」に載せる X の投稿（`src/reactions.ts`、`src/community-jumps.ts`）は各投稿者のもので、X 公式の埋め込みで表示しています。掲載をやめてほしい場合の連絡方法を含め、詳しくは [NOTICE.md](./NOTICE.md) を見てください。
+
+Source code is MIT-licensed. The song "Anone", the jumping character and its videos, the logo, and the OGP images are © ナナツカゼ (Nanatsukaze) and are **not** covered by the MIT License; no redistribution or reuse is permitted. See [NOTICE.md](./NOTICE.md).
+
+脆弱性の報告は [SECURITY.md](./SECURITY.md)、コントリビューションは [CONTRIBUTING.md](./CONTRIBUTING.md) を見てください。
 
 ## キーイング
 

@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import type { PageMeta } from "../page-meta.ts";
 import { googleFontsHref } from "../fonts.ts";
+import { gtagBootstrapScript, resolveAnalyticsConfig } from "../analytics-config.ts";
 import { LOCALES, OG_LOCALE, isJapaneseOnlyView, t } from "../i18n.ts";
 import { pageUrl } from "../page-meta.ts";
 import {
@@ -16,6 +17,7 @@ const { title, description, url, image, imageAlt, siteName, lang, ogLocale, view
 const alternateLocales = isJapaneseOnlyView(view) ? (["ja"] as const) : LOCALES;
 const shortName = t(lang, "pwaShortName");
 const fontHref = googleFontsHref(lang);
+const gtagScript = gtagBootstrapScript(resolveAnalyticsConfig(import.meta.env.PUBLIC_GA4_MEASUREMENT_ID));
 const activateStylesheet = "this.media='all'";
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
@@ -35,33 +37,8 @@ const jsonLd = JSON.stringify({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <!-- Google Analytics 4 measurement ID: G-L8WKQQFBZC。初回描画を奪わないようアイドル／操作後に載せる。 -->
-    <script is:inline>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      window.gtag = gtag;
-      function loadGtag() {
-        if (window.__gtagRequested) return;
-        window.__gtagRequested = true;
-        var script = document.createElement("script");
-        script.src = "https://www.googletagmanager.com/gtag/js?id=G-L8WKQQFBZC";
-        script.async = true;
-        script.onload = function () {
-          gtag("js", new Date());
-          gtag("config", "G-L8WKQQFBZC");
-        };
-        document.head.appendChild(script);
-      }
-      ["pointerdown", "keydown", "scroll"].forEach(function (name) {
-        window.addEventListener(name, loadGtag, { once: true, passive: true });
-      });
-      document.addEventListener("visibilitychange", function () {
-        if (document.visibilityState === "hidden") loadGtag();
-      });
-      setTimeout(loadGtag, 20000);
-    </script>
+    <!-- Google Analytics 4。本番ホストだけで有効（src/analytics-config.ts）。初回描画を奪わないようアイドル／操作後に載せる。 -->
+    <script is:inline set:html={gtagScript} />
     <meta name="theme-color" content={PWA_THEME_COLOR} />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
