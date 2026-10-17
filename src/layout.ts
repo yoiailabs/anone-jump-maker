@@ -18,10 +18,13 @@ export const OUTPUTS = {
 } as const;
 
 /**
- * 縦テンプレ動画のフレーム。緑帯の実測（312, 342）と線画の画素位置はこのサイズ基準。
- * 書き出しを 1080×1920 にしても、クロマ源は今の vertical.mp4（608×1080）のまま。
+ * 縦プレートの縦横比と線画位置の基準。インク 138–431 と緑帯 342 はこの 608×1080 で測った。
+ * 書き出しは 1080×1920。クロマの画素は landscape.mp4。音声は vertical.mp4。
  */
 export const PORTRAIT_TEMPLATE = { width: 608, height: 1080 } as const;
+
+/** 縦キャラのクロマ源フレーム。landscape.mp4 そのもの。 */
+export const PORTRAIT_CHROMA_FRAME = { width: 1920, height: 1080 } as const;
 
 /**
  * `.stage` の max-width（styles.css と揃える）。
@@ -36,8 +39,16 @@ export const STAGE_MAX_REM = {
 export const OUTPUT = OUTPUTS.portrait;
 
 export const TEMPLATES = {
-  portrait: { video: "/template/vertical.mp4", cuts: "/template/cuts.json" },
-  landscape: { video: "/template/landscape.mp4", cuts: "/template/landscape-cuts.json" },
+  portrait: {
+    video: "/template/landscape.mp4",
+    audio: "/template/vertical.mp4",
+    cuts: "/template/cuts.json",
+  },
+  landscape: {
+    video: "/template/landscape.mp4",
+    audio: "/template/landscape.mp4",
+    cuts: "/template/landscape-cuts.json",
+  },
 } as const;
 
 /** 縦テンプレの緑 16:9 帯（実測 312–654、高さ 342 = 608×9/16）。キャラのクロマ源で、写真の枠ではない。 */
@@ -467,19 +478,26 @@ export function mainPanelRect(canvasW: number, canvasH: number, _mode: AspectMod
   return { x: 0, y: 0, w: canvasW, h: canvasH };
 }
 
-/** テンプレ映像から切り出す矩形。縦は緑帯（上の暗い罫は除く）、横は全面。 */
+/**
+ * 縦キャラを landscape フレームから切る上端。608 幅の 2px クロップは 1920 幅で 6px。
+ * 帯の高さ 340 は 1074px。6+1074 でフレーム下端に着く。
+ * 縦動画の帯位置（y = 312/1080）をこのフレームに使うと y=318, h=1074 で 312px はみ出す。
+ */
+const PORTRAIT_CHROMA_SCALE = PORTRAIT_CHROMA_FRAME.width / PORTRAIT_TEMPLATE.width;
+export const PORTRAIT_CHROMA_Y = Math.round(TEMPLATE_BAND_TOP_CROP * PORTRAIT_CHROMA_SCALE);
+export const PORTRAIT_CHROMA_H = Math.round((TEMPLATE_BAND_H - TEMPLATE_BAND_TOP_CROP) * PORTRAIT_CHROMA_SCALE);
+
+/** テンプレ映像から切り出す矩形。縦は landscape フレームの y=6, h=1074。横は全面。 */
 export function templateBandRect(videoW: number, videoH: number, mode: AspectMode = "portrait"): Rect {
   if (mode === "landscape") {
     return { x: 0, y: 0, w: videoW, h: videoH };
   }
-  const scale = videoW / PORTRAIT_TEMPLATE.width;
-  const crop = Math.round(TEMPLATE_BAND_TOP_CROP * scale);
-  return {
-    x: 0,
-    y: Math.round(videoH * (TEMPLATE_BAND_Y / PORTRAIT_TEMPLATE.height)) + crop,
-    w: videoW,
-    h: Math.max(1, Math.round(videoW * (TEMPLATE_BAND_H / PORTRAIT_TEMPLATE.width)) - crop),
-  };
+  const sx = videoW / PORTRAIT_CHROMA_FRAME.width;
+  const sy = videoH / PORTRAIT_CHROMA_FRAME.height;
+  const y = Math.min(Math.round(PORTRAIT_CHROMA_Y * sy), Math.max(0, videoH - 1));
+  const h = Math.max(1, Math.min(Math.round(PORTRAIT_CHROMA_H * sy), videoH - y));
+  const w = Math.max(1, Math.min(videoW, Math.round(PORTRAIT_CHROMA_FRAME.width * sx)));
+  return { x: 0, y, w, h };
 }
 
 /** 写真を本編パネルへ cover する基準倍率。ジャンプは沈んでも端が見えないよう大きめ、ズームは等倍。 */

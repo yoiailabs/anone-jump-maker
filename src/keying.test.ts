@@ -37,6 +37,12 @@ describe("keyAlpha", () => {
     const plate = [20, 182, 54] as const;
     expect(keyAlpha(...plate, ...plate)).toBe(0);
     expect(keyAlpha(24, 176, 58, ...plate)).toBeLessThan(0.2);
+    // landscape.mp4 の緑は vertical より明るい。同じ許容で抜ける。
+    const landscape = [32, 208, 58] as const;
+    expect(keyAlpha(...landscape, ...landscape)).toBe(0);
+    expect(keyAlpha(36, 204, 62, ...landscape)).toBeLessThan(0.2);
+    expect(keyAlpha(8, 8, 8, ...landscape)).toBe(1);
+    expect(keyAlpha(244, 244, 244, ...landscape)).toBeGreaterThan(0.9);
   });
 
   it("uses the shared thresholds", () => {
@@ -94,5 +100,31 @@ describe("keyImageData", () => {
     keyImageData(image);
     expect(data[3]).toBe(0);
     expect(data[line + 3]).toBe(255);
+  });
+
+  it("keys the brighter landscape green without punching a dark stroke", () => {
+    const width = 32;
+    const height = 18;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 32;
+      data[i + 1] = 208;
+      data[i + 2] = 58;
+      data[i + 3] = 255;
+    }
+    for (let x = 8; x < 24; x += 1) {
+      const i = (9 * width + x) * 4;
+      data[i] = 12;
+      data[i + 1] = 12;
+      data[i + 2] = 12;
+    }
+    const image = { data, width, height } as ImageData;
+    const key = keyImageData(image);
+    expect(key[0]).toBeCloseTo(32, 0);
+    expect(key[1]).toBeGreaterThan(200);
+    expect(data[3]).toBe(0);
+    const stroke = (9 * width + 12) * 4;
+    expect(data[stroke + 3]).toBe(255);
+    expect(data[stroke + 1]).toBeLessThan(40);
   });
 });

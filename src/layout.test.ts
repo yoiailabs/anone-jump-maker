@@ -24,6 +24,9 @@ import {
   JUMP_SHRINK,
   OUTPUT,
   OUTPUTS,
+  PORTRAIT_CHROMA_FRAME,
+  PORTRAIT_CHROMA_H,
+  PORTRAIT_CHROMA_Y,
   PORTRAIT_TEMPLATE,
   STAGE_MAX_REM,
   PORTRAIT_INK_BOTTOM,
@@ -35,6 +38,8 @@ import {
   PORTRAIT_STICKER_RIGHT,
   TEMPLATE_BAND_H,
   TEMPLATE_BAND_TOP_CROP,
+  TEMPLATE_BAND_Y,
+  TEMPLATES,
   TEMPLATE_FPS,
   ZOOM_IN_START,
   ZOOM_KEYS,
@@ -261,9 +266,24 @@ describe("mainPanelRect", () => {
 });
 
 describe("templateBandRect", () => {
-  it("crops the same 16:9 band from the template", () => {
-    const band = templateBandRect(608, 1080);
-    expect(band).toEqual({ x: 0, y: 314, w: 608, h: 340 });
+  it("takes the landscape frame for the portrait character and keeps vertical audio", () => {
+    expect(TEMPLATES.portrait.video).toBe("/template/landscape.mp4");
+    expect(TEMPLATES.portrait.audio).toBe("/template/vertical.mp4");
+    expect(TEMPLATES.portrait.cuts).toBe("/template/cuts.json");
+    expect(TEMPLATES.landscape.video).toBe("/template/landscape.mp4");
+    expect(TEMPLATES.landscape.audio).toBe(TEMPLATES.landscape.video);
+    expect(PORTRAIT_CHROMA_FRAME).toEqual({ width: 1920, height: 1080 });
+    expect(PORTRAIT_CHROMA_Y).toBe(6);
+    expect(PORTRAIT_CHROMA_H).toBe(1074);
+    const band = templateBandRect(1920, 1080, "portrait");
+    expect(band).toEqual({ x: 0, y: 6, w: 1920, h: 1074 });
+    expect(band.y + band.h).toBe(PORTRAIT_CHROMA_FRAME.height);
+    // 縦動画の帯位置をこのフレームに置くと下にはみ出す。ファイルを差し替えるだけでは足りない。
+    const scale = PORTRAIT_CHROMA_FRAME.width / PORTRAIT_TEMPLATE.width;
+    const crop = Math.round(TEMPLATE_BAND_TOP_CROP * scale);
+    const oldY = Math.round(PORTRAIT_CHROMA_FRAME.height * (TEMPLATE_BAND_Y / PORTRAIT_TEMPLATE.height)) + crop;
+    const oldH = Math.round(PORTRAIT_CHROMA_FRAME.width * (TEMPLATE_BAND_H / PORTRAIT_TEMPLATE.width)) - crop;
+    expect(oldY + oldH - PORTRAIT_CHROMA_FRAME.height).toBe(312);
   });
 
   it("uses the full landscape template frame", () => {

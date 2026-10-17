@@ -378,6 +378,8 @@ export async function exportJumpVideo(options: {
   draw: (time: number, character?: CharacterFrame) => void;
   duration: number;
   fps: number;
+  /** 映像と別ファイルのときだけ。縦は vertical.mp4（landscape 音声は約 36ms 先行する）。 */
+  audioSrc?: string;
   onProgress?: (progress: ExportProgress) => void;
   signal?: AbortSignal;
 }): Promise<ExportResult> {
