@@ -430,7 +430,7 @@ export function isI420CopyLayout(
   layout: readonly CopiedPlane[] | void,
   width: number,
   height: number,
-): layout is readonly CopiedPlane[] {
+): boolean {
   if (!layout || layout.length !== 3 || !(width > 0) || !(height > 0)) return false;
   const yStride = layout[0]?.stride;
   const uStride = layout[1]?.stride;
@@ -519,7 +519,7 @@ export async function copySampleRgba(sample: CopyableSample): Promise<RgbaFrame>
   const options = { format: "RGBA" as const };
   const raw = new Uint8Array(sample.allocationSize(options));
   const layout = await sample.copyTo(raw, options);
-  const data = isI420CopyLayout(layout, width, height)
+  const data = layout && isI420CopyLayout(layout, width, height)
     ? i420ToRgba(raw, width, height, layout, sample.colorSpace)
     : packedRgba(
         raw,
