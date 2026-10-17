@@ -177,8 +177,15 @@ describe("preview save CTA", () => {
     const start = appSrc.indexOf("const startPlayback = async");
     const firstAwait = appSrc.indexOf("await ensureTimelines()", start);
     const gesturePlay = appSrc.indexOf('userGesture: entry === "user"', start);
+    const pictureFirst = appSrc.indexOf("void video.play().catch(() => {})", start);
+    expect(pictureFirst).toBeGreaterThan(start);
+    expect(pictureFirst).toBeLessThan(gesturePlay);
     expect(gesturePlay).toBeGreaterThan(start);
     expect(gesturePlay).toBeLessThan(firstAwait);
+    expect(appSrc).not.toContain('document.createElement("audio")');
+    expect(appSrc).not.toContain("element.paused || templateAudioNeedsSeek");
+    expect(appSrc).toContain('element.dataset.soundtrack = "portrait"');
+    expect(appSrc).toContain("preparePortraitSoundtrack(TEMPLATES.portrait.audio)");
     const save = appSrc.indexOf("const startSave = async");
     const release = appSrc.indexOf("await releaseTemplateAudio()", save);
     const encode = appSrc.indexOf("exportJumpVideo(", save);

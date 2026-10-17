@@ -108,4 +108,25 @@ describe("template audio", () => {
     expect(planTemplateAudio(follow({ playPending: true, audioPaused: true })).play).toBe(false);
     expect(planTemplateAudio(follow({ playPending: true, userGesture: true })).play).toBe(true);
   });
+
+  it("does not seek a paused soundtrack that is already on the picture clock", () => {
+    const plan = planTemplateAudio(
+      follow({ userGesture: true, audioPaused: true, audioTime: 1.2, videoTime: 1.2 }),
+    );
+    expect(plan.play).toBe(true);
+    expect(plan.seek).toBe(false);
+    const tick = planTemplateAudio(
+      follow({ allowPlay: true, audioPaused: true, audioTime: 2, videoTime: 2.02 }),
+    );
+    expect(tick.play).toBe(true);
+    expect(tick.seek).toBe(false);
+  });
+
+  it("does not seek while the gesture play() is still pending", () => {
+    const plan = planTemplateAudio(
+      follow({ playPending: true, audioPaused: true, audioTime: 0, videoTime: 2.4 }),
+    );
+    expect(plan.play).toBe(false);
+    expect(plan.seek).toBe(false);
+  });
 });

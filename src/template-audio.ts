@@ -36,7 +36,11 @@ export type TemplateAudioFollow = {
   playBlocked: boolean;
   /** play() の Promise がまだ終わっていない。 */
   playPending: boolean;
-  /** timeupdate では false。再生ボタンとミュートだけ true。 */
+  /**
+   * このターンで play() してよいか。
+   * 再生・ミュート・画角・映像の play では true。timeupdate は止まった要素の再開だけに使い、
+   * シークの理由にはしない。
+   */
   allowPlay: boolean;
   audioPaused: boolean;
   audioReady: boolean;
@@ -69,9 +73,13 @@ export function planTemplateAudio(state: TemplateAudioFollow): TemplateAudioPlan
     state.allowPlay &&
     state.picturePlaying &&
     (state.userGesture || (!state.playBlocked && state.audioPaused && !state.playPending));
+  // play やジェスチャだけではシークしない。currentTime の代入は再生中の play() を
+  // WebKit が Abort し、その次の play() はジェスチャの外なので iOS では無音のままになる。
+  // ずれているときだけ合わせる。play() がまだなら代入しない。
   const seek =
     state.audioReady &&
     state.picturePlaying &&
-    (play || state.userGesture || templateAudioNeedsSeek(state.audioTime, state.videoTime));
+    !state.playPending &&
+    templateAudioNeedsSeek(state.audioTime, state.videoTime);
   return { pictureMuted, audioMuted, release: false, play, seek };
 }
