@@ -7,15 +7,12 @@
 <p align="center">写真を選ぶだけで、キャラクターのジャンプに合わせて写真が切り替わる動画をブラウザで作れます。</p>
 
 <p align="center">
-  <a href="https://anone.yoiailabs.com">アプリを使う</a> ·
-  <a href="docs/usage.md">使い方</a> ·
-  <a href="docs/README.md">ドキュメント</a>
+  <a href="https://anone.yoiailabs.com"><b>anone.yoiailabs.com</b></a>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
   <a href="https://github.com/yoiailabs/anone-jump-maker/actions/workflows/test.yml"><img src="https://github.com/yoiailabs/anone-jump-maker/actions/workflows/test.yml/badge.svg" alt="test ワークフロー"></a>
-  <a href="https://anone.yoiailabs.com"><img src="https://img.shields.io/badge/web-anone.yoiailabs.com-3ebdc2" alt="公開サイト"></a>
 </p>
 
 > [!NOTE]
@@ -45,22 +42,12 @@ pnpm exec astro dev
 | `pnpm dev` | `cf dev` で Worker を起動。先に `pnpm build` が必要 |
 | `pnpm deploy` | ビルドして Cloudflare Workers へ公開 |
 
-公開前の差し替えは[セルフホストの手順](docs/deployment.md)にまとめています。
-
 ## テスト
 
 ```bash
-pnpm test
+pnpm test          # ユニットテスト（Vitest）
+pnpm test:browser  # Chromium と WebKit での描画テスト（Vitest Browser）
+pnpm test:e2e      # 画面操作のテスト（Playwright）
 ```
 
-これでユニットテストが走ります。ブラウザテスト（`test:browser`）と E2E（`test:e2e`）の準備と実行方法は[テストのページ](docs/testing.md)にあります。
-
-## ドキュメント
-
-| ページ | 内容 |
-| --- | --- |
-| [使い方](docs/usage.md) | 写真を並べてから動画を保存するまで |
-| [アーキテクチャ](docs/architecture.md) | 写真の処理、合成、動画の書き出し、配信のしくみ |
-| [セルフホスト](docs/deployment.md) | fork で差し替える素材と設定、Cloudflare Workers への公開 |
-| [計測](docs/telemetry.md) | GA4 / Sentry の有効化と送る内容 |
-| [テスト](docs/testing.md) | テストの種類と実行方法、CI |
+ブラウザを使う 2 つは、初回に `pnpm exec playwright install --with-deps chromium webkit` でブラウザを入れておきます。`pnpm test:all` なら 3 つを続けて実行します。
