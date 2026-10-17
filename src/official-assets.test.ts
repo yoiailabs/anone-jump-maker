@@ -31,7 +31,8 @@ describe("official assets directory", () => {
     expect(license).toContain("ナナツカゼ");
     expect(license).toContain("再許諾");
     expect(license).toContain("fork");
-    expect(license).toContain("Copyright (c) 2026 Yoiailabs");
+    expect(license).not.toContain("ロゴと OGP 画像は MIT");
+    expect(license).not.toContain("were made by Yoiailabs");
     for (const file of EXCLUDED) {
       expect(license).toContain(`\`${file}\``);
       expect(existsSync(new URL(`public/official-assets/${file}`, root)), file).toBe(true);

@@ -203,8 +203,10 @@ describe("messages", () => {
     expect(t("en", "termsTitle")).toBe("Terms of Use");
     expect(t("ko", "privacyTitle")).toBe("개인정보 처리방침");
     expect(t("zh", "privacyTitle")).toBe("隐私政策");
-    expect(t("ja", "footerOperator")).toContain("Yoiailabs");
-    expect(t("en", "footerOperator")).toContain("Yoiailabs");
+    for (const locale of ["ja", "en", "ko", "zh"] as const) {
+      expect(t(locale, "footerCopyright")).toBe("© 2026 Yoiailabs");
+    }
+    expect(t("ja", "termsNotice")).toContain("ナナツカゼ");
     expect(t("ja", "metaPrivacyDescription")).toContain("Yoiailabs");
   });
 

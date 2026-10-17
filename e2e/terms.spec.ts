@@ -14,7 +14,8 @@ test.describe("terms of use", () => {
 
     const footer = page.locator("#siteFooter");
     await expect(footer).toContainText("非公式");
-    await expect(footer).toContainText("Yoiailabs");
+    await expect(page.locator(".site-footer-credit")).toHaveText("© 2026 Yoiailabs");
+    await expect(footer).not.toContainText("運営:");
     await expect(page.locator("#termsLink")).toHaveAttribute("href", "/terms");
     await expect(page.locator("#termsLink")).toHaveText(t("ja", "termsLink"));
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");

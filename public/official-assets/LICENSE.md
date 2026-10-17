@@ -15,12 +15,6 @@
 
 `template/cuts.json` と `template/landscape-cuts.json` は、このリポジトリの `scripts/analyze-cuts.py` がテンプレ映像から書き出した拍の表です。公式素材そのものではなく、リポジトリの MIT License の対象です。テンプレ映像の横に置いています。
 
-## ロゴと OGP 画像は MIT
-
-ロゴ（`public/brand/anone-logo-horizontal.svg`、`public/brand/anone-logo-horizontal-en.svg`、`public/brand/anone-logo-stacked.svg`、`public/brand/anone-logo-stacked-en.svg`）と OGP 画像（`public/og.png`、`public/og-en.png`、`public/og-ko.png`、`public/og-zh.png`）は Yoiailabs が制作したもので、リポジトリの MIT License（Copyright (c) 2026 Yoiailabs）の対象です。第三者の公式素材ではありません。
-
-OGP 画像は MV（`jump-loop.mp4` / `jump-loop-still.png`）のフレーム切り出しではありません。ロゴと同じ描き方のキャラクターイラストを含みます。権利者の判断により、そのイラストを含めたまま MIT です。
-
 ## 権利
 
 このリポジトリの本サービスは、アーティストグループ「ナナツカゼ」の作品を尊重し、「あのねジャンプ」のファンメイド作品の制作を楽しむための非公式のものです。ナナツカゼ自身が提供するものではなく、このリポジトリの公開や本サービスの提供をもって、ナナツカゼによる公認・監修・素材利用の許諾があることを示すものではありません。
@@ -38,5 +32,3 @@ OGP 画像は MV（`jump-loop.mp4` / `jump-loop-still.png`）のフレーム切�
 The four files in the table above are **excluded from** this repository's [MIT License](../../LICENSE). They are the template videos used to make the output video (`template/vertical.mp4`, `template/landscape.mp4`, including the song, character, and video they contain) and the top-page MV clip (`jump-loop.mp4` and its frame `jump-loop-still.png`). Copyright of the song 「あのね」 ("Anone"), the jumping character, and those videos belongs to ナナツカゼ (Nanatsukaze). The operator does not own them and does not license or sublicense them, through this repository, the MIT License, or the terms of use. This is not an official Nanatsukaze guideline, and publication here is not endorsement, supervision, or permission to use the assets. Redistribution, modification, and reuse are not permitted. Forks must replace or remove these four files.
 
 The two cut JSON files next to the template videos are generated timing tables from this repository and remain under the MIT License.
-
-Logos in `public/brand/*.svg` and the OG images `public/og.png`, `public/og-en.png`, `public/og-ko.png`, and `public/og-zh.png` were made by Yoiailabs and are covered by the MIT License (Copyright (c) 2026 Yoiailabs). The OG images are not a frame from the MV. They include an owner-drawn character illustration in the same style as the logo, and they stay MIT.

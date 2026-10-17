@@ -28,7 +28,7 @@ export function SiteFooter({
             {t(locale, "termsLink")}
           </a>
         </nav>
-        <p className="site-footer-credit">{t(locale, "footerOperator")}</p>
+        <p className="site-footer-credit">{t(locale, "footerCopyright")}</p>
       </div>
     </footer>
   );

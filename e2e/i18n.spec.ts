@@ -378,3 +378,24 @@ test.describe("community lede phrase wrapping", () => {
     expect(en.wordBreak).not.toBe("auto-phrase");
   });
 });
+
+test.describe("footer copyright", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("shows © 2026 Yoiailabs in every locale and keeps the Nanatsukaze notice", async ({ page }) => {
+    for (const [path, locale] of [
+      ["/", "ja"],
+      ["/en/", "en"],
+      ["/ko/", "ko"],
+      ["/zh/", "zh"],
+    ] as const) {
+      await page.goto(path);
+      await waitForAppReady(page);
+      await expect(page.locator(".site-footer-credit")).toHaveText(t(locale, "footerCopyright"));
+      await expect(page.locator(".site-footer-notice")).toContainText(t(locale, "artistName"));
+    }
+  });
+});
