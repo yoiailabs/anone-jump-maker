@@ -853,16 +853,22 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applyAspect = (next: AspectMode) => {
     if (next === mode) return;
-    studioTrace.onPreviewStop("settings");
     const inPreview = activeView === "studio";
-    aspectResume = inPreview
-      ? { play: isPreviewPlaying(), time: video.currentTime, tracked: previewTracked }
-      : null;
-    playGen += 1;
-    playbackBusy = false;
-    playing = false;
-    haltLoop();
-    video.pause();
+    const wasPlaying = inPreview && isPreviewPlaying();
+    // 縦も横も同じ landscape.mp4。読み直すと currentTime が 0 に戻り、
+    // そのあとの play() はジェスチャの外なので WebKit は再生を拒否する。
+    const samePicture = templateSrcPath(video.getAttribute("src")) === templateSrcPath(TEMPLATES[next].video);
+    if (!samePicture || !wasPlaying) studioTrace.onPreviewStop("settings");
+    if (!samePicture) {
+      aspectResume = inPreview
+        ? { play: wasPlaying, time: video.currentTime, tracked: previewTracked }
+        : null;
+      playGen += 1;
+      playbackBusy = false;
+      playing = false;
+      haltLoop();
+      video.pause();
+    }
     if (!inPreview) {
       previewTracked = false;
     }
@@ -873,6 +879,12 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     syncAspectRadios(mode);
     video.dataset.templateSrc = TEMPLATES[mode].video;
     video.dataset.templateAudio = TEMPLATES[mode].audio;
+    if (samePicture) {
+      applyPreviewMute();
+      paint();
+      refreshButtons();
+      return;
+    }
     video.removeAttribute("src");
     video.preload = "none";
     applyPreviewMute();
@@ -1316,12 +1328,22 @@ export function createTemplateVideo(mode: AspectMode): HTMLVideoElement {
   return video;
 }
 
+/** 相対 URL と解決後の絶対 URL を同じパスとして比べる。 */
+export function templateSrcPath(value: string | null): string {
+  if (!value) return "";
+  try {
+    return new URL(value, "https://anone.local").pathname;
+  } catch {
+    return value;
+  }
+}
+
 /** 写真選択やプレビューまでテンプレ本体を取りに行かない。 */
 export function beginTemplateVideoLoad(video: HTMLVideoElement): void {
   const src = video.dataset.templateSrc;
   if (!src) return;
   const current = video.getAttribute("src");
-  if (video.preload === "auto" && current === src) return;
+  if (video.preload === "auto" && templateSrcPath(current) === templateSrcPath(src)) return;
   video.preload = "auto";
   video.src = src;
   video.load();

@@ -1,10 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { TEMPLATES } from "./layout.ts";
-import { loadTimeline, loadTimelines } from "./app.ts";
+import { loadTimeline, loadTimelines, templateSrcPath } from "./app.ts";
 import appSrc from "./app.ts?raw";
 import compositorSrc from "./compositor.ts?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
 import offlineSrc from "./offline-encode.ts?raw";
+
+describe("templateSrcPath", () => {
+  it("treats a relative template url and its absolute form as the same file", () => {
+    const file = "/official-assets/template/landscape.mp4";
+    expect(templateSrcPath(file)).toBe(file);
+    expect(templateSrcPath(`https://anone.yoiailabs.com${file}`)).toBe(file);
+    expect(templateSrcPath(null)).toBe("");
+  });
+});
 
 describe("loadTimeline", () => {
   it("parses a cuts table", async () => {
@@ -192,6 +201,11 @@ describe("preview save CTA", () => {
     expect(appSrc.indexOf("if (gen !== seekGen || isAbortError(error)) return;", scrub)).toBeGreaterThan(scrub);
     const loaded = appSrc.indexOf('video.addEventListener("loadeddata"');
     expect(appSrc.indexOf("await seekVideo(video, resume.time)", loaded)).toBeGreaterThan(loaded);
+    const aspect = appSrc.indexOf("const applyAspect = (next: AspectMode)");
+    const samePicture = appSrc.indexOf("TEMPLATES[next].video", aspect);
+    const clearSrc = appSrc.indexOf('video.removeAttribute("src")', aspect);
+    expect(samePicture).toBeGreaterThan(aspect);
+    expect(clearSrc).toBeGreaterThan(samePicture);
   });
 
   it("rewinds the character and drops the keyed texture before another export or preview", () => {
