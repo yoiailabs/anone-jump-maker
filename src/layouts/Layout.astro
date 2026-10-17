@@ -42,7 +42,7 @@ const jsonLd = JSON.stringify({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <!-- Google Analytics 4。PUBLIC_GA4_MEASUREMENT_ID があるときだけ（src/analytics-config.ts）。 -->
+    <!-- Google Analytics 4。測定 ID を埋め込むときだけ（src/analytics-config.ts、src/telemetry-build.ts）。 -->
     {isAnalyticsEnabled(analytics) ? <script is:inline set:html={gtagScript} /> : null}
     <meta name="theme-color" content={PWA_THEME_COLOR} />
     <meta name="mobile-web-app-capable" content="yes" />

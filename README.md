@@ -77,7 +77,7 @@ pnpm deploy         # = pnpm build && wrangler deploy（本体 anone。静的 As
 pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドルは Wrangler に委譲
 ```
 
-本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。ページ表示・プレビュー開始・保存の経路でサーバー側の集計は呼びません。件数は画面に出さず、Google Analytics 4（`src/analytics-config.ts`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。GA4 と Sentry はビルド時の環境変数があるときだけ読み込みます。変数が無い fork・ローカル・Preview では SDK を載せず、何も送りません（下の「fork・セルフホスト」）。
+本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。ページ表示・プレビュー開始・保存の経路でサーバー側の集計は呼びません。件数は画面に出さず、Google Analytics 4（`src/analytics-config.ts`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。GA4 と Sentry は、ビルドに測定 ID と DSN が残っているときだけ読み込みます。Workers Builds ではビルド変数が Preview にも付くので、本番ブランチ `main` のビルドだけがその値を残します。ほかのブランチの Preview は SDK を載せず、何も送りません。fork や手元のビルドは下の「fork・セルフホスト」です。
 
 - `video_preview` … プレビュー再生の開始時（旧カウンタと同じ。同じ再生中の再スタートや一時停止からの再開は送らない。閉じてから開き直せば再送）
 - `video_save` … 動画の保存が成功したあと
@@ -99,7 +99,7 @@ fork して自分の環境で動かすときは、次を差し替えてくださ
 - **Cloudflare アカウント。** `wrangler login` で自分のアカウントにデプロイします。`wrangler.toml` の `routes` と `cloudflare.config.ts` の `domains`（どちらも `anone.yoiailabs.com` のカスタムドメイン）は、自分のドメインに書き換えるか消してください。Worker 名 `anone` も必要なら変えます。消しても `workers_dev = true` なので `*.workers.dev` で開けます。
 - **URL と表記。** 正規 URL・OGP は `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN` です。Sentry に送るときの environment 名（`production` / `preview` / `development`）は `src/sentry.ts` の `PRODUCTION_HOST` で分けます。これは SDK を読むかどうかとは別です。
 - **利用規約・プライバシーポリシー。** `src/terms-copy.ts`、`src/privacy-copy.ts`（と各言語版）は Yoiailabs が運営する本番サイト用です。そのまま使わず、自分の運営内容に合わせて書き直してください。
-- **計測。** 測定 ID と Sentry の DSN はリポジトリに含まれません。未設定のビルドでは GA4 も Sentry も読み込みません。自分の計測を使うときは、ビルド時に `PUBLIC_GA4_MEASUREMENT_ID` と `VITE_SENTRY_DSN` を指定します。空の例は [`.env.example`](./.env.example) です（`.env` にコピーして値を入れます）。指定したビルドでは、ホストに関係なくその値で有効になります。
+- **計測。** 測定 ID と Sentry の DSN はリポジトリに含まれません。本番（Worker `anone`）では `PUBLIC_GA4_MEASUREMENT_ID` と `VITE_SENTRY_DSN` を Workers Builds のビルド変数に置きます。この変数は Preview のビルドにも付きます。Workers Builds が渡す `WORKERS_CI_BRANCH` が `main` のときだけ、その値をページに埋め込みます（`src/telemetry-build.ts`）。それ以外のブランチは SDK を読み込みません。自分の計測を使うときは、同じ変数をビルド時に指定します。空の例は [`.env.example`](./.env.example) です（`.env` にコピーして値を入れます）。手元や fork の CI には `WORKERS_CI` が無いので、ブランチ名に関係なく、指定した値で有効になります。本番ブランチの名前を変えるときは `PRODUCTION_BRANCH` も変えてください。
 
 ## 素材とライセンス
 

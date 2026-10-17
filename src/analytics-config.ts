@@ -1,7 +1,7 @@
 /**
  * GA4 の読み込み。測定 ID はビルド時の `PUBLIC_GA4_MEASUREMENT_ID` だけ。
  * 未設定ならスクリプトを出さず、`src/analytics.ts` の送信は何もしない。
- * ホストでは分岐しない。fork・ローカル・Preview は変数が無い限り送らない。
+ * Workers Builds の Preview では、この値は `src/telemetry-build.ts` がビルド前に外す。
  */
 export type AnalyticsConfig = {
   readonly measurementId: string | null;

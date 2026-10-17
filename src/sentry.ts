@@ -29,6 +29,7 @@ export function sentryEnvironment(hostname: string): SentryEnvironment {
 
 /**
  * `VITE_SENTRY_DSN` があるときだけ SDK を読む。未設定ならホストが本番でも送らない。
+ * Workers Builds の Preview では、この値は `src/telemetry-build.ts` がビルド前に外す。
  */
 export function resolveSentryDsn(envDsn: string | undefined): string | undefined {
   const trimmed = envDsn?.trim();
