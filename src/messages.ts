@@ -175,6 +175,8 @@ const ja = {
   footerNavAria: "フッター",
 
   langNavAria: "言語",
+  makerSource: "GitHub",
+  makerSourceAria: "GitHubのリポジトリを開く（新しいタブ）",
 } as const;
 
 export type MessageKey = keyof typeof ja;
@@ -329,6 +331,8 @@ const en: Record<MessageKey, string> = {
   footerNavAria: "Footer",
 
   langNavAria: "Language",
+  makerSource: "GitHub",
+  makerSourceAria: "Open the GitHub repository (new tab)",
 };
 
 const ko: Record<MessageKey, string> = {
@@ -481,6 +485,8 @@ const ko: Record<MessageKey, string> = {
   footerNavAria: "바닥글",
 
   langNavAria: "언어",
+  makerSource: "GitHub",
+  makerSourceAria: "GitHub 저장소를 열기(새 탭)",
 };
 
 const zh: Record<MessageKey, string> = {
@@ -633,6 +639,8 @@ const zh: Record<MessageKey, string> = {
   footerNavAria: "页脚",
 
   langNavAria: "语言",
+  makerSource: "GitHub",
+  makerSourceAria: "打开 GitHub 仓库（新标签页）",
 };
 
 export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {

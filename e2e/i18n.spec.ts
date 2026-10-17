@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { t } from "../src/i18n.ts";
+import { SOURCE_REPO_HREF } from "../src/links.ts";
 import { MORE_JUMPS_HREF } from "../src/share.ts";
 import { blockAnalytics, expectVisibleText, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
@@ -374,6 +375,44 @@ test.describe("community lede phrase wrapping", () => {
     expect(en.text).toBe(enExpected);
     expect(en.text).not.toContain("\u200b");
     expect(en.wordBreak).not.toBe("auto-phrase");
+  });
+});
+
+test.describe("studio source link", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("links the make page to the public repository in Japanese and English", async ({ page }) => {
+    await page.goto("/make");
+    await waitForAppReady(page);
+    const link = page.locator("#studioGitHub");
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", SOURCE_REPO_HREF);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(link).toHaveAttribute("aria-label", t("ja", "makerSourceAria"));
+    await expect(link).toHaveText(t("ja", "makerSource"));
+    const langBox = await page.locator("#studioView .lang-switch").boundingBox();
+    const linkBox = await link.boundingBox();
+    const footerBox = await page.locator("#siteFooter").boundingBox();
+    expect(langBox && linkBox && linkBox.y > langBox.y + langBox.height - 1).toBe(true);
+    expect(linkBox && footerBox && linkBox.y + linkBox.height <= footerBox.y + 1).toBe(true);
+
+    await page.goto("/en/make");
+    await waitForAppReady(page);
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", SOURCE_REPO_HREF);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(link).toHaveAttribute("aria-label", t("en", "makerSourceAria"));
+    await expect(link).toHaveText(t("en", "makerSource"));
+
+    await page.goto("/");
+    await waitForAppReady(page);
+    await expect(page.locator("#makerView")).toBeVisible();
+    await expect(page.locator("#studioGitHub")).toBeHidden();
   });
 });
 

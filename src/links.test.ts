@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import makerSrc from "./components/MakerApp.tsx?raw";
 import {
   JUMP_LOOP_WATCH_HREF,
   linkBannersHtml,
   OFFICIAL_LINKS,
   OFFICIAL_MV_WATCH_HREF,
+  SOURCE_REPO_HREF,
   youtubePlaybackUrl,
 } from "./links.ts";
 
@@ -93,5 +95,23 @@ describe("youtube playback url", () => {
 
   it("points the JumpLoop at the official MV from 1:03", () => {
     expect(JUMP_LOOP_WATCH_HREF).toBe("https://www.youtube.com/watch?v=M-IayQIR0XA&t=63s");
+  });
+});
+
+describe("maker source repository", () => {
+  it("points at the public GitHub repository", () => {
+    expect(SOURCE_REPO_HREF).toBe("https://github.com/yoiailabs/anone-jump-maker");
+  });
+
+  it("places the repository link at the end of the studio view", () => {
+    const studio = makerSrc.indexOf('id="studioView"');
+    const github = makerSrc.indexOf('id="studioGitHub"');
+    const community = makerSrc.indexOf('id="communityView"');
+    expect(studio).toBeGreaterThan(-1);
+    expect(github).toBeGreaterThan(studio);
+    expect(community).toBeGreaterThan(github);
+    expect(makerSrc).toMatch(
+      /id="studioGitHub"[\s\S]*?href=\{SOURCE_REPO_HREF\}[\s\S]*?target="_blank"[\s\S]*?rel="noopener noreferrer"[\s\S]*?aria-label=\{t\(locale, "makerSourceAria"\)\}/,
+    );
   });
 });

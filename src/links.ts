@@ -39,6 +39,9 @@ export function youtubePlaybackUrl(href: string, startSeconds: number): string {
 
 export const JUMP_LOOP_WATCH_HREF = youtubePlaybackUrl(OFFICIAL_MV_WATCH_HREF, JUMP_LOOP_START_SECONDS);
 
+/** 写真を選んで動画をつくる画面の末尾に置く、公開リポジトリ。 */
+export const SOURCE_REPO_HREF = "https://github.com/yoiailabs/anone-jump-maker";
+
 /** 画面最下部に置くナナツカゼさんの公式リンク。ファン制作なので出典として並べる。 */
 export type OfficialLink = {
   /** CSS のアクセント色とアイコンの引き当てに使う。 */
