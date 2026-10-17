@@ -409,6 +409,15 @@ async function encodeWithRgbaFrames(options: {
         upcoming = step.done ? null : step.value;
       }
       if (!held || !templateFrameMatchesTime(held.timestamp, time)) {
+        // 先頭 PTS が半フレームより後でも、プローブが通す幅ならその 1 枚を使う。
+        if (upcoming && templateFrameMatchesTime(upcoming.timestamp, time)) {
+          if (held && held !== upcoming) held.close();
+          held = upcoming;
+          const step = await iterator.next();
+          upcoming = step.done ? null : step.value;
+        }
+      }
+      if (!held || !templateFrameMatchesTime(held.timestamp, time)) {
         throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
       }
       const role = trace?.roles.get(i);

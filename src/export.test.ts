@@ -497,6 +497,12 @@ describe("decoded export frames", () => {
     const tail = assignFramesToTimes([0, 1 / 30, 2 / 30], [0, 1 / 30, 2 / 30, 3 / 30], 1 / 30);
     expect(tail).toEqual([0, 1 / 30, 2 / 30, 2 / 30]);
     expect(assignFramesToTimes([0], [0, 0.2], 1 / 30)[1]).toBeNull();
+    expect(assignFramesToTimes([0.04, 0.04 + 1 / 30], [0, 1 / 30, 2 / 30], 1 / 30)).toEqual([
+      0.04,
+      0.04,
+      0.04 + 1 / 30,
+    ]);
+    expect(assignFramesToTimes([0.2], [0], 1 / 30)).toEqual([null]);
   });
 
   it("rejects an I420 layout that does not cover the frame", () => {

@@ -248,6 +248,7 @@ export function templateFrameMatchesTime(sampleTime: number, targetTime: number)
  * 時刻 + 半フレーム以前で、まだ使っていない一番新しいフレーム。
  * ファイル末尾で video.duration が最終 PTS より先に丸まると、新しいフレームが無い。
  * そのときは直前フレームを、PTS が保存時刻に合うあいだだけ使う。
+ * 半フレームより先でも、プローブと同じ幅に入る次の 1 枚は取る。先頭 PTS が 0 の少し後でも落とさない。
  * WebKit の samplesAtTimestamps はキーフレーム直前の 1 枚を null にするので使わない。
  */
 export function frameIsCurrentForTime(timestamp: number, time: number, frameDuration: number): boolean {
@@ -264,6 +265,14 @@ export function assignFramesToTimes(
   let held: number | null = null;
   for (const time of times) {
     while (index < frameTimestamps.length && frameIsCurrentForTime(frameTimestamps[index]!, time, frameDuration)) {
+      held = frameTimestamps[index]!;
+      index += 1;
+    }
+    if (
+      (held === null || !templateFrameMatchesTime(held, time)) &&
+      index < frameTimestamps.length &&
+      templateFrameMatchesTime(frameTimestamps[index]!, time)
+    ) {
       held = frameTimestamps[index]!;
       index += 1;
     }
