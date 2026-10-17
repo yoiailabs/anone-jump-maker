@@ -1,114 +1,53 @@
-# あのねジャンプメーカー
+<p align="center">
+  <a href="https://anone.yoiailabs.com">
+    <img src="public/brand/anone-logo-stacked.svg" width="360" alt="あのねジャンプメーカー">
+  </a>
+</p>
 
-写真を置くと、縦テンプレのジャンプに合わせて入れ替わる小さなメーカーです。ファン制作です。本番予定 URL は [https://anone.yoiailabs.com](https://anone.yoiailabs.com) です。写真はサーバーに出さず、この端末の中だけで重ねます。
+<p align="center">写真を選ぶだけで、キャラクターのジャンプに合わせて写真が切り替わる動画をブラウザで作れます。</p>
 
-画面はナナツカゼさんのテンプレの空気に寄せています。太い線、ベタ塗りの色面、少し昔の電子ポップのような夏の残像。よいらぼの紺や金は使いません。フォントは Klee One と Zen Maru Gothic（Google Fonts）です。
+<p align="center">
+  <a href="https://anone.yoiailabs.com"><b>anone.yoiailabs.com</b></a>
+</p>
 
-## 使い方
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
+  <a href="https://github.com/yoiailabs/anone-jump-maker/actions/workflows/test.yml"><img src="https://github.com/yoiailabs/anone-jump-maker/actions/workflows/test.yml/badge.svg" alt="test ワークフロー"></a>
+</p>
 
-1. 写真を数枚選ぶ
-2. 「動画の向き」で縦（9:16）か横（16:9）、「エフェクト」でジャンプかズーム、「フィルター」でなし／ブラーを選ぶ
-3. テンプレのベタ塗り背景（緑クロマに限らない）をキーイングして、線画キャラを残す
-4. 拍（テンプレのポーズ切替）で写真を差し替える。枚数が足りなければ循環
-5. プレビューして MP4 または WebM を保存（オフライン生成）。プレビューは最初音声オンで、モーダルの「音声オン／音声オフ」で切り替える。保存動画の音声はプレビューのミュートと無関係
-6. 操作パネルの枠の外の「共有する」で `#あのねジャンプ #あのねジャンプメーカー` だけを渡す
-7. その下の「ハッシュタグをコピー」で同じハッシュタグをクリップボードへ
+> [!NOTE]
+> ナナツカゼ「あのね」の非公式ファンメイド作品です。ナナツカゼによる公認ではありません。テンプレ映像など一部の素材は MIT の対象外です。対象のファイルは[公式素材の権利表記](public/official-assets/LICENSE.md)にあります。
 
-5 の保存はテンプレをリアルタイム録画せず、30fps の論理時刻でシークして同じ compositor を描き、WebCodecs + mediabunny で映像とテンプレ音声を mux します。画面上のプレビュー合成は内部解像度 0.5×・24fps で、保存の解像度と 30fps とは独立です。プレビューのミュートは HTML の `video.muted` だけを変え、mux する音声はテンプレファイルからです。WebCodecs が使えないブラウザでは録画に落とさず、Chrome / Edge を案内します。
+## クイックスタート
 
-**縦**の保存は 1080×1920 です。差し込み写真はキャンバス全面に cover します（上下の拡大ぼかし・暗転・仕切り線はありません）。線画キャラの画素と音声は `public/official-assets/template/landscape.mp4`（1920×1080）です。画素は y=6 から高さ 1074 を、今までのプレート（608 幅の緑帯と同じ縦横比、ステッカー位置）に描きます。基準ポーズ（t=9s）では白縁込みの幅がキャンバスの約 72%、中心 x が約 45%、水平カットの下端が y=75.8% です。上端はポーズで動きます。
-
-**横**は 1280×720（保存の出力サイズ。画面上のプレビューは内部解像度だけ下げる）。上下ブラー帯はなく、キャンバス全体が 16:9 本編です。差し込み写真が背景、線画キャラは前面（白ステッカー縁、公式テンプレと同じ等倍）。公式テンプレは `public/official-assets/template/landscape.mp4`（1920×1080、X 公式投稿および CapCut 16:9 と同じ映像）です。
-
-## X への投稿
-
-できた動画は `#あのねジャンプ` と `#あのねジャンプメーカー` を付けて X に投稿するのが推奨されています。操作パネルの枠の外の「共有する」は最初から押せ、Web Share API（`navigator.share({ text })`）で本文 `#あのねジャンプ #あのねジャンプメーカー` だけを渡します（`url` / `title` は付けません）。共有シートが無い環境では同じハッシュタグ本文をクリップボードへコピーします。
-
-その下の「ハッシュタグをコピー」も最初から押せ、ボタン下にコピーされる本文（`#あのねジャンプ #あのねジャンプメーカー`）を小さく出します（`src/share.ts` の `SHARE_TEXT`）。押すと両方のハッシュタグをクリップボードへコピーします。動画の添付は手元でしてもらいます。
-
-- 「共有する」も「ハッシュタグをコピー」も本文はハッシュタグだけで、このサイトの URL は足しません。
-
-## 写真の切替（2×2）
-
-向き（縦／横）と切替（ジャンプ／ズーム）とフィルター（なし／ブラー強／ブラー弱）は独立に選べます。向きと切替の数値はパネル寸法に対する比なので、同じ系統なら縦横で同じ動きになります。プレビューと保存は同じ `swapFx()` → compositor を通り、フィルターも同じ描画経路です。
-
-**フィルター**は差し込み写真（背景）だけにボケ感を付け、線画キャラには掛けません。iOS / Safari は Canvas2D の `filter` が無効なので、縮小バッファへの箱型ぼかしで同じ見た目にします。プレビューのダイアログでも向き・エフェクトと同じく切り替えられます。
-
-**ジャンプ**は参考 Short（o1ROhNU0UNw、30fps）をフレーム抽出して SIFT+RANSAC で写真の位置・倍率を測った値です。
-
-- 写真はカット（＝テンプレのポーズ切替フレーム）で「少し小さく（×0.947）・下にずれて（本編高さの 17.5%）」現れ、7 フレで元の位置へ跳ね戻る（位置 (1−k/7)^2.3、倍率 (1−k/7)^2）。
-- 7 フレ目から次の拍（15 フレ）へ向けて二次曲線で再び沈む。スロットが 14 フレなら沈み切る前に次のカットが来る。
-- カットの瞬間から 3 フレの白フラッシュ（写真層に加算 0.30 ＋スクリーン 0.20、(1−k/3)^2 で減衰）。カット前にはフラッシュは無く、RGB ずれ・ブラーも無い。キャラの黒線はほぼ黒のまま（全面には 0.06 だけ）。
-- 沈んでも本編に隙間が出ないよう、写真は 1.32 倍で cover し静止位置を 7% 上に寄せる。
-
-**ズーム**は参考投稿（hagikaze_sami、1280×720・30fps）の実測です。
-
-- 出ていく写真はポーズ切替フレーム S の 3 フレ前から中心へ縮む（S−2: 0.988、S−1: 0.947、S: 0.866）。S ではポーズだけ新しく、写真はまだ前のもの。新写真は S+1 に 1.115 倍で現れ、1 フレごとに (倍率−1) が 0.2 倍になって 4 フレで止まる。キャラは拡縮しない。
-- 全面（写真＋キャラ）に横方向のモーションブラー（S−1: 幅の 0.8%、S: 2.7%、S+1: 1.4%）、RGB 横ずれ（R 右・B 左、S で幅の 0.65%）、S で白の加算 0.35（コントラストは保つ）、S+1 で灰かぶり 25%、わずかな行波打ち。
-- 縮んだ写真の後ろには同じ写真の cover ぼかしを敷き、黒帯を見せない。
-
-公式の「ナナツカゼ」「あのね」等の文字はユーザー差し込み側に足しません。
-
-画面最下部には参考リンクとして、ナナツカゼさんの X・Instagram・YouTube・TikTok・Spotify・Apple Music へのバナーを並べます（`src/links.ts`。SNS は公式サイト https://www.nanatsukaze.com/ と同じ）。どれも別タブで開き、`rel="noopener noreferrer"` を付けます。公式ロゴの画像は置かず、テンプレに寄せた太線のアイコンを自分で描いてラベルを添えています。その下の「反応」には、PIKASONIC さんの投稿（`src/reactions.ts`）を X 公式埋め込みで置きます。widgets.js が来るまでは本文と元投稿へのリンクが見えます。
-
-写真の向きは EXIF を `createImageBitmap({ imageOrientation: "from-image" })` で直し、それが落ちる端末では options なしの `createImageBitmap`、HTML Image、FileReader の data URL へ落とします。MIME が空でも拡張子やマジックバイトで JPEG/PNG/WebP なら残します。Android のカメラ写真（HEIC/HEIF）は、ネイティブで読めなければ `heic-to`（libheif）をそのときだけ読み込んで JPEG 相当に変換し、既存の decode へ渡します。変換できない環境では互換性優先（JPEG）かスクショを案内します。JPEG/PNG/WebP の初期読み込みにはデコーダを載せません。WebGL には ImageBitmap を直接上げません（`UNPACK_FLIP_Y_WEBGL` との二重反転を避けるため、Canvas2D に描いてからテクスチャ化します）。読み込み時に長辺 1920 程度へ縮小し、元の巨大画素と File の ObjectURL は持ちません。サムネは別の小さいコピー、decode は最大 2 枚ずつです。写真は端末内のみです。
-
-## 開発
-
-画面は Astro の静的 HTML（`src/pages/`）と React アイランド（`src/components/MakerApp.tsx`、shadcn/ui の Base UI）です。プレビューと動画生成の処理は従来どおり `src/app.ts` の `boot()` です。`pnpm dev` は `cf dev` 経由で Astro の開発サーバーを起動します。
+Node.js 22.18.0 以上と pnpm 10.15.1 が必要です（[package.json](package.json)）。
 
 ```bash
-pnpm install   # または npm install
-pnpm dev       # cf dev（Astro の開発サーバー）
-pnpm types     # cf workers types
-pnpm test            # ユニット（Node / Vitest）
-pnpm test:browser    # Chromium + WebKit（Vitest Browser）
-pnpm test:e2e        # Playwright。Pixel 7 と iPhone 13 のエミュレーション含む
-pnpm test:all
-pnpm build
+git clone https://github.com/yoiailabs/anone-jump-maker.git
+cd anone-jump-maker
+pnpm install --frozen-lockfile
+pnpm exec astro dev
 ```
 
-GitHub Actions（`.github/workflows/test.yml`）が pull request と `main` への push で `pnpm types`・`pnpm check`・ユニット・ブラウザ・e2e を回します。実機の iOS Safari / Android Chrome は CI に載せられないので、Playwright の WebKit（iPhone 13）と Chromium（Pixel 7）でプレビューと短い保存クリップを確認します。ブラウザテストの初回は `pnpm exec playwright install --with-deps chromium webkit` が必要です。
+[http://127.0.0.1:5173](http://127.0.0.1:5173) を開くとアプリが動きます。環境変数の設定は要りません。
 
-デプロイ（DNS は設定しない）:
+### 主なスクリプト
+
+| コマンド | 用途 |
+| --- | --- |
+| `pnpm check` | Astro と Worker の型チェック |
+| `pnpm build` | 型チェックと静的サイトの生成。出力先は `dist/` |
+| `pnpm preview` | ビルド結果を `http://127.0.0.1:4173` で確認 |
+| `pnpm dev:worker` | ビルドしてから Wrangler で Worker を起動 |
+| `pnpm dev` | `cf dev` で Worker を起動。先に `pnpm build` が必要 |
+| `pnpm deploy` | ビルドして Cloudflare Workers へ公開 |
+
+## テスト
 
 ```bash
-pnpm deploy         # = pnpm build && wrangler deploy（本体 anone。静的 Astro に BOS が無いあいだは wrangler）
-pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドルは Wrangler に委譲
+pnpm test          # ユニットテスト（Vitest）
+pnpm test:browser  # Chromium と WebKit での描画テスト（Vitest Browser）
+pnpm test:e2e      # 画面操作のテスト（Playwright）
 ```
 
-本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。ページ表示・プレビュー開始・保存の経路でサーバー側の集計は呼びません。件数は画面に出さず、Google Analytics 4（`src/analytics-config.ts`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。GA4 と Sentry は、ビルドに測定 ID と DSN が残っているときだけ読み込みます。Workers Builds ではビルド変数が Preview にも付くので、本番ブランチ `main` のビルドだけがその値を残します。ほかのブランチの Preview は SDK を載せず、何も送りません。fork や手元のビルドは下の「fork・セルフホスト」です。
-
-- `video_preview` … プレビュー再生の開始時（旧カウンタと同じ。同じ再生中の再スタートや一時停止からの再開は送らない。閉じてから開き直せば再送）
-- `video_save` … 動画の保存が成功したあと
-
-パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境（測定 ID が未設定のビルドを含む）では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
-
-カット表は縦横で同じ `public/official-assets/template/landscape-cuts.json` です（縦横テンプレは同じアニメーションで、音声も同じ `landscape.mp4`）。
-
-- `landscape-cuts.json` … 32 スロット。
-- 拍の出どころは色分け Short（utNIG60-li0）。テンプレの 10 スロットにそれぞれ単色を入れて書き出したもので、色の切り替わりが写真の切替そのものです。ffmpeg で全フレームを抜き、キャラのシルエット差分の相互相関でテンプレに合わせ（テンプレフレーム＝動画フレーム +1、相関 0.92）、切替は「S−1: 旧色＋白、S: 旧新の混色（ポーズも切替）、S+1: 新色」の 2 フレのディップで、`slots` は S です（`slotFrames`、値は frame/30）。写真の参考 2 本もこれと ±1 フレで一致します（ジャンプは S に新写真＋フラッシュ、ズームは S でブラー頂点・S+1 で新写真）。
-- 同じ動画から写真の枚数と並びも取っています。色は 10 種類で、32 カットに `A B C D E F G B E A H B A I F I B D H I G H J C H F I J G D A I` の順に入ります（`photoCount` / `slotPhotoOrder`）。これは参照動画の計測結果です。メーカーのプレビューと書き出しは、選んだ写真の順をそのまま使います（1 枚目が最初のカット）。枚数がカット数より少ないときは同じ順で先頭からくり返します。ファイル名・更新日時・デコード完了順では並べ替えません。
-- テンプレだけの画素差から拍を拾うのは当てになりません。キャラは 3 フレ刻みの独自の間隔で動くので、写真の切替が最寄りのポーズ切替から 1〜2 フレ外れることがあります（233 と 236、426 と 424 など）。`scripts/analyze-cuts.py` は測った拍と並びを書き出すだけにし、`--check` でテンプレの差分ピークとの位置関係を確認できます。
-
-## fork・セルフホスト
-
-fork して自分の環境で動かすときは、次を差し替えてください。
-
-- **公式素材。** MIT の対象外は次の 3 ファイルだけです。`public/official-assets/template/landscape.mp4`（書き出しに使うテンプレ映像。楽曲・キャラクター・映像を含む。縦横ともこの 1 本）、`public/official-assets/jump-loop.mp4`、`public/official-assets/jump-loop-still.png`（トップページの MV とその 1 フレーム）。再配布・転用はできません。自分で権利を持つ素材に差し替えるか取り除いてください。詳しくは [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) です。同じディレクトリの `landscape-cuts.json` は生成した拍の表で、MIT です。
-- **Cloudflare アカウント。** `wrangler login` で自分のアカウントにデプロイします。`wrangler.toml` の `routes` と `cloudflare.config.ts` の `domains`（どちらも `anone.yoiailabs.com` のカスタムドメイン）は、自分のドメインに書き換えるか消してください。Worker 名 `anone` も必要なら変えます。消しても `workers_dev = true` なので `*.workers.dev` で開けます。
-- **URL と表記。** 正規 URL・OGP は `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN` です。Sentry に送るときの environment 名（`production` / `preview` / `development`）は `src/sentry.ts` の `PRODUCTION_HOST` で分けます。これは SDK を読むかどうかとは別です。
-- **利用規約・プライバシーポリシー。** `src/terms-copy.ts`、`src/privacy-copy.ts`（と各言語版）は Yoiailabs が運営する本番サイト用です。そのまま使わず、自分の運営内容に合わせて書き直してください。
-- **計測。** 測定 ID と Sentry の DSN はリポジトリに含まれません。本番（Worker `anone`）では `PUBLIC_GA4_MEASUREMENT_ID` と `VITE_SENTRY_DSN` を Workers Builds のビルド変数に置きます。この変数は Preview のビルドにも付きます。Workers Builds が渡す `WORKERS_CI_BRANCH` が `main` のときだけ、その値をページに埋め込みます（`src/telemetry-build.ts`）。それ以外のブランチは SDK を読み込みません。自分の計測を使うときは、同じ変数をビルド時に指定します。空の例は [`.env.example`](./.env.example) です（`.env` にコピーして値を入れます）。手元や fork の CI には `WORKERS_CI` が無いので、ブランチ名に関係なく、指定した値で有効になります。本番ブランチの名前を変えるときは `PRODUCTION_BRANCH` も変えてください。
-
-## 素材とライセンス
-
-ソースコードの著作権は Yoiailabs にあり、[MIT License](./LICENSE)（Copyright (c) 2026 Yoiailabs）で公開しています。MIT の対象外は、書き出し用テンプレ映像 `public/official-assets/template/landscape.mp4`（縦横ともこの 1 本）、トップページの MV `public/official-assets/jump-loop.mp4` とそのフレーム `public/official-assets/jump-loop-still.png` だけです。楽曲「あのね」、ジャンプするキャラクターおよびそれらの映像の著作権はナナツカゼに帰属し、運営者は利用を許諾・再許諾しておらず、再配布・転用はできません。`template/landscape-cuts.json` は生成した拍の表で、縦横共通、MIT です。文言は [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) と [NOTICE.md](./NOTICE.md) にあります。「反応」「みんなの #あのねジャンプ」に載せる X の投稿（`src/reactions.ts`、`src/community-jumps.ts`）は各投稿者のもので、X 公式の埋め込みで表示しています。掲載をやめてほしい場合の連絡方法を含め、詳しくは [NOTICE.md](./NOTICE.md) を見てください。
-
-Source code is copyright Yoiailabs and MIT-licensed (Copyright (c) 2026 Yoiailabs). Excluded from MIT are only `public/official-assets/template/landscape.mp4`, `public/official-assets/jump-loop.mp4`, and `public/official-assets/jump-loop-still.png`. The cut JSON file is MIT. See [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) and [NOTICE.md](./NOTICE.md).
-
-外部からの pull request は受け付けていません。脆弱性の報告は [SECURITY.md](./SECURITY.md) を見てください。
-
-## キーイング
-
-背景は純緑クロマではなく、ティール・ライム・グレー・赤・紫などフレームごとに変わるベタ塗りです。四隅と上辺から優勢な背景色を毎フレーム推定し、色距離で抜きます。緑が勝つ画素は補助的に抜き、暗い線画は不透明のまま残し、キー色の巻き込み（スピル）を抑えます。WebGL フラグメントシェーダが本線で、未対応時は Canvas2D（`getImageData` / `keyImageData`）に落とします。プレビューと保存は同じ compositor を通るので、GPU が使えれば書き出しも同じ経路です。保存のキャラ源は能力検出で RGBA コピー（Android 向け）か HTML video シーク（iOS / WebKit 向け）に分かれますが、どちらも同じ WebGL キーヤに渡せます。
+ブラウザを使う 2 つは、初回に `pnpm exec playwright install --with-deps chromium webkit` でブラウザを入れておきます。`pnpm test:all` なら 3 つを続けて実行します。
