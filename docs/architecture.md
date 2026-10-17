@@ -1,74 +1,52 @@
 # アーキテクチャ
 
-写真の合成と動画の書き出しは、すべてブラウザの中で行います。サーバーは静的ファイルを届けるだけです。
+写真の読み込みから動画生成までをブラウザで処理し、Cloudflare Workers は静的ファイルの配信と言語別 URL の振り分けを担当します。プレビューと保存は同じ合成処理を共有します。
 
-## 画面
+## 写真から保存ファイルまで
 
-| 場所 | 役割 |
+```mermaid
+flowchart LR
+  P[端末で選んだ写真] --> R[画像の読み込み・縮小]
+  T[テンプレ映像] --> K[背景色を抜く]
+  C[切替時刻の JSON] --> D[Canvas に合成]
+  R --> D
+  K --> D
+  D --> V[プレビュー]
+  D --> E[WebCodecs で映像を生成]
+  T --> A[テンプレ音声]
+  E --> M[mediabunny で動画ファイルにまとめる]
+  A --> M
+  M --> S[ダウンロード・ファイル共有]
+```
+
+テンプレ映像と切替時刻の JSON はサイトから取得します。選んだ写真はアップロードせず、読み込み時に長辺2880pxまで縮小して保持します。サムネイルは別に作り、同時に読み込む写真を2枚までに抑えています（[photos.ts](../src/photos.ts)）。
+
+合成はプレビューと保存で同じ `draw()` を使います。テンプレ映像の背景色を抜く処理には WebGL を優先し、使えない場合は Canvas 2D に切り替えます。写真、キャラクター、切替エフェクトを重ねる処理は [compositor.ts](../src/compositor.ts) にあります。
+
+プレビューは出力サイズの1/3、24fpsで描画します。保存時は通常30fpsでフレームを作り、テンプレ音声と合わせて MP4 または WebM にまとめます。`VideoEncoder` や対応コーデックが使えない場合はエラーを表示し、MediaRecorder への切替はしません（[export.ts](../src/export.ts)、[offline-encode.ts](../src/offline-encode.ts)）。
+
+## 画面と処理の分担
+
+| 場所 | 担当 |
 | --- | --- |
-| `src/pages/` | Astro の静的 HTML。`/` がメーカー、`/make` が制作、`/community` が一覧。`/privacy` と `/terms` は日本語のみ |
-| `src/components/MakerApp.tsx` | 操作パネルの React アイランド（shadcn/ui の Base UI、並べ替えは dnd-kit） |
-| `src/app.ts` の `boot()` | プレビュー再生と動画生成。React へはストアとコールバックで値を渡す |
-| `src/i18n.ts` | 日本語・英語・韓国語・中国語。言語付き URL は `/en` など |
-| `worker/index.ts` | Cookie に言語があるときだけ `/` `/make` `/community` をその言語へ 302 する。`Accept-Language` では寄せない |
+| [src/pages/](../src/pages/)・[Layout.astro](../src/layouts/Layout.astro) | 静的ページ、メタ情報、共通の HTML |
+| [MakerApp.tsx](../src/components/MakerApp.tsx) | トップ・制作画面の UI とオプションの操作 |
+| [PhotoThumbs.tsx](../src/components/PhotoThumbs.tsx) | 写真の一覧と dnd-kit による並べ替え |
+| [app.ts](../src/app.ts) | `boot()` による起動、再生・生成・画面遷移の接続 |
+| [layout.ts](../src/layout.ts)・[timeline.ts](../src/timeline.ts) | 出力サイズ、素材の参照先、エフェクト、写真の切替順 |
+| [i18n.ts](../src/i18n.ts)・[messages.ts](../src/messages.ts) | 言語別 URL と画面の文言 |
+| [worker/index.ts](../worker/index.ts) | 言語のリダイレクトと静的アセット応答の補正 |
 
-フォントは Zen Maru Gothic です。韓国語ページには Noto Sans KR、中国語ページには Noto Sans SC を足します（`src/fonts.ts`）。
+画面の骨格は Astro、操作 UI は React です。既存の `boot()` と React はストアやコールバックで値をやり取りします。新しい操作 UI も React コンポーネントに追加します。
 
-Worker は `/_astro/*` を先に受けます。ハッシュ付きのファイルが無いときに SPA の HTML が返ると、その HTML がスクリプト URL にキャッシュされて起動しなくなるためです。無いときは `no-store` の 404 にします。
+`/` がトップ、`/make` が制作、`/community` が投稿一覧です。英語・韓国語・中国語には `/en`・`/ko`・`/zh` が付きます。`/privacy` と `/terms` は日本語のみです。
 
-## プレビューと保存
+## 配信と外部通信
 
-プレビューと保存は同じ compositor（`src/compositor.ts` の `draw()`）を通ります。切替の計算は `src/layout.ts` の `swapFx()` です。フィルターも同じ描画です。
+Worker は保存済みの言語 Cookie に従って URL を振り分けます。`Accept-Language` での HTTP リダイレクトはせず、ブラウザの言語に応じた初回移動はクライアント側で処理します。
 
-プレビューは内部解像度を書き出しの 1/3 に下げ、24fps で描きます（`src/canvas-size.ts` の `PREVIEW_RESOLUTION_SCALE`、`src/playback.ts` の `PREVIEW_FPS`）。横は 640×360、縦は 360×640 です。
+`/_astro/*` に存在しないファイルを要求したときは、HTML が JavaScript としてキャッシュされないよう、Worker が `no-store` の404を返します。Service Worker も HTML をキャッシュせず、動画・音声・Range リクエスト・テンプレ素材は処理対象から外します（[public/sw.js](../public/sw.js)、[public/sw-policy.js](../public/sw-policy.js)）。オフラインでサイト全体を利用できる設計ではありません。
 
-保存はテンプレをリアルタイムに録画しません。30fps の論理時刻でシークし、同じ compositor でフレームを描いて、WebCodecs と mediabunny で映像とテンプレ音声を mux します（`src/export.ts`、`src/offline-encode.ts`）。出力は縦 1080×1920、横 1920×1080（`src/layout.ts` の `OUTPUTS`）です。コンテナは MP4（AVC、続いて HEVC、AV1）を優先し、それが無ければ WebM（VP9、AV1、VP8）です。`MediaRecorder` へのフォールバックはありません。
+Google Fonts、X の埋め込み、YouTube の埋め込みにも通信します。GA4 と Sentry はビルド時の設定に応じて読み込みます。送信内容は[計測](telemetry.md)、素材の差し替えは[セルフホスト](deployment.md)を参照してください。
 
-プレビューのミュートは HTML の `video.muted` だけを変えます。mux する音声はテンプレファイルからです。
-
-保存時のキャラ画素は、使える環境ではテンプレを VideoDecoder で読み、RGBA をコピーして WebGL キーヤに渡します。それが落ちる環境（iOS / WebKit）は、HTML の `video` をシークして同じキーヤに渡します。
-
-## キーイング
-
-背景は純緑のクロマではなく、フレームごとにティール、ライム、グレー、赤、紫などへ変わるベタ塗りです。四隅と上辺から、そのフレームの優勢な背景色を推定し、色距離で抜きます。緑が勝つ画素は補助的に抜き、暗い線画は不透明のまま残し、キー色の巻き込み（スピル）を抑えます。
-
-本線は WebGL のフラグメントシェーダ（`src/keying-gpu.ts`）です。未対応のときは Canvas2D の `getImageData`（`src/keying.ts` の `keyImageData`）に落とします。CPU と GPU は同じパラメータを共有します。プレビューと保存は同じキーヤを通るので、GPU が使えれば書き出しも同じ見た目です。
-
-写真の ImageBitmap は WebGL に直接上げません。`UNPACK_FLIP_Y_WEBGL` との二重反転を避けるため、Canvas2D に描いてからテクスチャにします。
-
-iOS / Safari は Canvas2D の `filter` が無効です。写真のブラーは縮小バッファへの箱型ぼかしで揃えます（`src/blur.ts`）。
-
-## 切替エフェクト
-
-向き、エフェクト、フィルター、線画の大きさは独立です。数値の定義は `src/layout.ts` にあります。ここには動きの意味だけを残します。
-
-テンプレは 30fps です。拍 `S` は `public/official-assets/template/landscape-cuts.json` のスロット時刻で、縦横とも同じファイルです。
-
-**ジャンプ**は参考の Short（o1ROhNU0UNw、30fps）を測った動きです。
-
-- 新しい写真はカットで少し小さく（×0.947）、下にずれて現れ、7 フレームで元の位置へ戻る。位置は `(1−k/7)^2.3`、倍率は `(1−k/7)^2`。
-- 7 フレーム目から次の拍（15 フレーム）へ向けて、再び沈む。スロットが 14 フレームなら、沈み切る前に次のカットが来る。
-- カットから 3 フレーム、写真層に白フラッシュが乗る（加算 0.30 とスクリーン 0.20。`(1−k/3)^2` で減衰）。カット前にはフラッシュも RGB ずれもブラーも無い。キャラを含む全面には 0.06 だけ白が乗る。
-- 沈んでも隙間が出ないよう、写真は 1.32 倍で cover し、静止位置をパネル高さの 7% 上に寄せる。
-- 下ずれの実測 17.5% は横画面の高さに対する比です。縦は、見え方が近いよう短辺に対する移動へ換算します（`jumpDropFrac`）。
-
-**ズーム**は参考投稿（hagikaze_sami、1280×720・30fps）の実測を、書き出し幅に対する比で載せたものです。実測のピクセル数そのものでは描きません。
-
-- 出ていく写真はポーズ切替 `S` の 3 フレーム前から中心へ縮む（S−2 で 0.988、S−1 で 0.947、S で 0.866）。`S` ではポーズだけ新しく、写真はまだ前のものです。新しい写真は `S+1` に 1.115 倍で現れ、1 フレームごとに（倍率−1）が 0.2 倍になって 4 フレームで止まります。キャラは拡縮しません。
-- 全面（写真とキャラ）に、横方向のモーションブラー、RGB の横ずれ（R が右、B が左）、`S` の白の加算、`S+1` の灰かぶり、わずかな行の波打ちが乗ります。キーは `ZOOM_KEYS` です。
-- 縮んだ写真の後ろには、同じ写真の cover ぼかしを敷き、黒帯を見せません。
-- 縦はカーブの形と振幅を変えず、カットからの時間だけ 1.4 倍に引き伸ばします（`ZOOM_PORTRAIT_TIME_SCALE`）。
-
-## 拍の表
-
-`landscape-cuts.json` は 32 スロット、`duration` は 15.667 秒、30fps です。値は frame/30 です。
-
-拍の出どころは、色分けした Short（utNIG60-li0）です。テンプレの 10 スロットにそれぞれ単色を入れて書き出したもので、色の切り替わりが写真の切り替わりそのものです。ffmpeg で全フレームを抜き、キャラのシルエット差分の相互相関でテンプレに合わせています（テンプレフレーム＝動画フレーム +1、相関 0.92）。切り替わりは「S−1 は旧色に白、S は旧と新の混色（ポーズも切り替わる）、S+1 は新色」という 2 フレームのディップで、`slots` は S です。ジャンプの参考は S に新写真とフラッシュ、ズームの参考は S でブラーの頂点、S+1 で新写真、という関係で ±1 フレームに収まります。
-
-同じ動画から、参照クリップでの写真の枚数と並びも取っています。色は 10 種類で、32 カットに `A B C D E F G B E A H B A I F I B D H I G H J C H F I J G D A I` の順に入ります（`photoCount` / `slotPhotoOrder`）。これは参照動画の計測結果です。メーカーのプレビューと書き出しは、利用者が選んだ写真の順をそのまま使います。
-
-テンプレだけの画素差から拍を拾うのは当てになりません。キャラはおおよそ 3 フレーム刻みで動くので、写真の切り替わりが最寄りのポーズ変化から 1〜2 フレームずれることがあります。`scripts/analyze-cuts.py` は測った拍と並びを書き出すだけです。`--check` はテンプレ差分のピークとの位置を確認します（ffmpeg、Pillow、numpy が必要です）。
-
-## 写真の画素
-
-読み込んだ写真は長辺 2880 まで縮小して持ちます（`src/photos.ts` の `PHOTO_MAX_EDGE`）。サムネイルは辺 240 の別コピーです。同時デコードは 2 枚までです。形式のフォールバックは [使い方](usage.md) にあります。
+[ドキュメント目次へ](README.md)

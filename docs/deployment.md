@@ -1,43 +1,64 @@
-# デプロイとセルフホスト
+# fork してセルフホストする
 
-本番は [https://anone.yoiailabs.com](https://anone.yoiailabs.com) です。本体の Worker 名は `anone` で、Astro の `dist` を Cloudflare Workers の静的アセットとして配信します。ページ表示、プレビュー、保存のどれでも、サーバー側で集計処理は呼びません。
+fork では素材・公開先・運営表記を差し替えたうえで、Astro のビルド結果を Cloudflare Workers に公開します。計測を使わない場合、アプリ用の環境変数は不要です。
 
-## 設定
+## 公開前に素材とサイトの設定を差し替える
 
-Worker の設定は次の 2 ファイルです。中身は揃えてあります。
+> [!IMPORTANT]
+> テンプレ映像とトップページの MV・静止画は MIT の対象外です。自分で権利を持つ素材に差し替えるか、取り除いてください。対象ファイルと条件は [README のライセンス節](../README.md#ライセンス)と[公式素材の権利表記](../public/official-assets/LICENSE.md)にあります。
 
-- `cloudflare.config.ts` — `cf` が読む設定。カスタムドメイン、静的アセット、`run_worker_first` のパス
-- `wrangler.toml` — Workers Builds の `wrangler versions upload` が読む設定。`assets.directory` は `./dist`
+GitHub で fork を作り、手元に clone したら、次の箇所を自分の公開内容に合わせます。Node.js と pnpm の準備は[クイックスタート](../README.md#クイックスタート)を参照してください。
 
-`worker/index.ts` は、Cookie に保存した言語があるときだけトップ、制作、コミュニティをその言語の URL へ寄せます。利用規約とプライバシーポリシーの言語付き URL（`/en/privacy` など）は日本語の URL へ 302 します。クローラが日本語の title と OGP を掴むよう、`Accept-Language` では寄せません。ブラウザの言語選択はクライアント側です。
+| 差し替えるもの | 設定・実装 |
+| --- | --- |
+| Worker 名とドメイン | `cloudflare.config.ts` の `worker.name`・`domains`、`wrangler.toml` の `name`・`routes` |
+| 正規 URL・OG 画像の URL | `astro.config.ts` の `site`、`src/page-meta.ts` の `APP_ORIGIN`、`public/robots.txt` の Sitemap |
+| テンプレ映像・音声・切替時刻 | `src/layout.ts` の `TEMPLATES` と参照先の素材・JSON |
+| トップページの MV・静止画 | `src/components/JumpLoop.tsx`。静止画の先読みは `src/layouts/Layout.astro` |
+| サイト名・ロゴ・アイコン | `src/messages.ts`、`src/brand.ts`、`public/brand/`、`public/manifest.webmanifest`、`public/icons/`、`public/favicon.svg` |
+| 外部リンク・埋め込み | `src/links.ts`、`src/reactions.ts`、`src/community-jumps.ts` |
+| 運営者・利用規約・プライバシーポリシー | `src/messages.ts` の運営者表記、`src/terms-copy.ts`、`src/privacy-copy.ts` |
+| 計測先と本番環境の判定 | ビルド時の環境変数、`src/sentry.ts` の `PRODUCTION_HOST`、`src/telemetry-build.ts` の `PRODUCTION_BRANCH` |
 
-正規の URL と OGP は `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN`（どちらも `https://anone.yoiailabs.com`）です。
+`cloudflare.config.ts` は `cf` 用、`wrangler.toml` は Wrangler 用です。両方の Worker 名・ドメイン・アセット設定を揃えます。`wrangler.config.ts` にも `assetsDirectory: "./dist"` と型生成の設定があります。カスタムドメインを使わない場合は `domains` と `routes` を外せます。Workers の既定ドメインでの配信は有効になっています。
 
-## 手元から
+### テンプレ映像はファイルの交換だけでは揃いません
+
+縦・横とも同じ映像と音声を参照します。写真の切替時刻は `landscape-cuts.json` の `slots`、映像の切り抜き位置とキャラクターの配置は `src/layout.ts` にあります。映像を替えたら、この時刻と配置、背景色を抜く処理も確認してください。カット数を変える場合は、`src/timeline.ts` のサムネイル用カット数も合わせます。
+
+`scripts/analyze-cuts.py` は既存テンプレ用の固定フレーム表を書き出すスクリプトです。新しい曲の拍を自動検出するものではありません。素材を取り除く場合は、その素材を表示・読み込みする UI や参照も外します。テンプレなしでは動画生成は動きません。
+
+ロゴや OG 画像は MIT で再利用できますが、自分のサイトに合わせて更新する場合は `scripts/og.html` も変更します。`pnpm og` は英語・韓国語・中国語版、`pnpm og -- --ja` は日本語版を含む OG 画像を生成します。Playwright の Chromium が必要です。`pnpm icons` は SVG から PWA アイコンを生成し、Chrome の場所は `CHROME_PATH` で指定できます。
+
+## ビルド結果と Worker を確認する
 
 ```bash
-pnpm build          # dist を作る
-pnpm preview        # http://127.0.0.1:4173 でビルド結果を見る
-pnpm dev:worker     # build してから wrangler dev
-pnpm deploy         # build してから wrangler deploy
+pnpm install --frozen-lockfile
+pnpm build
+pnpm preview
 ```
 
-`pnpm dev`（`cf dev`）は Worker の開発サーバーです。`dist` が無いと、静的アセットのディレクトリが無いというエラーで止まります。画面を直しながらの確認は `pnpm exec astro dev`（http://127.0.0.1:5173）です。手順の全体は [README](../README.md) にあります。
+`http://127.0.0.1:4173` で静的サイトを確認できます。Worker のリダイレクトやアセット応答を確認するときは、プレビューを終了して次を実行します。
 
-`pnpm deploy` は、`wrangler login` した自分のアカウントへ出します。普段の本番公開は、`main` への push を Cloudflare Workers Builds がビルドして行う想定です。
+```bash
+pnpm dev:worker
+```
 
-## Workers Builds
+このコマンドはビルド後に `wrangler dev -c wrangler.toml` を起動します。接続先はターミナルの表示を使ってください。`pnpm dev` は `cf dev` を起動する別の入口で、先に `dist/` を生成しておく必要があります。
 
-Worker `anone` のビルドは Cloudflare 側の Workers Builds です。非本番ブランチでは `wrangler versions upload` が `wrangler.toml` を読み、そのバージョンをアップロードします。プレビュー用の URL は Cloudflare が発行します。このリポジトリには、その URL もビルド用の秘密も置いていません。
+## 自分の Cloudflare アカウントへ公開する
 
-ビルド変数に計測の ID を置く場合の扱いは [計測](telemetry.md) です。Preview のビルドにも同じ変数が付くため、埋め込むかどうかはコード側で本番ブランチだけに限っています。
+公開先の設定を変更したことを確認してから実行します。
 
-## fork するとき
+```bash
+pnpm exec wrangler login
+pnpm deploy
+```
 
-fork して自分の環境で動かすときは、次を差し替えてください。
+`pnpm deploy` は `pnpm build && wrangler deploy` です。Workers Builds を使う場合も、このリポジトリのビルドコマンドは `pnpm build` です。ビルド工程を分けて設定するならデプロイ工程は `pnpm exec wrangler deploy`、バージョンのアップロードのみなら `pnpm exec wrangler versions upload` を使います。GitHub Actions の `test.yml` はテスト用で、デプロイ処理は含みません。
 
-- **公式素材。** MIT の対象外は `public/official-assets/template/landscape.mp4`、`public/official-assets/jump-loop.mp4`、`public/official-assets/jump-loop-still.png` の 3 ファイルです。再配布はできません。自分で権利を持つ素材に差し替えるか、取り除いてください。詳しくは [public/official-assets/LICENSE.md](../public/official-assets/LICENSE.md) です。`template/landscape-cuts.json` は生成した拍の表で、MIT です。
-- **Cloudflare アカウント。** `wrangler login` で自分のアカウントにデプロイします。`wrangler.toml` の `routes` と `cloudflare.config.ts` の `domains`（どちらも `anone.yoiailabs.com`）は、自分のドメインに書き換えるか消してください。Worker 名 `anone` も、必要なら変えます。ドメインを消しても `workers_dev = true` なので、自分の `*.workers.dev` では開けます。
-- **URL と表記。** `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN` を、自分の公開 URL に合わせます。Sentry に送るときの environment 名（`production` / `preview` / `development`）は `src/sentry.ts` の `PRODUCTION_HOST` で分けます。これは SDK を読み込むかどうかとは別です。
-- **利用規約とプライバシーポリシー。** `src/terms-copy.ts` と `src/privacy-copy.ts`（と各言語の文面）は、Yoiailabs が運営する本番サイト用です。そのまま使わず、自分の運営内容に合わせて書き直してください。
-- **計測。** このチームの Sentry と Google Analytics にデータを送らないでください。ID の置き方は [計測](telemetry.md) です。
+GA4 / Sentry を使う場合は、自分の計測先をビルド変数に設定します。実行時の Worker 変数を変更しても、生成済みのページには反映されません。ブランチごとの有効化条件は[計測](telemetry.md)を参照してください。
+
+公開後は、言語の切替、写真の読み込み、プレビュー、短い動画の生成と保存を確認します。自動テストの範囲と実機で確認する項目は[テスト](testing.md)にあります。
+
+[ドキュメント目次へ](README.md)

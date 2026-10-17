@@ -1,40 +1,57 @@
-# 計測（GA4 / Sentry）
+# GA4 / Sentry の設定と送信内容
 
-Google Analytics 4 と Sentry は、ビルドに測定 ID と DSN が残っているときだけ読み込みます。ID はリポジトリに含まれません。空ならスクリプトを出さず、何も送りません。
+操作イベントは GA4、エラーと処理時間は Sentry へ送ります。どちらも任意で、ビルド時の測定 ID・DSN が空なら、それぞれの SDK を読み込みません。
 
-fork や手元のビルドから、このチームの Sentry プロジェクトと GA4 プロパティへデータを送らないでください。使うなら、自分の DSN と測定 ID をビルド時の環境変数に置きます。チームの値をコピーして使わないでください。
+## 設定はビルド時に読み込む
 
-## 環境変数
-
-| 変数 | 役割 |
+| 環境変数 | 用途 |
 | --- | --- |
-| `VITE_SENTRY_DSN` | Sentry の DSN。未設定なら `@sentry/browser` を読み込まない |
-| `PUBLIC_GA4_MEASUREMENT_ID` | GA4 の測定 ID（`G-` で始まる）。未設定なら gtag.js を読み込まない |
+| `PUBLIC_GA4_MEASUREMENT_ID` | GA4 の測定 ID。空なら gtag.js を読み込まない |
+| `VITE_SENTRY_DSN` | Sentry の DSN。空なら `@sentry/browser` を読み込まない |
 
-空の例は [`.env.example`](../.env.example) です。使うときは `.env` にコピーして値を入れます。`.env` はコミットしません。本番の値は、Worker `anone` の Workers Builds のビルド変数に置きます。ソースやこのドキュメントには書きません。
+手元で使う場合は [`.env.example`](../.env.example) を `.env` にコピーし、自分の計測先を設定します。`.env` はコミットしません。Workers Builds ではビルド変数に設定します。値を変更したら再ビルドが必要です。
 
-Workers Builds のビルド変数は、Preview のビルドにも付きます。`WORKERS_CI` があるビルドでは、`WORKERS_CI_BRANCH` が `main` のときだけ値をページに埋め込みます（`src/telemetry-build.ts` の `shouldEmbedTelemetry`）。それ以外のブランチは、ビルド前にこの 2 つの変数を外すので、SDK を読み込みません。本番ブランチの名前を変えるときは `PRODUCTION_BRANCH` も変えてください。
+> [!NOTE]
+> これらの値はブラウザ用の HTML / JavaScript に埋め込まれます。秘密の API キーや認証トークンを入れないでください。
 
-手元の `pnpm build` には `WORKERS_CI` が無いので、`.env` に書いた値がそのまま入ります。Cloudflare の Workers Builds では `WORKERS_CI` が付き、ブランチが `main` のときだけ埋め込みます。fork で Workers Builds を使うときも同じで、入るのはその fork のビルド変数です。チームの DSN と測定 ID は置かないでください。変数を空にしておけば、SDK は読み込まれず、チームの計測先へは送られません。
+[telemetry-build.ts](../src/telemetry-build.ts) と [astro.config.ts](../astro.config.ts) は、プロセスの環境変数を次の条件で扱います。
 
-## 送るもの
+| ビルド環境 | 計測変数の扱い |
+| --- | --- |
+| `WORKERS_CI` が空・未設定 | 設定した値を使う。ブランチ名による制限はない |
+| `WORKERS_CI` があり、`WORKERS_CI_BRANCH` が `main` | 設定した値を使う |
+| `WORKERS_CI` があり、それ以外のブランチ・ブランチ名なし | ビルド前に計測変数を外す |
 
-件数は画面に出さず、ブラウザから GA4 のカスタムイベントだけ送ります（`src/analytics.ts`、読み込みは `src/analytics-config.ts` と `src/layouts/Layout.astro`）。gtag.js は、最初の操作（ポインタ、キー、スクロール）、タブを隠したとき、または 20 秒後に載せます。`gtag` が無い環境では何もしません。
+本番ブランチ名を変える場合は `PRODUCTION_BRANCH` も変更します。この処理が削除するのはプロセスの環境変数なので、計測値入りの `.env` を CI に持ち込まないでください。
 
-イベントは次です。
+## GA4 に送る操作イベント
 
-- `make_open` — 制作画面を開いた（ランディングからの遷移と、直リンクの初回表示）
-- `photo_picker_open` — ファイル選択を開いた
-- `photos_selected` — 1 枚以上読み込めた（`count`）
-- `photos_rejected` — 枚数や形式で 0 枚だった（短い `reason`）
-- `video_preview` — プレビュー再生を始めた。同じ再生中の再開や、一時停止からの再開では送らない。閉じて開き直せば再送する
-- `generate_start` — 書き出しを始めた（`count`）
-- `video_save` — 保存が成功したあと
-- `generate_fail` — 書き出しが失敗した（既知の失敗は短い `reason`。未知の文面はそのまま送らない）
-- `generate_cancel` — 書き出しをキャンセルした
+[analytics-config.ts](../src/analytics-config.ts) は、最初のポインター操作・キー操作・スクロール、タブを隠したとき、または20秒後に gtag.js を読み込みます。アプリ独自のイベントは [analytics.ts](../src/analytics.ts) に定義されています。
 
-`video_preview` と `video_save` のパラメータは、向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、画像バイト、個人を識別する情報は送りません。
+| イベント | タイミング | パラメーター |
+| --- | --- | --- |
+| `make_open` | 制作画面を開いたとき。直リンクも含む | なし |
+| `photo_picker_open` | 写真の選択画面を開いたとき | なし |
+| `photos_selected` | 1枚以上読み込めたとき | `count`：今回追加した枚数 |
+| `photos_rejected` | 上限・形式・読み込み失敗で写真を追加できなかったとき | `reason`：短い理由コード |
+| `video_preview` | プレビューの再生を始めたとき | `aspect`・`effect`・`swap` |
+| `generate_start` | 動画生成を始めたとき | `count`：写真の枚数 |
+| `video_save` | ダウンロードを開始、またはファイル共有を完了したとき | `aspect`・`effect`・`swap` |
+| `generate_fail` | 動画生成に失敗したとき | `reason`：短い理由コード |
+| `generate_cancel` | 動画生成をキャンセルしたとき | なし |
 
-Sentry は `VITE_SENTRY_DSN` があるときだけ初期化します（`src/sentry.ts`）。ホスト名が `anone.yoiailabs.com` のとき environment は `production`、localhost のときは `development`、それ以外は `preview` です。この分類は、SDK を読むかどうかとは別です。DSN が無ければ、本番のホストでも送りません。トレースのサンプル率は 0.1 です。
+`aspect` は `landscape` / `portrait`、`effect` と `swap` は同じ値で `zoom` / `jump` です。写真名・画像データはイベントに含めません。未知の生成エラーも、その文面を送らず `export_failed` に置き換えます。
 
-確認は GA4 のリアルタイムのイベント、または探索です。
+`video_save` は端末への書き込み完了を保証するイベントではありません。ダウンロード開始後の保存先での操作までは取得しません。GA4 の初期化には `gtag("config", id)` も使うため、この表はアプリ独自のイベント一覧です。
+
+## Sentry に送るエラーと処理時間
+
+[sentry.ts](../src/sentry.ts) は、エラー情報に加えて、プレビューと動画生成の処理時間を計測します。ルートの計測名は `preview.open`、`preview.start`、`preview.playback`、`export.generate` です。トレースの基本サンプル率は0.1で、親のサンプリング判定があれば引き継ぎます。
+
+送信前にユーザー情報、リクエスト本文・Cookie・ヘッダー、写真やファイルに関する追加情報を除去します。画像読み込みの診断には、形式の識別子、MIME、拡張子、バイト数、試した読み込み方法を残します。トレース属性も、向き・エフェクト・出力サイズ・処理時間など、コードで許可した項目に限ります。写真そのものは送信しません。
+
+想定済みの画像読み込みエラーや生成未対応の案内、一部の翻訳スクリプト由来のエラーは除外します。`environment` は `PRODUCTION_HOST` と一致するホストで `production`、localhost 系で `development`、それ以外で `preview` です。この分類は送信を止める設定ではありません。
+
+fork で変更する箇所は[セルフホスト](deployment.md)、外部の埋め込みなどの通信は[アーキテクチャ](architecture.md)も参照してください。
+
+[ドキュメント目次へ](README.md)

@@ -1,9 +1,13 @@
 # ドキュメント
 
-[README](../README.md) に載せない、使い方の詳細と開発者向けのメモです。
+アプリの操作から、コードの構成、自分の環境での公開まで、目的に合わせて読めます。ローカル起動は [README のクイックスタート](../README.md#クイックスタート)を参照してください。
 
-- [使い方](usage.md) — 画面の操作、保存、共有、読める写真
-- [アーキテクチャ](architecture.md) — 画面構成、合成、キーイング、書き出し、拍
-- [デプロイとセルフホスト](deployment.md) — Cloudflare Workers、Workers Builds、fork で差し替えるもの
-- [計測（GA4 / Sentry）](telemetry.md) — ビルド時の環境変数と、送るイベント
-- [テスト](testing.md) — ユニット、ブラウザ、e2e、CI
+| ページ | わかること |
+| --- | --- |
+| [使い方](usage.md) | 写真を並べ、見た目を選び、動画を保存するまで |
+| [アーキテクチャ](architecture.md) | 画面・写真処理・合成・動画生成・配信のつながり |
+| [セルフホスト](deployment.md) | fork で差し替える素材と設定、Cloudflare Workers への公開 |
+| [計測](telemetry.md) | GA4 / Sentry を有効にする条件と送信内容 |
+| [テスト](testing.md) | テストの実行方法、CI と実機確認の範囲 |
+
+素材の権利、掲載停止の連絡先、Issue の受付方針は [README のライセンス節](../README.md#ライセンス)にまとめています。
