@@ -40,14 +40,6 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import { persistLocale, syncLanguageNav } from "./i18n-client.ts";
-import {
-  planTemplateAudio,
-  templateAudioClock,
-  templateAudioIsSeparate,
-  templateAudioNeedsSeek,
-  type TemplateAudioFollow,
-} from "./template-audio.ts";
-import { nextSoundtrackSrc, portraitSoundtrackIfReady, preparePortraitSoundtrack } from "./template-audio-source.ts";
 import { applyJaPhrasePolyfill } from "./ja-phrase.ts";
 import {
   DEFAULT_LOCALE,
@@ -204,183 +196,20 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   stage.dataset.aspect = mode;
   document.body.append(video);
 
-  // 縦の音声だけ別要素。横の書き出し中に置くと WebKit が映像の seeked を遅らせ、
-  // フレームごとにシークタイムアウト（2.5s）まで待って保存が終わらない。
-  // `<audio>` ではなく playsinline の video。iOS は audio 要素を着信スイッチで消し、
-  // 絵の video が鳴り始めると先に再生した audio を止める。ソースは音声だけの MP4。
-  let audio: HTMLVideoElement | null = null;
-  let audioPlayBlocked = false;
-  let audioPlayPending = false;
-  let audioPlayTicket = 0;
-  let audioSeekOnReady = false;
-  let audioRelease: Promise<void> = Promise.resolve();
-  // src を外したあとの currentTime は 0。画角をまたいで再生するときは外す前の時刻。
-  let pinnedAudioTime: number | null = null;
-  const pictureClock = () => templateAudioClock(video.currentTime, pinnedAudioTime);
-
   const syncMuteChrome = () => {
     syncMuteControl(muteBtn, previewMuted, locale);
     muteBtn.setAttribute("aria-pressed", previewMuted ? "false" : "true");
   };
 
-  const releaseTemplateAudio = (): Promise<void> => {
-    const element = audio;
-    if (!element) return audioRelease;
-    audio = null;
-    audioPlayBlocked = false;
-    audioPlayPending = false;
-    audioSeekOnReady = false;
-    audioPlayTicket += 1;
-    audioRelease = new Promise((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        element.remove();
-        resolve();
-      };
-      element.addEventListener("emptied", finish, { once: true });
-      element.pause();
-      element.removeAttribute("src");
-      element.load();
-      window.setTimeout(finish, 1000);
-    });
-    return audioRelease;
-  };
-
-  const ensureTemplateAudio = (): HTMLVideoElement => {
-    if (audio) return audio;
-    const element = document.createElement("video");
-    element.className = "offscreen-video";
-    element.dataset.soundtrack = "portrait";
-    element.playsInline = true;
-    element.setAttribute("playsinline", "");
-    element.setAttribute("webkit-playsinline", "");
-    element.preload = "none";
-    element.controls = false;
-    element.disablePictureInPicture = true;
-    element.addEventListener("loadedmetadata", () => {
-      if (!audioSeekOnReady || element !== audio || recording) return;
-      seekAudioToPicture(element);
-    });
-    document.body.append(element);
-    audio = element;
-    return element;
-  };
-
-  const assignAudioSrc = (element: HTMLVideoElement) => {
-    const file = TEMPLATES[mode].audio;
-    const src = nextSoundtrackSrc({
-      current: element.getAttribute("src"),
-      prepared: portraitSoundtrackIfReady(file),
-      file,
-      paused: element.paused,
-    });
-    if (!src) return;
-    element.preload = "auto";
-    element.src = src;
-  };
-
-  const seekAudioToPicture = (element: HTMLVideoElement) => {
-    const clock = pictureClock();
-    if (element.readyState < HTMLMediaElement.HAVE_METADATA) {
-      audioSeekOnReady = true;
-      return;
-    }
-    if (audioPlayPending) {
-      audioSeekOnReady = true;
-      return;
-    }
-    if (element.seeking) return;
-    if (!templateAudioNeedsSeek(element.currentTime, clock)) {
-      audioSeekOnReady = false;
-      return;
-    }
-    audioSeekOnReady = false;
-    element.currentTime = clock;
-  };
-
-  const requestAudioPlay = (element: HTMLVideoElement) => {
-    const ticket = ++audioPlayTicket;
-    audioPlayPending = true;
-    void element.play().then(
-      () => {
-        if (ticket !== audioPlayTicket) return;
-        audioPlayPending = false;
-        audioPlayBlocked = false;
-        if (audioSeekOnReady && element === audio) seekAudioToPicture(element);
-      },
-      (error: unknown) => {
-        if (ticket !== audioPlayTicket) return;
-        audioPlayPending = false;
-        const denied = error instanceof DOMException && error.name === "NotAllowedError";
-        audioPlayBlocked = denied && element.paused;
-      },
-    );
-  };
-
-  const followTemplateAudio = (patch: Pick<TemplateAudioFollow, "userGesture" | "picturePlaying" | "allowPlay">) => {
-    const plan = planTemplateAudio({
-      mode,
-      previewMuted,
-      exporting: recording,
-      playBlocked: audioPlayBlocked,
-      playPending: audioPlayPending,
-      audioPaused: audio?.paused ?? true,
-      audioReady: (audio?.readyState ?? 0) >= HTMLMediaElement.HAVE_METADATA,
-      audioTime: audio?.currentTime ?? 0,
-      videoTime: pictureClock(),
-      ...patch,
-    });
-    // 書き出し中に muted を false→true へ戻すと、WebKit は seeking のまま seeked を出さない。
+  // 縦も横も landscape.mp4 の映像と音声をこの 1 本で出す。
+  // 書き出し中に muted を false→true へ戻すと、WebKit は seeking のまま seeked を出さない。
+  const applyPreviewMute = () => {
     if (!recording) {
-      video.muted = plan.pictureMuted;
+      video.muted = previewMuted;
       video.volume = 1;
     }
-    if (plan.release) {
-      void releaseTemplateAudio();
-      syncMuteChrome();
-      return;
-    }
-    if (!plan.play && !plan.seek && !audio) {
-      syncMuteChrome();
-      return;
-    }
-    const element = ensureTemplateAudio();
-    element.muted = plan.audioMuted;
-    element.volume = 1;
-    if (plan.play || plan.seek) assignAudioSrc(element);
-    // 音声だけの URL がまだ無いあいだは play() しない。元の映像ファイルで src を固定しない。
-    if (!element.getAttribute("src")) {
-      syncMuteChrome();
-      return;
-    }
-    if (plan.play || plan.seek) seekAudioToPicture(element);
-    if (plan.play) requestAudioPlay(element);
     syncMuteChrome();
   };
-
-  const pauseCompanionAudio = () => {
-    if (recording || playbackBusy) return;
-    audio?.pause();
-  };
-
-  video.addEventListener("play", () => {
-    if (recording) return;
-    followTemplateAudio({ userGesture: false, picturePlaying: true, allowPlay: true });
-  });
-  // 絵の pause では音声を止めない。シーク・画角の読み直し・ループの頭出しが
-  // video.pause() を呼び、そのたびに音声を止めると iOS は次の play() を拒否する。
-  // ユーザーの停止は pausePlayback / stopPlayback が明示的に止める。
-  video.addEventListener("seeked", () => {
-    if (recording || !audio || !templateAudioIsSeparate(mode)) return;
-    seekAudioToPicture(audio);
-  });
-  video.addEventListener("timeupdate", () => {
-    if (recording || !audio || !templateAudioIsSeparate(mode) || video.paused) return;
-    // 止まった音声の再開はする。シークはプランが「ずれている」と判断したときだけ。
-    followTemplateAudio({ userGesture: false, picturePlaying: true, allowPlay: true });
-  });
 
   const attachCompositorCanvas = (created: Compositor) => {
     if (created.canvas.isConnected) return;
@@ -487,10 +316,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  const canUse = () =>
-    photos.length > 0 &&
-    video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-    (!templateAudioIsSeparate(mode) || portraitSoundtrackIfReady(TEMPLATES.portrait.audio) !== undefined);
+  const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 
   const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
 
@@ -651,10 +477,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     stopLoop = startVideoPaintLoop(video, paint);
   };
 
-  const applyPreviewMute = () => {
-    followTemplateAudio({ userGesture: false, picturePlaying: isPreviewPlaying(), allowPlay: false });
-  };
-
   const analyticsParams = () => videoEventParams(mode, swapStyle);
 
   const trackPreviewStart = () => {
@@ -673,7 +495,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     previewTracked = false;
     haltLoop();
     video.pause();
-    pauseCompanionAudio();
     refreshButtons();
   };
 
@@ -685,7 +506,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     suppressPlayUntil = Date.now() + 350;
     haltLoop();
     video.pause();
-    pauseCompanionAudio();
     paint();
     refreshButtons();
   };
@@ -694,16 +514,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (recording || playbackBusy || !canUse()) return;
     if (!fromStart && Date.now() < suppressPlayUntil) return;
     // await より前。play() がジェスチャの外に出ると WebKit は拒否し、ミュート解除でも戻らない。
-    // 絵を先に play してから音声を play する。逆だと iOS は後から鳴った video に音声を止める。
-    if (entry === "user" && templateAudioIsSeparate(mode)) {
-      video.muted = true;
-      if (video.paused) void video.play().catch(() => {});
-    }
-    followTemplateAudio({
-      userGesture: entry === "user",
-      picturePlaying: true,
-      allowPlay: true,
-    });
+    applyPreviewMute();
     playbackBusy = true;
     const gen = (playGen += 1);
     const durationAtStart = Number.isFinite(video.duration) ? video.duration : 0;
@@ -777,7 +588,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       playing = false;
       previewTracked = false;
       haltLoop();
-      audio?.pause();
       refreshButtons();
       setErrorFeedback("preview", error, "statusPlayFailed");
     } finally {
@@ -919,17 +729,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  const loadTemplatePicture = () => {
-    beginTemplateVideoLoad(video);
-    void preparePortraitSoundtrack(TEMPLATES.portrait.audio).then(() => {
-      refreshButtons();
-      if (recording || !templateAudioIsSeparate(mode) || !isPreviewPlaying()) return;
-      followTemplateAudio({ userGesture: false, picturePlaying: true, allowPlay: true });
-    });
-  };
-
   const armStudio = () => {
-    loadTemplatePicture();
+    beginTemplateVideoLoad(video);
     const resources = studioTrace.openPreviewResourcesSpan();
     void ensureCompositor()
       .then(() => {
@@ -1072,18 +873,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     syncAspectRadios(mode);
     video.dataset.templateSrc = TEMPLATES[mode].video;
     video.dataset.templateAudio = TEMPLATES[mode].audio;
-    pinnedAudioTime = aspectResume?.play && templateAudioIsSeparate(mode) ? aspectResume.time : null;
     video.removeAttribute("src");
     video.preload = "none";
-    void releaseTemplateAudio();
     applyPreviewMute();
     if (photos.length > 0 || activeView === "studio" || recording) {
-      loadTemplatePicture();
-    }
-    if (aspectResume?.play && templateAudioIsSeparate(mode)) {
-      video.muted = true;
-      void video.play().catch(() => {});
-      followTemplateAudio({ userGesture: true, picturePlaying: true, allowPlay: true });
+      beginTemplateVideoLoad(video);
     }
     refreshButtons();
   };
@@ -1121,14 +915,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       if (!recording && photos.length === 0) syncSeek();
       const resume = aspectResume;
       aspectResume = null;
-      if (!resume || activeView !== "studio" || recording) {
-        pinnedAudioTime = null;
-        return;
-      }
+      if (!resume || activeView !== "studio" || recording) return;
       previewTracked = resume.tracked;
       try {
         await seekVideo(video, resume.time);
-        pinnedAudioTime = null;
         paint();
         if (resume.play) {
           await startPlayback(false, "aspect_resume");
@@ -1136,7 +926,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
           refreshButtons();
         }
       } catch (error) {
-        pinnedAudioTime = null;
         paint();
         refreshButtons();
         setErrorFeedback("preview", error, "statusPreviewResumeFailed");
@@ -1167,7 +956,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         previewTracked = false;
         haltLoop();
         video.pause();
-        pauseCompanionAudio();
         paint();
         refreshButtons();
         setErrorFeedback("preview", error, "statusPlayFailed");
@@ -1232,7 +1020,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       setFeedback("photo", msg("statusPickImages"), "error");
       return;
     }
-    loadTemplatePicture();
+    beginTemplateVideoLoad(video);
     photosBusy = true;
     refreshButtons();
     setFeedback("photo", msg("statusPhotosLoading"), "busy");
@@ -1329,7 +1117,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     event.preventDefault();
     event.stopPropagation();
     previewMuted = !previewMuted;
-    followTemplateAudio({ userGesture: true, picturePlaying: isPreviewPlaying(), allowPlay: true });
+    applyPreviewMute();
   });
 
   cancelExportBtn.addEventListener("click", () => {
@@ -1361,10 +1149,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     studioTrace.onGenerationStart();
     recording = true;
     stopPlayback();
-    // 別音声を emptied まで待ってから映像をシークする。要素が残ると WebKit は seeked を出さず、
-    // 短い書き出しでもフレーム数 × 2.5s で保存結果が返らない。
-    // ここでは muted を変えない。offscreen の video を false から true に戻すと、同じ理由で seeked が止まる。
-    await releaseTemplateAudio();
+    // ここでは muted を変えない。offscreen の video を false から true に戻すと、WebKit は seeked を出さない。
     playing = false;
     previewTracked = false;
     video.pause();

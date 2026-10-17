@@ -6,14 +6,13 @@
 
 | ファイル | 内容 |
 | --- | --- |
-| `template/vertical.mp4` | 楽曲「あのね」の音声を含む、書き出しに使うテンプレ映像 |
-| `template/landscape.mp4` | 書き出しに使うキャラクターのテンプレ映像（横。縦の線画の画素源でもある） |
+| `template/landscape.mp4` | 楽曲「あのね」の音声を含む、書き出しに使うテンプレ映像（縦横ともこの 1 本。縦の線画の画素源でもある） |
 | `jump-loop.mp4` | トップページに出す MV のループ映像 |
 | `jump-loop-still.png` | その MV の 1 フレーム |
 
-上の 4 ファイルに含まれる楽曲・キャラクター・映像が、ナナツカゼの著作物です。
+上の 3 ファイルに含まれる楽曲・キャラクター・映像が、ナナツカゼの著作物です。
 
-`template/cuts.json` と `template/landscape-cuts.json` は、このリポジトリの `scripts/analyze-cuts.py` がテンプレ映像から書き出した拍の表です。公式素材そのものではなく、リポジトリの MIT License の対象です。テンプレ映像の横に置いています。
+`template/landscape-cuts.json` は、このリポジトリの `scripts/analyze-cuts.py` がテンプレ映像から書き出した拍の表です。縦横で同じ拍を使います。公式素材そのものではなく、リポジトリの MIT License の対象です。テンプレ映像の横に置いています。
 
 ## 権利
 
@@ -29,6 +28,6 @@
 
 ## English
 
-The four files in the table above are **excluded from** this repository's [MIT License](../../LICENSE). They are the template videos used to make the output video (`template/vertical.mp4`, `template/landscape.mp4`, including the song, character, and video they contain) and the top-page MV clip (`jump-loop.mp4` and its frame `jump-loop-still.png`). Copyright of the song 「あのね」 ("Anone"), the jumping character, and those videos belongs to ナナツカゼ (Nanatsukaze). The operator does not own them and does not license or sublicense them, through this repository, the MIT License, or the terms of use. This is not an official Nanatsukaze guideline, and publication here is not endorsement, supervision, or permission to use the assets. Redistribution, modification, and reuse are not permitted. Forks must replace or remove these four files.
+The three files in the table above are **excluded from** this repository's [MIT License](../../LICENSE). They are the template video used to make the output video (`template/landscape.mp4`, including the song, character, and video it contains; used for both portrait and landscape) and the top-page MV clip (`jump-loop.mp4` and its frame `jump-loop-still.png`). Copyright of the song 「あのね」 ("Anone"), the jumping character, and those videos belongs to ナナツカゼ (Nanatsukaze). The operator does not own them and does not license or sublicense them, through this repository, the MIT License, or the terms of use. This is not an official Nanatsukaze guideline, and publication here is not endorsement, supervision, or permission to use the assets. Redistribution, modification, and reuse are not permitted. Forks must replace or remove these three files.
 
-The two cut JSON files next to the template videos are generated timing tables from this repository and remain under the MIT License.
+The cut JSON file next to the template video (`template/landscape-cuts.json`) is a generated timing table from this repository, shared by portrait and landscape, and remains under the MIT License.

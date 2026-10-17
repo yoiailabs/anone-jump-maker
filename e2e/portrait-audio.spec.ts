@@ -9,26 +9,30 @@ test.beforeEach(async ({ page }) => {
   await waitForAppReady(page);
 });
 
-test("portrait preview keeps the soundtrack playing on iOS Safari and Android Chrome", async ({ page }) => {
+test("portrait preview plays landscape audio on the picture element", async ({ page }) => {
   await uploadPhoto(page);
   await switchAspect(page, "portrait");
   await expect(page.locator("#previewToggle")).toBeEnabled();
   await page.locator("#previewToggle").click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
-  await expectSoundtrackMoving(page);
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+  await expectPictureAudible(page);
+  const fetched = await page.evaluate(() => performance.getEntriesByType("resource").map((entry) => entry.name));
+  expect(fetched.some((name) => name.endsWith("/official-assets/template/vertical.mp4"))).toBe(false);
+  expect(fetched.some((name) => name.endsWith("/official-assets/template/cuts.json"))).toBe(false);
 });
 
-test("switching from landscape to portrait keeps the soundtrack on the picture clock", async ({ page }) => {
+test("switching from landscape to portrait keeps the picture clock and its own audio", async ({ page }) => {
   await uploadPhoto(page);
   await page.locator("#previewToggle").click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
   await switchAspect(page, "portrait");
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
-  await expectSoundtrackMoving(page);
+  await expectPictureAudible(page);
 });
 
-test("portrait soundtrack plays again after export", async ({ page }) => {
+test("portrait picture audio plays again after export", async ({ page }) => {
   await uploadPhoto(page);
   await switchAspect(page, "portrait");
   await page.locator("#saveBtn").click();
@@ -42,7 +46,7 @@ test("portrait soundtrack plays again after export", async ({ page }) => {
   await expect(page.locator("#previewToggle")).toBeEnabled();
   await page.locator("#previewToggle").click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
-  await expectSoundtrackMoving(page);
+  await expectPictureAudible(page);
 });
 
 async function uploadPhoto(page: Page): Promise<void> {
@@ -58,41 +62,44 @@ async function switchAspect(page: Page, value: "portrait" | "landscape"): Promis
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", value);
 }
 
-async function expectSoundtrackMoving(page: Page): Promise<{ time: number; seeks: number }> {
+async function expectPictureAudible(page: Page): Promise<void> {
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const audio = document.querySelector<HTMLVideoElement>('video[data-soundtrack="portrait"]');
-        if (!audio || audio.paused) return "";
-        return `${audio.currentTime}`;
+        const companion = document.querySelector('video[data-soundtrack="portrait"]');
+        const video = document.querySelector<HTMLVideoElement>("video.offscreen-video");
+        if (companion || !video || video.paused || video.muted) return "";
+        if (!video.dataset.templateSrc?.endsWith("/landscape.mp4")) return "";
+        if (video.dataset.templateAudio !== video.dataset.templateSrc) return "";
+        return `${video.currentTime}`;
       }),
     )
     .not.toBe("");
-  const started = await soundtrackSample(page);
+  const started = await pictureSample(page);
   await expect
     .poll(async () => {
-      const now = await soundtrackSample(page);
-      return now && !now.paused && now.time > started.time + 0.12 ? "moving" : "";
+      const now = await pictureSample(page);
+      return now && !now.paused && !now.muted && now.time > started.time + 0.12 ? "moving" : "";
     })
     .toBe("moving");
-  const after = await soundtrackSample(page);
+  const after = await pictureSample(page);
   expect(after.seeks).toBeLessThan(3);
   expect(after.paused).toBe(false);
-  return after;
+  expect(after.muted).toBe(false);
 }
 
-async function soundtrackSample(page: Page): Promise<{ time: number; paused: boolean; seeks: number }> {
+async function pictureSample(page: Page): Promise<{ time: number; paused: boolean; muted: boolean; seeks: number }> {
   return page.evaluate(() => {
-    const audio = document.querySelector<HTMLVideoElement>('video[data-soundtrack="portrait"]');
-    if (!audio) return { time: 0, paused: true, seeks: 0 };
-    const watched = audio as HTMLVideoElement & { __seekCount?: number };
+    const video = document.querySelector<HTMLVideoElement>("video.offscreen-video");
+    if (!video) return { time: 0, paused: true, muted: true, seeks: 0 };
+    const watched = video as HTMLVideoElement & { __seekCount?: number };
     if (watched.__seekCount == null) {
       watched.__seekCount = 0;
       watched.addEventListener("seeking", () => {
         watched.__seekCount = (watched.__seekCount ?? 0) + 1;
       });
     }
-    return { time: audio.currentTime, paused: audio.paused, seeks: watched.__seekCount ?? 0 };
+    return { time: video.currentTime, paused: video.paused, muted: video.muted, seeks: watched.__seekCount ?? 0 };
   });
 }
 

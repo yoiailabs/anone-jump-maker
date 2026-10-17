@@ -15,7 +15,7 @@ const SHORT_CUTS = {
   photoCount: 2,
 } as const;
 
-test("binds controls and the picker before cuts.json returns", async ({ page }) => {
+test("binds controls and the picker before landscape-cuts.json returns", async ({ page }) => {
   await blockAnalytics(page);
 
   let releaseCuts!: () => void;
@@ -32,15 +32,10 @@ test("binds controls and the picker before cuts.json returns", async ({ page }) 
     },
   });
 
-  await page.route("**/official-assets/template/cuts.json", async (route) => {
-    await cutsHeld;
-    await route.fulfill({ json: SHORT_CUTS });
-  });
   await page.route("**/official-assets/template/landscape-cuts.json", async (route) => {
     await cutsHeld;
     await route.fulfill({ json: SHORT_CUTS });
   });
-  await page.route("**/official-assets/template/vertical.mp4", (route) => route.fulfill(serveClip()));
   await page.route("**/official-assets/template/landscape.mp4", (route) => route.fulfill(serveClip()));
 
   await page.goto("/");

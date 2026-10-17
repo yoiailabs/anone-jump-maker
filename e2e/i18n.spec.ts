@@ -179,10 +179,8 @@ test.describe("localized OGP and SEO", () => {
       ["/brand/anone-logo-horizontal.svg", /image\/svg\+xml/],
       ["/official-assets/jump-loop-still.png", /image\/png/],
       ["/official-assets/jump-loop.mp4", /video\//],
-      ["/official-assets/template/cuts.json", /json/],
       ["/official-assets/template/landscape-cuts.json", /json/],
       ["/official-assets/template/landscape.mp4", /video\//],
-      ["/official-assets/template/vertical.mp4", /video\//],
       ["/favicon.svg", /image\/svg\+xml/],
       ["/icons/icon-192.png", /image\/png/],
     ] as const;

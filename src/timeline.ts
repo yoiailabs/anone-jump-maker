@@ -47,7 +47,7 @@ export function photoIndexForSlot(slot: number, photoCount: number): number {
   return slot % photoCount;
 }
 
-/** 縦横ともテンプレは 32 カット。`cuts.json` の slots 長と一致する。 */
+/** 縦横ともテンプレは 32 カット。`landscape-cuts.json` の slots 長と一致する。 */
 export const TEMPLATE_SLOT_COUNT = TEMPLATE_SLOT_PHOTO_ORDER.length;
 
 /**

@@ -16,7 +16,7 @@
 
 5 の保存はテンプレをリアルタイム録画せず、30fps の論理時刻でシークして同じ compositor を描き、WebCodecs + mediabunny で映像とテンプレ音声を mux します。画面上のプレビュー合成は内部解像度 0.5×・24fps で、保存の解像度と 30fps とは独立です。プレビューのミュートは HTML の `video.muted` だけを変え、mux する音声はテンプレファイルからです。WebCodecs が使えないブラウザでは録画に落とさず、Chrome / Edge を案内します。
 
-**縦**の保存は 1080×1920 です。差し込み写真はキャンバス全面に cover します（上下の拡大ぼかし・暗転・仕切り線はありません）。線画キャラの画素は `public/official-assets/template/landscape.mp4`（1920×1080）の y=6 から高さ 1074 を、今までのプレート（608 幅の緑帯と同じ縦横比、ステッカー位置）に描きます。音声は `public/official-assets/template/vertical.mp4` のままです。基準ポーズ（t=9s）では白縁込みの幅がキャンバスの約 72%、中心 x が約 45%、水平カットの下端が y=75.8% です。上端はポーズで動きます。
+**縦**の保存は 1080×1920 です。差し込み写真はキャンバス全面に cover します（上下の拡大ぼかし・暗転・仕切り線はありません）。線画キャラの画素と音声は `public/official-assets/template/landscape.mp4`（1920×1080）です。画素は y=6 から高さ 1074 を、今までのプレート（608 幅の緑帯と同じ縦横比、ステッカー位置）に描きます。基準ポーズ（t=9s）では白縁込みの幅がキャンバスの約 72%、中心 x が約 45%、水平カットの下端が y=75.8% です。上端はポーズで動きます。
 
 **横**は 1280×720（保存の出力サイズ。画面上のプレビューは内部解像度だけ下げる）。上下ブラー帯はなく、キャンバス全体が 16:9 本編です。差し込み写真が背景、線画キャラは前面（白ステッカー縁、公式テンプレと同じ等倍）。公式テンプレは `public/official-assets/template/landscape.mp4`（1920×1080、X 公式投稿および CapCut 16:9 と同じ映像）です。
 
@@ -84,9 +84,9 @@ pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドル
 
 パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境（本番以外のホストを含む）では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
 
-カット表は向き別のファイルですが中身は同じ拍です（縦横テンプレは同じアニメーション）。
+カット表は縦横で同じ `public/official-assets/template/landscape-cuts.json` です（縦横テンプレは同じアニメーションで、音声も同じ `landscape.mp4`）。
 
-- 縦 `public/official-assets/template/cuts.json` ／ 横 `public/official-assets/template/landscape-cuts.json` … 32 スロット。
+- `landscape-cuts.json` … 32 スロット。
 - 拍の出どころは色分け Short（utNIG60-li0）。テンプレの 10 スロットにそれぞれ単色を入れて書き出したもので、色の切り替わりが写真の切替そのものです。ffmpeg で全フレームを抜き、キャラのシルエット差分の相互相関でテンプレに合わせ（テンプレフレーム＝動画フレーム +1、相関 0.92）、切替は「S−1: 旧色＋白、S: 旧新の混色（ポーズも切替）、S+1: 新色」の 2 フレのディップで、`slots` は S です（`slotFrames`、値は frame/30）。写真の参考 2 本もこれと ±1 フレで一致します（ジャンプは S に新写真＋フラッシュ、ズームは S でブラー頂点・S+1 で新写真）。
 - 同じ動画から写真の枚数と並びも取っています。色は 10 種類で、32 カットに `A B C D E F G B E A H B A I F I B D H I G H J C H F I J G D A I` の順に入ります（`photoCount` / `slotPhotoOrder`）。これは参照動画の計測結果です。メーカーのプレビューと書き出しは、選んだ写真の順をそのまま使います（1 枚目が最初のカット）。枚数がカット数より少ないときは同じ順で先頭からくり返します。ファイル名・更新日時・デコード完了順では並べ替えません。
 - テンプレだけの画素差から拍を拾うのは当てになりません。キャラは 3 フレ刻みの独自の間隔で動くので、写真の切替が最寄りのポーズ切替から 1〜2 フレ外れることがあります（233 と 236、426 と 424 など）。`scripts/analyze-cuts.py` は測った拍と並びを書き出すだけにし、`--check` でテンプレの差分ピークとの位置関係を確認できます。
@@ -95,7 +95,7 @@ pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドル
 
 fork して自分の環境で動かすときは、次を差し替えてください。
 
-- **公式素材。** MIT の対象外は次の 4 ファイルだけです。`public/official-assets/template/vertical.mp4`、`public/official-assets/template/landscape.mp4`（書き出しに使うテンプレ映像。楽曲・キャラクター・映像を含む）、`public/official-assets/jump-loop.mp4`、`public/official-assets/jump-loop-still.png`（トップページの MV とその 1 フレーム）。再配布・転用はできません。自分で権利を持つ素材に差し替えるか取り除いてください。詳しくは [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) です。同じディレクトリの `cuts.json` と `landscape-cuts.json` は生成した拍の表で、MIT です。
+- **公式素材。** MIT の対象外は次の 3 ファイルだけです。`public/official-assets/template/landscape.mp4`（書き出しに使うテンプレ映像。楽曲・キャラクター・映像を含む。縦横ともこの 1 本）、`public/official-assets/jump-loop.mp4`、`public/official-assets/jump-loop-still.png`（トップページの MV とその 1 フレーム）。再配布・転用はできません。自分で権利を持つ素材に差し替えるか取り除いてください。詳しくは [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) です。同じディレクトリの `landscape-cuts.json` は生成した拍の表で、MIT です。
 - **Cloudflare アカウント。** `wrangler login` で自分のアカウントにデプロイします。`wrangler.toml` の `routes` と `cloudflare.config.ts` の `domains`（どちらも `anone.yoiailabs.com` のカスタムドメイン）は、自分のドメインに書き換えるか消してください。Worker 名 `anone` も必要なら変えます。消しても `workers_dev = true` なので `*.workers.dev` で開けます。
 - **URL と表記。** 正規 URL・OGP は `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN`、本番ホストの判定は `src/analytics-config.ts` の `PRODUCTION_HOST` です。
 - **利用規約・プライバシーポリシー。** `src/terms-copy.ts`、`src/privacy-copy.ts`（と各言語版）は Yoiailabs が運営する本番サイト用です。そのまま使わず、自分の運営内容に合わせて書き直してください。
@@ -103,9 +103,9 @@ fork して自分の環境で動かすときは、次を差し替えてくださ
 
 ## 素材とライセンス
 
-ソースコードの著作権は Yoiailabs にあり、[MIT License](./LICENSE)（Copyright (c) 2026 Yoiailabs）で公開しています。MIT の対象外は、書き出し用テンプレ映像 `public/official-assets/template/vertical.mp4` と `public/official-assets/template/landscape.mp4`、トップページの MV `public/official-assets/jump-loop.mp4` とそのフレーム `public/official-assets/jump-loop-still.png` だけです。楽曲「あのね」、ジャンプするキャラクターおよびそれらの映像の著作権はナナツカゼに帰属し、運営者は利用を許諾・再許諾しておらず、再配布・転用はできません。`template/cuts.json` と `template/landscape-cuts.json` は生成した拍の表で MIT です。文言は [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) と [NOTICE.md](./NOTICE.md) にあります。「反応」「みんなの #あのねジャンプ」に載せる X の投稿（`src/reactions.ts`、`src/community-jumps.ts`）は各投稿者のもので、X 公式の埋め込みで表示しています。掲載をやめてほしい場合の連絡方法を含め、詳しくは [NOTICE.md](./NOTICE.md) を見てください。
+ソースコードの著作権は Yoiailabs にあり、[MIT License](./LICENSE)（Copyright (c) 2026 Yoiailabs）で公開しています。MIT の対象外は、書き出し用テンプレ映像 `public/official-assets/template/landscape.mp4`（縦横ともこの 1 本）、トップページの MV `public/official-assets/jump-loop.mp4` とそのフレーム `public/official-assets/jump-loop-still.png` だけです。楽曲「あのね」、ジャンプするキャラクターおよびそれらの映像の著作権はナナツカゼに帰属し、運営者は利用を許諾・再許諾しておらず、再配布・転用はできません。`template/landscape-cuts.json` は生成した拍の表で、縦横共通、MIT です。文言は [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) と [NOTICE.md](./NOTICE.md) にあります。「反応」「みんなの #あのねジャンプ」に載せる X の投稿（`src/reactions.ts`、`src/community-jumps.ts`）は各投稿者のもので、X 公式の埋め込みで表示しています。掲載をやめてほしい場合の連絡方法を含め、詳しくは [NOTICE.md](./NOTICE.md) を見てください。
 
-Source code is copyright Yoiailabs and MIT-licensed (Copyright (c) 2026 Yoiailabs). Excluded from MIT are only `public/official-assets/template/vertical.mp4`, `public/official-assets/template/landscape.mp4`, `public/official-assets/jump-loop.mp4`, and `public/official-assets/jump-loop-still.png`. The cut JSON files are MIT. See [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) and [NOTICE.md](./NOTICE.md).
+Source code is copyright Yoiailabs and MIT-licensed (Copyright (c) 2026 Yoiailabs). Excluded from MIT are only `public/official-assets/template/landscape.mp4`, `public/official-assets/jump-loop.mp4`, and `public/official-assets/jump-loop-still.png`. The cut JSON file is MIT. See [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) and [NOTICE.md](./NOTICE.md).
 
 外部からの pull request は受け付けていません。脆弱性の報告は [SECURITY.md](./SECURITY.md) を見てください。
 

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Write the photo-slot tables (public/official-assets/template/cuts.json, landscape-cuts.json).
+"""Write the shared photo-slot table (public/official-assets/template/landscape-cuts.json).
 
+Portrait and landscape both play landscape.mp4, so they share this one table.
 Source of truth for the slot timing is the colour-coded Short utNIG60-li0: the
 template rendered with each of its 10 photo slots filled by a flat colour, so
 every photo swap is an unambiguous colour change. Frames were extracted with
-ffmpeg (30 fps) and the video aligned to public/official-assets/template/vertical.mp4 by
-cross-correlating the character-silhouette difference signal (template frame =
-video frame + 1, corr 0.92, stable in every 60-frame window).
+ffmpeg (30 fps) and the video aligned to the template by cross-correlating the
+character-silhouette difference signal (template frame = video frame + 1,
+corr 0.92, stable in every 60-frame window). The landscape file carries the
+same animation, so the beat frames are not shifted.
 
 Each swap is a two-frame dip-to-white: S-1 shows the old colour lifted, S shows
 the old/new blend (and the character pose change), S+1 the clean new colour.
@@ -16,8 +18,7 @@ Short (o1ROhNU0UNw) shows the new photo with its flash on S, the zoom post
 
 The same video gives the photo count and order: 10 distinct colours over 32
 slots, A B C D E F G B E A H B A I F I B D H I G H J C H F I J G D A I
-(`slotPhotoOrder`, A..J -> 0..9). The vertical and landscape templates share
-the animation frame for frame, so both tables get the same slots.
+(`slotPhotoOrder`, A..J -> 0..9). Portrait uses this landscape table too.
 
 Detecting the beats from the template alone (pixel difference of the character)
 is not reliable: the character animates on its own ~3-frame grid and the photo
@@ -38,11 +39,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FPS = 30
-
-# Green chroma crop inside vertical.mp4. The portrait photo covers the full
-# 608×1080 frame; this band is only the character source (see src/layout.ts).
-PORTRAIT_BAND_Y = 312
-PORTRAIT_BAND_H = 342
 
 # Template frame index of each photo swap (frame 0 = first slot), from the
 # colour-coded Short utNIG60-li0 (video frame + 1).
@@ -100,9 +96,8 @@ def slot_seconds(frames: list[int]) -> list[float]:
     return [round(f / FPS, 6) for f in frames]
 
 
-def payload_for(mode: str, video: Path, width: int, height: int, duration: float) -> dict:
+def payload_for(video: Path, width: int, height: int, duration: float) -> dict:
     rel = video.relative_to(ROOT).as_posix()
-    band = {"y": PORTRAIT_BAND_Y, "h": PORTRAIT_BAND_H} if mode == "portrait" else {"y": 0, "h": height}
     return {
         "source": rel,
         "note": NOTE,
@@ -110,7 +105,7 @@ def payload_for(mode: str, video: Path, width: int, height: int, duration: float
         "fps": FPS,
         "width": width,
         "height": height,
-        "band": band,
+        "band": {"y": 0, "h": height},
         "slotFrames": BEAT_FRAMES,
         "slots": slot_seconds(BEAT_FRAMES),
         "photoCount": PHOTO_COUNT,
@@ -118,7 +113,7 @@ def payload_for(mode: str, video: Path, width: int, height: int, duration: float
     }
 
 
-def check_template(video: Path, mode: str) -> None:
+def check_template(video: Path) -> None:
     import tempfile
 
     import numpy as np
@@ -134,9 +129,6 @@ def check_template(video: Path, mode: str) -> None:
         diffs: list[float] = []
         for path in files:
             arr = np.asarray(Image.open(path).convert("L"), dtype=np.float32)
-            if mode == "portrait":
-                h = arr.shape[0]
-                arr = arr[int(round(h * PORTRAIT_BAND_Y / 1080)) : int(round(h * (PORTRAIT_BAND_Y + PORTRAIT_BAND_H) / 1080))]
             small = np.asarray(Image.fromarray(arr.astype(np.uint8)).resize((96, 54)), dtype=np.float32)
             diffs.append(0.0 if prev is None else float(np.mean(np.abs(small - prev))))
             prev = small
@@ -147,20 +139,17 @@ def check_template(video: Path, mode: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("portrait", "landscape", "both"), default="both")
     parser.add_argument("--check", action="store_true", help="print template frame differences at each beat")
     args = parser.parse_args()
-    modes = ("portrait", "landscape") if args.mode == "both" else (args.mode,)
 
-    for mode in modes:
-        video = ROOT / "public/official-assets/template" / ("vertical.mp4" if mode == "portrait" else "landscape.mp4")
-        out = ROOT / "public/official-assets/template" / ("cuts.json" if mode == "portrait" else "landscape-cuts.json")
-        width, height, duration = probe(video)
-        payload = payload_for(mode, video, width, height, duration)
-        out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        print(f"{mode}: wrote {len(BEAT_FRAMES)} slots, {width}x{height}, {duration:.3f}s -> {out}")
-        if args.check:
-            check_template(video, mode)
+    video = ROOT / "public/official-assets/template/landscape.mp4"
+    out = ROOT / "public/official-assets/template/landscape-cuts.json"
+    width, height, duration = probe(video)
+    payload = payload_for(video, width, height, duration)
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {len(BEAT_FRAMES)} slots, {width}x{height}, {duration:.3f}s -> {out}")
+    if args.check:
+        check_template(video)
 
 
 if __name__ == "__main__":

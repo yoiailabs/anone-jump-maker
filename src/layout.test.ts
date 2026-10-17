@@ -81,7 +81,7 @@ import {
   zoomReferenceTau,
   zoomTransitionScale,
 } from "./layout.ts";
-import portraitCuts from "../public/official-assets/template/cuts.json" with { type: "json" };
+import templateCuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 
 describe("output size", () => {
   it("lists landscape first and uses it as the default", () => {
@@ -266,10 +266,10 @@ describe("mainPanelRect", () => {
 });
 
 describe("templateBandRect", () => {
-  it("takes the landscape frame for the portrait character and keeps vertical audio", () => {
+  it("takes the landscape frame, audio, and beats for the portrait template", () => {
     expect(TEMPLATES.portrait.video).toBe("/official-assets/template/landscape.mp4");
-    expect(TEMPLATES.portrait.audio).toBe("/official-assets/template/vertical.mp4");
-    expect(TEMPLATES.portrait.cuts).toBe("/official-assets/template/cuts.json");
+    expect(TEMPLATES.portrait.audio).toBe(TEMPLATES.portrait.video);
+    expect(TEMPLATES.portrait.cuts).toBe("/official-assets/template/landscape-cuts.json");
     expect(TEMPLATES.landscape.video).toBe("/official-assets/template/landscape.mp4");
     expect(TEMPLATES.landscape.audio).toBe(TEMPLATES.landscape.video);
     expect(PORTRAIT_CHROMA_FRAME).toEqual({ width: 1920, height: 1080 });
@@ -645,7 +645,7 @@ describe("zoom cycle (hagikaze_sami)", () => {
   });
 
   it("keeps the longer portrait zoom inside the shortest template cut", () => {
-    const gaps = portraitCuts.slotFrames.slice(1).map((frame, i) => frame - portraitCuts.slotFrames[i]!);
+    const gaps = templateCuts.slotFrames.slice(1).map((frame, i) => frame - templateCuts.slotFrames[i]!);
     const shortest = Math.min(...gaps);
     expect(shortest).toBe(13);
     const scale = zoomTransitionScale("portrait");
@@ -654,7 +654,7 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(windowFrames).toBeCloseTo((ZOOM_OUT_FRAMES + tail) * ZOOM_PORTRAIT_TIME_SCALE, 6);
     expect(windowFrames).toBeLessThan(shortest);
     // the 13-frame cut (192→205) has finished the previous zoom before the next shrink
-    const slots = portraitCuts.slots;
+    const slots = templateCuts.slots;
     const cut = 192 / TEMPLATE_FPS;
     const next = 205 / TEMPLATE_FPS;
     const afterFx = cut + (tail * scale + 0.25) / TEMPLATE_FPS;
