@@ -10,4 +10,4 @@
 | [計測](telemetry.md) | GA4 / Sentry を有効にする条件と送信内容 |
 | [テスト](testing.md) | テストの実行方法、CI と実機確認の範囲 |
 
-素材の権利、掲載停止の連絡先、Issue の受付方針は [README のライセンス節](../README.md#ライセンス)にまとめています。
+ソースコードは [MIT License](../LICENSE) です。MIT の対象外の素材は[公式素材の権利表記](../public/official-assets/LICENSE.md)にまとめています。

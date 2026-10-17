@@ -19,7 +19,7 @@
 </p>
 
 > [!NOTE]
-> ナナツカゼ「あのね」の非公式ファンメイド作品です。ナナツカゼによる公認ではありません。テンプレ映像など、一部の素材は MIT の対象外です。[ライセンス](#ライセンス)を確認してください。
+> ナナツカゼ「あのね」の非公式ファンメイド作品です。ナナツカゼによる公認ではありません。テンプレ映像など一部の素材は MIT の対象外です。対象のファイルは[公式素材の権利表記](public/official-assets/LICENSE.md)にあります。
 
 ## クイックスタート
 
@@ -64,21 +64,3 @@ pnpm test
 | [セルフホスト](docs/deployment.md) | fork で差し替える素材と設定、Cloudflare Workers への公開 |
 | [計測](docs/telemetry.md) | GA4 / Sentry の有効化と送る内容 |
 | [テスト](docs/testing.md) | テストの種類と実行方法、CI |
-
-## ライセンス
-
-ソースコードは [MIT License](LICENSE)、Copyright (c) 2026 Yoiailabs です。自作のロゴ（`public/brand/`）と OG 画像（`public/og*.png`）も MIT に含まれます。
-
-次の素材はナナツカゼの著作物で、MIT の対象外です。
-
-| ファイル | 内容 |
-| --- | --- |
-| `public/official-assets/template/landscape.mp4` | 動画生成に使う、音声付きテンプレ映像 |
-| `public/official-assets/jump-loop.mp4` | トップページの MV 映像 |
-| `public/official-assets/jump-loop-still.png` | MV 映像の静止画 |
-
-これらの再配布・改変・転用は許諾していません。fork する場合は、自分で権利を持つ素材に差し替えるか取り除いてください。詳しくは[公式素材の権利表記](public/official-assets/LICENSE.md)を参照してください。同じ場所の `template/landscape-cuts.json` は生成した拍の表で、MIT の対象です。
-
-埋め込まれた X 投稿の権利は各投稿者にあり、MIT の対象外です。ご自身の投稿の掲載停止は、投稿 URL を添えて [GitHub Issue](https://github.com/yoiailabs/anone-jump-maker/issues) または [@aku11i](https://github.com/aku11i) へ GitHub 経由でご連絡ください。
-
-外部からの pull request は受け付けていません。
