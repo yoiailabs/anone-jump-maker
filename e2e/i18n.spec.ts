@@ -384,66 +384,85 @@ test.describe("source repository link", () => {
     await stubShortTemplate(page);
   });
 
-  test("shows the same GitHub pill on the top page and the make page", async ({ page }) => {
+  test("shows one visible GitHub pill on every top page and the make page", async ({ page }) => {
+    for (const [path, locale] of [
+      ["/", "ja"],
+      ["/en", "en"],
+      ["/ko", "ko"],
+      ["/zh", "zh"],
+    ] as const) {
+      await page.goto(path);
+      await waitForAppReady(page);
+      await expect(page.locator("#makerView")).toBeVisible();
+      await expectVisibleRepoLink(page, locale);
+      await expectBelowVisibleLangSwitch(page);
+    }
+
     await page.goto("/");
     await waitForAppReady(page);
-    await expect(page.locator("#makerView")).toBeVisible();
-    await expectSourceLink(page, "#makerGitHub", "ja");
-    await expect(page.locator("#studioGitHub")).toBeHidden();
-    await expectBelow(page, "#makerView .notes .lang-switch", "#makerGitHub", "#siteFooter");
     const topCta = await page.locator("#toStudio").boundingBox();
-    const topLink = await page.locator("#makerGitHub").boundingBox();
+    const topLink = await page.locator("#githubRepo").boundingBox();
     expect(topCta && topLink && topLink.width < topCta.width).toBe(true);
 
-    await page.goto("/en");
-    await waitForAppReady(page);
-    await expectSourceLink(page, "#makerGitHub", "en");
-    await expect(page.locator("#studioGitHub")).toBeHidden();
+    for (const [path, locale] of [
+      ["/make", "ja"],
+      ["/en/make", "en"],
+    ] as const) {
+      await page.goto(path);
+      await waitForAppReady(page);
+      await expect(page.locator("#studioView")).toBeVisible();
+      await expectVisibleRepoLink(page, locale);
+      await expectBelowVisibleLangSwitch(page);
+    }
 
     await page.goto("/make");
     await waitForAppReady(page);
-    await expectSourceLink(page, "#studioGitHub", "ja");
-    await expect(page.locator("#makerGitHub")).toBeHidden();
-    await expectBelow(page, "#studioView .lang-switch", "#studioGitHub", "#siteFooter");
     const save = await page.locator("#saveBtn").boundingBox();
-    const studioLink = await page.locator("#studioGitHub").boundingBox();
+    const studioLink = await page.locator("#githubRepo").boundingBox();
     expect(save && studioLink && studioLink.width < save.width).toBe(true);
-
-    await page.goto("/en/make");
-    await waitForAppReady(page);
-    await expectSourceLink(page, "#studioGitHub", "en");
-    await expect(page.locator("#makerGitHub")).toBeHidden();
   });
 });
 
-async function expectSourceLink(page: Page, selector: string, locale: "ja" | "en") {
-  const link = page.locator(selector);
+async function expectVisibleRepoLink(page: Page, locale: "ja" | "en" | "ko" | "zh") {
+  const link = page.locator("#githubRepo");
+  await expect(page.locator("a.github-link")).toHaveCount(1);
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", SOURCE_REPO_HREF);
   await expect(link).toHaveAttribute("target", "_blank");
   await expect(link).toHaveAttribute("rel", "noopener noreferrer");
   await expect(link).toHaveAttribute("aria-label", t(locale, "makerSourceAria"));
   await expect(link).toHaveText(t(locale, "makerSource"));
-  await expect(link).toHaveClass(/github-link/);
-  const paint = await link.evaluate((el) => {
+  const box = await link.boundingBox();
+  expect(box !== null && box.height > 20 && box.width > 40).toBe(true);
+  const hidden = await link.evaluate((el) => {
     const style = getComputedStyle(el);
     return {
+      inHidden: Boolean(el.closest("[hidden]")),
+      display: style.display,
+      visibility: style.visibility,
       fontSize: Number.parseFloat(style.fontSize),
       borderTopWidth: Number.parseFloat(style.borderTopWidth),
       color: style.color,
     };
   });
-  expect(paint.fontSize).toBeGreaterThan(14);
-  expect(paint.borderTopWidth).toBeGreaterThanOrEqual(3);
-  expect(paint.color).toBe("rgb(26, 26, 26)");
+  expect(hidden.inHidden).toBe(false);
+  expect(hidden.display).not.toBe("none");
+  expect(hidden.visibility).not.toBe("hidden");
+  expect(hidden.fontSize).toBeGreaterThan(14);
+  expect(hidden.borderTopWidth).toBeGreaterThanOrEqual(3);
+  expect(hidden.color).toBe("rgb(26, 26, 26)");
 }
 
-async function expectBelow(page: Page, above: string, middle: string, below: string) {
-  const aboveBox = await page.locator(above).boundingBox();
-  const middleBox = await page.locator(middle).boundingBox();
-  const belowBox = await page.locator(below).boundingBox();
-  expect(aboveBox && middleBox && middleBox.y > aboveBox.y + aboveBox.height - 1).toBe(true);
-  expect(middleBox && belowBox && middleBox.y + middleBox.height <= belowBox.y + 1).toBe(true);
+async function expectBelowVisibleLangSwitch(page: Page) {
+  const lang = page.locator(".lang-switch:visible").last();
+  const link = page.locator("#githubRepo");
+  const footer = page.locator("#siteFooter");
+  await expect(lang).toBeVisible();
+  const langBox = await lang.boundingBox();
+  const linkBox = await link.boundingBox();
+  const footerBox = await footer.boundingBox();
+  expect(langBox && linkBox && linkBox.y > langBox.y + langBox.height - 1).toBe(true);
+  expect(linkBox && footerBox && linkBox.y + linkBox.height <= footerBox.y + 1).toBe(true);
 }
 
 test.describe("footer copyright", () => {

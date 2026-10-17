@@ -104,17 +104,15 @@ describe("maker source repository", () => {
     expect(SOURCE_REPO_HREF).toBe("https://github.com/yoiailabs/anone-jump-maker");
   });
 
-  it("uses one outlined link on the landing page and the studio page", () => {
-    const maker = makerSrc.indexOf('id="makerView"');
-    const makerGitHub = makerSrc.indexOf('id="makerGitHub"');
-    const studio = makerSrc.indexOf('id="studioView"');
-    const studioGitHub = makerSrc.indexOf('id="studioGitHub"');
+  it("renders one repository link outside the views that get hidden", () => {
     const community = makerSrc.indexOf('id="communityView"');
-    expect(makerGitHub).toBeGreaterThan(maker);
-    expect(makerGitHub).toBeLessThan(studio);
-    expect(studioGitHub).toBeGreaterThan(studio);
-    expect(community).toBeGreaterThan(studioGitHub);
-    expect(makerSrc.match(/<GitHubLink\b/g)).toHaveLength(2);
+    const github = makerSrc.indexOf("<GitHubLink");
+    const footer = makerSrc.indexOf("<SiteFooter");
+    expect(github).toBeGreaterThan(community);
+    expect(footer).toBeGreaterThan(github);
+    expect(makerSrc.match(/<GitHubLink\b/g)).toHaveLength(1);
+    expect(makerSrc).not.toContain('id="makerGitHub"');
+    expect(makerSrc).not.toContain('id="studioGitHub"');
     expect(githubLinkSrc).toContain("SOURCE_REPO_HREF");
     expect(githubLinkSrc).toContain('target="_blank"');
     expect(githubLinkSrc).toContain('rel="noopener noreferrer"');

@@ -776,11 +776,16 @@ html[lang="ja"] .ja-phrase {
   margin: 0.85rem 0 0;
 }
 
-.page-end {
+/* 表示中の画面の外に置く。hidden の制作画面の中に入れるとトップでは描画されない。 */
+.github-repo-row {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.85rem;
+  justify-content: center;
+  margin-top: calc(0.85rem - var(--section-gap));
+  margin-bottom: calc(0.65rem - var(--section-gap));
+}
+
+.app:has(#communityView:not([hidden])) .github-repo-row {
+  display: none;
 }
 
 /* 主操作の黄緑ボタンより小さい枠線ピル。文字は本文色で、フッターの細いリンクより目立たせる。 */

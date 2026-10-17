@@ -217,10 +217,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
                 dangerouslySetInnerHTML={{ __html: reactionsHtml }}
               />
             </section>
-            <div className="page-end">
-              <LanguageNav locale={locale} view="maker" />
-              <GitHubLink id="makerGitHub" locale={locale} />
-            </div>
+            <LanguageNav locale={locale} view="maker" />
           </footer>
         </div>
         <div className="app-view" id="studioView" hidden={studioHidden}>
@@ -469,10 +466,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
             </section>
             <LiveFeedback id="saveFeedback" place="save" />
           </section>
-          <div className="page-end">
-            <LanguageNav locale={locale} view="studio" />
-            <GitHubLink id="studioGitHub" locale={locale} />
-          </div>
+          <LanguageNav locale={locale} view="studio" />
         </div>
         <div
           className="app-view"
@@ -480,6 +474,9 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           hidden={communityHidden}
           {...(communityHtml ? { dangerouslySetInnerHTML: { __html: communityHtml } } : {})}
         />
+        <div className="github-repo-row">
+          <GitHubLink id="githubRepo" locale={locale} />
+        </div>
         <SiteFooter locale={locale} />
       </div>
     </>
