@@ -31,6 +31,7 @@ import {
   chooseExportCharacterPath,
   copySampleRgba,
   firstResolved,
+  frameIsCurrentForTime,
   frameTimes,
   hasWebCodecsVideoEncoder,
   isAbortError,
@@ -320,7 +321,7 @@ async function probeExportCharacterPath(
     }
   } catch (error) {
     if (isAbortError(error)) throw error;
-    // copyTo / PTS / decoder が WebKit で落ちても HTML video に落とす
+    // copyTo / PTS / decoder が落ちても HTML video に落とす
   }
   return finish();
 }
@@ -387,17 +388,23 @@ async function encodeWithRgbaFrames(options: {
   let i = 0;
   let firstFingerprint: number | undefined;
   let acquireStart = trace ? nowMs() : 0;
+  // samplesAtTimestamps は GOP のたびに flush する。WebKit はその直前のフレームを出さず null になる。
+  const lastTime = times[times.length - 1] ?? 0;
+  const iterator = sink.samples(0, lastTime + frameDuration * 2)[Symbol.asyncIterator]();
+  let upcoming: Awaited<ReturnType<typeof iterator.next>>["value"] | null = null;
   try {
-    for await (const sample of sink.samplesAtTimestamps(times)) {
+    const firstStep = await iterator.next();
+    upcoming = firstStep.done ? null : firstStep.value;
+    while (i < times.length) {
       const acquireMs = trace ? markStage(trace.acquire, acquireStart) : 0;
-      if (signal?.aborted) {
+      if (signal?.aborted) throwIfAborted(signal);
+      const time = times[i]!;
+      let sample: NonNullable<typeof upcoming> | null = null;
+      while (upcoming && frameIsCurrentForTime(upcoming.timestamp, time, frameDuration)) {
         sample?.close();
-        throwIfAborted(signal);
-      }
-      const time = times[i];
-      if (time === undefined) {
-        sample?.close();
-        break;
+        sample = upcoming;
+        const step = await iterator.next();
+        upcoming = step.done ? null : step.value;
       }
       if (!sample) {
         throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
@@ -459,6 +466,9 @@ async function encodeWithRgbaFrames(options: {
   } catch (error) {
     finishFrameTrace(trace, isAbortError(error) ? "cancelled" : "error");
     throw error;
+  } finally {
+    upcoming?.close();
+    await iterator.return?.();
   }
 }
 

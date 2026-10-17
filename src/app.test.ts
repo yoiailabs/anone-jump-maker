@@ -188,6 +188,11 @@ describe("preview save CTA", () => {
     expect(appSrc).not.toContain("video.muted = templatePictureMuted");
     expect(offlineSrc).toContain("video.volume = 0");
     expect(offlineSrc).not.toContain("video.muted = true");
+    const follow = appSrc.indexOf("const followTemplateAudio");
+    const mutedAssign = appSrc.indexOf("video.muted = plan.pictureMuted", follow);
+    expect(appSrc.lastIndexOf("if (!recording)", mutedAssign)).toBeGreaterThan(follow);
+    const scrub = appSrc.indexOf("const scrubTo");
+    expect(appSrc.indexOf("if (gen !== seekGen || isAbortError(error)) return;", scrub)).toBeGreaterThan(scrub);
     const aspect = appSrc.indexOf("const applyAspect = (next: AspectMode)");
     const pin = appSrc.indexOf("pinnedAudioTime =", aspect);
     const clearSrc = appSrc.indexOf('video.removeAttribute("src")', aspect);

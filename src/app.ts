@@ -311,8 +311,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       videoTime: pictureClock(),
       ...patch,
     });
-    video.muted = plan.pictureMuted;
-    video.volume = 1;
+    // 書き出し中に muted を false→true へ戻すと、WebKit は seeking のまま seeked を出さない。
+    if (!recording) {
+      video.muted = plan.pictureMuted;
+      video.volume = 1;
+    }
     if (plan.release) {
       void releaseTemplateAudio();
       syncMuteChrome();
@@ -768,11 +771,19 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     if (recording || !Number.isFinite(time)) return;
     if (isPreviewPlaying() || playbackBusy) pausePlayback();
     const gen = ++seekGen;
-    void seekVideo(video, time).then(() => {
-      if (gen !== seekGen) return;
-      paint();
-      refreshButtons();
-    });
+    // 追い越されたシークは currentTime がずれて「シークがタイムアウトしました」になる。
+    // 待ちを捨てる。タイマーの再試行はしない（背面タブではタイマーが止まる）。
+    void seekVideo(video, time).then(
+      () => {
+        if (gen !== seekGen) return;
+        paint();
+        refreshButtons();
+      },
+      (error: unknown) => {
+        if (gen !== seekGen || isAbortError(error)) return;
+        setErrorFeedback("preview", error, "statusPlayFailed");
+      },
+    );
   };
 
   const setExportProgress = (percent: number) => {
