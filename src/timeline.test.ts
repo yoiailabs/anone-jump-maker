@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import portraitCuts from "../public/official-assets/template/cuts.json" with { type: "json" };
+import templateCuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 import {
   TEMPLATE_PHOTO_COUNT,
   TEMPLATE_SLOT_COUNT,
@@ -104,7 +104,7 @@ describe("template photo order (colour-coded Short utNIG60-li0)", () => {
 
   it("lists every 1-based cut a photo is shown on", () => {
     expect(TEMPLATE_SLOT_COUNT).toBe(32);
-    expect(portraitCuts.slots).toHaveLength(TEMPLATE_SLOT_COUNT);
+    expect(templateCuts.slots).toHaveLength(TEMPLATE_SLOT_COUNT);
     expect(playbackPositions(0, 3)).toEqual([1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31]);
     expect(playbackPositions(1, 3)).toEqual([2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32]);
     expect(playbackPositions(2, 3)).toEqual([3, 6, 9, 12, 15, 18, 21, 24, 27, 30]);
@@ -115,10 +115,10 @@ describe("template photo order (colour-coded Short utNIG60-li0)", () => {
     expect(playbackPositions(3, 3)).toEqual([]);
     expect(playbackPositions(0, 0)).toEqual([]);
     for (let photo = 0; photo < 3; photo += 1) {
-      const fromCuts = portraitCuts.slots
+      const fromCuts = templateCuts.slots
         .map((_, slot) => (photoIndexForSlot(slot, 3) === photo ? slot + 1 : 0))
         .filter((position) => position > 0);
-      expect(playbackPositions(photo, 3, portraitCuts.slots.length)).toEqual(fromCuts);
+      expect(playbackPositions(photo, 3, templateCuts.slots.length)).toEqual(fromCuts);
     }
   });
 

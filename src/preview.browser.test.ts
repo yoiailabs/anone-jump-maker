@@ -42,7 +42,8 @@ describe("beginTemplateVideoLoad", () => {
       beginTemplateVideoLoad(video);
       expect(video.preload).toBe("auto");
       expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
-      expect(video.dataset.templateAudio).toBe("/official-assets/template/vertical.mp4");
+      expect(video.dataset.templateAudio).toBe(TEMPLATES.portrait.audio);
+      expect(video.dataset.templateAudio).toBe(video.dataset.templateSrc);
       beginTemplateVideoLoad(video);
       expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
     } finally {

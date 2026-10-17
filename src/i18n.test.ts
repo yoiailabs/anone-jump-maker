@@ -43,7 +43,7 @@ describe("parseAppPath", () => {
     expect(parseAppPath("/manifest.webmanifest")).toBeNull();
     expect(parseAppPath("/icons/icon-192.png")).toBeNull();
     expect(parseAppPath("/community-jumps")).toBeNull();
-    expect(parseAppPath("/en/official-assets/template/cuts.json")).toBeNull();
+    expect(parseAppPath("/en/official-assets/template/landscape-cuts.json")).toBeNull();
   });
 });
 

@@ -19,7 +19,7 @@ export const OUTPUTS = {
 
 /**
  * 縦プレートの縦横比と線画位置の基準。インク 138–431 と緑帯 342 はこの 608×1080 で測った。
- * 書き出しは 1080×1920。クロマの画素は landscape.mp4。音声は vertical.mp4。
+ * 書き出しは 1080×1920。クロマの画素も音声も landscape.mp4。
  */
 export const PORTRAIT_TEMPLATE = { width: 608, height: 1080 } as const;
 
@@ -41,8 +41,8 @@ export const OUTPUT = OUTPUTS.portrait;
 export const TEMPLATES = {
   portrait: {
     video: "/official-assets/template/landscape.mp4",
-    audio: "/official-assets/template/vertical.mp4",
-    cuts: "/official-assets/template/cuts.json",
+    audio: "/official-assets/template/landscape.mp4",
+    cuts: "/official-assets/template/landscape-cuts.json",
   },
   landscape: {
     video: "/official-assets/template/landscape.mp4",
@@ -83,7 +83,7 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 
 /**
  * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
- * スロット時刻 S（cuts.json）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
+ * スロット時刻 S（landscape-cuts.json。縦横共通）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
  * ジャンプは S に新写真、ズームは縦横とも S+1 に新写真（S はブラー頂点）。
  */
 export const TEMPLATE_FPS = 30;

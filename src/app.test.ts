@@ -1,10 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { TEMPLATES } from "./layout.ts";
-import { loadTimeline, loadTimelines } from "./app.ts";
+import { loadTimeline, loadTimelines, templateSrcPath } from "./app.ts";
 import appSrc from "./app.ts?raw";
 import compositorSrc from "./compositor.ts?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
 import offlineSrc from "./offline-encode.ts?raw";
+
+describe("templateSrcPath", () => {
+  it("treats a relative template url and its absolute form as the same file", () => {
+    const file = "/official-assets/template/landscape.mp4";
+    expect(templateSrcPath(file)).toBe(file);
+    expect(templateSrcPath(`https://anone.yoiailabs.com${file}`)).toBe(file);
+    expect(templateSrcPath(null)).toBe("");
+  });
+});
 
 describe("loadTimeline", () => {
   it("parses a cuts table", async () => {
@@ -14,7 +23,7 @@ describe("loadTimeline", () => {
       vi.fn(async () => new Response(JSON.stringify(cuts), { status: 200 })),
     );
     try {
-      await expect(loadTimeline("/official-assets/template/cuts.json")).resolves.toEqual(cuts);
+      await expect(loadTimeline("/official-assets/template/landscape-cuts.json")).resolves.toEqual(cuts);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -32,17 +41,12 @@ describe("loadTimeline", () => {
 
 describe("loadTimelines", () => {
   it("loads portrait and landscape tables", async () => {
-    const portrait = { duration: 1, slots: [0] };
-    const landscape = { duration: 2, slots: [0, 1] };
-    const fetchMock = vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
-      const body = url.includes("landscape") ? landscape : portrait;
-      return new Response(JSON.stringify(body), { status: 200 });
-    });
+    const shared = { duration: 2, slots: [0, 1] };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(shared), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     try {
-      await expect(loadTimelines()).resolves.toEqual({ portrait, landscape });
-      expect(fetchMock).toHaveBeenCalledWith(TEMPLATES.portrait.cuts);
+      await expect(loadTimelines()).resolves.toEqual({ portrait: shared, landscape: shared });
+      expect(TEMPLATES.portrait.cuts).toBe(TEMPLATES.landscape.cuts);
       expect(fetchMock).toHaveBeenCalledWith(TEMPLATES.landscape.cuts);
     } finally {
       vi.unstubAllGlobals();
@@ -173,35 +177,35 @@ describe("preview save CTA", () => {
     expect(appSrc).not.toContain("sharePendingExport");
   });
 
-  it("starts portrait audio inside the user gesture and releases it before export seeks", () => {
+  it("unmutes the single template video inside the user gesture and leaves muted alone during export", () => {
     const start = appSrc.indexOf("const startPlayback = async");
     const firstAwait = appSrc.indexOf("await ensureTimelines()", start);
-    const gesturePlay = appSrc.indexOf('userGesture: entry === "user"', start);
-    expect(gesturePlay).toBeGreaterThan(start);
-    expect(gesturePlay).toBeLessThan(firstAwait);
-    const save = appSrc.indexOf("const startSave = async");
-    const release = appSrc.indexOf("await releaseTemplateAudio()", save);
-    const encode = appSrc.indexOf("exportJumpVideo(", save);
-    expect(release).toBeGreaterThan(save);
-    expect(release).toBeLessThan(encode);
-    expect(appSrc).not.toContain("audio.play().catch(() => {})");
+    const unmute = appSrc.indexOf("applyPreviewMute()", start);
+    expect(unmute).toBeGreaterThan(start);
+    expect(unmute).toBeLessThan(firstAwait);
+    expect(appSrc).toContain("video.muted = previewMuted");
+    expect(appSrc).not.toContain('document.createElement("audio")');
+    expect(appSrc).not.toContain("preparePortraitSoundtrack");
+    expect(appSrc).not.toContain("followTemplateAudio");
+    expect(appSrc).not.toContain("releaseTemplateAudio");
     expect(appSrc).not.toContain("video.muted = templatePictureMuted");
+    const save = appSrc.indexOf("const startSave = async");
+    const encode = appSrc.indexOf("exportJumpVideo(", save);
+    const recordingOn = appSrc.indexOf("recording = true", save);
+    expect(recordingOn).toBeGreaterThan(save);
+    expect(recordingOn).toBeLessThan(encode);
+    expect(appSrc).toContain("if (!recording)");
     expect(offlineSrc).toContain("video.volume = 0");
     expect(offlineSrc).not.toContain("video.muted = true");
-    const follow = appSrc.indexOf("const followTemplateAudio");
-    const mutedAssign = appSrc.indexOf("video.muted = plan.pictureMuted", follow);
-    expect(appSrc.lastIndexOf("if (!recording)", mutedAssign)).toBeGreaterThan(follow);
     const scrub = appSrc.indexOf("const scrubTo");
     expect(appSrc.indexOf("if (gen !== seekGen || isAbortError(error)) return;", scrub)).toBeGreaterThan(scrub);
-    const aspect = appSrc.indexOf("const applyAspect = (next: AspectMode)");
-    const pin = appSrc.indexOf("pinnedAudioTime =", aspect);
-    const clearSrc = appSrc.indexOf('video.removeAttribute("src")', aspect);
-    expect(pin).toBeGreaterThan(aspect);
-    expect(pin).toBeLessThan(clearSrc);
-    expect(appSrc).toContain("templateAudioClock(video.currentTime, pinnedAudioTime)");
     const loaded = appSrc.indexOf('video.addEventListener("loadeddata"');
-    const resumeSeek = appSrc.indexOf("await seekVideo(video, resume.time)", loaded);
-    expect(appSrc.indexOf("pinnedAudioTime = null", resumeSeek)).toBeGreaterThan(resumeSeek);
+    expect(appSrc.indexOf("await seekVideo(video, resume.time)", loaded)).toBeGreaterThan(loaded);
+    const aspect = appSrc.indexOf("const applyAspect = (next: AspectMode)");
+    const samePicture = appSrc.indexOf("TEMPLATES[next].video", aspect);
+    const clearSrc = appSrc.indexOf('video.removeAttribute("src")', aspect);
+    expect(samePicture).toBeGreaterThan(aspect);
+    expect(clearSrc).toBeGreaterThan(samePicture);
   });
 
   it("rewinds the character and drops the keyed texture before another export or preview", () => {

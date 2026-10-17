@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import portraitCuts from "../public/official-assets/template/cuts.json" with { type: "json" };
+import templateCuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 import { EXPORT_FPS, frameTimes } from "./export.ts";
 import { TEMPLATE_FPS, swapFx, type SwapStyle } from "./layout.ts";
 import { PHOTO_MAX_COUNT, takeUpToPhotoCap } from "./photo-list.ts";
@@ -18,7 +18,7 @@ const REPORTED_SCRAMBLED_PLAYBACK = [
   28, 29, 30, 31, 32,
 ];
 
-const SLOT_COUNT = portraitCuts.slots.length;
+const SLOT_COUNT = templateCuts.slots.length;
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -95,19 +95,19 @@ describe("selection order through decode, preview, and export", () => {
 });
 
 function slotPlates(photos: readonly LoadedPhoto[], style: SwapStyle): string[] {
-  return portraitCuts.slots.map((time) => plateAt(photos, time, style));
+  return templateCuts.slots.map((time) => plateAt(photos, time, style));
 }
 
 /** 保存は全フレームをこの順で描く。ジャンプはスロットの選択順、ズームは直前 1 フレだけ前の写真。 */
 function expectExportPlates(photos: readonly LoadedPhoto[], style: SwapStyle): void {
   const count = photos.length;
-  for (const time of frameTimes(portraitCuts.duration, EXPORT_FPS)) {
-    const slot = slotForTime(time, portraitCuts.slots);
+  for (const time of frameTimes(templateCuts.duration, EXPORT_FPS)) {
+    const slot = slotForTime(time, templateCuts.slots);
     const current = photoIndexForSlot(slot, count);
     const previous = photoIndexForSlot(Math.max(0, slot - 1), count);
-    const plate = photoIndexForSlot(swapFx(time, portraitCuts.slots, style).plateSlot, count);
+    const plate = photoIndexForSlot(swapFx(time, templateCuts.slots, style).plateSlot, count);
     const portraitPlate = photoIndexForSlot(
-      swapFx(time, portraitCuts.slots, style, "portrait").plateSlot,
+      swapFx(time, templateCuts.slots, style, "portrait").plateSlot,
       count,
     );
     if (style === "jump") {
@@ -118,15 +118,15 @@ function expectExportPlates(photos: readonly LoadedPhoto[], style: SwapStyle): v
       expect([current, previous], `portrait ${style} frame ${time}`).toContain(portraitPlate);
     }
   }
-  for (let slot = 1; slot < portraitCuts.slots.length; slot += 1) {
-    const afterHold = portraitCuts.slots[slot]! + 1 / TEMPLATE_FPS + 1e-4;
-    const plate = photoIndexForSlot(swapFx(afterHold, portraitCuts.slots, style).plateSlot, count);
+  for (let slot = 1; slot < templateCuts.slots.length; slot += 1) {
+    const afterHold = templateCuts.slots[slot]! + 1 / TEMPLATE_FPS + 1e-4;
+    const plate = photoIndexForSlot(swapFx(afterHold, templateCuts.slots, style).plateSlot, count);
     expect(plate, `${style} after cut ${slot}`).toBe(photoIndexForSlot(slot, count));
   }
 }
 
 function plateAt(photos: readonly LoadedPhoto[], time: number, style: SwapStyle): string {
-  const name = photoForSlot(photos, swapFx(time, portraitCuts.slots, style).plateSlot)?.name;
+  const name = photoForSlot(photos, swapFx(time, templateCuts.slots, style).plateSlot)?.name;
   if (!name) throw new Error(`missing plate at ${time}`);
   return name;
 }

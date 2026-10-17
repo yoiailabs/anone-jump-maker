@@ -67,10 +67,10 @@ describe("offline export plan", () => {
     expect(EXPORT_AUDIO_SOURCE).toBe("template-file");
   });
 
-  it("keeps portrait audio on vertical.mp4 when the picture is landscape.mp4", () => {
+  it("muxes the picture file when audio is the same template", () => {
     const picture = "https://anone.local/official-assets/template/landscape.mp4";
-    expect(resolveTemplateAudioSrc(picture, "/official-assets/template/vertical.mp4")).toBe("/official-assets/template/vertical.mp4");
     expect(resolveTemplateAudioSrc(picture, "/official-assets/template/landscape.mp4")).toBe(picture);
+    expect(resolveTemplateAudioSrc(picture, "/other-audio.mp4")).toBe("/other-audio.mp4");
     expect(resolveTemplateAudioSrc(picture)).toBe(picture);
     expect(resolveTemplateAudioSrc("/official-assets/template/landscape.mp4", "/official-assets/template/landscape.mp4")).toBe(
       "/official-assets/template/landscape.mp4",
@@ -259,7 +259,7 @@ type ReloadVideo = VideoStub & {
 function createReloadVideo(): ReloadVideo {
   const listeners = new Map<string, Set<() => void>>();
   let time = 0;
-  let src = "/official-assets/template/vertical.mp4";
+  let src = "/official-assets/template/landscape.mp4";
   let pose = 0;
   const dispatch = (type: string) => {
     for (const fn of [...(listeners.get(type) ?? [])]) fn();

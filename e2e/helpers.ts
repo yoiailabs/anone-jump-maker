@@ -39,9 +39,7 @@ export async function stubShortTemplate(page: Page): Promise<void> {
     },
   });
 
-  await page.route("**/official-assets/template/cuts.json", (route) => route.fulfill({ json: SHORT_CUTS }));
   await page.route("**/official-assets/template/landscape-cuts.json", (route) => route.fulfill({ json: SHORT_CUTS }));
-  await page.route("**/official-assets/template/vertical.mp4", (route) => route.fulfill(serveClip()));
   await page.route("**/official-assets/template/landscape.mp4", (route) => route.fulfill(serveClip()));
 }
 
