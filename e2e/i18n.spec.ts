@@ -18,7 +18,7 @@ test.describe("language routing", () => {
     await expect(page).toHaveTitle(t("en", "makerTitle"));
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#makerTitle .hero-logo")).toBeVisible();
-    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked-en.svg");
+    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("en", "makerTitle"));
     await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
     await expect(page.locator("#toStudio")).toHaveText(t("en", "makerMakeVideo"));
@@ -33,7 +33,7 @@ test.describe("language routing", () => {
     await expect(page.locator("#muteBtn .preview-mute-hint")).toHaveText(t("en", "previewMuteHint"));
     await expect(page.locator("#browsersNote")).toHaveCount(0);
     await expect(page.locator("#onDeviceNote")).toHaveText(t("en", "makerOnDevice"));
-    await expect(page.locator("#studioHome img")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked-en.svg");
+    await expect(page.locator("#studioHome img")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#studioHome img")).toHaveClass(/hero-logo/);
     await expect(page.locator("#toLanding")).toHaveCount(0);
     await expect(page.locator("#studioView .studio-top .lang-switch")).toHaveCount(0);
@@ -74,7 +74,7 @@ test.describe("language switcher", () => {
     await page.waitForURL(/\/en\/?$/);
     await waitForAppReady(page);
     await expect(page.locator("#makerTitle .hero-logo")).toBeVisible();
-    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked-en.svg");
+    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("en", "makerTitle"));
 
     await page.goto("/en/community");
@@ -116,7 +116,7 @@ test.describe("localized OGP and SEO", () => {
     );
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
       "content",
-      "https://anone.yoiailabs.com/official-assets/og.png",
+      "https://anone.yoiailabs.com/og.png",
     );
     await expect(page.locator('link[rel="alternate"][hreflang="x-default"]')).toHaveAttribute(
       "href",
@@ -139,7 +139,7 @@ test.describe("localized OGP and SEO", () => {
     );
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
       "content",
-      "https://anone.yoiailabs.com/official-assets/og-en.png",
+      "https://anone.yoiailabs.com/og-en.png",
     );
     await expect(page.locator('link[rel="alternate"][hreflang="ja"]')).toHaveAttribute(
       "href",
@@ -171,12 +171,12 @@ test.describe("localized OGP and SEO", () => {
     expect(robots.ok()).toBe(true);
     expect(await robots.text()).toContain("https://anone.yoiailabs.com/sitemap.xml");
     const assets = [
-      ["/official-assets/og.png", /image\/png/],
-      ["/official-assets/og-en.png", /image\/png/],
-      ["/official-assets/og-ko.png", /image\/png/],
-      ["/official-assets/og-zh.png", /image\/png/],
-      ["/official-assets/brand/anone-logo-stacked.svg", /image\/svg\+xml/],
-      ["/official-assets/brand/anone-logo-horizontal.svg", /image\/svg\+xml/],
+      ["/og.png", /image\/png/],
+      ["/og-en.png", /image\/png/],
+      ["/og-ko.png", /image\/png/],
+      ["/og-zh.png", /image\/png/],
+      ["/brand/anone-logo-stacked.svg", /image\/svg\+xml/],
+      ["/brand/anone-logo-horizontal.svg", /image\/svg\+xml/],
       ["/official-assets/jump-loop-still.png", /image\/png/],
       ["/official-assets/jump-loop.mp4", /video\//],
       ["/official-assets/template/cuts.json", /json/],
@@ -222,7 +222,7 @@ test.describe("crawlers keep the default Japanese URL", () => {
     await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", "https://anone.yoiailabs.com/");
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
       "content",
-      "https://anone.yoiailabs.com/official-assets/og.png",
+      "https://anone.yoiailabs.com/og.png",
     );
   });
 });
@@ -245,7 +245,7 @@ test.describe("song and artist names", () => {
 
     await page.goto("/ko");
     await waitForAppReady(page);
-    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked-en.svg");
+    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("ko", "makerTitle"));
     await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
     await expect(page.locator("#linksTitle")).toHaveText(t("ko", "makerOfficial"));
@@ -261,7 +261,7 @@ test.describe("song and artist names", () => {
 
     await page.goto("/zh");
     await waitForAppReady(page);
-    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked-en.svg");
+    await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("zh", "makerTitle"));
     await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
     await expect(page.locator("#linksTitle")).toHaveText(t("zh", "makerOfficial"));

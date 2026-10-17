@@ -16,7 +16,7 @@
 /favicon.svg
   Cache-Control: public, max-age=604800
 
-/official-assets/brand/*
+/brand/*
   Cache-Control: public, max-age=604800
 
 /official-assets/template/*

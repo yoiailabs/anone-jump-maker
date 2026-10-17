@@ -2,9 +2,20 @@
 
 ## 日本語
 
-このリポジトリのソースコードの著作権は Shuhei Akutagawa にあり、[MIT License](./LICENSE) で公開しています。
+このリポジトリのソースコードの著作権は Yoiailabs にあり、[MIT License](./LICENSE) で公開しています。
 
-公式素材は [`public/official-assets/`](./public/official-assets/LICENSE.md) にまとめてあります。そこに置いたファイルは **MIT License の対象外** です。ファイルの一覧、著作権はナナツカゼに帰属すること、運営者は利用を許諾・再許諾しないこと、再配布や転用はできないこと、fork では差し替えることは、そのディレクトリの [LICENSE.md](./public/official-assets/LICENSE.md) に書いてあります。
+MIT License の対象外は、次の 4 ファイルだけです。
+
+- `public/official-assets/template/vertical.mp4`（書き出しに使うテンプレ映像。楽曲の音声を含む）
+- `public/official-assets/template/landscape.mp4`（書き出しに使うキャラクターのテンプレ映像）
+- `public/official-assets/jump-loop.mp4`（トップページの MV）
+- `public/official-assets/jump-loop-still.png`（その MV の 1 フレーム）
+
+楽曲「あのね」、ジャンプするキャラクターおよびそれらの映像の著作権はナナツカゼに帰属します。運営者は利用を許諾・再許諾せず、再配布や転用はできません。fork ではこの 4 ファイルを差し替えるか取り除いてください。詳しくは [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) です。
+
+同じ場所の `template/cuts.json` と `template/landscape-cuts.json` は、テンプレ映像から生成した拍の表で、MIT License の対象です。
+
+ロゴ（`public/brand/anone-logo-horizontal.svg`、`public/brand/anone-logo-horizontal-en.svg`、`public/brand/anone-logo-stacked.svg`、`public/brand/anone-logo-stacked-en.svg`）と OGP 画像（`public/og.png`、`public/og-en.png`、`public/og-ko.png`、`public/og-zh.png`）は Yoiailabs が制作したもので、MIT License（Copyright (c) 2026 Yoiailabs）の対象です。OGP 画像は MV のフレーム切り出しではなく、ロゴと同じ描き方のキャラクターイラストを含み、権利者の判断により MIT のままです。
 
 ### 第三者の投稿（X の埋め込み）
 
@@ -14,8 +25,10 @@
 
 ## English
 
-Source code is copyright Shuhei Akutagawa and released under the [MIT License](./LICENSE).
+Source code is copyright Yoiailabs and released under the [MIT License](./LICENSE).
 
-Third-party official assets are in [`public/official-assets/`](./public/official-assets/LICENSE.md) and are **not** covered by the MIT License. The file list and the limits on reuse are only in that directory's [LICENSE.md](./public/official-assets/LICENSE.md).
+Excluded from the MIT License are only these four files: `public/official-assets/template/vertical.mp4`, `public/official-assets/template/landscape.mp4` (template video used to make the output, including the song, character, and video), `public/official-assets/jump-loop.mp4`, and `public/official-assets/jump-loop-still.png` (the top-page MV and one frame of it). Copyright belongs to ナナツカゼ. The operator does not license or sublicense them. See [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md).
+
+`template/cuts.json` and `template/landscape-cuts.json` are generated timing tables and are MIT. Logos in `public/brand/*.svg` and the OG images `public/og.png`, `public/og-en.png`, `public/og-ko.png`, and `public/og-zh.png` were made by Yoiailabs and are covered by the MIT License (Copyright (c) 2026 Yoiailabs). The OG images are not an MV frame; they include an owner-drawn character illustration and stay MIT.
 
 X posts listed in `src/reactions.ts` and `src/community-jumps.ts` belong to their authors and are shown through X's official embeds. To have your post removed, open a GitHub issue with the post URL, or contact [@aku11i](https://github.com/aku11i) on GitHub.

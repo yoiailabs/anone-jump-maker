@@ -6,20 +6,20 @@
 
 | ファイル | 内容 |
 | --- | --- |
-| `template/vertical.mp4` | 楽曲「あのね」の音声を含むテンプレ映像 |
-| `template/landscape.mp4` | ジャンプするキャラクターのテンプレ映像（横。縦の線画の画素源でもある） |
-| `jump-loop.mp4` | ジャンプするキャラクターのループ映像 |
-| `jump-loop-still.png` | ジャンプするキャラクターの静止画 |
-| `brand/anone-logo-horizontal.svg` | 「あのねジャンプメーカー」のロゴ（横・日本語） |
-| `brand/anone-logo-horizontal-en.svg` | 同ロゴ（横・英語） |
-| `brand/anone-logo-stacked.svg` | 同ロゴ（縦積み・日本語） |
-| `brand/anone-logo-stacked-en.svg` | 同ロゴ（縦積み・英語） |
-| `og.png` | ロゴを使った OGP 画像（日本語） |
-| `og-en.png` | 同（英語） |
-| `og-ko.png` | 同（韓国語） |
-| `og-zh.png` | 同（中国語） |
+| `template/vertical.mp4` | 楽曲「あのね」の音声を含む、書き出しに使うテンプレ映像 |
+| `template/landscape.mp4` | 書き出しに使うキャラクターのテンプレ映像（横。縦の線画の画素源でもある） |
+| `jump-loop.mp4` | トップページに出す MV のループ映像 |
+| `jump-loop-still.png` | その MV の 1 フレーム |
+
+上の 4 ファイルに含まれる楽曲・キャラクター・映像が、ナナツカゼの著作物です。
 
 `template/cuts.json` と `template/landscape-cuts.json` は、このリポジトリの `scripts/analyze-cuts.py` がテンプレ映像から書き出した拍の表です。公式素材そのものではなく、リポジトリの MIT License の対象です。テンプレ映像の横に置いています。
+
+## ロゴと OGP 画像は MIT
+
+ロゴ（`public/brand/anone-logo-horizontal.svg`、`public/brand/anone-logo-horizontal-en.svg`、`public/brand/anone-logo-stacked.svg`、`public/brand/anone-logo-stacked-en.svg`）と OGP 画像（`public/og.png`、`public/og-en.png`、`public/og-ko.png`、`public/og-zh.png`）は Yoiailabs が制作したもので、リポジトリの MIT License（Copyright (c) 2026 Yoiailabs）の対象です。第三者の公式素材ではありません。
+
+OGP 画像は MV（`jump-loop.mp4` / `jump-loop-still.png`）のフレーム切り出しではありません。ロゴと同じ描き方のキャラクターイラストを含みます。権利者の判断により、そのイラストを含めたまま MIT です。
 
 ## 権利
 
@@ -35,4 +35,8 @@
 
 ## English
 
-The files in the table above are **excluded from** this repository's [MIT License](../../LICENSE). Copyright of the song 「あのね」 ("Anone"), the jumping character, and its videos belongs to ナナツカゼ (Nanatsukaze). The operator does not own them and does not license or sublicense them, through this repository, the MIT License, or the terms of use. This is not an official Nanatsukaze guideline, and publication here is not endorsement, supervision, or permission to use the assets. Redistribution, modification, and reuse are not permitted. Forks must replace or remove these files. The two cut JSON files next to the template videos are generated timing tables from this repository and remain under the MIT License.
+The four files in the table above are **excluded from** this repository's [MIT License](../../LICENSE). They are the template videos used to make the output video (`template/vertical.mp4`, `template/landscape.mp4`, including the song, character, and video they contain) and the top-page MV clip (`jump-loop.mp4` and its frame `jump-loop-still.png`). Copyright of the song 「あのね」 ("Anone"), the jumping character, and those videos belongs to ナナツカゼ (Nanatsukaze). The operator does not own them and does not license or sublicense them, through this repository, the MIT License, or the terms of use. This is not an official Nanatsukaze guideline, and publication here is not endorsement, supervision, or permission to use the assets. Redistribution, modification, and reuse are not permitted. Forks must replace or remove these four files.
+
+The two cut JSON files next to the template videos are generated timing tables from this repository and remain under the MIT License.
+
+Logos in `public/brand/*.svg` and the OG images `public/og.png`, `public/og-en.png`, `public/og-ko.png`, and `public/og-zh.png` were made by Yoiailabs and are covered by the MIT License (Copyright (c) 2026 Yoiailabs). The OG images are not a frame from the MV. They include an owner-drawn character illustration in the same style as the logo, and they stay MIT.

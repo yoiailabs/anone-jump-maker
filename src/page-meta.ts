@@ -13,7 +13,7 @@ import {
 /** 本番の正規オリジン。プレビュー URL ではなく OGP に載せる。 */
 export const APP_ORIGIN = "https://anone.yoiailabs.com";
 export const COMMUNITY_PATH = "/community";
-export const OG_IMAGE_URL = `${APP_ORIGIN}/official-assets/og.png`;
+export const OG_IMAGE_URL = `${APP_ORIGIN}/og.png`;
 
 export const MAKER_DOCUMENT_TITLE = t("ja", "makerTitle");
 export const MAKER_DESCRIPTION = t("ja", "metaMakerDescription");
@@ -38,7 +38,7 @@ export function pageUrl(locale: Locale, view: AppView): string {
 }
 
 export function ogImageUrl(locale: Locale): string {
-  return locale === DEFAULT_LOCALE ? OG_IMAGE_URL : `${APP_ORIGIN}/official-assets/og-${locale}.png`;
+  return locale === DEFAULT_LOCALE ? OG_IMAGE_URL : `${APP_ORIGIN}/og-${locale}.png`;
 }
 
 const VIEW_COPY: Record<AppView, { title: MessageKey; description: MessageKey }> = {

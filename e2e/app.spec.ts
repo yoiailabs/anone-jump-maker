@@ -33,7 +33,7 @@ test("boots the maker with preview and save disabled until a photo is chosen", a
   await expect(page.locator("#makerTitle")).toBeVisible();
   const heroLogo = page.locator("#makerTitle .hero-logo");
   await expect(heroLogo).toBeVisible();
-  await expect(heroLogo).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked.svg");
+  await expect(heroLogo).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
   await expect(heroLogo).toHaveAttribute("alt", "あのねジャンプメーカー");
   await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
   const logoBox = await heroLogo.boundingBox();
@@ -973,7 +973,7 @@ test("opens /community directly and moves leftover hashes onto the path", async 
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
-    "https://anone.yoiailabs.com/official-assets/og.png",
+    "https://anone.yoiailabs.com/og.png",
   );
 
   await page.goto("/#community");
@@ -990,7 +990,7 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   const landingLogo = page.locator("#makerTitle .hero-logo");
   await expect(lockup).toBeVisible();
   await expect(lockup).toHaveAttribute("href", "/");
-  await expect(lockup.locator("img")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked.svg");
+  await expect(lockup.locator("img")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
   await expect(lockup.locator("img")).toHaveAttribute("src", (await landingLogo.getAttribute("src")) ?? "");
   await expect(lockup.locator("img")).toHaveAttribute("width", (await landingLogo.getAttribute("width")) ?? "");
   await expect(lockup.locator("img")).toHaveAttribute("height", (await landingLogo.getAttribute("height")) ?? "");
@@ -1026,7 +1026,7 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   await waitForAppReady(page);
   await lockup.click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/official-assets/brand/anone-logo-stacked.svg");
+  await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked.svg");
 });
 
 async function headerAlign(page: Page, header: string, lockupSel: string, titleSel: string) {

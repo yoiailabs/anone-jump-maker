@@ -38,7 +38,7 @@ describe("parseAppPath", () => {
   });
 
   it("ignores static assets and unknown segments", () => {
-    expect(parseAppPath("/official-assets/og.png")).toBeNull();
+    expect(parseAppPath("/og.png")).toBeNull();
     expect(parseAppPath("/sw.js")).toBeNull();
     expect(parseAppPath("/manifest.webmanifest")).toBeNull();
     expect(parseAppPath("/icons/icon-192.png")).toBeNull();
