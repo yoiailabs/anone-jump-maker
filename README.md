@@ -21,41 +21,6 @@
 > [!NOTE]
 > ナナツカゼ「あのね」の非公式ファンメイド作品です。ナナツカゼによる公認ではありません。テンプレ映像など、一部の素材は MIT の対象外です。[ライセンス](#ライセンス)を確認してください。
 
-## 画面を見る
-
-<table>
-  <tr>
-    <th>トップページ</th>
-    <th>English</th>
-    <th>写真を5枚入れた制作画面</th>
-  </tr>
-  <tr>
-    <td valign="top"><img src="docs/images/home.png" width="240" alt="日本語のトップページ。ロゴと動画をつくるボタン"></td>
-    <td valign="top"><img src="docs/images/home-en.png" width="240" alt="英語のトップページ"></td>
-    <td valign="top"><img src="docs/images/maker.png" width="240" alt="写真の並び、プレビュー、オプション、保存ボタンが並ぶ制作画面"></td>
-  </tr>
-</table>
-
-<details>
-  <summary>エフェクト・フィルター・サイズの選択画面</summary>
-  <p align="center"><img src="docs/images/options.png" width="390" alt="ズームとジャンプ、写真のぼかし、キャラクターのサイズを選ぶタブ"></p>
-</details>
-
-## できること
-
-- 写真は最大32枚まで選べて、あとから追加・削除・並べ替えができます。32カットに足りない分は先頭から繰り返します。
-- 動画の向きは横と縦。切り替えのエフェクト（ズーム／ジャンプ）、写真のぼかし、キャラクターの大きさも選べます。
-- 音声付きでプレビューし、MP4 か WebM で保存します。対応している端末では共有シートから直接送れます。
-- 画面は日本語・英語・韓国語・中国語に対応しています。利用規約とプライバシーポリシーは日本語のみです。
-
-写真の読み込みから合成、動画の書き出しまで、すべて端末の中で処理します。選んだ写真はサーバーへ送りません。テンプレ映像の背景色を抜いて写真に重ね、切り替えのタイミングに合わせて1フレームずつ動画にしていきます。なお、サイトや素材の読み込み、X・YouTube の埋め込み、任意で有効にできる計測には通信が発生します。[処理の構成](docs/architecture.md)と[計測の内容](docs/telemetry.md)を参照してください。
-
-## 対応ブラウザ
-
-動画の保存には WebCodecs の `VideoEncoder` と、使える映像エンコーダーが必要です。同じブラウザでも端末によって使えるかどうかが変わるため、使えないときは画面で Chrome か Edge で開くよう案内します。プレビューだけなら Safari（iOS を含む）でも動きます。
-
-自動テストは Chromium と WebKit で、写真の読み込みからプレビュー、保存までを確認しています。スマートフォンはエミュレーションでのテストなので、実機での動作保証や最低バージョンは決めていません。[テスト範囲](docs/testing.md)も確認してください。
-
 ## クイックスタート
 
 Node.js 22.18.0 以上と pnpm 10.15.1 が必要です（[package.json](package.json)）。
@@ -90,10 +55,6 @@ pnpm test
 
 これでユニットテストが走ります。ブラウザテスト（`test:browser`）と E2E（`test:e2e`）の準備と実行方法は[テストのページ](docs/testing.md)にあります。
 
-## 技術スタック
-
-画面は Astro + React、UI は Tailwind CSS と shadcn/ui（Base UI）、写真の並べ替えは dnd-kit です。合成には Canvas 2D / WebGL、動画生成には WebCodecs / mediabunny を使い、Cloudflare Workers から静的ファイルを配信します。
-
 ## ドキュメント
 
 | ページ | 内容 |
@@ -120,4 +81,4 @@ pnpm test
 
 埋め込まれた X 投稿の権利は各投稿者にあり、MIT の対象外です。ご自身の投稿の掲載停止は、投稿 URL を添えて [GitHub Issue](https://github.com/yoiailabs/anone-jump-maker/issues) または [@aku11i](https://github.com/aku11i) へ GitHub 経由でご連絡ください。
 
-外部からの pull request は受け付けていません。X 投稿の掲載停止の依頼は Issue で受け付けています。脆弱性の報告方法は [SECURITY.md](SECURITY.md) にあります。
+外部からの pull request は受け付けていません。
