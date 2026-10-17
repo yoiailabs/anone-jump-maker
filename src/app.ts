@@ -47,7 +47,7 @@ import {
   templateAudioNeedsSeek,
   type TemplateAudioFollow,
 } from "./template-audio.ts";
-import { portraitSoundtrackIfReady, preparePortraitSoundtrack } from "./template-audio-source.ts";
+import { nextSoundtrackSrc, portraitSoundtrackIfReady, preparePortraitSoundtrack } from "./template-audio-source.ts";
 import { applyJaPhrasePolyfill } from "./ja-phrase.ts";
 import {
   DEFAULT_LOCALE,
@@ -269,10 +269,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const assignAudioSrc = (element: HTMLVideoElement) => {
-    if (element.getAttribute("src")) return;
     const file = TEMPLATES[mode].audio;
-    const prepared = portraitSoundtrackIfReady(file);
-    const src = prepared ? prepared : file;
+    const src = nextSoundtrackSrc({
+      current: element.getAttribute("src"),
+      prepared: portraitSoundtrackIfReady(file),
+      file,
+      paused: element.paused,
+    });
+    if (!src) return;
     element.preload = "auto";
     element.src = src;
   };
@@ -346,6 +350,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     element.muted = plan.audioMuted;
     element.volume = 1;
     if (plan.play || plan.seek) assignAudioSrc(element);
+    // 音声だけの URL がまだ無いあいだは play() しない。元の映像ファイルで src を固定しない。
+    if (!element.getAttribute("src")) {
+      syncMuteChrome();
+      return;
+    }
     if (plan.play || plan.seek) seekAudioToPicture(element);
     if (plan.play) requestAudioPlay(element);
     syncMuteChrome();
@@ -478,7 +487,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
   };
 
-  const canUse = () => photos.length > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+  const canUse = () =>
+    photos.length > 0 &&
+    video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+    (!templateAudioIsSeparate(mode) || portraitSoundtrackIfReady(TEMPLATES.portrait.audio) !== undefined);
 
   const isPreviewPlaying = () => playing || (!video.paused && !video.ended);
 
@@ -909,7 +921,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const loadTemplatePicture = () => {
     beginTemplateVideoLoad(video);
-    void preparePortraitSoundtrack(TEMPLATES.portrait.audio);
+    void preparePortraitSoundtrack(TEMPLATES.portrait.audio).then(() => {
+      refreshButtons();
+      if (recording || !templateAudioIsSeparate(mode) || !isPreviewPlaying()) return;
+      followTemplateAudio({ userGesture: false, picturePlaying: true, allowPlay: true });
+    });
   };
 
   const armStudio = () => {

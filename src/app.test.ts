@@ -186,6 +186,8 @@ describe("preview save CTA", () => {
     expect(appSrc).not.toContain("element.paused || templateAudioNeedsSeek");
     expect(appSrc).toContain('element.dataset.soundtrack = "portrait"');
     expect(appSrc).toContain("preparePortraitSoundtrack(TEMPLATES.portrait.audio)");
+    expect(appSrc).toContain("nextSoundtrackSrc");
+    expect(appSrc).toContain("portraitSoundtrackIfReady(TEMPLATES.portrait.audio) !== undefined");
     const save = appSrc.indexOf("const startSave = async");
     const release = appSrc.indexOf("await releaseTemplateAudio()", save);
     const encode = appSrc.indexOf("exportJumpVideo(", save);

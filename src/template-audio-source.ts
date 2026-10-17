@@ -84,3 +84,27 @@ export function portraitSoundtrackIfReady(src: string): string | null | undefine
   if (!resolved.has(src)) return undefined;
   return resolved.get(src) ?? null;
 }
+
+/** 未完了は undefined。失敗は元ファイル。成功は音声だけの URL。 */
+export function portraitSoundtrackSrc(prepared: string | null | undefined, file: string): string | undefined {
+  if (prepared === undefined) return undefined;
+  return prepared ?? file;
+}
+
+/**
+ * 付ける src。未完了のあいだは何も付けない（映像付きファイルで固定しない）。
+ * 止まっている要素が元ファイルのままなら、音声だけの URL に差し替える。
+ * 再生中の src は替えない。play() が切れる。
+ */
+export function nextSoundtrackSrc(input: {
+  current: string | null;
+  prepared: string | null | undefined;
+  file: string;
+  paused: boolean;
+}): string | undefined {
+  const next = portraitSoundtrackSrc(input.prepared, input.file);
+  if (!next || input.current === next) return undefined;
+  if (!input.current) return next;
+  if (input.current === input.file && next !== input.file && input.paused) return next;
+  return undefined;
+}

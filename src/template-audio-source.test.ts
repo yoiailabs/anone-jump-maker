@@ -1,13 +1,32 @@
 import { readFile } from "node:fs/promises";
 import { BlobSource, Input, MP4 } from "mediabunny";
 import { describe, expect, it } from "vitest";
-import { remuxMp4AudioOnly } from "./template-audio-source.ts";
+import { nextSoundtrackSrc, portraitSoundtrackSrc, remuxMp4AudioOnly } from "./template-audio-source.ts";
 
 function toBlob(bytes: Uint8Array): Blob {
   const copy = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(copy).set(bytes);
   return new Blob([copy]);
 }
+
+describe("portrait soundtrack source", () => {
+  const file = "/official-assets/template/vertical.mp4";
+  const blob = "blob:audio-only";
+
+  it("does not lock the video file while the remux is still running", () => {
+    expect(portraitSoundtrackSrc(undefined, file)).toBeUndefined();
+    expect(nextSoundtrackSrc({ current: null, prepared: undefined, file, paused: true })).toBeUndefined();
+    expect(portraitSoundtrackSrc(null, file)).toBe(file);
+    expect(portraitSoundtrackSrc(blob, file)).toBe(blob);
+  });
+
+  it("replaces a paused video-file source once the audio-only url exists", () => {
+    expect(nextSoundtrackSrc({ current: null, prepared: blob, file, paused: true })).toBe(blob);
+    expect(nextSoundtrackSrc({ current: file, prepared: blob, file, paused: true })).toBe(blob);
+    expect(nextSoundtrackSrc({ current: file, prepared: blob, file, paused: false })).toBeUndefined();
+    expect(nextSoundtrackSrc({ current: blob, prepared: blob, file, paused: true })).toBeUndefined();
+  });
+});
 
 describe("portrait soundtrack remux", () => {
   it("keeps the aac track and drops the h264 picture from vertical.mp4", async () => {

@@ -12,6 +12,7 @@ test.beforeEach(async ({ page }) => {
 test("portrait preview keeps the soundtrack playing on iOS Safari and Android Chrome", async ({ page }) => {
   await uploadPhoto(page);
   await switchAspect(page, "portrait");
+  await expect(page.locator("#previewToggle")).toBeEnabled();
   await page.locator("#previewToggle").click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
   await expectSoundtrackMoving(page);
@@ -38,6 +39,7 @@ test("portrait soundtrack plays again after export", async ({ page }) => {
   }
   await page.locator("#closeExportBtn").click();
   await expect(page.locator("#exportPanel")).toBeHidden();
+  await expect(page.locator("#previewToggle")).toBeEnabled();
   await page.locator("#previewToggle").click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
   await expectSoundtrackMoving(page);
