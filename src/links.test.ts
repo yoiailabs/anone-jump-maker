@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import githubLinkSrc from "./components/GitHubLink.tsx?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
 import {
   JUMP_LOOP_WATCH_HREF,
@@ -103,15 +104,21 @@ describe("maker source repository", () => {
     expect(SOURCE_REPO_HREF).toBe("https://github.com/yoiailabs/anone-jump-maker");
   });
 
-  it("places the repository link at the end of the studio view", () => {
+  it("uses one outlined link on the landing page and the studio page", () => {
+    const maker = makerSrc.indexOf('id="makerView"');
+    const makerGitHub = makerSrc.indexOf('id="makerGitHub"');
     const studio = makerSrc.indexOf('id="studioView"');
-    const github = makerSrc.indexOf('id="studioGitHub"');
+    const studioGitHub = makerSrc.indexOf('id="studioGitHub"');
     const community = makerSrc.indexOf('id="communityView"');
-    expect(studio).toBeGreaterThan(-1);
-    expect(github).toBeGreaterThan(studio);
-    expect(community).toBeGreaterThan(github);
-    expect(makerSrc).toMatch(
-      /id="studioGitHub"[\s\S]*?href=\{SOURCE_REPO_HREF\}[\s\S]*?target="_blank"[\s\S]*?rel="noopener noreferrer"[\s\S]*?aria-label=\{t\(locale, "makerSourceAria"\)\}/,
-    );
+    expect(makerGitHub).toBeGreaterThan(maker);
+    expect(makerGitHub).toBeLessThan(studio);
+    expect(studioGitHub).toBeGreaterThan(studio);
+    expect(community).toBeGreaterThan(studioGitHub);
+    expect(makerSrc.match(/<GitHubLink\b/g)).toHaveLength(2);
+    expect(githubLinkSrc).toContain("SOURCE_REPO_HREF");
+    expect(githubLinkSrc).toContain('target="_blank"');
+    expect(githubLinkSrc).toContain('rel="noopener noreferrer"');
+    expect(githubLinkSrc).toContain('aria-label={t(locale, "makerSourceAria")}');
+    expect(githubLinkSrc).toContain('className="github-link"');
   });
 });
