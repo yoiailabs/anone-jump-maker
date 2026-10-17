@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type FileChooser, type Locator, type Page } from "@playwright/test";
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -65,6 +65,23 @@ export async function waitForAppReady(page: Page): Promise<void> {
   await page.locator("#toCommunity").waitFor({ state: "attached" });
   await page.locator("#toStudio").waitFor({ state: "attached" });
   await page.locator("#app[data-app-ready='1']").waitFor({ state: "attached" });
+}
+
+/**
+ * Listen for a file dialog, then run `action`.
+ *
+ * `waitForEvent("filechooser")` returns while Chromium's interception CDP call
+ * is still in flight. Enter or a click started in that same turn can open the
+ * dialog before interception is active, and headless Chromium then never
+ * reports it. That shows up on a cold browser while the studio is still
+ * starting, and the retry passes. The round trip below is ordered after the
+ * interception call.
+ */
+export async function fileChooserFor(page: Page, action: () => Promise<unknown>): Promise<FileChooser> {
+  const chooser = page.waitForEvent("filechooser");
+  await page.evaluate(() => true);
+  await action();
+  return chooser;
 }
 
 export async function openStudio(page: Page): Promise<void> {
