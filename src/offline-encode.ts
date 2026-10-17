@@ -31,6 +31,7 @@ import {
   chooseExportCharacterPath,
   copySampleRgba,
   firstResolved,
+  frameIsCurrentForTime,
   frameTimes,
   hasWebCodecsVideoEncoder,
   isAbortError,
@@ -320,7 +321,7 @@ async function probeExportCharacterPath(
     }
   } catch (error) {
     if (isAbortError(error)) throw error;
-    // copyTo / PTS / decoder が WebKit で落ちても HTML video に落とす
+    // copyTo / PTS / decoder が落ちても HTML video に落とす
   }
   return finish();
 }
@@ -387,19 +388,36 @@ async function encodeWithRgbaFrames(options: {
   let i = 0;
   let firstFingerprint: number | undefined;
   let acquireStart = trace ? nowMs() : 0;
+  // samplesAtTimestamps は GOP のたびに flush する。WebKit はその直前のフレームを出さず null になる。
+  // 末尾は video.duration が最終 PTS より先に丸まるので、合うフレームを閉じずに使う。
+  const lastTime = times[times.length - 1] ?? 0;
+  const iterator = sink.samples(0, lastTime + frameDuration * 2)[Symbol.asyncIterator]();
+  type DecodedSample = NonNullable<Awaited<ReturnType<typeof iterator.next>>["value"]>;
+  let upcoming: DecodedSample | null = null;
+  let held: DecodedSample | null = null;
   try {
-    for await (const sample of sink.samplesAtTimestamps(times)) {
+    const firstStep = await iterator.next();
+    upcoming = firstStep.done ? null : firstStep.value;
+    while (i < times.length) {
       const acquireMs = trace ? markStage(trace.acquire, acquireStart) : 0;
-      if (signal?.aborted) {
-        sample?.close();
-        throwIfAborted(signal);
+      if (signal?.aborted) throwIfAborted(signal);
+      const time = times[i]!;
+      while (upcoming && frameIsCurrentForTime(upcoming.timestamp, time, frameDuration)) {
+        if (held && held !== upcoming) held.close();
+        held = upcoming;
+        const step = await iterator.next();
+        upcoming = step.done ? null : step.value;
       }
-      const time = times[i];
-      if (time === undefined) {
-        sample?.close();
-        break;
+      if (!held || !templateFrameMatchesTime(held.timestamp, time)) {
+        // 先頭 PTS が半フレームより後でも、プローブが通す幅ならその 1 枚を使う。
+        if (upcoming && templateFrameMatchesTime(upcoming.timestamp, time)) {
+          if (held && held !== upcoming) held.close();
+          held = upcoming;
+          const step = await iterator.next();
+          upcoming = step.done ? null : step.value;
+        }
       }
-      if (!sample) {
+      if (!held || !templateFrameMatchesTime(held.timestamp, time)) {
         throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
       }
       const role = trace?.roles.get(i);
@@ -409,7 +427,7 @@ async function encodeWithRgbaFrames(options: {
       let frameOutcome: TraceOutcome = "success";
       try {
         const rgbaStart = trace ? nowMs() : 0;
-        const rgba = await copySampleRgba(sample);
+        const rgba = await copySampleRgba(held);
         if (!templateFrameMatchesTime(rgba.timestamp, time)) {
           throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
         }
@@ -428,8 +446,6 @@ async function encodeWithRgbaFrames(options: {
       } catch (error) {
         frameOutcome = isAbortError(error) ? "cancelled" : "error";
         throw error;
-      } finally {
-        sample.close();
       }
       const addStart = trace ? nowMs() : 0;
       await videoSource.add(i * frameDuration, frameDuration);
@@ -459,6 +475,10 @@ async function encodeWithRgbaFrames(options: {
   } catch (error) {
     finishFrameTrace(trace, isAbortError(error) ? "cancelled" : "error");
     throw error;
+  } finally {
+    if (held && held !== upcoming) held.close();
+    upcoming?.close();
+    await iterator.return?.();
   }
 }
 

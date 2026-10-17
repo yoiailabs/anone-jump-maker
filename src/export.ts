@@ -243,6 +243,44 @@ export function templateFrameMatchesTime(sampleTime: number, targetTime: number)
   return Math.abs(sampleTime - targetTime) < 3 / EXPORT_FPS + 1e-3;
 }
 
+/**
+ * 連番デコードのフレームを保存時刻に割り当てる。
+ * 時刻 + 半フレーム以前で、まだ使っていない一番新しいフレーム。
+ * ファイル末尾で video.duration が最終 PTS より先に丸まると、新しいフレームが無い。
+ * そのときは直前フレームを、PTS が保存時刻に合うあいだだけ使う。
+ * 半フレームより先でも、プローブと同じ幅に入る次の 1 枚は取る。先頭 PTS が 0 の少し後でも落とさない。
+ * WebKit の samplesAtTimestamps はキーフレーム直前の 1 枚を null にするので使わない。
+ */
+export function frameIsCurrentForTime(timestamp: number, time: number, frameDuration: number): boolean {
+  return Number.isFinite(timestamp) && timestamp <= time + frameDuration * 0.5;
+}
+
+export function assignFramesToTimes(
+  frameTimestamps: readonly number[],
+  times: readonly number[],
+  frameDuration: number,
+): Array<number | null> {
+  const assigned: Array<number | null> = [];
+  let index = 0;
+  let held: number | null = null;
+  for (const time of times) {
+    while (index < frameTimestamps.length && frameIsCurrentForTime(frameTimestamps[index]!, time, frameDuration)) {
+      held = frameTimestamps[index]!;
+      index += 1;
+    }
+    if (
+      (held === null || !templateFrameMatchesTime(held, time)) &&
+      index < frameTimestamps.length &&
+      templateFrameMatchesTime(frameTimestamps[index]!, time)
+    ) {
+      held = frameTimestamps[index]!;
+      index += 1;
+    }
+    assigned.push(held !== null && templateFrameMatchesTime(held, time) ? held : null);
+  }
+  return assigned;
+}
+
 export function paintDecodedExportFrame(
   time: number,
   frame: { canvas: { width: number; height: number }; timestamp: number } | null,
@@ -262,15 +300,23 @@ export type RgbaFrame = {
   fingerprint: number;
 };
 
+export type CopiedPlane = { offset?: number; stride?: number };
+
+export type CopyColorSpace = {
+  matrix?: string | null;
+  fullRange?: boolean | null;
+};
+
 export type CopyableSample = {
   timestamp: number;
   codedWidth: number;
   codedHeight: number;
+  colorSpace?: CopyColorSpace | null;
   allocationSize: (options: { format: "RGBA" }) => number;
   copyTo: (
     dest: AllowSharedBufferSource,
     options: { format: "RGBA" },
-  ) => Promise<ReadonlyArray<{ stride?: number }> | void>;
+  ) => Promise<readonly CopiedPlane[] | void>;
 };
 
 /** stride 付き RGBA を密な ImageData 用バッファに直す。 */
@@ -321,13 +367,156 @@ export type ExportCharacterProbe = {
 
 /**
  * Android では RGBA コピーが通って画素も進む。
- * iOS / WebKit は copyTo('RGBA')・PTS・デコーダのいずれかが落ちることがある。
+ * WebKit は copyTo('RGBA') がフォーマットを無視して I420 を返す。その平面は RGBA に戻す。
+ * PTS やデコーダが落ちたときだけ HTML video に落とす。
  */
 export function chooseExportCharacterPath(probe: ExportCharacterProbe): ExportCharacterPath {
   if (probe.copiedFirst && probe.copiedLater && probe.firstTimeOk && probe.laterTimeOk && probe.pixelsAdvanced) {
     return EXPORT_CHARACTER_PIXELS;
   }
   return EXPORT_CHARACTER_FALLBACK;
+}
+
+type YuvMatrix = "bt709" | "bt601";
+
+type YuvTables = {
+  y: Int16Array;
+  crR: Int16Array;
+  cbG: Int16Array;
+  crG: Int16Array;
+  cbB: Int16Array;
+};
+
+const yuvTableCache = new Map<string, YuvTables>();
+
+function yuvMatrixFor(colorSpace: CopyColorSpace | null | undefined, height: number): YuvMatrix {
+  switch (colorSpace?.matrix) {
+    case "bt470bg":
+    case "smpte170m":
+      return "bt601";
+    case "bt709":
+    case "smpte240m":
+      return "bt709";
+    default:
+      return height >= 720 ? "bt709" : "bt601";
+  }
+}
+
+function yuvTablesFor(matrix: YuvMatrix, fullRange: boolean): YuvTables {
+  const key = `${matrix}:${fullRange ? "full" : "limited"}`;
+  const cached = yuvTableCache.get(key);
+  if (cached) return cached;
+  const kr = matrix === "bt709" ? 0.2126 : 0.299;
+  const kb = matrix === "bt709" ? 0.0722 : 0.114;
+  const kg = 1 - kr - kb;
+  const yMul = fullRange ? 1 : 255 / 219;
+  const cMul = fullRange ? 1 : 255 / 224;
+  const yBias = fullRange ? 0 : 16;
+  const rV = 2 * (1 - kr);
+  const bU = 2 * (1 - kb);
+  const gU = (2 * kb * (1 - kb)) / kg;
+  const gV = (2 * kr * (1 - kr)) / kg;
+  const y = new Int16Array(256);
+  const crR = new Int16Array(256);
+  const cbG = new Int16Array(256);
+  const crG = new Int16Array(256);
+  const cbB = new Int16Array(256);
+  for (let i = 0; i < 256; i += 1) {
+    y[i] = Math.round((i - yBias) * yMul);
+    const c = (i - 128) * cMul;
+    crR[i] = Math.round(rV * c);
+    cbB[i] = Math.round(bU * c);
+    cbG[i] = Math.round(-gU * c);
+    crG[i] = Math.round(-gV * c);
+  }
+  const tables = { y, crR, cbG, crG, cbB };
+  yuvTableCache.set(key, tables);
+  return tables;
+}
+
+/** WebKit の copyTo は RGBA を頼んでも Y/U/V の 3 平面を返す。 */
+export function isI420CopyLayout(
+  layout: readonly CopiedPlane[] | void,
+  width: number,
+  height: number,
+): boolean {
+  if (!layout || layout.length !== 3 || !(width > 0) || !(height > 0)) return false;
+  const yStride = layout[0]?.stride;
+  const uStride = layout[1]?.stride;
+  const vStride = layout[2]?.stride;
+  if (typeof yStride !== "number" || typeof uStride !== "number" || typeof vStride !== "number") return false;
+  const chromaWidth = Math.ceil(width / 2);
+  return yStride >= width && yStride < width * 4 && uStride >= chromaWidth && vStride >= chromaWidth;
+}
+
+function planeSpan(offset: number, stride: number, rowBytes: number, rows: number): number {
+  if (rows <= 0) return offset;
+  return offset + stride * (rows - 1) + rowBytes;
+}
+
+/**
+ * I420 を密な RGBA にする。HD で行列が無いときは BT.709 リミテッド。
+ * クロマキーの緑が残るので、指定された colorSpace を優先する。
+ */
+export function i420ToRgba(
+  src: Uint8Array,
+  width: number,
+  height: number,
+  planes: readonly CopiedPlane[],
+  colorSpace?: CopyColorSpace | null,
+): Uint8ClampedArray {
+  const chromaWidth = Math.ceil(width / 2);
+  const chromaHeight = Math.ceil(height / 2);
+  const yStride = planes[0]?.stride ?? width;
+  const uStride = planes[1]?.stride ?? chromaWidth;
+  const vStride = planes[2]?.stride ?? chromaWidth;
+  const yOffset = planes[0]?.offset ?? 0;
+  const uOffset = planes[1]?.offset ?? yOffset + yStride * height;
+  const vOffset = planes[2]?.offset ?? uOffset + uStride * chromaHeight;
+  const end = Math.max(
+    planeSpan(yOffset, yStride, width, height),
+    planeSpan(uOffset, uStride, chromaWidth, chromaHeight),
+    planeSpan(vOffset, vStride, chromaWidth, chromaHeight),
+  );
+  if (!(width > 0 && height > 0) || end > src.byteLength) {
+    throw new Error(TEMPLATE_FRAME_MISSING_MESSAGE);
+  }
+  const tables = yuvTablesFor(yuvMatrixFor(colorSpace, height), colorSpace?.fullRange === true);
+  const yTab = tables.y;
+  const crR = tables.crR;
+  const cbG = tables.cbG;
+  const crG = tables.crG;
+  const cbB = tables.cbB;
+  const out = new Uint8ClampedArray(width * height * 4);
+  let o = 0;
+  for (let y = 0; y < height; y += 1) {
+    const yBase = yOffset + y * yStride;
+    const uBase = uOffset + (y >> 1) * uStride;
+    const vBase = vOffset + (y >> 1) * vStride;
+    for (let x = 0; x < width; x += 2) {
+      const cx = x >> 1;
+      const u = src[uBase + cx] ?? 128;
+      const v = src[vBase + cx] ?? 128;
+      const cr = crR[v] ?? 0;
+      const cg = (cbG[u] ?? 0) + (crG[v] ?? 0);
+      const cb = cbB[u] ?? 0;
+      const y0 = yTab[src[yBase + x] ?? 0] ?? 0;
+      out[o] = y0 + cr;
+      out[o + 1] = y0 + cg;
+      out[o + 2] = y0 + cb;
+      out[o + 3] = 255;
+      o += 4;
+      if (x + 1 < width) {
+        const y1 = yTab[src[yBase + x + 1] ?? 0] ?? 0;
+        out[o] = y1 + cr;
+        out[o + 1] = y1 + cg;
+        out[o + 2] = y1 + cb;
+        out[o + 3] = 255;
+        o += 4;
+      }
+    }
+  }
+  return out;
 }
 
 export async function copySampleRgba(sample: CopyableSample): Promise<RgbaFrame> {
@@ -339,9 +528,14 @@ export async function copySampleRgba(sample: CopyableSample): Promise<RgbaFrame>
   const options = { format: "RGBA" as const };
   const raw = new Uint8Array(sample.allocationSize(options));
   const layout = await sample.copyTo(raw, options);
-  const stride =
-    Array.isArray(layout) && layout[0] && typeof layout[0].stride === "number" ? layout[0].stride : width * 4;
-  const data = packedRgba(raw, width, height, stride);
+  const data = layout && isI420CopyLayout(layout, width, height)
+    ? i420ToRgba(raw, width, height, layout, sample.colorSpace)
+    : packedRgba(
+        raw,
+        width,
+        height,
+        layout?.[0] && typeof layout[0].stride === "number" ? layout[0].stride : width * 4,
+      );
   return {
     timestamp: sample.timestamp,
     width,

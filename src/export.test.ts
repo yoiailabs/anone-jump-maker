@@ -24,7 +24,11 @@ import {
   copySampleRgba,
   exportJumpVideo,
   exportProgressPercent,
+  assignFramesToTimes,
   fingerprintRgba,
+  frameIsCurrentForTime,
+  i420ToRgba,
+  isI420CopyLayout,
   firstResolved,
   frameTimes,
   hasWebCodecsVideoEncoder,
@@ -419,6 +423,96 @@ describe("decoded export frames", () => {
         async copyTo() {},
       }),
     ).rejects.toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
+  });
+
+  it("treats a 3-plane luma stride as WebKit I420, not RGBA", () => {
+    expect(isI420CopyLayout([{ stride: 1920 }, { stride: 960 }, { stride: 960 }], 1920, 1080)).toBe(true);
+    expect(isI420CopyLayout([{ stride: 8 }], 2, 1)).toBe(false);
+    expect(isI420CopyLayout([{ stride: 2 }, { stride: 1 }], 2, 2)).toBe(false);
+  });
+
+  it("converts limited BT.709 I420 into tight RGBA", () => {
+    const neutral = i420ToRgba(
+      new Uint8Array([16, 235, 128, 173, 128, 128]),
+      2,
+      2,
+      [
+        { offset: 0, stride: 2 },
+        { offset: 4, stride: 1 },
+        { offset: 5, stride: 1 },
+      ],
+      { matrix: "bt709", fullRange: false },
+    );
+    expect([...neutral.subarray(0, 4)]).toEqual([0, 0, 0, 255]);
+    expect([...neutral.subarray(4, 8)]).toEqual([255, 255, 255, 255]);
+    expect([...neutral.subarray(8, 12)]).toEqual([130, 130, 130, 255]);
+    const green = i420ToRgba(
+      new Uint8Array([173, 173, 173, 173, 42, 26]),
+      2,
+      2,
+      [
+        { offset: 0, stride: 2 },
+        { offset: 4, stride: 1 },
+        { offset: 5, stride: 1 },
+      ],
+      { matrix: "bt709", fullRange: false },
+    );
+    expect([...green.subarray(0, 4)]).toEqual([0, 255, 1, 255]);
+    expect(green[1]! - Math.max(green[0]!, green[2]!)).toBeGreaterThan(80);
+  });
+
+  it("copies a WebKit I420 layout through copySampleRgba", async () => {
+    const width = 2;
+    const height = 2;
+    const bytes = new Uint8Array([16, 16, 16, 16, 128, 128]);
+    const frame = await copySampleRgba({
+      timestamp: 0,
+      codedWidth: width,
+      codedHeight: height,
+      colorSpace: { matrix: "bt709", fullRange: false },
+      allocationSize: () => bytes.byteLength,
+      async copyTo(dest) {
+        const view = dest instanceof Uint8Array ? dest : new Uint8Array(dest as ArrayBuffer);
+        view.set(bytes);
+        return [
+          { offset: 0, stride: width },
+          { offset: 4, stride: 1 },
+          { offset: 5, stride: 1 },
+        ];
+      },
+    });
+    expect(frame.data).toHaveLength(16);
+    expect([...frame.data.subarray(0, 4)]).toEqual([0, 0, 0, 255]);
+    expect(frame.fingerprint).toBe(fingerprintRgba(frame.data, width, height));
+  });
+
+  it("keeps the frame just before a keyframe when assigning sequential timestamps", () => {
+    const frames = Array.from({ length: 120 }, (_, index) => index / 30);
+    const times = frameTimes(4, 30);
+    const assigned = assignFramesToTimes(frames, times, 1 / 30);
+    expect(assigned).toHaveLength(times.length);
+    expect(assigned.every((timestamp, index) => timestamp === times[index])).toBe(true);
+    expect(frameIsCurrentForTime(89 / 30, 89 / 30, 1 / 30)).toBe(true);
+    expect(frameIsCurrentForTime(90 / 30, 89 / 30, 1 / 30)).toBe(false);
+    const tail = assignFramesToTimes([0, 1 / 30, 2 / 30], [0, 1 / 30, 2 / 30, 3 / 30], 1 / 30);
+    expect(tail).toEqual([0, 1 / 30, 2 / 30, 2 / 30]);
+    expect(assignFramesToTimes([0], [0, 0.2], 1 / 30)[1]).toBeNull();
+    expect(assignFramesToTimes([0.04, 0.04 + 1 / 30], [0, 1 / 30, 2 / 30], 1 / 30)).toEqual([
+      0.04,
+      0.04,
+      0.04 + 1 / 30,
+    ]);
+    expect(assignFramesToTimes([0.2], [0], 1 / 30)).toEqual([null]);
+  });
+
+  it("rejects an I420 layout that does not cover the frame", () => {
+    expect(() =>
+      i420ToRgba(new Uint8Array(4), 2, 2, [
+        { offset: 0, stride: 2 },
+        { offset: 4, stride: 1 },
+        { offset: 5, stride: 1 },
+      ]),
+    ).toThrow(TEMPLATE_FRAME_MISSING_MESSAGE);
   });
 });
 
