@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import landscapeCuts from "../public/template/landscape-cuts.json" with { type: "json" };
-import portraitCuts from "../public/template/cuts.json" with { type: "json" };
+import landscapeCuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
+import portraitCuts from "../public/official-assets/template/cuts.json" with { type: "json" };
 import { TEMPLATE_PHOTO_COUNT, TEMPLATE_SLOT_PHOTO_ORDER } from "./timeline.ts";
 
 describe("template cut tables", () => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import portraitCuts from "../public/template/cuts.json" with { type: "json" };
+import portraitCuts from "../public/official-assets/template/cuts.json" with { type: "json" };
 import { EXPORT_FPS, frameTimes } from "./export.ts";
 import { TEMPLATE_FPS, swapFx, type SwapStyle } from "./layout.ts";
 import { PHOTO_MAX_COUNT, takeUpToPhotoCap } from "./photo-list.ts";

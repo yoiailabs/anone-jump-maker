@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
-export const JUMP_LOOP_STILL_SRC = "/jump-loop-still.png";
-export const JUMP_LOOP_VIDEO_SRC = "/jump-loop.mp4";
+export const JUMP_LOOP_STILL_SRC = "/official-assets/jump-loop-still.png";
+export const JUMP_LOOP_VIDEO_SRC = "/official-assets/jump-loop.mp4";
 
 type JumpLoopProps = {
   href: string;

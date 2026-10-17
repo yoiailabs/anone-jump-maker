@@ -170,9 +170,27 @@ test.describe("localized OGP and SEO", () => {
     const robots = await request.get("/robots.txt");
     expect(robots.ok()).toBe(true);
     expect(await robots.text()).toContain("https://anone.yoiailabs.com/sitemap.xml");
-    const ogEn = await request.get("/og-en.png");
-    expect(ogEn.ok()).toBe(true);
-    expect(ogEn.headers()["content-type"]).toMatch(/image\/png/);
+    const assets = [
+      ["/og.png", /image\/png/],
+      ["/og-en.png", /image\/png/],
+      ["/og-ko.png", /image\/png/],
+      ["/og-zh.png", /image\/png/],
+      ["/brand/anone-logo-stacked.svg", /image\/svg\+xml/],
+      ["/brand/anone-logo-horizontal.svg", /image\/svg\+xml/],
+      ["/official-assets/jump-loop-still.png", /image\/png/],
+      ["/official-assets/jump-loop.mp4", /video\//],
+      ["/official-assets/template/cuts.json", /json/],
+      ["/official-assets/template/landscape-cuts.json", /json/],
+      ["/official-assets/template/landscape.mp4", /video\//],
+      ["/official-assets/template/vertical.mp4", /video\//],
+      ["/favicon.svg", /image\/svg\+xml/],
+      ["/icons/icon-192.png", /image\/png/],
+    ] as const;
+    for (const [asset, type] of assets) {
+      const response = await request.get(asset);
+      expect(response.ok(), asset).toBe(true);
+      expect(response.headers()["content-type"] ?? "", asset).toMatch(type);
+    }
   });
 });
 
@@ -358,5 +376,26 @@ test.describe("community lede phrase wrapping", () => {
     expect(en.text).toBe(enExpected);
     expect(en.text).not.toContain("\u200b");
     expect(en.wordBreak).not.toBe("auto-phrase");
+  });
+});
+
+test.describe("footer copyright", () => {
+  test.beforeEach(async ({ page }) => {
+    await blockAnalytics(page);
+    await stubShortTemplate(page);
+  });
+
+  test("shows © 2026 Yoiailabs in every locale and keeps the Nanatsukaze notice", async ({ page }) => {
+    for (const [path, locale] of [
+      ["/", "ja"],
+      ["/en/", "en"],
+      ["/ko/", "ko"],
+      ["/zh/", "zh"],
+    ] as const) {
+      await page.goto(path);
+      await waitForAppReady(page);
+      await expect(page.locator(".site-footer-credit")).toHaveText(t(locale, "footerCopyright"));
+      await expect(page.locator(".site-footer-notice")).toContainText(t(locale, "artistName"));
+    }
   });
 });

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Write the photo-slot tables (public/template/cuts.json, landscape-cuts.json).
+"""Write the photo-slot tables (public/official-assets/template/cuts.json, landscape-cuts.json).
 
 Source of truth for the slot timing is the colour-coded Short utNIG60-li0: the
 template rendered with each of its 10 photo slots filled by a flat colour, so
 every photo swap is an unambiguous colour change. Frames were extracted with
-ffmpeg (30 fps) and the video aligned to public/template/vertical.mp4 by
+ffmpeg (30 fps) and the video aligned to public/official-assets/template/vertical.mp4 by
 cross-correlating the character-silhouette difference signal (template frame =
 video frame + 1, corr 0.92, stable in every 60-frame window).
 
@@ -153,8 +153,8 @@ def main() -> None:
     modes = ("portrait", "landscape") if args.mode == "both" else (args.mode,)
 
     for mode in modes:
-        video = ROOT / "public/template" / ("vertical.mp4" if mode == "portrait" else "landscape.mp4")
-        out = ROOT / "public/template" / ("cuts.json" if mode == "portrait" else "landscape-cuts.json")
+        video = ROOT / "public/official-assets/template" / ("vertical.mp4" if mode == "portrait" else "landscape.mp4")
+        out = ROOT / "public/official-assets/template" / ("cuts.json" if mode == "portrait" else "landscape-cuts.json")
         width, height, duration = probe(video)
         payload = payload_for(mode, video, width, height, duration)
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

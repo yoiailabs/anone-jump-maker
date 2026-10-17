@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "description": "あのねジャンプメーカー — ブラウザだけで写真を差し込むジャンプ動画メーカー（試作）",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yoiailabs/anone-jump-maker.git"
+  },
+  "homepage": "https://anone.yoiailabs.com",
   "scripts": {
     "dev": "cf dev",
     "build": "astro check && tsc --noEmit -p worker/tsconfig.json && astro build",

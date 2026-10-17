@@ -14,7 +14,7 @@ describe("loadTimeline", () => {
       vi.fn(async () => new Response(JSON.stringify(cuts), { status: 200 })),
     );
     try {
-      await expect(loadTimeline("/template/cuts.json")).resolves.toEqual(cuts);
+      await expect(loadTimeline("/official-assets/template/cuts.json")).resolves.toEqual(cuts);
     } finally {
       vi.unstubAllGlobals();
     }

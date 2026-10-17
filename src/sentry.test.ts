@@ -6,6 +6,7 @@ import {
   createSentryBrowserOptions,
   errorReportExtras,
   filterSentryEvent,
+  isSentryEnabled,
   isExpectedUxError,
   pickTraceAttributes,
   reportError,
@@ -44,6 +45,20 @@ describe("sentryEnvironment", () => {
     expect(sentryEnvironment("cursor-sentry-client-errors-b37a-anone.yoiailabs.workers.dev")).toBe(
       "preview",
     );
+  });
+});
+
+describe("isSentryEnabled", () => {
+  it("sends only from the production host by default", () => {
+    expect(isSentryEnabled("anone.yoiailabs.com", undefined)).toBe(true);
+    expect(isSentryEnabled("localhost", undefined)).toBe(false);
+    expect(isSentryEnabled("127.0.0.1", "")).toBe(false);
+    expect(isSentryEnabled("cursor-foo-anone.yoiailabs.workers.dev", "  ")).toBe(false);
+    expect(isSentryEnabled("jump.example.com", undefined)).toBe(false);
+  });
+
+  it("sends from any host when VITE_SENTRY_DSN is set explicitly", () => {
+    expect(isSentryEnabled("jump.example.com", "https://example@o0.ingest.sentry.io/1")).toBe(true);
   });
 });
 

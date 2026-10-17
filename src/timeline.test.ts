@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import portraitCuts from "../public/template/cuts.json" with { type: "json" };
+import portraitCuts from "../public/official-assets/template/cuts.json" with { type: "json" };
 import {
   TEMPLATE_PHOTO_COUNT,
   TEMPLATE_SLOT_COUNT,

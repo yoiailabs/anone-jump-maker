@@ -4,6 +4,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_SENTRY_DSN?: string;
+  readonly PUBLIC_GA4_MEASUREMENT_ID?: string;
 }
 
 interface Window {

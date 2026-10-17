@@ -15,7 +15,8 @@ test.describe("privacy policy", () => {
 
     const footer = page.locator("#siteFooter");
     await expect(footer).toBeVisible();
-    await expect(footer).toContainText("Yoiailabs");
+    await expect(page.locator(".site-footer-credit")).toHaveText("© 2026 Yoiailabs");
+    await expect(footer).not.toContainText("運営:");
     await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
     await expect(page.locator("#privacyPolicyLink")).toHaveText(t("ja", "privacyLink"));
     await expect(page.locator("#linksTitle")).toHaveText(t("ja", "makerOfficial"));

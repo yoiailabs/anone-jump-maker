@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname === "/sw.js" || url.pathname === "/sw-policy.js") return;
-  if (url.pathname.startsWith("/template/")) return;
+  if (url.pathname.startsWith("/official-assets/template/")) return;
 
   event.respondWith(networkFirst(request));
 });

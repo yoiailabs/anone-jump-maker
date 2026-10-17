@@ -48,7 +48,7 @@ describe("service worker", () => {
     const source = await readFile(path.join(root, "public/sw.js"), "utf8");
     expect(source).toContain('addEventListener("fetch"');
     expect(source).toContain('addEventListener("install"');
-    expect(source).toContain("/template/");
+    expect(source).toContain("/official-assets/template/");
     expect(source).toContain('request.destination === "video"');
   });
 });

@@ -42,7 +42,7 @@ describe("beginTemplateVideoLoad", () => {
       beginTemplateVideoLoad(video);
       expect(video.preload).toBe("auto");
       expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
-      expect(video.dataset.templateAudio).toBe("/template/vertical.mp4");
+      expect(video.dataset.templateAudio).toBe("/official-assets/template/vertical.mp4");
       beginTemplateVideoLoad(video);
       expect(video.getAttribute("src")).toBe(TEMPLATES.portrait.video);
     } finally {
