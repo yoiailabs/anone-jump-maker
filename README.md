@@ -77,12 +77,12 @@ pnpm deploy         # = pnpm build && wrangler deploy（本体 anone。静的 As
 pnpm dev:worker     # ローカルで Worker + 静的アセット。バンドルは Wrangler に委譲
 ```
 
-本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。ページ表示・プレビュー開始・保存の経路でサーバー側の集計は呼びません。件数は画面に出さず、Google Analytics 4（`src/analytics-config.ts`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。GA4 と Sentry は本番ホスト `anone.yoiailabs.com` でだけ有効で、fork・ローカル・Preview では何も送りません（下の「fork・セルフホスト」）。
+本体 `anone` は Cloudflare Workers の静的アセットとして `dist` を配信します。ページ表示・プレビュー開始・保存の経路でサーバー側の集計は呼びません。件数は画面に出さず、Google Analytics 4（`src/analytics-config.ts`、`src/layouts/Layout.astro` の gtag）へクライアントからカスタムイベントだけ送ります。GA4 と Sentry はビルド時の環境変数があるときだけ読み込みます。変数が無い fork・ローカル・Preview では SDK を載せず、何も送りません（下の「fork・セルフホスト」）。
 
 - `video_preview` … プレビュー再生の開始時（旧カウンタと同じ。同じ再生中の再スタートや一時停止からの再開は送らない。閉じてから開き直せば再送）
 - `video_save` … 動画の保存が成功したあと
 
-パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境（本番以外のホストを含む）では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
+パラメータは向き（`aspect`: `portrait` / `landscape`）とエフェクト（`effect` と `swap`: `jump` / `zoom`）だけです。写真名、ファイル、個人情報は送りません。`gtag` が無い環境（測定 ID が未設定のビルドを含む）では何もしません。件数の見方は GA4 の **リアルタイム → イベント**、または **探索** です。
 
 カット表は向き別のファイルですが中身は同じ拍です（縦横テンプレは同じアニメーション）。
 
@@ -97,9 +97,9 @@ fork して自分の環境で動かすときは、次を差し替えてくださ
 
 - **公式素材。** MIT の対象外は次の 4 ファイルだけです。`public/official-assets/template/vertical.mp4`、`public/official-assets/template/landscape.mp4`（書き出しに使うテンプレ映像。楽曲・キャラクター・映像を含む）、`public/official-assets/jump-loop.mp4`、`public/official-assets/jump-loop-still.png`（トップページの MV とその 1 フレーム）。再配布・転用はできません。自分で権利を持つ素材に差し替えるか取り除いてください。詳しくは [public/official-assets/LICENSE.md](./public/official-assets/LICENSE.md) です。同じディレクトリの `cuts.json` と `landscape-cuts.json` は生成した拍の表で、MIT です。
 - **Cloudflare アカウント。** `wrangler login` で自分のアカウントにデプロイします。`wrangler.toml` の `routes` と `cloudflare.config.ts` の `domains`（どちらも `anone.yoiailabs.com` のカスタムドメイン）は、自分のドメインに書き換えるか消してください。Worker 名 `anone` も必要なら変えます。消しても `workers_dev = true` なので `*.workers.dev` で開けます。
-- **URL と表記。** 正規 URL・OGP は `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN`、本番ホストの判定は `src/analytics-config.ts` の `PRODUCTION_HOST` です。
+- **URL と表記。** 正規 URL・OGP は `astro.config.ts` の `site` と `src/page-meta.ts` の `APP_ORIGIN` です。Sentry に送るときの environment 名（`production` / `preview` / `development`）は `src/sentry.ts` の `PRODUCTION_HOST` で分けます。これは SDK を読むかどうかとは別です。
 - **利用規約・プライバシーポリシー。** `src/terms-copy.ts`、`src/privacy-copy.ts`（と各言語版）は Yoiailabs が運営する本番サイト用です。そのまま使わず、自分の運営内容に合わせて書き直してください。
-- **計測。** GA4（`G-L8WKQQFBZC`）と Sentry は本番ホストでだけ動くので、fork では何も送りません。自分の計測を使うときはビルド時に `PUBLIC_GA4_MEASUREMENT_ID` と `VITE_SENTRY_DSN` を指定します（指定するとホストに関係なく有効になります）。
+- **計測。** 測定 ID と Sentry の DSN はリポジトリに含まれません。未設定のビルドでは GA4 も Sentry も読み込みません。自分の計測を使うときは、ビルド時に `PUBLIC_GA4_MEASUREMENT_ID` と `VITE_SENTRY_DSN` を指定します。空の例は [`.env.example`](./.env.example) です（`.env` にコピーして値を入れます）。指定したビルドでは、ホストに関係なくその値で有効になります。
 
 ## 素材とライセンス
 

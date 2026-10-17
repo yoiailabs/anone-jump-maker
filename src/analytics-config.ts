@@ -1,44 +1,29 @@
 /**
- * GA4 の読み込み可否と、Layout に埋め込む gtag の初期化スクリプト。
- * 本番ホスト（anone.yoiailabs.com）以外（fork・ローカル・Preview）では何も送らない。
- * `PUBLIC_GA4_MEASUREMENT_ID` をビルド時に明示したときだけ、ホストに関係なくその ID で有効にする。
+ * GA4 の読み込み。測定 ID はビルド時の `PUBLIC_GA4_MEASUREMENT_ID` だけ。
+ * 未設定ならスクリプトを出さず、`src/analytics.ts` の送信は何もしない。
+ * ホストでは分岐しない。fork・ローカル・Preview は変数が無い限り送らない。
  */
-export const PRODUCTION_HOST = "anone.yoiailabs.com";
-
-/** 本番の GA4 測定 ID。 */
-export const GA4_MEASUREMENT_ID = "G-L8WKQQFBZC";
-
 export type AnalyticsConfig = {
-  readonly measurementId: string;
-  readonly productionHost: string;
-  /** true なら本番ホスト以外でも有効（env で ID を明示したとき）。 */
-  readonly force: boolean;
+  readonly measurementId: string | null;
 };
 
 export function resolveAnalyticsConfig(envMeasurementId: string | undefined): AnalyticsConfig {
-  const override = envMeasurementId?.trim();
-  return {
-    measurementId: override || GA4_MEASUREMENT_ID,
-    productionHost: PRODUCTION_HOST,
-    force: Boolean(override),
-  };
+  const id = envMeasurementId?.trim();
+  return { measurementId: id || null };
 }
 
-export function isAnalyticsEnabled(hostname: string, config: AnalyticsConfig): boolean {
-  return config.force || hostname === config.productionHost;
+export function isAnalyticsEnabled(config: AnalyticsConfig): boolean {
+  return config.measurementId != null;
 }
 
 /**
- * `<script is:inline>` に入れる本文。有効でないホストでは `window.gtag` を定義しないので、
- * `src/analytics.ts` のイベント送信はすべて何もしない。
- * 初回描画を奪わないよう、アイドル／操作後に gtag.js を載せる（本番の挙動は従来どおり）。
+ * `<script is:inline>` に入れる本文。ID が無いときは空文字（script タグ自体を出さない）。
+ * 初回描画を奪わないよう、操作後か 20 秒後に gtag.js を載せる。
  */
 export function gtagBootstrapScript(config: AnalyticsConfig): string {
+  if (!config.measurementId) return "";
   const id = JSON.stringify(config.measurementId);
-  const host = JSON.stringify(config.productionHost);
-  const force = config.force ? "true" : "false";
   return `(function () {
-  if (!${force} && window.location.hostname !== ${host}) return;
   var id = ${id};
   window.dataLayer = window.dataLayer || [];
   function gtag() {

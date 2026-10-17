@@ -8,8 +8,8 @@ import type { AspectMode, SwapStyle } from "./layout.ts";
 import { MESSAGES } from "./messages.ts";
 
 /**
- * GA4 カスタムイベント（測定 ID は Layout の G-L8WKQQFBZC）。
- * gtag が無い（テスト・ブロック・未ロード）ときは何もしない。
+ * GA4 カスタムイベント。測定 ID はビルド時の PUBLIC_GA4_MEASUREMENT_ID。
+ * gtag が無い（未設定・テスト・ブロック・未ロード）ときは何もしない。
  * パラメータに写真名、ファイル名、画像バイトは載せない。
  *
  * 既存:
