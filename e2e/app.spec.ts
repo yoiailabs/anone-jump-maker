@@ -4,7 +4,7 @@ import { t } from "../src/i18n.ts";
 import { PHOTO_MAX_COUNT } from "../src/photo-list.ts";
 import { playbackPositions } from "../src/timeline.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, expectVisibleText, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, expectVisibleText, fileChooserFor, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -102,7 +102,7 @@ test("empty preview opens the photo picker and does not start playback", async (
   await expect(empty).toBeVisible();
   await expect(empty).toHaveText("");
   await empty.focus();
-  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.keyboard.press("Enter")]);
+  const chooser = await fileChooserFor(page, () => page.keyboard.press("Enter"));
   expect(chooser.isMultiple()).toBe(true);
   await chooser.setFiles(PHOTO_FILE.path);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
@@ -301,10 +301,7 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator(".thumb-add")).toBeVisible();
 
   const extra = await jpegInput("extra.jpg");
-  const [chooser] = await Promise.all([
-    page.waitForEvent("filechooser"),
-    page.locator(".thumb-add").click(),
-  ]);
+  const chooser = await fileChooserFor(page, () => page.locator(".thumb-add").click());
   await chooser.setFiles({ name: extra.name, mimeType: extra.mimeType, buffer: extra.buffer });
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(2, { timeout: 20_000 });
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "photo.jpg");
