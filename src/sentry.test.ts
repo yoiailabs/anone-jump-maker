@@ -1,7 +1,6 @@
 import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
 import {
-  DEFAULT_SENTRY_DSN,
   PRODUCTION_TRACES_SAMPLE_RATE,
   createSentryBrowserOptions,
   errorReportExtras,
@@ -48,29 +47,29 @@ describe("sentryEnvironment", () => {
   });
 });
 
+const TEST_SENTRY_DSN = "https://public@o0.ingest.sentry.io/1";
+
 describe("isSentryEnabled", () => {
-  it("sends only from the production host by default", () => {
-    expect(isSentryEnabled("anone.yoiailabs.com", undefined)).toBe(true);
-    expect(isSentryEnabled("localhost", undefined)).toBe(false);
-    expect(isSentryEnabled("127.0.0.1", "")).toBe(false);
-    expect(isSentryEnabled("cursor-foo-anone.yoiailabs.workers.dev", "  ")).toBe(false);
-    expect(isSentryEnabled("jump.example.com", undefined)).toBe(false);
+  it("stays off when VITE_SENTRY_DSN is unset", () => {
+    expect(isSentryEnabled(undefined)).toBe(false);
+    expect(isSentryEnabled("")).toBe(false);
+    expect(isSentryEnabled("  ")).toBe(false);
   });
 
-  it("sends from any host when VITE_SENTRY_DSN is set explicitly", () => {
-    expect(isSentryEnabled("jump.example.com", "https://example@o0.ingest.sentry.io/1")).toBe(true);
+  it("turns on only when VITE_SENTRY_DSN is set", () => {
+    expect(isSentryEnabled("https://example@o0.ingest.sentry.io/1")).toBe(true);
   });
 });
 
 describe("resolveSentryDsn", () => {
-  it("falls back to the public default DSN", () => {
-    expect(resolveSentryDsn(undefined)).toBe(DEFAULT_SENTRY_DSN);
-    expect(resolveSentryDsn("")).toBe(DEFAULT_SENTRY_DSN);
-    expect(resolveSentryDsn("   ")).toBe(DEFAULT_SENTRY_DSN);
+  it("returns undefined when unset", () => {
+    expect(resolveSentryDsn(undefined)).toBeUndefined();
+    expect(resolveSentryDsn("")).toBeUndefined();
+    expect(resolveSentryDsn("   ")).toBeUndefined();
   });
 
-  it("uses VITE_SENTRY_DSN when set", () => {
-    expect(resolveSentryDsn("https://example@o0.ingest.sentry.io/1")).toBe(
+  it("trims VITE_SENTRY_DSN when set", () => {
+    expect(resolveSentryDsn("  https://example@o0.ingest.sentry.io/1  ")).toBe(
       "https://example@o0.ingest.sentry.io/1",
     );
   });
@@ -201,7 +200,7 @@ describe("trace sampling", () => {
     expect(resolveTraceSampleRate({ environment: "production", parentSampled: true })).toBe(true);
     expect(resolveTraceSampleRate({ environment: "production", parentSampled: false })).toBe(false);
 
-    const options = createSentryBrowserOptions({ dsn: DEFAULT_SENTRY_DSN, environment: "production" });
+    const options = createSentryBrowserOptions({ dsn: TEST_SENTRY_DSN, environment: "production" });
     expect(options.tracesSampleRate).toBe(0.1);
     expect(
       options.tracesSampler({
@@ -330,7 +329,7 @@ describe("trace attribute allowlist", () => {
   });
 
   it("drops non-allowlisted span names and redacts streamed spans without returning null", () => {
-    const options = createSentryBrowserOptions({ dsn: DEFAULT_SENTRY_DSN, environment: "preview" });
+    const options = createSentryBrowserOptions({ dsn: TEST_SENTRY_DSN, environment: "preview" });
     expect(options.traceLifecycle).toBe("stream");
     expect(Object.hasOwn(options, "beforeSendTransaction")).toBe(false);
     expect(Object.hasOwn(options, "sendDefaultPii")).toBe(false);

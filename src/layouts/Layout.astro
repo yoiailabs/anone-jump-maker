@@ -2,7 +2,11 @@
 import "../styles/global.css";
 import type { PageMeta } from "../page-meta.ts";
 import { googleFontsHref } from "../fonts.ts";
-import { gtagBootstrapScript, resolveAnalyticsConfig } from "../analytics-config.ts";
+import {
+  gtagBootstrapScript,
+  isAnalyticsEnabled,
+  resolveAnalyticsConfig,
+} from "../analytics-config.ts";
 import { LOCALES, OG_LOCALE, isJapaneseOnlyView, t } from "../i18n.ts";
 import { pageUrl } from "../page-meta.ts";
 import {
@@ -17,7 +21,8 @@ const { title, description, url, image, imageAlt, siteName, lang, ogLocale, view
 const alternateLocales = isJapaneseOnlyView(view) ? (["ja"] as const) : LOCALES;
 const shortName = t(lang, "pwaShortName");
 const fontHref = googleFontsHref(lang);
-const gtagScript = gtagBootstrapScript(resolveAnalyticsConfig(import.meta.env.PUBLIC_GA4_MEASUREMENT_ID));
+const analytics = resolveAnalyticsConfig(import.meta.env.PUBLIC_GA4_MEASUREMENT_ID);
+const gtagScript = gtagBootstrapScript(analytics);
 const activateStylesheet = "this.media='all'";
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
@@ -37,8 +42,8 @@ const jsonLd = JSON.stringify({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <!-- Google Analytics 4。本番ホストだけで有効（src/analytics-config.ts）。初回描画を奪わないようアイドル／操作後に載せる。 -->
-    <script is:inline set:html={gtagScript} />
+    <!-- Google Analytics 4。測定 ID を埋め込むときだけ（src/analytics-config.ts、src/telemetry-build.ts）。 -->
+    {isAnalyticsEnabled(analytics) ? <script is:inline set:html={gtagScript} /> : null}
     <meta name="theme-color" content={PWA_THEME_COLOR} />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

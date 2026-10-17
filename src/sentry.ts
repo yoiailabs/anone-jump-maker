@@ -8,13 +8,8 @@ import {
 import { MESSAGES } from "./messages.ts";
 import { isTranslatorCallStackOverflow, type SentryExceptionEvent } from "./translate-guard.ts";
 
-/** 本番ホストで使う公開 DSN。上書きは VITE_SENTRY_DSN。 */
-export const DEFAULT_SENTRY_DSN =
-  "https://619cccd108a2ff20f1ea48c71161b61c@o4511562294427648.ingest.us.sentry.io/4512104396947456";
-
-import { PRODUCTION_HOST } from "./analytics-config.ts";
-
-export { PRODUCTION_HOST };
+/** Sentry の environment 名を production にするホスト。送信のオンオフには使わない。 */
+export const PRODUCTION_HOST = "anone.yoiailabs.com";
 
 /**
  * 本番のトレースサンプル率。`tracesSampleRate` と同じ値。
@@ -33,16 +28,16 @@ export function sentryEnvironment(hostname: string): SentryEnvironment {
 }
 
 /**
- * 本番ホスト（anone.yoiailabs.com）でだけ送る。fork・ローカル・Preview は SDK を読み込まず何も送らない。
- * `VITE_SENTRY_DSN` をビルド時に明示したときは、ホストに関係なくその DSN へ送る。
+ * `VITE_SENTRY_DSN` があるときだけ SDK を読む。未設定ならホストが本番でも送らない。
+ * Workers Builds の Preview では、この値は `src/telemetry-build.ts` がビルド前に外す。
  */
-export function isSentryEnabled(hostname: string, envDsn: string | undefined): boolean {
-  return hostname === PRODUCTION_HOST || Boolean(envDsn?.trim());
+export function resolveSentryDsn(envDsn: string | undefined): string | undefined {
+  const trimmed = envDsn?.trim();
+  return trimmed || undefined;
 }
 
-export function resolveSentryDsn(envDsn: string | undefined): string {
-  const trimmed = envDsn?.trim();
-  return trimmed || DEFAULT_SENTRY_DSN;
+export function isSentryEnabled(envDsn: string | undefined): boolean {
+  return resolveSentryDsn(envDsn) !== undefined;
 }
 
 /** 環境ごとのルートトレース率。本番は 0.1 のまま。sampler はこの値を親判定に掛けない。 */
@@ -459,7 +454,8 @@ let sentryPromise: Promise<SentryBrowser | null> | null = null;
 
 function loadSentry(): Promise<SentryBrowser | null> {
   if (sentryPromise) return sentryPromise;
-  if (typeof window === "undefined" || !isSentryEnabled(window.location.hostname, import.meta.env.VITE_SENTRY_DSN)) {
+  const dsn = resolveSentryDsn(import.meta.env.VITE_SENTRY_DSN);
+  if (typeof window === "undefined" || !dsn) {
     sentryPromise = Promise.resolve(null);
     return sentryPromise;
   }
@@ -467,7 +463,7 @@ function loadSentry(): Promise<SentryBrowser | null> {
     const environment = sentryEnvironment(window.location.hostname);
     Sentry.init(
       createSentryBrowserOptions({
-        dsn: resolveSentryDsn(import.meta.env.VITE_SENTRY_DSN),
+        dsn,
         environment,
       }),
     );
