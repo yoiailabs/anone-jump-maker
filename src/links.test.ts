@@ -105,14 +105,14 @@ describe("maker source repository", () => {
     expect(SOURCE_REPO_HREF).toBe("https://github.com/yoiailabs/anone-jump-maker");
   });
 
-  it("puts a text link in the footer and a mark in both headers", () => {
+  it("puts a text link in the footer and a mark on the top header only", () => {
     expect(footerSrc).toContain('id="footerGitHub"');
     expect(footerSrc).toContain("SOURCE_REPO_HREF");
     expect(footerSrc).toContain('target="_blank"');
     expect(footerSrc).toContain('rel="noopener noreferrer"');
     expect(footerSrc).toContain('{t(locale, "makerSource")}');
     expect(makerSrc).toContain('<HeaderGitHub id="makerHeaderGitHub"');
-    expect(makerSrc).toContain('<HeaderGitHub id="studioHeaderGitHub"');
+    expect(makerSrc).not.toContain("studioHeaderGitHub");
     expect(makerSrc).not.toContain("github-link");
     expect(headerGitHubSrc).toContain("SOURCE_REPO_HREF");
     expect(headerGitHubSrc).toContain('target="_blank"');

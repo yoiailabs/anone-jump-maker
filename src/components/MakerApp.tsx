@@ -223,7 +223,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
         <div className="app-view" id="studioView" hidden={studioHidden}>
           <header className="studio-top">
-            <HeaderGitHub id="studioHeaderGitHub" locale={locale} />
             <a id="studioHome" href={pathForApp(locale, "maker")}>
               <img
                 className="hero-logo"

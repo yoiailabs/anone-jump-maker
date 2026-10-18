@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { t } from "../src/i18n.ts";
 import { SOURCE_REPO_HREF } from "../src/links.ts";
 import { MORE_JUMPS_HREF } from "../src/share.ts";
@@ -384,49 +384,56 @@ test.describe("source repository link", () => {
     await stubShortTemplate(page);
   });
 
-  test("shows a visible footer link and header mark on the top and make pages", async ({ page }) => {
-    for (const [path, headerId, neighbor] of [
-      ["/", "#makerHeaderGitHub", "#makerView .hero .lang-switch a"],
-      ["/en", "#makerHeaderGitHub", "#makerView .hero .lang-switch a"],
-      ["/make", "#studioHeaderGitHub", "#studioTitle"],
+  test("shows the header mark on top pages and the footer link on top and make", async ({ page }) => {
+    for (const [path, locale] of [
+      ["/", "ja"],
+      ["/en", "en"],
+      ["/ko", "ko"],
+      ["/zh", "zh"],
     ] as const) {
       await page.goto(path);
       await waitForAppReady(page);
-      const footer = page.locator("#footerGitHub");
-      const header = page.locator(headerId);
-      await expect(footer).toBeVisible();
-      await expect(header).toBeVisible();
-      for (const link of [footer, header]) {
-        await expect(link).toHaveAttribute("href", SOURCE_REPO_HREF);
-        await expect(link).toHaveAttribute("target", "_blank");
-        await expect(link).toHaveAttribute("rel", "noopener noreferrer");
-        const hidden = await link.evaluate((el) => Boolean(el.closest("[hidden]")));
-        expect(hidden).toBe(false);
-      }
-      await expect(footer).toHaveText(t(path === "/en" ? "en" : "ja", "makerSource"));
-      await expect(header).toHaveAttribute("aria-label", "GitHub");
-      await expect(page.locator("#siteFooter nav")).toContainText("GitHub");
-      const footerBox = await footer.boundingBox();
+      await expect(page.locator("#makerView")).toBeVisible();
+      await expectRepoLink(page.locator("#footerGitHub"), t(locale, "makerSource"));
+      await expectRepoLink(page.locator("#makerHeaderGitHub"), "GitHub");
+      await expect(page.locator("#makerHeaderGitHub")).toHaveAttribute("aria-label", "GitHub");
+      await expect(page.locator("#studioHeaderGitHub")).toHaveCount(0);
+      const footerBox = await page.locator("#footerGitHub").boundingBox();
       const privacyBox = await page.locator("#privacyPolicyLink").boundingBox();
       expect(footerBox && privacyBox && Math.abs(footerBox.y - privacyBox.y) < 8).toBe(true);
-
-      const iconBox = await header.boundingBox();
-      const neighbors = page.locator(neighbor);
-      const neighborCount = await neighbors.count();
-      for (let index = 0; index < neighborCount; index += 1) {
-        const neighborBox = await neighbors.nth(index).boundingBox();
-        expect(iconBox && neighborBox && !boxesOverlap(iconBox, neighborBox)).toBe(true);
+      const iconBox = await page.locator("#makerHeaderGitHub").boundingBox();
+      const links = page.locator("#makerView .hero .lang-switch a");
+      const linkCount = await links.count();
+      for (let index = 0; index < linkCount; index += 1) {
+        const linkBox = await links.nth(index).boundingBox();
+        expect(iconBox && linkBox && !boxesOverlap(iconBox, linkBox)).toBe(true);
       }
-      const logoBox = await page
-        .locator(path === "/make" ? "#studioHome img" : "#makerTitle .hero-logo")
-        .boundingBox();
+      const logoBox = await page.locator("#makerTitle .hero-logo").boundingBox();
       expect(iconBox && logoBox && !boxesOverlap(iconBox, logoBox)).toBe(true);
-      const headerBox = await page.locator(path === "/make" ? ".studio-top" : "#makerView .hero").boundingBox();
-      expect(iconBox && headerBox && iconBox.x + iconBox.width > headerBox.x + headerBox.width - 4).toBe(true);
-      expect(iconBox && headerBox && iconBox.y < headerBox.y + 4).toBe(true);
     }
+
+    await page.goto("/make");
+    await waitForAppReady(page);
+    await expect(page.locator("#studioView")).toBeVisible();
+    await expect(page.locator("#makerView")).toBeHidden();
+    await expectRepoLink(page.locator("#footerGitHub"), t("ja", "makerSource"));
+    await expect(page.locator(".header-github")).toHaveCount(1);
+    await expect(page.locator("#makerHeaderGitHub")).toBeHidden();
+    await expect(page.locator("#studioHeaderGitHub")).toHaveCount(0);
   });
 });
+
+async function expectRepoLink(link: Locator, accessibleName: string) {
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute("href", SOURCE_REPO_HREF);
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  const hidden = await link.evaluate((el) => Boolean(el.closest("[hidden]")));
+  expect(hidden).toBe(false);
+  const text = ((await link.textContent()) ?? "").trim();
+  const label = (await link.getAttribute("aria-label")) ?? text;
+  expect(label === accessibleName || text === accessibleName).toBe(true);
+}
 
 function boxesOverlap(
   a: { x: number; y: number; width: number; height: number },
