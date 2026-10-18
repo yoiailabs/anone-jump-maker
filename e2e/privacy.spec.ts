@@ -9,7 +9,7 @@ test.describe("privacy policy", () => {
     await stubShortTemplate(page);
   });
 
-  test("links from the maker and community footer and opens /privacy", async ({ page }) => {
+  test("links from the maker footer and opens /privacy", async ({ page }) => {
     await page.goto("/");
     await waitForAppReady(page);
 
@@ -21,18 +21,7 @@ test.describe("privacy policy", () => {
     await expect(page.locator("#privacyPolicyLink")).toHaveText(t("ja", "privacyLink"));
     await expect(page.locator("#linksTitle")).toHaveText(t("ja", "makerOfficial"));
     await expect(page.locator("#makerView .notes .lang-switch a[lang='en']")).toHaveAttribute("href", "/en");
-
-    await page.goto("/community");
-    await waitForAppReady(page);
-    await expect(page).toHaveURL(/\/community\/?$/);
-    await expect(page.locator("#privacyPolicyLink")).toBeVisible();
-    await expect(page.locator("#privacyPolicyLink")).toHaveAttribute("href", "/privacy");
-    await expect(page.locator("#makerView #linksTitle")).toHaveText(t("ja", "makerOfficial"));
-    await expect(page.locator("#makerView")).toBeHidden();
-    await expect(page.locator("#communityView .lang-switch a[lang='en']").first()).toHaveAttribute(
-      "href",
-      "/en/community",
-    );
+    await expect(page.locator("#makerView")).toBeVisible();
 
     await page.locator("#privacyPolicyLink").click();
     await expect(page).toHaveURL(/\/privacy\/?$/);

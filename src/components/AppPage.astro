@@ -1,7 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import MakerApp from "./MakerApp.tsx";
-import { communityJumpsSectionHtml } from "../community-list.ts";
 import { pageMeta } from "../page-meta.ts";
 import type { AppView, Locale } from "../i18n.ts";
 
@@ -12,11 +11,10 @@ type Props = {
 
 const { locale, view } = Astro.props;
 const meta = pageMeta(locale, view);
-const communityHtml = view === "community" ? communityJumpsSectionHtml(undefined, locale) : "";
 ---
 
 <Layout {...meta}>
   <div id="app">
-    <MakerApp client:load initialView={view} locale={locale} communityHtml={communityHtml} />
+    <MakerApp client:load initialView={view} locale={locale} />
   </div>
 </Layout>

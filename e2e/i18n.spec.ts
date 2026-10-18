@@ -63,7 +63,7 @@ test.describe("language switcher", () => {
     await waitForAppReady(page);
   });
 
-  test("switches from the header and footer menus and keeps the community path", async ({ page }) => {
+  test("switches from the header and footer menus", async ({ page }) => {
     const headerEn = page.locator("#makerView .hero .lang-switch a[lang='en']");
     const footerEn = page.locator("#makerView .notes .lang-switch a[lang='en']");
     await expect(headerEn).toBeVisible();
@@ -77,30 +77,8 @@ test.describe("language switcher", () => {
     await expect(page.locator("#makerTitle .hero-logo")).toBeVisible();
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("src", "/brand/anone-logo-stacked-en.svg");
     await expect(page.locator("#makerTitle .hero-logo")).toHaveAttribute("alt", t("en", "makerTitle"));
-
-    await page.goto("/en/community");
-    await waitForAppReady(page);
-    await expect(page).toHaveURL(/\/en\/community\/?$/);
-    await expect(page.locator("#communityJumpsTitle")).toHaveText(t("en", "communityTitle"));
-    await expect(page.locator("#communityView .eyebrow")).toHaveCount(0);
-    await expect(page.locator("#communityJumpsTitle a")).toHaveCount(0);
-    await expect(page.locator('#communityHashtagSearch a[data-service="x"]')).toHaveAttribute(
-      "aria-label",
-      t("en", "communityHashtagSearchAria", { label: "X" }),
-    );
-    await expect(page.locator("#communityHashtagSearchHeading")).toHaveText(
-      t("en", "communityHashtagSearchLede"),
-    );
-    await expect(page.locator("#communityView .hero .lang-switch a[lang='ko']")).toHaveAttribute(
-      "href",
-      "/ko/community",
-    );
-
-    await page.locator("#communityView .hero .lang-switch a[lang='ja']").click();
-    await page.waitForURL(/\/community\/?$/);
-    await waitForAppReady(page);
-    await expect(page.locator("#communityJumpsTitle")).toHaveText(t("ja", "communityTitle"));
-    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("#toCommunity")).toHaveAttribute("href", MORE_JUMPS_HREF);
   });
 });
 
@@ -337,42 +315,6 @@ test.describe("on-device note phrase wrapping", () => {
     }));
     expect(en.text).toBe(t("en", "makerOnDevice"));
     await expect(page.locator("#pickHint")).toHaveText(t("en", "makerPhotoCountHint"));
-    expect(en.text).not.toContain("\u200b");
-    expect(en.wordBreak).not.toBe("auto-phrase");
-  });
-});
-
-test.describe("community lede phrase wrapping", () => {
-  test.beforeEach(async ({ page }) => {
-    await blockAnalytics(page);
-    await stubShortTemplate(page);
-  });
-
-  test("wraps Japanese community lede at phrase boundaries and leaves English unchanged", async ({ page }) => {
-    await page.goto("/community");
-    await waitForAppReady(page);
-    const jaExpected = t("ja", "communityLede");
-    await expect
-      .poll(async () =>
-        page.locator("#communityJumps .lede").evaluate((el) => {
-          const text = el.textContent ?? "";
-          const wordBreak = getComputedStyle(el).wordBreak;
-          return {
-            visible: text.replaceAll("\u200b", ""),
-            hasBreaks: text.includes("\u200b") || wordBreak === "auto-phrase",
-          };
-        }),
-      )
-      .toEqual({ visible: jaExpected, hasBreaks: true });
-
-    await page.goto("/en/community");
-    await waitForAppReady(page);
-    const enExpected = t("en", "communityLede");
-    const en = await page.locator("#communityJumps .lede").evaluate((el) => ({
-      text: el.textContent ?? "",
-      wordBreak: getComputedStyle(el).wordBreak,
-    }));
-    expect(en.text).toBe(enExpected);
     expect(en.text).not.toContain("\u200b");
     expect(en.wordBreak).not.toBe("auto-phrase");
   });

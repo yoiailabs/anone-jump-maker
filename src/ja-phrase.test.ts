@@ -16,7 +16,7 @@ import makerSrc from "./components/MakerApp.tsx?raw";
 
 const stylesSrc = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
-const JA_COPY = [t("ja", "communityLede"), t("ja", "makerOnDevice")] as const;
+const JA_COPY = [t("ja", "makerOnDevice"), t("ja", "metaMakerDescription")] as const;
 
 describe("Japanese phrase breaks", () => {
   it("inserts ZWSP between Japanese phrases without changing visible copy", () => {
@@ -29,7 +29,7 @@ describe("Japanese phrase breaks", () => {
   });
 
   it("does not rewrite non-Japanese lede copy", () => {
-    const line = t("en", "communityLede");
+    const line = t("en", "makerOnDevice");
     expect(line).not.toContain(JA_PHRASE_ZWSP);
     expect(visibleJaText(line)).toBe(line);
     expect(needsJaPhrasePolyfill("en")).toBe(false);

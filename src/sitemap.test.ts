@@ -8,7 +8,7 @@ describe("sitemapXml", () => {
     expect(xml).toContain("https://anone.yoiailabs.com/en");
     expect(xml).toContain("https://anone.yoiailabs.com/make");
     expect(xml).toContain("https://anone.yoiailabs.com/ko/make");
-    expect(xml).toContain("https://anone.yoiailabs.com/ko/community");
+    expect(xml).not.toContain("/community");
     expect(xml).toContain("https://anone.yoiailabs.com/zh");
     expect(xml).toContain("https://anone.yoiailabs.com/privacy");
     expect(xml).not.toContain("https://anone.yoiailabs.com/en/privacy");

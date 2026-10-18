@@ -40,7 +40,6 @@ import {
   type SwapStyle,
 } from "./layout.ts";
 import { persistLocale, syncLanguageNav } from "./i18n-client.ts";
-import { applyJaPhrasePolyfill } from "./ja-phrase.ts";
 import {
   DEFAULT_LOCALE,
   localeFromLanguageTags,
@@ -745,18 +744,15 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       });
   };
 
-  let communityMounted = false;
   let studioEntered = false;
   let makerReactionsArmed = false;
   let activeView: AppView | null = null;
   let embedPaintGen = 0;
   const focusViewHeading = (view: AppView) => {
     const heading =
-      view === "community"
-        ? root.querySelector<HTMLElement>("#communityJumpsTitle")
-        : view === "studio"
-          ? root.querySelector<HTMLElement>("#studioTitle")
-          : root.querySelector<HTMLElement>("#makerTitle");
+      view === "studio"
+        ? root.querySelector<HTMLElement>("#studioTitle")
+        : root.querySelector<HTMLElement>("#makerTitle");
     heading?.setAttribute("tabindex", "-1");
     heading?.focus({
       preventScroll: true,
@@ -771,10 +767,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     }
     const makerView = must(root, "#makerView");
     const studioView = must(root, "#studioView");
-    const communityView = must(root, "#communityView");
     makerView.hidden = view !== "maker";
     studioView.hidden = view !== "studio";
-    communityView.hidden = view !== "community";
     document.title = documentTitleForView(view, locale);
     syncLanguageNav(root, locale, view);
     const enteringStudio = view === "studio" && activeView !== "studio";
@@ -795,31 +789,6 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       }
     }
     const paintGen = ++embedPaintGen;
-    if (view === "community") {
-      const { communityJumpsSectionHtml, mountCommunityJumps, refreshCommunityJumps } = await import(
-        "./community-list.ts"
-      );
-      if (paintGen !== embedPaintGen) return;
-      if (!communityView.querySelector("#communityJumps")) {
-        communityView.innerHTML = communityJumpsSectionHtml(undefined, locale);
-        syncLanguageNav(root, locale, view);
-      }
-      void applyJaPhrasePolyfill(communityView, locale);
-      if (!firstPaint) {
-        focusViewHeading("community");
-      }
-      const section = must(root, "#communityJumps");
-      whenEmbedHostVisible(communityView, () => {
-        if (paintGen !== embedPaintGen) return;
-        if (!communityMounted) {
-          mountCommunityJumps(section);
-          communityMounted = true;
-        } else {
-          refreshCommunityJumps(section);
-        }
-      });
-      return;
-    }
     if (view === "studio") {
       if (enteringStudio) {
         const entry = studioEntered ? "reopen" : "initial";

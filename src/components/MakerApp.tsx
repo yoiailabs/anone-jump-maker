@@ -81,7 +81,6 @@ function PhotoThumbsSlot({ locale }: { locale: Locale }) {
 type MakerAppProps = {
   initialView: AppView;
   locale: Locale;
-  communityHtml?: string;
 };
 
 const OPTION_TABS = [
@@ -93,7 +92,7 @@ const OPTION_TABS = [
 
 type OptionTab = (typeof OPTION_TABS)[number][0];
 
-export default function MakerApp({ initialView, locale, communityHtml = "" }: MakerAppProps) {
+export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const started = useRef(false);
   const landingLogoRef = useRef<HTMLImageElement>(null);
   const [optionTab, setOptionTab] = useState<OptionTab>("aspect");
@@ -134,7 +133,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
 
   const makerHidden = initialView !== "maker";
   const studioHidden = initialView !== "studio";
-  const communityHidden = initialView !== "community";
   const logoSize = makerLogoStackedSize(locale);
 
   return (
@@ -469,12 +467,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           </section>
           <LanguageNav locale={locale} view="studio" />
         </div>
-        <div
-          className="app-view"
-          id="communityView"
-          hidden={communityHidden}
-          {...(communityHtml ? { dangerouslySetInnerHTML: { __html: communityHtml } } : {})}
-        />
         <SiteFooter locale={locale} />
       </div>
     </>

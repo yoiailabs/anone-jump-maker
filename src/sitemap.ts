@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, LOCALES, isJapaneseOnlyView, type AppView, type Locale } from "./i18n.ts";
 import { pageUrl } from "./page-meta.ts";
 
-const VIEWS: readonly AppView[] = ["maker", "studio", "community", "privacy", "terms"];
+const VIEWS: readonly AppView[] = ["maker", "studio", "privacy", "terms"];
 
 function localesFor(view: AppView): readonly Locale[] {
   return isJapaneseOnlyView(view) ? [DEFAULT_LOCALE] : LOCALES;

@@ -654,11 +654,10 @@ test("cancelling the share sheet stays on the export dialog", async ({ page }) =
   await expect(page.locator("#downloadExportBtn")).toBeEnabled();
 });
 
-test("opens community jumps from the disclaimer link and returns via the back link", async ({ page }) => {
+test("keeps the hashtag search button on the maker and leaves reactions in place", async ({ page }) => {
   await expect(page.locator(".app-tabs")).toHaveCount(0);
   await expect(page.locator("#makerView")).toBeVisible();
-  await expect(page.locator("#communityView")).toBeHidden();
-  await expect(page.locator("#communityJumpsTitle")).toBeHidden();
+  await expect(page.locator("#communityView")).toHaveCount(0);
   await expect(page.locator("#toStudio")).toBeVisible();
   await expect(page.locator("#makerView #picker")).toHaveCount(0);
   await expect(page.locator("#reactionsTitle")).toBeVisible();
@@ -709,275 +708,39 @@ test("opens community jumps from the disclaimer link and returns via the back li
   await expect(toCommunity).toHaveAttribute("target", "_blank");
   await expect(toCommunity).toHaveAttribute("rel", "noopener noreferrer");
   await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
-  await openCommunityInApp(page);
-  await expect(page).not.toHaveURL(/#community/);
-  await expect(page).toHaveTitle("みんなの #あのねジャンプ");
-  await expect(page.locator("#communityView")).toBeVisible();
-  await expect(page.locator("#makerView")).toBeHidden();
-  await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
-  await expect(page.locator("#communityJumpsTitle a")).toHaveCount(0);
-  await expect(page.locator("#communityHashtag")).toHaveCount(0);
-  await expect(page.locator("#communityJumpsTitle")).toBeInViewport();
-  await expect
-    .poll(async () =>
-      page.locator("#communityJumpsTitle").evaluate((el) => getComputedStyle(el).outlineStyle),
-    )
-    .toBe("none");
-  await expect(page.locator("#toMaker")).toBeVisible();
-  await expect(page.locator("#toMaker")).toHaveClass(/\bpage-link\b/);
-  await expect(page.locator("#toMaker")).not.toHaveClass(/\bbtn\b/);
-  await expect(page.locator("#toMakerBottom")).toHaveClass(/\bpage-link\b/);
-  await expect(page.locator("#toMakerBottom")).not.toHaveClass(/\bbtn\b/);
-  const search = page.locator("#communityHashtagSearch");
-  const searchX = page.locator('#communityHashtagSearch a[data-service="x"]');
-  const searchIg = page.locator('#communityHashtagSearch a[data-service="instagram"]');
-  const searchYt = page.locator('#communityHashtagSearch a[data-service="youtube"]');
-  const searchTt = page.locator('#communityHashtagSearch a[data-service="tiktok"]');
-  await expect(search).toBeVisible();
-  await expect(page.locator("#communityHashtagSearch a.link-banner")).toHaveCount(4);
-  await expect(searchX).toHaveAttribute(
-    "href",
-    `https://x.com/search?q=${encodeURIComponent("#あのねジャンプ")}`,
-  );
-  await expect(searchIg).toHaveAttribute(
-    "href",
-    `https://www.instagram.com/explore/tags/${encodeURIComponent("あのねジャンプ")}/`,
-  );
-  await expect(searchYt).toHaveAttribute(
-    "href",
-    `https://www.youtube.com/results?search_query=${encodeURIComponent("#あのねジャンプ")}`,
-  );
-  await expect(searchTt).toHaveAttribute(
-    "href",
-    `https://www.tiktok.com/tag/${encodeURIComponent("あのねジャンプ")}`,
-  );
-  for (const link of [searchX, searchIg, searchYt, searchTt]) {
-    await expect(link).toHaveAttribute("target", "_blank");
-    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
-  }
-  await expect(searchX).toHaveAttribute("aria-label", "Xで #あのねジャンプ を検索する（新しいタブ）");
-  await expect(page.locator("#communityHashtagSearchHeading")).toHaveText("こっちにもあるよ");
-  await expect(page.locator("#makerView .eyebrow")).toHaveCount(0);
-  await expect(page.locator("#communityJumps .eyebrow")).toHaveCount(0);
-  await expect(page.locator("#moreJumps")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "もっと見る" })).toHaveCount(0);
-  const titleBox = await page.locator("#communityJumpsTitle").boundingBox();
-  const ledeBox = await page.locator("#communityJumps .lede").boundingBox();
-  const sortBox = await page.locator("#communitySort").boundingBox();
-  const listBox = await page.locator("#communityJumpsList").boundingBox();
-  expect(titleBox && ledeBox && titleBox.y < ledeBox.y).toBe(true);
-  expect(ledeBox && sortBox && ledeBox.y < sortBox.y).toBe(true);
-  expect(sortBox && listBox && sortBox.y < listBox.y).toBe(true);
-  expect(titleBox && listBox && titleBox.y < listBox.y).toBe(true);
-  await expect(page.locator("#communityJumps .community-jumps-item")).toHaveCount(50);
-  await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
-  await expect(page.locator("#communitySortNewest")).toBeChecked();
-  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
-    "data-post-id",
-    "2101803923954970918",
-  );
-  await expect(page.locator(".community-jumps-card[data-media='video']")).toHaveCount(50);
-  await expect(page.locator("#communityJumpsPrev")).toHaveCount(0);
-  await expect(page.locator("#communityPager")).toBeVisible();
-  await expect(page.locator("#communityPagePrev")).toBeDisabled();
-  await expect(page.locator("#communityPageNext")).toBeEnabled();
-  await expect(page.locator(".community-page-num")).toHaveCount(0);
-  await expect(page.locator("#communityPager [aria-current='page']")).toHaveCount(0);
-  await expect(page.locator("#playBtn")).toBeHidden();
-
-  const masonryCols = await page.locator("#communityJumpsList").evaluate((el) => {
-    const n = Number(getComputedStyle(el).getPropertyValue("--community-masonry-cols"));
-    return n === 2 || n === 3 ? n : 1;
-  });
-  const viewportWidth = page.viewportSize()?.width ?? 0;
-  const expectedCols = viewportWidth >= 768 ? 3 : viewportWidth >= 640 ? 2 : 1;
-  expect(masonryCols).toBe(expectedCols);
-  await expect(page.locator("#communityJumpsList")).toHaveAttribute("data-masonry-cols", String(expectedCols));
-
-  const first = page.locator("#communityJumps .community-jumps-item").nth(0);
-  const second = page.locator("#communityJumps .community-jumps-item").nth(1);
-  const last = page.locator("#communityJumps .community-jumps-item").nth(49);
-  const firstBox = await first.boundingBox();
-  const secondBox = await second.boundingBox();
-  const lastBox = await last.boundingBox();
-  expect(firstBox && secondBox && lastBox).toBeTruthy();
-  if (expectedCols === 1) {
-    expect(firstBox && secondBox && firstBox.y < secondBox.y).toBe(true);
-    expect(secondBox && lastBox && secondBox.y < lastBox.y).toBe(true);
-  } else {
-    expect(firstBox && secondBox && secondBox.x > firstBox.x + 40).toBe(true);
-    expect(firstBox && secondBox && Math.abs(firstBox.y - secondBox.y) < 48).toBe(true);
-    expect(firstBox && lastBox && lastBox.y > firstBox.y + 40).toBe(true);
-  }
-
-  if (viewportWidth >= 640) {
-    const communityAppWidth = await page.locator(".app").evaluate((el) => el.getBoundingClientRect().width);
-    expect(communityAppWidth).toBeGreaterThan(28 * 16);
-  }
-
-  const bottomBack = page.locator("#toMakerBottom");
-  const lastAfter = page.locator("#communityJumps .community-jumps-item").nth(49);
-  await lastAfter.scrollIntoViewIfNeeded();
-  const lastAfterBox = await lastAfter.boundingBox();
-  const pagerBox = await page.locator("#communityPager").boundingBox();
-  const searchBox = await search.boundingBox();
-  const bottomBox = await bottomBack.boundingBox();
-  expect(lastAfterBox && pagerBox && lastAfterBox.y < pagerBox.y).toBe(true);
-  expect(pagerBox && searchBox && pagerBox.y < searchBox.y).toBe(true);
-  expect(searchBox && bottomBox && searchBox.y < bottomBox.y).toBe(true);
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(50);
-  await expect(bottomBack).toHaveAttribute("href", "/");
-
-  // widgets.js が display:none 中に測ると iframe が潰れる。戻ったら blockquote から載せ直す。
-  await page.evaluate(() => {
-    const reactions = document.querySelector("#reactionsEmbed");
-    if (reactions) {
-      reactions.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`.repeat(9);
-    }
-    for (const card of document.querySelectorAll<HTMLElement>(".community-jumps-card[data-hydrated='1']")) {
-      card.innerHTML = `<iframe class="twitter-tweet-rendered" height="0"></iframe>`;
-    }
-  });
-
-  await bottomBack.click();
-  await expect(page).not.toHaveURL(/\/community/);
-  expect(new URL(page.url()).pathname).toBe("/");
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.locator("#makerView")).toBeVisible();
-  await expect(page.locator("#toStudio")).toBeVisible();
-  await expect(page.locator("#playBtn")).toBeHidden();
-  if ((page.viewportSize()?.width ?? 0) >= 640) {
-    const makerAppWidth = await page.locator(".app").evaluate((el) => el.getBoundingClientRect().width);
-    expect(makerAppWidth).toBeLessThanOrEqual(28 * 16 + 2);
+  await expect(page.locator("#reactionsEmbed")).toBeAttached();
+});
+
+test("opens retired community URLs on the locale top page", async ({ page }) => {
+  const cases = [
+    ["/community", "/"],
+    ["/community/", "/"],
+    ["/ja/community", "/"],
+    ["/en/community", "/en"],
+    ["/ko/community/", "/ko"],
+    ["/zh/community", "/zh"],
+  ] as const;
+  for (const [from, expected] of cases) {
+    await page.goto(from);
+    await expect.poll(() => new URL(page.url()).pathname.replace(/\/$/, "") || "/").toBe(expected);
+    await waitForAppReady(page);
+    await expect(page.locator("#makerView")).toBeVisible();
+    await expect(page.locator("#communityView")).toHaveCount(0);
+    await expect(page.locator("#toCommunity")).toHaveAttribute("href", MORE_JUMPS_HREF);
+    await expect(page.locator("#toCommunity")).toHaveAttribute("target", "_blank");
   }
-  await expect(page.getByRole("heading", { name: "あのねジャンプメーカー" })).toBeInViewport();
-  await expect(page.locator("#communityView")).toBeHidden();
-  await expect(page.locator("#reactionsTitle")).toBeVisible();
-  await expect(page.locator("#reactionsEmbed blockquote.twitter-tweet")).toHaveCount(9);
-  await expect(page.locator("#reactionsEmbed iframe.twitter-tweet-rendered")).toHaveCount(0);
-
-  await openCommunityInApp(page);
-  await expect(page.locator(".community-jumps-card[data-hydrated='1'] blockquote.twitter-tweet")).toHaveCount(50);
-  await expect(page.locator(".community-jumps-card iframe.twitter-tweet-rendered")).toHaveCount(0);
 });
 
-test("hydrates community cards on the visible page after scrolling", async ({ page }) => {
-  await page.goto("/community");
-  await waitForAppReady(page);
-  const items = page.locator("#communityJumps .community-jumps-item");
-  await expect(items).toHaveCount(50);
-  await expect(page.locator("#communityJumpsList")).toHaveClass(/community-jumps-masonry/);
-  for (const index of [0, 1, 2, 25, 49]) {
-    await items.nth(index).scrollIntoViewIfNeeded();
-    await expect(items.nth(index).locator(".community-jumps-card")).toHaveAttribute("data-hydrated", "1");
-    await expect(items.nth(index).locator("blockquote.twitter-tweet")).toHaveCount(1);
-  }
-  await page.locator("#toMakerBottom").scrollIntoViewIfNeeded();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(50);
-});
-
-test("pages 50 community posts with prev/next only and resets to page 1 when sorting", async ({ page }) => {
-  await page.goto("/community");
-  await waitForAppReady(page);
-  const items = page.locator("#communityJumps .community-jumps-item");
-  await expect(items).toHaveCount(50);
-  await expect(page.locator("#communityPagePrev")).toBeDisabled();
-  await expect(page.locator("#communityPageNext")).toBeEnabled();
-  await expect(page.locator(".community-page-num")).toHaveCount(0);
-  await expect(page.locator("#communityPager [aria-current='page']")).toHaveCount(0);
-  await expect(items.first()).toHaveAttribute("data-post-id", "2101803923954970918");
-
-  await page.locator("#communityPageNext").click();
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "2");
-  await expect(items).toHaveCount(50);
-  await expect(items.first()).not.toHaveAttribute("data-post-id", "2101803923954970918");
-  await expect(page.locator("#communityPagePrev")).toBeEnabled();
-  await expect(page.locator("#communityPageNext")).toBeEnabled();
-  await expect(page.locator(".community-page-num")).toHaveCount(0);
-
-  while (await page.locator("#communityPageNext").isEnabled()) {
-    await page.locator("#communityPageNext").click();
-  }
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "11");
-  await expect(items).toHaveCount(15);
-  await expect(items.last()).toHaveAttribute("data-post-id", "2009475998488961327");
-  await expect(page.locator("#communityPageNext")).toBeDisabled();
-  await expect(page.locator("#communityPagePrev")).toBeEnabled();
-  await page.locator("#toMakerBottom").scrollIntoViewIfNeeded();
-  await expect(page.locator(".community-jumps-card[data-hydrated='1']")).toHaveCount(15);
-
-  await page.locator("#communitySort").scrollIntoViewIfNeeded();
-  await page.locator("label:has(#communitySortPopular)").click();
-  await expect(page.locator("#communitySortPopular")).toBeChecked();
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
-  await expect(page.locator("#communityPagePrev")).toBeDisabled();
-  await expect(page.locator("#communityPageNext")).toBeEnabled();
-  await expect(items).toHaveCount(50);
-  await expect(items.first()).toHaveAttribute("data-post-id", "2084205622862725181");
-});
-
-test("uses three masonry columns on iPad-sized viewports and can sort by popularity", async ({ page }) => {
-  await page.setViewportSize({ width: 768, height: 1024 });
-  await page.goto("/community");
-  await waitForAppReady(page);
-  await expect(page.locator("#communityJumpsList")).toHaveAttribute("data-masonry-cols", "3");
-  const first = page.locator("#communityJumps .community-jumps-item").nth(0);
-  const second = page.locator("#communityJumps .community-jumps-item").nth(1);
-  const firstBox = await first.boundingBox();
-  const secondBox = await second.boundingBox();
-  expect(firstBox && secondBox && secondBox.x > firstBox.x + 40).toBe(true);
-  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
-    "data-post-id",
-    "2101803923954970918",
-  );
-  await page.locator("#communityPageNext").click();
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "2");
-  await page.locator("#communitySort").scrollIntoViewIfNeeded();
-  await page.locator("label:has(#communitySortPopular)").click();
-  await expect(page.locator("#communitySortPopular")).toBeChecked();
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
-  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
-    "data-post-id",
-    "2084205622862725181",
-  );
-  await page.locator("label:has(#communitySortNewest)").click();
-  await expect(page.locator("#communityJumps .community-jumps-item").first()).toHaveAttribute(
-    "data-post-id",
-    "2101803923954970918",
-  );
-  await expect(page.locator("#communityJumps")).toHaveAttribute("data-page", "1");
-});
-
-test("opens /community directly and moves leftover hashes onto the path", async ({ page }) => {
-  await page.goto("/community");
-  await waitForAppReady(page);
-  await expect(page).toHaveURL(/\/community\/?$/);
-  await expect(page.locator("#communityView")).toBeVisible();
-  await expect(page.locator("#communityJumpsTitle")).toHaveText("みんなの #あのねジャンプ");
-  expect(await page.evaluate(() => document.activeElement?.id ?? "")).not.toBe("communityJumpsTitle");
-  await expect
-    .poll(async () =>
-      page.locator("#communityJumpsTitle").evaluate((el) => getComputedStyle(el).outlineStyle),
-    )
-    .toBe("none");
-  await expect(page).toHaveTitle("みんなの #あのねジャンプ");
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
-    "content",
-    "ファンが投稿したジャンプ動画です。下にスクロールして見てね。",
-  );
-  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
-    "content",
-    "https://anone.yoiailabs.com/community",
-  );
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
-    "content",
-    "https://anone.yoiailabs.com/og.png",
-  );
-
+test("drops a leftover #community hash back on the maker", async ({ page }) => {
   await page.goto("/#community");
   await waitForAppReady(page);
-  await expect(page).toHaveURL(/\/community\/?$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(page).not.toHaveURL(/#community/);
-  await expect(page.locator("#communityView")).toBeVisible();
+  await expect(page.locator("#makerView")).toBeVisible();
+  await expect(page.locator("#toCommunity")).toHaveAttribute("href", MORE_JUMPS_HREF);
+  await expect(page.locator("#toCommunity")).toHaveAttribute("target", "_blank");
 });
 
 test("studio header uses the stacked hero logo and keeps language links at the bottom", async ({ page }) => {
@@ -1051,15 +814,6 @@ async function headerAlign(page: Page, header: string, lockupSel: string, titleS
   );
   expect(metrics).not.toBeNull();
   return metrics!;
-}
-
-async function openCommunityInApp(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    history.pushState({}, "", "/community");
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  });
-  await expect(page).toHaveURL(/\/community\/?$/);
-  await expect(page.locator("#communityView")).toBeVisible();
 }
 
 async function uploadPhoto(page: Page): Promise<void> {
