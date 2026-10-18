@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
-import { GitHubLink } from "@/components/GitHubLink.tsx";
+import { HeaderGitHub } from "@/components/HeaderGitHub.tsx";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { JaPhrase } from "@/components/JaPhrase.tsx";
@@ -147,6 +147,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
       <div className="app">
         <div className="app-view" id="makerView" hidden={makerHidden}>
           <header className="hero">
+            <HeaderGitHub id="makerHeaderGitHub" locale={locale} />
             <LanguageNav locale={locale} view="maker" />
             <h1 id="makerTitle">
               <img
@@ -222,6 +223,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
         </div>
         <div className="app-view" id="studioView" hidden={studioHidden}>
           <header className="studio-top">
+            <HeaderGitHub id="studioHeaderGitHub" locale={locale} />
             <a id="studioHome" href={pathForApp(locale, "maker")}>
               <img
                 className="hero-logo"
@@ -474,9 +476,6 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
           hidden={communityHidden}
           {...(communityHtml ? { dangerouslySetInnerHTML: { __html: communityHtml } } : {})}
         />
-        <div className="github-repo-row">
-          <GitHubLink id="githubRepo" locale={locale} />
-        </div>
         <SiteFooter locale={locale} />
       </div>
     </>

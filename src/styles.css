@@ -159,6 +159,7 @@ body {
 
 .hero,
 .studio-top {
+  position: relative;
   text-align: center;
 }
 
@@ -179,6 +180,11 @@ body {
 .notes .lang-switch,
 .community-jumps-end .lang-switch {
   margin: 0.35rem 0 0;
+}
+
+.hero .lang-switch {
+  padding-inline: 1.6rem;
+  box-sizing: border-box;
 }
 
 .lang-switch a {
@@ -776,51 +782,29 @@ html[lang="ja"] .ja-phrase {
   margin: 0.85rem 0 0;
 }
 
-/* 表示中の画面の外に置く。hidden の制作画面の中に入れるとトップでは描画されない。 */
-.github-repo-row {
-  display: flex;
-  justify-content: center;
-  margin-top: calc(0.85rem - var(--section-gap));
-  margin-bottom: calc(0.65rem - var(--section-gap));
-}
-
-.app:has(#communityView:not([hidden])) .github-repo-row {
-  display: none;
-}
-
-/* 主操作の黄緑ボタンより小さい枠線ピル。文字は本文色で、フッターの細いリンクより目立たせる。 */
-.github-link {
+.header-github {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  min-height: 2.4rem;
-  padding: 0.35rem 1.05rem;
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1.2;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #2a7f82;
+  line-height: 0;
   text-decoration: none;
-  box-shadow: 2px 3px 0 var(--ink);
-  transition: transform 0.16s ease;
 }
 
-.github-link:hover {
-  transform: translateY(-2px);
-}
-
-.github-link:focus-visible {
+.header-github:focus-visible {
   outline: 3px solid var(--teal);
   outline-offset: 3px;
 }
 
-.github-link-icon {
-  width: 1.2rem;
-  height: 1.2rem;
-  flex: 0 0 auto;
+.header-github-icon {
+  width: 1.15rem;
+  height: 1.15rem;
   fill: currentColor;
 }
 

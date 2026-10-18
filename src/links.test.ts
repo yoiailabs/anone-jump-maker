@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import githubLinkSrc from "./components/GitHubLink.tsx?raw";
+import headerGitHubSrc from "./components/HeaderGitHub.tsx?raw";
+import footerSrc from "./components/SiteFooter.tsx?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
 import {
   JUMP_LOOP_WATCH_HREF,
@@ -104,19 +105,19 @@ describe("maker source repository", () => {
     expect(SOURCE_REPO_HREF).toBe("https://github.com/yoiailabs/anone-jump-maker");
   });
 
-  it("renders one repository link outside the views that get hidden", () => {
-    const community = makerSrc.indexOf('id="communityView"');
-    const github = makerSrc.indexOf("<GitHubLink");
-    const footer = makerSrc.indexOf("<SiteFooter");
-    expect(github).toBeGreaterThan(community);
-    expect(footer).toBeGreaterThan(github);
-    expect(makerSrc.match(/<GitHubLink\b/g)).toHaveLength(1);
-    expect(makerSrc).not.toContain('id="makerGitHub"');
-    expect(makerSrc).not.toContain('id="studioGitHub"');
-    expect(githubLinkSrc).toContain("SOURCE_REPO_HREF");
-    expect(githubLinkSrc).toContain('target="_blank"');
-    expect(githubLinkSrc).toContain('rel="noopener noreferrer"');
-    expect(githubLinkSrc).toContain('aria-label={t(locale, "makerSourceAria")}');
-    expect(githubLinkSrc).toContain('className="github-link"');
+  it("puts a text link in the footer and a mark in both headers", () => {
+    expect(footerSrc).toContain('id="footerGitHub"');
+    expect(footerSrc).toContain("SOURCE_REPO_HREF");
+    expect(footerSrc).toContain('target="_blank"');
+    expect(footerSrc).toContain('rel="noopener noreferrer"');
+    expect(footerSrc).toContain('{t(locale, "makerSource")}');
+    expect(makerSrc).toContain('<HeaderGitHub id="makerHeaderGitHub"');
+    expect(makerSrc).toContain('<HeaderGitHub id="studioHeaderGitHub"');
+    expect(makerSrc).not.toContain("github-link");
+    expect(headerGitHubSrc).toContain("SOURCE_REPO_HREF");
+    expect(headerGitHubSrc).toContain('target="_blank"');
+    expect(headerGitHubSrc).toContain('rel="noopener noreferrer"');
+    expect(headerGitHubSrc).toContain('aria-label={t(locale, "makerSource")}');
+    expect(headerGitHubSrc).not.toContain("github-link");
   });
 });

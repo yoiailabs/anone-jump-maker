@@ -214,10 +214,6 @@ describe("messages", () => {
     for (const locale of ["ja", "en", "ko", "zh"] as const) {
       expect(t(locale, "makerSource")).toBe("GitHub");
     }
-    expect(t("ja", "makerSourceAria")).toBe("GitHubのリポジトリを開く（新しいタブ）");
-    expect(t("en", "makerSourceAria")).toBe("Open the GitHub repository (new tab)");
-    expect(t("ko", "makerSourceAria")).toBe("GitHub 저장소를 열기(새 탭)");
-    expect(t("zh", "makerSourceAria")).toBe("打开 GitHub 仓库（新标签页）");
   });
 
   it("uses the official song title in each locale's credit", () => {
