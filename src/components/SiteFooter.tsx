@@ -1,5 +1,6 @@
 import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { pathForApp, t, type Locale } from "../i18n.ts";
+import { SOURCE_REPO_HREF } from "../links.ts";
 
 export function SiteFooter({
   locale,
@@ -26,6 +27,9 @@ export function SiteFooter({
             {...(current === "terms" ? { "aria-current": "page" as const } : {})}
           >
             {t(locale, "termsLink")}
+          </a>
+          <a id="footerGitHub" href={SOURCE_REPO_HREF} target="_blank" rel="noopener noreferrer">
+            {t(locale, "makerSource")}
           </a>
         </nav>
         <p className="site-footer-credit">{t(locale, "footerCopyright")}</p>

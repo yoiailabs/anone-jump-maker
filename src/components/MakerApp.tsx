@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
+import { HeaderGitHub } from "@/components/HeaderGitHub.tsx";
 import { LanguageNav } from "@/components/LanguageNav.tsx";
 import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { JaPhrase } from "@/components/JaPhrase.tsx";
@@ -146,6 +147,7 @@ export default function MakerApp({ initialView, locale, communityHtml = "" }: Ma
       <div className="app">
         <div className="app-view" id="makerView" hidden={makerHidden}>
           <header className="hero">
+            <HeaderGitHub id="makerHeaderGitHub" locale={locale} />
             <LanguageNav locale={locale} view="maker" />
             <h1 id="makerTitle">
               <img

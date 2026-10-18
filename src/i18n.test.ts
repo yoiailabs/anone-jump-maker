@@ -210,6 +210,12 @@ describe("messages", () => {
     expect(t("ja", "metaPrivacyDescription")).toContain("Yoiailabs");
   });
 
+  it("labels the public repository link in each locale", () => {
+    for (const locale of ["ja", "en", "ko", "zh"] as const) {
+      expect(t(locale, "makerSource")).toBe("GitHub");
+    }
+  });
+
   it("uses the official song title in each locale's credit", () => {
     expect(t("ja", "songTitle")).toBe("あのね");
     expect(t("ja", "artistName")).toBe("ナナツカゼ");

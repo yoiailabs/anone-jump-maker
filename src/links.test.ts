@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
+import headerGitHubSrc from "./components/HeaderGitHub.tsx?raw";
+import footerSrc from "./components/SiteFooter.tsx?raw";
+import makerSrc from "./components/MakerApp.tsx?raw";
 import {
   JUMP_LOOP_WATCH_HREF,
   linkBannersHtml,
   OFFICIAL_LINKS,
   OFFICIAL_MV_WATCH_HREF,
+  SOURCE_REPO_HREF,
   youtubePlaybackUrl,
 } from "./links.ts";
 
@@ -93,5 +97,27 @@ describe("youtube playback url", () => {
 
   it("points the JumpLoop at the official MV from 1:03", () => {
     expect(JUMP_LOOP_WATCH_HREF).toBe("https://www.youtube.com/watch?v=M-IayQIR0XA&t=63s");
+  });
+});
+
+describe("maker source repository", () => {
+  it("points at the public GitHub repository", () => {
+    expect(SOURCE_REPO_HREF).toBe("https://github.com/yoiailabs/anone-jump-maker");
+  });
+
+  it("puts a text link in the footer and a mark on the top header only", () => {
+    expect(footerSrc).toContain('id="footerGitHub"');
+    expect(footerSrc).toContain("SOURCE_REPO_HREF");
+    expect(footerSrc).toContain('target="_blank"');
+    expect(footerSrc).toContain('rel="noopener noreferrer"');
+    expect(footerSrc).toContain('{t(locale, "makerSource")}');
+    expect(makerSrc).toContain('<HeaderGitHub id="makerHeaderGitHub"');
+    expect(makerSrc).not.toContain("studioHeaderGitHub");
+    expect(makerSrc).not.toContain("github-link");
+    expect(headerGitHubSrc).toContain("SOURCE_REPO_HREF");
+    expect(headerGitHubSrc).toContain('target="_blank"');
+    expect(headerGitHubSrc).toContain('rel="noopener noreferrer"');
+    expect(headerGitHubSrc).toContain('aria-label={t(locale, "makerSource")}');
+    expect(headerGitHubSrc).not.toContain("github-link");
   });
 });

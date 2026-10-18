@@ -175,6 +175,7 @@ const ja = {
   footerNavAria: "フッター",
 
   langNavAria: "言語",
+  makerSource: "GitHub",
 } as const;
 
 export type MessageKey = keyof typeof ja;
@@ -329,6 +330,7 @@ const en: Record<MessageKey, string> = {
   footerNavAria: "Footer",
 
   langNavAria: "Language",
+  makerSource: "GitHub",
 };
 
 const ko: Record<MessageKey, string> = {
@@ -481,6 +483,7 @@ const ko: Record<MessageKey, string> = {
   footerNavAria: "바닥글",
 
   langNavAria: "언어",
+  makerSource: "GitHub",
 };
 
 const zh: Record<MessageKey, string> = {
@@ -633,6 +636,7 @@ const zh: Record<MessageKey, string> = {
   footerNavAria: "页脚",
 
   langNavAria: "语言",
+  makerSource: "GitHub",
 };
 
 export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {

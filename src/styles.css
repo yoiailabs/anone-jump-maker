@@ -159,6 +159,7 @@ body {
 
 .hero,
 .studio-top {
+  position: relative;
   text-align: center;
 }
 
@@ -179,6 +180,11 @@ body {
 .notes .lang-switch,
 .community-jumps-end .lang-switch {
   margin: 0.35rem 0 0;
+}
+
+.hero .lang-switch {
+  padding-inline: 1.6rem;
+  box-sizing: border-box;
 }
 
 .lang-switch a {
@@ -774,6 +780,32 @@ html[lang="ja"] .ja-phrase {
 
 #studioView .lang-switch {
   margin: 0.85rem 0 0;
+}
+
+.header-github {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #2a7f82;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.header-github:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.header-github-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: currentColor;
 }
 
 .studio-stage {
