@@ -54,26 +54,13 @@ body {
   z-index: 1;
 }
 
-/* コミュニティだけ広くする。メーカーの 28rem は据え置き。 */
-@media (min-width: 40rem) {
-  .app:has(#communityView:not([hidden])) {
-    width: min(44rem, 100%);
-  }
-}
-
-@media (min-width: 48rem) {
-  .app:has(#communityView:not([hidden])) {
-    width: min(68rem, 100%);
-  }
-}
-
 .app-view {
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
 }
 
-/* 非表示ページは display:none のまま（コミュニティの高さがメーカーを押さない）。
+/* 非表示ページは display:none のまま。
    widgets.js は見えない箱を高さ 0 で測るので、表示時に blockquote から載せ直す。 */
 .app-view[hidden] {
   display: none;
@@ -177,8 +164,7 @@ body {
   font-weight: 700;
 }
 
-.notes .lang-switch,
-.community-jumps-end .lang-switch {
+.notes .lang-switch {
   margin: 0.35rem 0 0;
 }
 
@@ -347,15 +333,6 @@ html[lang="ja"] .ja-phrase {
   margin: 0;
 }
 
-.community-jumps-hero .community-back-wrap {
-  margin: 0 0 0.85rem;
-}
-
-.community-jumps-hero .community-sort {
-  margin: 1rem 0 0;
-  text-align: left;
-}
-
 .hero-more .btn {
   display: flex;
   width: 100%;
@@ -364,11 +341,6 @@ html[lang="ja"] .ja-phrase {
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
-}
-
-.community-back-wrap {
-  margin: 0;
-  text-align: center;
 }
 
 .page-link {
@@ -1740,176 +1712,6 @@ a.btn:focus-visible {
   width: 100%;
   height: 100%;
   border: 0;
-}
-
-/* コミュニティ専用ページ。masonry。高さの違う埋め込みがメーカーを揺すらない。 */
-.community-jumps {
-  display: flex;
-  flex-direction: column;
-  gap: 1.35rem;
-}
-
-.community-jumps-empty {
-  margin: 0;
-  padding: 0.9rem 1rem;
-  background: var(--card);
-  border: 3px solid var(--ink);
-  border-radius: 1.4rem;
-  box-shadow: 5px 6px 0 var(--coral);
-  color: var(--mute);
-  font-size: 0.88rem;
-  line-height: 1.7;
-}
-
-.community-jumps-list {
-  --community-masonry-cols: 1;
-  --community-masonry-row: 8px;
-  --community-masonry-gap: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 1.15rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.community-jumps-item {
-  min-width: 0;
-  overflow: visible;
-  /* JS が測る前の仮 span（12rem / 26rem の予約高さに合わせる）。 */
-  grid-row-end: span 9;
-}
-
-.community-jumps-item:has(.community-jumps-card[data-media="video"]) {
-  grid-row-end: span 17;
-}
-
-/* 2〜3 列は grid + row-span。JS がカード高さから span を書く。 */
-@media (min-width: 40rem) {
-  .community-jumps-list.community-jumps-masonry {
-    --community-masonry-cols: 2;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: var(--community-masonry-row);
-    align-items: start;
-    gap: var(--community-masonry-gap);
-  }
-}
-
-@media (min-width: 48rem) {
-  .community-jumps-list.community-jumps-masonry {
-    --community-masonry-cols: 3;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.community-jumps-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  min-height: 12rem;
-  padding: 0.4rem 0.4rem 0.45rem;
-  background: var(--card);
-  border: 3px solid var(--ink);
-  border-radius: 1.4rem;
-  box-shadow: 5px 6px 0 var(--teal);
-}
-
-/* 動画埋め込みの予約高さ。hydrate 前後のジャンプを抑える。 */
-.community-jumps-card[data-media="video"] {
-  min-height: 26rem;
-}
-
-.community-jumps-fallback {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.28rem;
-  padding: 0.75rem 0.85rem;
-  text-align: center;
-}
-
-.community-jumps-handle {
-  margin: 0;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.community-jumps-likes {
-  margin: 0;
-  color: var(--mute);
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.community-jumps-fallback a {
-  color: #2a7f82;
-  font-weight: 700;
-}
-
-.community-pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin: 0.15rem 0 0;
-}
-
-.community-hashtag-search {
-  margin: 0.2rem 0 0;
-}
-
-.community-hashtag-search-lede {
-  margin: 0 0 0.7rem;
-  color: var(--mute);
-  font-size: 0.88rem;
-  line-height: 1.75;
-  text-align: center;
-  text-wrap: pretty;
-}
-
-.community-pager .btn {
-  min-height: 2.85rem;
-  min-width: 5.5rem;
-  padding: 0.35rem 1.1rem;
-}
-
-.community-jumps-end {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.85rem;
-}
-
-.community-jumps-end .community-back-wrap {
-  margin: 0;
-}
-
-.community-jumps-card .twitter-tweet {
-  width: 100%;
-  margin: 0;
-  padding: 0.9rem 1rem;
-  color: var(--ink);
-  font-size: 0.92rem;
-  line-height: 1.7;
-}
-
-.community-jumps-card .twitter-tweet a {
-  color: #2a7f82;
-}
-
-.community-jumps-card .twitter-tweet-rendered,
-.community-jumps-card iframe.twitter-tweet-rendered {
-  width: 100% !important;
-  max-width: 100%;
-  margin: 0 !important;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
 }
 
 /* 画面最下部の反応。公式ウィジェットが来るまでのblockquoteも同じ枠に収める。 */

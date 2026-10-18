@@ -24,7 +24,7 @@ export {
 export const LOCALE_COOKIE = "anone-locale";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export type AppView = "maker" | "studio" | "community" | "privacy" | "terms";
+export type AppView = "maker" | "studio" | "privacy" | "terms";
 
 export type AppPath = {
   locale: Locale;
@@ -49,7 +49,6 @@ export function normalizePathname(pathname: string): string {
 const UNPREFIXED_VIEWS: Record<string, AppView> = {
   "/": "maker",
   "/make": "studio",
-  "/community": "community",
   "/privacy": "privacy",
   "/terms": "terms",
 };
@@ -67,7 +66,7 @@ export function parseAppPath(pathname: string): AppPath | null {
   if (parts.length === 2 && segment === "make") {
     return { locale: first, view: "studio", prefixed: true };
   }
-  if (parts.length === 2 && (segment === "community" || segment === "privacy" || segment === "terms")) {
+  if (parts.length === 2 && (segment === "privacy" || segment === "terms")) {
     return { locale: first, view: segment, prefixed: true };
   }
   return null;
@@ -81,9 +80,22 @@ export function isJapaneseOnlyView(view: AppView): boolean {
 export function pathForApp(locale: Locale, view: AppView): string {
   if (isJapaneseOnlyView(view)) return `/${view}`;
   const prefix = locale === DEFAULT_LOCALE ? "" : `/${locale}`;
-  if (view === "maker") return prefix || "/";
   if (view === "studio") return `${prefix}/make`;
-  return `${prefix}/${view}`;
+  return prefix || "/";
+}
+
+/**
+ * 廃止したコミュニティページを、その言語のトップへ寄せる。
+ * `/community` と `/ja/community` は `/`、`/en/community` などは `/en`。
+ * クエリは残す。該当しなければ null。
+ */
+export function retiredCommunityRedirect(pathname: string, search = ""): string | null {
+  const path = normalizePathname(pathname);
+  if (path === "/community") return `${pathForApp(DEFAULT_LOCALE, "maker")}${search}`;
+  const match = /^\/([^/]+)\/community$/.exec(path);
+  const locale = match?.[1];
+  if (!locale || !isLocale(locale)) return null;
+  return `${pathForApp(locale, "maker")}${search}`;
 }
 
 export function t(locale: Locale, key: MessageKey, vars?: Record<string, string | number>): string {
@@ -176,7 +188,7 @@ export type LocaleRedirectOptions = {
 };
 
 /**
- * プレフィックスなしの `/` `/community` をブラウザ言語または Cookie で寄せる。
+ * プレフィックスなしの `/` をブラウザ言語または Cookie で寄せる。
  * `/privacy` `/terms` は日本語固定で、言語では寄せない。
  * `/ja` はデフォルト言語の正規 URL へ戻す。既に正しい場所なら null。
  * 検索・SNS クローラは言語リダイレクトせず、hreflang で各言語を辿れるようにする。

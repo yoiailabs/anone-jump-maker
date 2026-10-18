@@ -64,7 +64,7 @@ describe("stacked maker hero logo", () => {
     expect(termsSrc).not.toContain("eyebrow");
     expect(makerSrc).not.toMatch(/<h1 id="makerTitle">\{t\(locale, "makerTitle"\)\}<\/h1>/);
     const landing = makerSrc.slice(makerSrc.indexOf('id="makerView"'), makerSrc.indexOf('id="studioView"'));
-    const studio = makerSrc.slice(makerSrc.indexOf('id="studioView"'), makerSrc.indexOf('id="communityView"'));
+    const studio = makerSrc.slice(makerSrc.indexOf('id="studioView"'), makerSrc.indexOf('id="siteFooter"'));
     expect(landing.indexOf('id="makerTitle"')).toBeLessThan(landing.indexOf("<JumpLoop"));
     expect(landing).toContain("landingLogoRef");
     expect(studio).not.toContain("landingLogoRef");

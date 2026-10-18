@@ -126,15 +126,30 @@ describe("worker fetch", () => {
     expect(response.headers.get("vary")).toBe("Cookie");
   });
 
-  it("keeps Japanese HTML on /community when Accept-Language is Korean", async () => {
-    const response = await worker.fetch(
-      new Request("https://anone.yoiailabs.com/community?from=x", {
-        headers: { "accept-language": "ko" },
-      }),
-      assetsEnv(),
-    );
-    expect(response.status).toBe(200);
-    expect(response.headers.get("location")).toBeNull();
+  it("redirects retired community URLs to the locale top page", async () => {
+    const cases = [
+      ["/community", "/"],
+      ["/community/", "/"],
+      ["/community?from=x", "/?from=x"],
+      ["/ja/community", "/"],
+      ["/ja/community/?q=1", "/?q=1"],
+      ["/en/community", "/en"],
+      ["/en/community/", "/en"],
+      ["/ko/community", "/ko"],
+      ["/zh/community/", "/zh"],
+    ] as const;
+    for (const [from, to] of cases) {
+      const response = await worker.fetch(
+        new Request(`https://anone.yoiailabs.com${from}`, {
+          headers: { "accept-language": "ko", cookie: "anone-locale=en" },
+        }),
+        assetsEnv(),
+      );
+      expect(response.status, from).toBe(301);
+      expect(response.headers.get("location"), from).toBe(to);
+    }
+    const unknown = await worker.fetch(new Request("https://anone.yoiailabs.com/fr/community"));
+    expect(unknown.status).toBe(404);
   });
 
   it("redirects /make when a language cookie is set", async () => {

@@ -25,21 +25,21 @@ afterEach(() => {
   document.documentElement.removeAttribute("lang");
 });
 
-describe("community lede polyfill", () => {
-  it("phrases Japanese community lede only when auto-phrase is unavailable", async () => {
+describe("Japanese lede polyfill", () => {
+  it("phrases Japanese copy only when auto-phrase is unavailable", async () => {
     mountCss();
     document.documentElement.lang = "ja";
     const host = document.createElement("div");
     const p = document.createElement("p");
     p.className = "lede";
-    p.textContent = t("ja", "communityLede");
+    p.textContent = t("ja", "makerOnDevice");
     host.append(p);
     document.body.append(host);
 
     await applyJaPhrasePolyfill(host, "ja");
     const wordBreak = getComputedStyle(p).wordBreak;
     const hasZwsp = (p.textContent ?? "").includes(JA_PHRASE_ZWSP);
-    expect(visibleJaText(p.textContent ?? "")).toBe(t("ja", "communityLede"));
+    expect(visibleJaText(p.textContent ?? "")).toBe(t("ja", "makerOnDevice"));
     if (CSS.supports("word-break", "auto-phrase")) {
       expect(hasZwsp).toBe(false);
       expect(p.dataset.phraseBreak).toBeUndefined();
@@ -50,6 +50,6 @@ describe("community lede polyfill", () => {
     }
 
     await applyJaPhrasePolyfill(host, "en");
-    expect(visibleJaText(p.textContent ?? "")).toBe(t("ja", "communityLede"));
+    expect(visibleJaText(p.textContent ?? "")).toBe(t("ja", "makerOnDevice"));
   });
 });

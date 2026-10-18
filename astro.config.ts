@@ -27,6 +27,11 @@ export default defineConfig({
     "/en/terms": "/terms",
     "/ko/terms": "/terms",
     "/zh/terms": "/terms",
+    "/community": { status: 301, destination: "/" },
+    "/ja/community": { status: 301, destination: "/" },
+    "/en/community": { status: 301, destination: "/en" },
+    "/ko/community": { status: 301, destination: "/ko" },
+    "/zh/community": { status: 301, destination: "/zh" },
   },
   trailingSlash: "ignore",
   i18n: {
