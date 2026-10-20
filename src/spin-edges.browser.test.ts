@@ -18,7 +18,7 @@ const S = 0.5;
 const F = 1 / 30;
 const timeline = { slots: [0, S, 1] };
 const UNIFORM_COLOR = [96, 128, 160];
-const phases = [-3.01, -2.99, -2, -1, -0.01, 0, 0.5, 1, 2, 3, 4.99, 5, 7];
+const phases = [-4.01, -3.99, -3, -2, -1, -0.5, -0.01, 0, 0.5, 1, 2, 3, 4.99, 5, 7];
 
 async function makePhoto(w: number, h: number, gradient: boolean): Promise<LoadedPhoto> {
   const canvas = document.createElement("canvas");

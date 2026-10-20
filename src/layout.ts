@@ -625,13 +625,34 @@ export function zoomKeyAt(tau: number): ZoomKey {
   return zero;
 }
 
-/** スピンは旧写真の最終フレームで 120°、新写真は向きを 15° 進めた −45° から後 5 フレで静止する。 */
-export const SPIN_OUT_FRAMES = 3;
+/** 角速度を前 4〜後 5 フレの三角形にし、その積分で長方形を半回転させる。 */
+export const SPIN_OUT_FRAMES = 4;
 export const SPIN_IN_FRAMES = 5;
-export const SPIN_OUT_ANGLE = 2 * Math.PI / 3;
-export const SPIN_IN_ANGLE = -Math.PI / 4;
+// 頂点をカットの半フレ前に置き、30fps でもカットをまたぐ角度差を最大にする。
+const SPIN_PEAK_TAU = -0.5;
+const SPIN_PEAK_SPEED = 2 * Math.PI / (SPIN_OUT_FRAMES + SPIN_IN_FRAMES);
 export const SPIN_ZOOM = 0.14;
-export const SPIN_BLUR_ANGLE = Math.PI / 8;
+// ブラー幅 = 実フレームあたりの角速度 × 露光時間。横の頂点では 22.5°。
+export const SPIN_BLUR_SHUTTER = 0.5625;
+
+function spinMotion(tau: number, mode: AspectMode, outgoing: boolean): Pick<SwapFx, "rotation" | "rotationBlur" | "scale"> {
+  // カット表の秒数丸めで、静止境界に微小な回転やブラーが残るのを防ぐ。
+  if (tau <= -SPIN_OUT_FRAMES + 1e-4 || tau >= SPIN_IN_FRAMES - 1e-4) {
+    return { rotation: 0, rotationBlur: 0, scale: 1 };
+  }
+  const rising = tau < SPIN_PEAK_TAU;
+  const duration = rising ? SPIN_OUT_FRAMES + SPIN_PEAK_TAU : SPIN_IN_FRAMES - SPIN_PEAK_TAU;
+  const progress = rising ? (tau + SPIN_OUT_FRAMES) / duration : (SPIN_IN_FRAMES - tau) / duration;
+  const angle = SPIN_PEAK_SPEED * duration * progress ** 2 / 2;
+  // 新写真は半回転ぶん巻き戻す。長方形の向きと角速度はカットをまたいで連続。
+  const rotation = rising ? angle : Math.PI - angle;
+  const speed = SPIN_PEAK_SPEED * progress * zoomReferenceTau(1, mode);
+  return {
+    rotation: outgoing ? rotation : rotation - Math.PI,
+    rotationBlur: speed * SPIN_BLUR_SHUTTER,
+    scale: 1 + SPIN_ZOOM * progress ** 2,
+  };
+}
 
 /**
  * パネルの四隅を逆回転した矩形を収める cover 倍率。ブラーの角度区間の極大も含む。
@@ -661,7 +682,7 @@ export function spinCoverScale(w: number, h: number, rotation: number, rotationB
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
- * - spin: カット前 3／後 5 フレの写真回転と寄り。縦はズームと同じ時間倍率で伸ばす。
+ * - spin: カット前 4／後 5 フレの写真回転と寄り。縦はズームと同じ時間倍率で伸ばす。
  *   回転角とブラー幅から描画側で cover 倍率を補い、プレビューと保存は同じ compositor.draw を使う。
  */
 export function swapFx(
@@ -700,22 +721,12 @@ export function swapFx(
     const untilNext = next === undefined ? Infinity : (next - time) * TEMPLATE_FPS;
     const tau = zoomReferenceTau(k, mode);
     const remaining = zoomReferenceTau(untilNext, mode);
-    // カット表の秒数は小数 6 桁。境界で最大 0.00001 フレの誤差が出ても静止を保つ。
-    const spinFrameEps = 1e-4;
-    const outgoing = remaining < SPIN_OUT_FRAMES - spinFrameEps;
-    const incoming = index > 0 && tau < SPIN_IN_FRAMES - spinFrameEps;
-    // 30fps の旧写真はカットの 1 フレ前が最後。縦の時間倍率も含め、その標本で最大値に届かせる。
-    // カット自体は新写真なので、そこで 120° に達する曲線では書き出し時に回転が足りなくなる。
-    const lastOutgoing = zoomReferenceTau(1, mode);
-    const progress = outgoing
-      ? clamp01((SPIN_OUT_FRAMES - remaining) / (SPIN_OUT_FRAMES - lastOutgoing))
-      : incoming ? clamp01(1 - tau / SPIN_IN_FRAMES) : 0;
+    const outgoing = remaining < SPIN_OUT_FRAMES;
+    const motion = spinMotion(outgoing ? -remaining : index > 0 ? tau : Infinity, mode, outgoing);
     return {
       ...NO_FX,
+      ...motion,
       plateSlot: index,
-      scale: 1 + SPIN_ZOOM * (outgoing ? progress ** 2 : progress ** 3),
-      rotation: progress === 0 ? 0 : outgoing ? SPIN_OUT_ANGLE * progress ** 2 : SPIN_IN_ANGLE * progress ** 3,
-      rotationBlur: SPIN_BLUR_ANGLE * (outgoing ? progress : progress ** 2),
       dy: 0,
       cutIndex: outgoing ? index + 1 : index,
     };
