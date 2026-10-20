@@ -189,11 +189,16 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   const jumpOption = page.locator('#studioView label:has(input[name="swap"][value="jump"])');
   await expect(zoomOption).toBeVisible();
   await expect(jumpOption).toBeVisible();
+  const whipOption = page.locator('#studioView label:has(input[name="swap"][value="whip"])');
+  await expect(whipOption).toHaveText("ホイップ");
   expect((await zoomOption.boundingBox())?.x ?? Number.POSITIVE_INFINITY).toBeLessThan(
     (await jumpOption.boundingBox())?.x ?? 0,
   );
   await jumpOption.click();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
+  await whipOption.click();
+  await expect(page.locator('#studioView input[name="swap"][value="whip"]')).toBeChecked();
+  expect(await page.locator('#studioView input[name="swap"]').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(["zoom", "jump", "whip"]);
   await page.locator("#filterTab").click();
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
   await page.locator("#characterTab").click();
@@ -203,6 +208,35 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#saveBtn")).toBeEnabled();
   await expect(page.locator("#previewDialog")).toHaveCount(0);
 });
+
+test("labels whip in English and keeps zoom selected initially", async ({ page }) => {
+  await page.goto("/en/make");
+  await waitForAppReady(page);
+  await page.locator("#swapTab").click();
+  await expect(page.locator('#studioView label:has(input[name="swap"][value="whip"])')).toHaveText("Whip");
+  await expect(page.locator('#studioView input[name="swap"][value="zoom"]')).toBeChecked();
+});
+
+for (const aspect of ["landscape", "portrait"] as const) {
+  test(`previews and exports whip in ${aspect}`, async ({ page }, testInfo) => {
+    await uploadPhoto(page);
+    await page.locator("#aspectTab").click();
+    await page.locator(`#studioView label:has(input[name="aspect"][value="${aspect}"])`).click();
+    await page.locator("#swapTab").click();
+    await page.locator('#studioView label:has(input[name="swap"][value="whip"])').click();
+    await expect(page.locator('#studioView input[name="swap"][value="whip"]')).toBeChecked();
+    await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
+    await page.locator("#saveBtn").click();
+    const outcome = await waitForExportOutcome(page);
+    test.skip(outcome !== "ready", "This browser has no supported encoder plan");
+    const pending = page.waitForEvent("download");
+    await page.locator("#downloadExportBtn").click();
+    const download = await pending;
+    const ratio = aspect === "landscape" ? "16x9" : "9x16";
+    expect(download.suggestedFilename()).toMatch(new RegExp(`^anone-whip-${ratio}\\.(mp4|webm)$`));
+    await download.saveAs(testInfo.outputPath(download.suggestedFilename()));
+  });
+}
 
 test("opens a generation modal from the preview save button", async ({ page }) => {
   await uploadPhoto(page);

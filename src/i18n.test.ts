@@ -264,3 +264,8 @@ describe("document crawlers", () => {
     ).toBe(false);
   });
 });
+
+it("labels the camera whip pan in Japanese and English", () => {
+  expect(t("ja", "makerWhip")).toBe("ホイップ");
+  expect(t("en", "makerWhip")).toBe("Whip");
+});

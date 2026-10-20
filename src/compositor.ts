@@ -247,6 +247,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
+      fx.pan ? photoForSlot(photos, fx.pan.nextSlot) : undefined,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -352,6 +353,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
+  nextPlate?: LoadedPhoto,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -362,11 +364,18 @@ function composeMain(
   mainCtx.fillRect(0, 0, mw, mh);
 
   if (plate) {
+    const drawPlate = () => {
+      if (style === "whip" && fx.pan && nextPlate) {
+        drawWhipPlates(mainCtx, plate, nextPlate, fx.pan.progress, mw, mh);
+      } else {
+        drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
+      }
+    };
     if (composeDetailActive()) {
-      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh));
+      traceCompose("compose.photo", drawPlate);
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
-      drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
+      drawPlate();
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
   }
@@ -405,6 +414,30 @@ function resetCtx(ctx: CanvasRenderingContext2D): void {
   ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
+}
+
+/**
+ * 写真をパネル比率に cover で切り抜いてから隣接させる。元画像の余白は境界を越えない。
+ * 共有する境界を整数画素に揃え、source-over の小数被覆で下地が線状に透けるのを防ぐ。
+ * 外側のブラー参照は applyFrameFx の padFrameX が端画素で延長する。
+ */
+function drawWhipPlates(
+  ctx: CanvasRenderingContext2D,
+  outgoing: LoadedPhoto,
+  incoming: LoadedPhoto,
+  progress: number,
+  w: number,
+  h: number,
+): void {
+  resetCtx(ctx);
+  const offset = -Math.round(progress * w);
+  for (const [photo, x] of [[outgoing, offset], [incoming, offset + w]] as const) {
+    const { bitmap } = photo;
+    const scale = Math.max(w / bitmap.width, h / bitmap.height);
+    const sw = Math.min(bitmap.width, w / scale);
+    const sh = Math.min(bitmap.height, h / scale);
+    ctx.drawImage(bitmap, (bitmap.width - sw) / 2, (bitmap.height - sh) / 2, sw, sh, x, 0, w, h);
+  }
 }
 
 /** 写真の cover 矩形。`fx.scale` は基準 cover に対する倍率、`fx.dy` はパネル高さ比の縦ずれ。 */
@@ -596,6 +629,36 @@ function padFrameX(
 }
 
 /**
+ * 長いホイップ残像を二分平均で作る。ずらし幅を半分ずつにして 2^n 個の露光を分布させる。
+ * 多数の 1/N 合成は 8bit Canvas の丸めで暗くなるため、毎回 50% で平均する。
+ * 2^n はサンプル間隔が約 2.5px 以下になる数。各段の外側も端画素で延長する。
+ */
+function applyWhipBlur(surfaces: FxSurfaces, blurPx: number): void {
+  const { fxA, fxACtx, fxB, fxBCtx } = surfaces;
+  const steps = Math.max(1, Math.ceil(Math.log2(blurPx / 2.5 + 1)));
+  let shift = blurPx / (4 * (1 - 2 ** -steps));
+  let source = fxA;
+  for (let step = 0; step < steps; step++) {
+    const target = source === fxA ? fxB : fxA;
+    const ctx = source === fxA ? fxBCtx : fxACtx;
+    const pad = Math.ceil(shift) + 1;
+    const padded = padFrameX(source, surfaces, pad);
+    resetCtx(ctx);
+    ctx.clearRect(0, 0, target.width, target.height);
+    ctx.drawImage(padded, -shift - pad, 0);
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(padded, shift - pad, 0);
+    ctx.globalAlpha = 1;
+    source = target;
+    shift /= 2;
+  }
+  if (source !== fxB) {
+    resetCtx(fxBCtx);
+    fxBCtx.drawImage(source, 0, 0);
+  }
+}
+
+/**
  * 参考ズーム（hagikaze_sami）の全面 FX。合成済み本編（写真＋キャラ）に対して
  * 行波打ち → 横モーションブラー → RGB 横ずれ（R 右・B 左）→ 白加算／灰かぶり の順。
  */
@@ -637,7 +700,9 @@ function applyFrameFx(
 
   // 2) 横モーションブラー: fxA を N 回ずらして平均 → fxB
   const taps = blurTapCount(blurPx);
-  if (taps > 1) {
+  if (fx.pan && blurPx >= 1) {
+    applyWhipBlur(surfaces, blurPx);
+  } else if (taps > 1) {
     const padded = padFrameX(fxA, surfaces, pad);
     for (let i = 0; i < taps; i += 1) {
       const t = i / (taps - 1) - 0.5;

@@ -116,6 +116,7 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('useState<OptionTab>("aspect")');
     expect(makerSrc.indexOf('value: "zoom"')).toBeLessThan(makerSrc.indexOf('value: "jump"'));
     expect(makerSrc).toContain('defaultChecked: DEFAULT_SWAP_STYLE === "zoom"');
+    expect(makerSrc.indexOf('value: "jump"')).toBeLessThan(makerSrc.indexOf('value: "whip"'));
     expect(appSrc).toContain("? swapValue : DEFAULT_SWAP_STYLE");
     expect(makerSrc.indexOf('["aspect", "studioTabAspect"')).toBeLessThan(makerSrc.indexOf('["swap", "studioTabEffect"'));
     expect(makerSrc.indexOf('["swap", "studioTabEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioTabFilter"'));

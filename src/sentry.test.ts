@@ -222,6 +222,9 @@ describe("trace sampling", () => {
 });
 
 describe("trace attribute allowlist", () => {
+  it("keeps whip in effect tags", () => {
+    expect(pickTraceAttributes({ effect: "whip" })).toEqual({ effect: "whip" });
+  });
   it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
     expect(
       pickTraceAttributes({

@@ -32,6 +32,7 @@ describe("videoEventParams", () => {
       effect: "zoom",
       swap: "zoom",
     });
+    expect(videoEventParams("landscape", "whip")).toEqual({ aspect: "landscape", effect: "whip", swap: "whip" });
     expect(Object.keys(videoEventParams("portrait", "jump")).sort()).toEqual(["aspect", "effect", "swap"]);
   });
 });

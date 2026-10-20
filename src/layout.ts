@@ -89,20 +89,22 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる（2×3 の組み合わせ）。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
+ * - whip: 隣接した前後の写真を左へ素早く送り、速度に比例した横ブラーでつなぐ。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "whip";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "whip"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  whip: "ホイップ",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return SWAP_STYLES.some((style) => style === value);
 }
 
 /**
@@ -331,6 +333,8 @@ export function zoomReferenceTau(framesFromCut: number, mode: AspectMode = "land
 }
 
 export type SwapFx = {
+  /** ホイップ専用。前の写真と右隣の写真を、進捗 0–1 で一緒に左へ送る。 */
+  pan?: { nextSlot: number; progress: number };
   /** 表示する写真のスロット。ズームは S+1 まで前の写真が残る。 */
   plateSlot: number;
   /** 写真の倍率（基準 cover に対して。静止時 1）。 */
@@ -370,6 +374,15 @@ const NO_FX = {
   wave: 0,
   backdrop: false,
 } as const;
+
+/**
+ * ホイップはカット前後 3 フレずつ（0.2 秒）。横方向の移動は幅に対する比率で揃える。
+ * 縦は移動幅が短いのでズームのような時間延長はせず、同じ拍で素早く収める。
+ * 6 フレの窓は最短 13 フレのカットにも被らない。
+ */
+export const WHIP_HALF_FRAMES = 3;
+/** 1 フレの移動距離の 75% を露光中の横ブラー長にする（頂点は幅の 25%）。 */
+export const WHIP_SHUTTER_FRAMES = 0.75;
 
 /**
  * キャラ倍率の基準。横は公式 16:9 フレーム等倍。
@@ -624,6 +637,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ * - whip: カット前後 3 フレずつ、前後 2 枚を二次イージングで左へ送る。冒頭は静止。
  *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
 export function swapFx(
@@ -637,6 +651,28 @@ export function swapFx(
   }
   const { start, index } = slotAt(time, slots);
   const k = (time - start) * TEMPLATE_FPS;
+
+  if (style === "whip") {
+    const next = slots[index + 1];
+    const untilNext = next === undefined ? Infinity : (next - time) * TEMPLATE_FPS;
+    const cutIndex = index > 0 && k < WHIP_HALF_FRAMES - FRAME_EPS
+      ? index
+      : next !== undefined && untilNext < WHIP_HALF_FRAMES - FRAME_EPS ? index + 1 : 0;
+    if (cutIndex === 0) return { ...NO_FX, plateSlot: index, scale: 1, dy: 0, cutIndex: index };
+    const tau = (time - slots[cutIndex]!) * TEMPLATE_FPS;
+    // 二次の ease-in → ease-out。カットで位置も速度も連続し、両端で速度が 0。
+    const ramp = clamp01(1 - Math.abs(tau) / WHIP_HALF_FRAMES);
+    const progress = tau < 0 ? ramp * ramp / 2 : 1 - ramp * ramp / 2;
+    return {
+      ...NO_FX,
+      plateSlot: cutIndex - 1,
+      scale: 1,
+      dy: 0,
+      cutIndex,
+      pan: { nextSlot: cutIndex, progress },
+      blur: ramp / WHIP_HALF_FRAMES * WHIP_SHUTTER_FRAMES,
+    };
+  }
 
   if (style === "jump") {
     // 参考 Short は 0 秒の先頭スロットも同じサイクル＋フラッシュで始まる。

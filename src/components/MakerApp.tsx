@@ -366,6 +366,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                       options={[
                         { value: "zoom", label: t(locale, "makerZoom"), defaultChecked: DEFAULT_SWAP_STYLE === "zoom" },
                         { value: "jump", label: t(locale, "makerJump"), defaultChecked: DEFAULT_SWAP_STYLE === "jump" },
+                        { value: "whip", label: t(locale, "makerWhip"), defaultChecked: DEFAULT_SWAP_STYLE === "whip" },
                       ]}
                     />
                   </fieldset>

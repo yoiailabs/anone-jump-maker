@@ -91,7 +91,7 @@ describe("output size", () => {
   });
 
   it("lists zoom first and uses it as the default effect", () => {
-    expect(SWAP_STYLES).toEqual(["zoom", "jump"]);
+    expect(SWAP_STYLES).toEqual(["zoom", "jump", "whip"]);
     expect(DEFAULT_SWAP_STYLE).toBe("zoom");
     expect(DEFAULT_SWAP_STYLE).toBe(SWAP_STYLES[0]);
   });
@@ -786,5 +786,83 @@ describe("image filter", () => {
     expect(filterBlurPx("blur-strong", short)).toBeGreaterThan(filterBlurPx("blur-weak", short));
     expect(filterBlurPx("blur-strong", short)).toBeLessThanOrEqual(filterBlurPx("blur-weak", short) * 2 + 1);
     expect(filterBlurPx("blur-strong", 1440)).toBeGreaterThan(filterBlurPx("blur-strong", short));
+  });
+});
+
+describe("whip pan", () => {
+  const S = 15 / TEMPLATE_FPS;
+  const F = 1 / TEMPLATE_FPS;
+  for (const mode of ["landscape", "portrait"] as const) {
+    it(`${mode}: accelerates left into the cut and brakes within six frames`, () => {
+      const slots = [0, S, 1];
+      const progress = [0, 1 / 18, 2 / 9, 0.5, 7 / 9, 17 / 18, 1];
+      const blur = [0, 1 / 12, 1 / 6, 1 / 4, 1 / 6, 1 / 12, 0];
+      for (let tau = -3; tau <= 3; tau++) {
+        const fx = swapFx(S + tau * F, slots, "whip", mode);
+        const p = fx.pan?.progress ?? (fx.plateSlot === 0 ? 0 : 1);
+        expect(p).toBeCloseTo(progress[tau + 3]!, 10);
+        expect(fx.blur).toBeCloseTo(blur[tau + 3]!, 10);
+        expect(fx.scale).toBe(1);
+        expect(fx.dy).toBe(0);
+        expect([fx.rgb, fx.lift, fx.wave, fx.haze, fx.flashAdd, fx.flashScreen, fx.flashGlobal]).toEqual([0, 0, 0, 0, 0, 0, 0]);
+        if (fx.pan) {
+          expect(fx.plateSlot).toBe(0);
+          expect(fx.pan.nextSlot).toBe(1);
+          expect(fx.cutIndex).toBe(1);
+        }
+      }
+      // カットで位置と速度が連続する。再生状態に依存しないので逆シークも同じ。
+      const sample = (tau: number) => swapFx(S + tau * F, slots, "whip", mode).pan!.progress;
+      const e = 1e-4;
+      expect(sample(-e)).toBeCloseTo(sample(e), 3);
+      expect((sample(0) - sample(-e)) / e).toBeCloseTo(1 / 3, 4);
+      expect((sample(e) - sample(0)) / e).toBeCloseTo(1 / 3, 4);
+    });
+
+    it(`${mode}: settles between the shortest cuts, without an opening or phantom final pan`, () => {
+      const slots = templateCuts.slots;
+      expect(Math.min(...slots.slice(1).map((s, i) => (s - slots[i]!) * TEMPLATE_FPS))).toBeCloseTo(13);
+      for (let cut = 1; cut < slots.length; cut++) {
+        const start = slots[cut]!;
+        const before = swapFx(start - 3 * F, slots, "whip", mode);
+        const after = swapFx(start + 3 * F, slots, "whip", mode);
+        expect(before.pan).toBeUndefined();
+        expect(after.pan).toBeUndefined();
+        expect(hasFrameFx(before)).toBe(false);
+        expect(hasFrameFx(after)).toBe(false);
+        expect(after.plateSlot).toBe(cut);
+        const mid = (start + slots[cut - 1]!) / 2;
+        expect(swapFx(mid, slots, "whip", mode).pan).toBeUndefined();
+      }
+      for (const slots of [[], [0], [0, S]]) {
+        for (const time of [0, 0.1, 2, 100]) {
+          const fx = swapFx(time, slots, "whip", mode);
+          expect(fx.pan).toBeUndefined();
+          expect(hasFrameFx(fx)).toBe(false);
+        }
+      }
+      for (let frame = 0; frame < 470; frame += 0.25) {
+        const fx = swapFx(frame * F, slots, "whip", mode);
+        expect(Object.values(fx).filter((v) => typeof v === "number").every(Number.isFinite)).toBe(true);
+        if (fx.pan) {
+          expect(Number.isFinite(fx.pan.progress)).toBe(true);
+          expect(fx.pan.progress).toBeGreaterThanOrEqual(0);
+          expect(fx.pan.progress).toBeLessThanOrEqual(1);
+          expect(Math.abs(frame - slots[fx.cutIndex]! / F)).toBeLessThan(3);
+        }
+      }
+    });
+  }
+
+  it("accepts whip settings and keeps zoom / jump free of pan fields", () => {
+    expect(isSwapStyle("whip")).toBe(true);
+    expect(isSwapStyle("WHIP")).toBe(false);
+    for (const style of ["jump", "zoom"] as const) {
+      for (const mode of ["landscape", "portrait"] as const) {
+        for (let frame = 0; frame < 470; frame += 0.25) {
+          expect(swapFx(frame / TEMPLATE_FPS, templateCuts.slots, style, mode)).not.toHaveProperty("pan");
+        }
+      }
+    }
   });
 });
