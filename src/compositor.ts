@@ -437,6 +437,10 @@ function drawPhotoPlate(
 ): void {
   const bitmap = photo.bitmap;
   resetCtx(ctx);
+  if (style === "flip" && fx.flipWidth < 1) {
+    drawFlipPlate(ctx, surfaces, photo, fx, mw, mh);
+    return;
+  }
   const dest = plateDest(bitmap.width, bitmap.height, mw, mh, fx, style);
   // cover 矩形の丸め誤差ではなく実倍率で判定し、backdrop の閾値未満の縮みも補完する。
   if (style === "zoom" && fx.scale < 1) {
@@ -470,6 +474,70 @@ function drawPhotoPlate(
   if (fx.flashScreen > 0.002) {
     ctx.fillStyle = `rgba(255, 255, 255, ${fx.flashScreen})`;
     ctx.fillRect(dest.x, dest.y, dest.w, dest.h);
+  }
+}
+
+/** フリップ専用。既存のジャンプ／ズームの合成順序や画素には触れない。 */
+function drawFlipPlate(
+  ctx: CanvasRenderingContext2D,
+  { photoTiles, photoTilesCtx: card }: FxSurfaces,
+  photo: LoadedPhoto,
+  fx: SwapFx,
+  w: number,
+  h: number,
+): void {
+  ensureCanvasSize(photoTiles, w, h);
+  resetCtx(card);
+  card.clearRect(0, 0, w, h);
+  // 同じ写真の cover を背景にする。鏡映タイルを極細カードに追従させると反復が増え、
+  // エッジオン付近で縞になるため、背景は等倍で保つ。縁はフェザーで連続させ、
+  // 小数境界の被覆漏れや下地色の 1px 線を作らない。ぼかしの画素読み戻しも不要。
+  card.fillStyle = "#0a0806";
+  card.fillRect(0, 0, w, h);
+  const dest = plateDest(photo.bitmap.width, photo.bitmap.height, w, h, { scale: 1, dy: 0 }, "flip");
+  card.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+  ctx.drawImage(photoTiles, 0, 0);
+  const projectedW = w * fx.flipWidth;
+  if (projectedW < 1) return; // エッジオンは線を描かず、写真背景だけを残す。
+
+  const shade = card.createLinearGradient(0, 0, w, 0);
+  const reverse = fx.flipPerspective < 0;
+  shade.addColorStop(0, `rgba(0,0,0,${fx.flipShade * (reverse ? 1 : 0.25)})`);
+  shade.addColorStop(1, `rgba(0,0,0,${fx.flipShade * (reverse ? 0.25 : 1)})`);
+  card.fillStyle = shade;
+  card.fillRect(0, 0, w, h);
+  card.globalCompositeOperation = "destination-in";
+  // 横フェザーは画面上の短辺の 4% を保つ。カードが細くなるほど面全体が自然に消える。
+  const featherX = Math.min(0.5, Math.min(w, h) * 0.04 / projectedW);
+  const edgeOpacity = Math.min(1, projectedW / (Math.min(w, h) * 0.08));
+  const maskX = card.createLinearGradient(0, 0, w, 0);
+  maskX.addColorStop(0, "transparent");
+  maskX.addColorStop(featherX, `rgba(255,255,255,${edgeOpacity})`);
+  maskX.addColorStop(1 - featherX, `rgba(255,255,255,${edgeOpacity})`);
+  maskX.addColorStop(1, "transparent");
+  card.fillStyle = maskX;
+  card.fillRect(0, 0, w, h);
+  const maskY = card.createLinearGradient(0, 0, 0, h);
+  maskY.addColorStop(0, "transparent");
+  maskY.addColorStop(0.04, "white");
+  maskY.addColorStop(0.96, "white");
+  maskY.addColorStop(1, "transparent");
+  card.fillStyle = maskY;
+  card.fillRect(0, 0, w, h);
+  resetCtx(card);
+
+  // 最大 96 本の短冊で台形を近似。出力の列境界を整数に揃えるので継ぎ目が透けず、
+  // 全面ブラーや読み戻しなしでプレビュー／書き出しに同じ軽い描画を使える。
+  const left = Math.round((w - projectedW) / 2);
+  const right = w - left;
+  const bands = Math.min(96, right - left);
+  for (let i = 0; i < bands; i++) {
+    const x0 = Math.round(left + (right - left) * i / bands);
+    const x1 = Math.round(left + (right - left) * (i + 1) / bands);
+    const u0 = (x0 - left) / (right - left);
+    const u1 = (x1 - left) / (right - left);
+    const height = h * (1 + fx.flipPerspective * (u0 + u1 - 1));
+    ctx.drawImage(photoTiles, u0 * w, 0, (u1 - u0) * w, h, x0, (h - height) / 2, x1 - x0, height);
   }
 }
 

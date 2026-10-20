@@ -96,6 +96,17 @@ describe("detail frames", () => {
 });
 
 describe("studio transactions", () => {
+  it("keeps flip on preview and export trace tags", () => {
+    const records = installFakeTracing();
+    studioTrace.beginPreviewStart({ trigger: "resume", aspect: "landscape", effect: "flip" });
+    studioTrace.onPreviewStop("settings");
+    studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "flip" });
+    studioTrace.finishExport("success");
+    for (const name of ["preview.start", "export.generate"]) {
+      expect(records.find((span) => span.name === name)?.attributes.effect).toBe("flip");
+    }
+  });
+
   it("does not invent a fast span when Sentry is not ready yet", () => {
     studioTrace.beginPreviewOpen({ entry: "initial", has_photos: false });
     studioTrace.noteCompositePaint(readyPaint);

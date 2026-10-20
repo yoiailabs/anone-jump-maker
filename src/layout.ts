@@ -89,20 +89,22 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる（2×3 の組み合わせ）。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
+ * - flip: カット前後 4 フレで縦軸回転。エッジオンのカットで裏面の新写真に切り替える。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "flip";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "flip"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  flip: "フリップ",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return value === "jump" || value === "zoom" || value === "flip";
 }
 
 /**
@@ -330,7 +332,16 @@ export function zoomReferenceTau(framesFromCut: number, mode: AspectMode = "land
   return framesFromCut / zoomTransitionScale(mode);
 }
 
+/** フリップは縦横とも全体 8 フレ。最短 13 フレのカットにも収まる。 */
+export const FLIP_HALF_FRAMES = 4;
+
 export type SwapFx = {
+  /** 縦軸回転の横倍率。通常 1、エッジオン 0。 */
+  flipWidth: number;
+  /** 短冊の高さに付ける遠近差。表と裏で符号を反転する。 */
+  flipPerspective: number;
+  /** カード面の陰影量。通常 0。 */
+  flipShade: number;
   /** 表示する写真のスロット。ズームは S+1 まで前の写真が残る。 */
   plateSlot: number;
   /** 写真の倍率（基準 cover に対して。静止時 1）。 */
@@ -359,7 +370,10 @@ export type SwapFx = {
   cutIndex: number;
 };
 
+const FLIP_NEUTRAL = { flipWidth: 1, flipPerspective: 0, flipShade: 0 } as const;
+
 const NO_FX = {
+  ...FLIP_NEUTRAL,
   flashAdd: 0,
   flashScreen: 0,
   flashGlobal: 0,
@@ -534,13 +548,13 @@ export function rectToUvBottomLeft(rect: Rect, canvasW: number, canvasH: number)
 /** フレーム境界の比較に使う許容（フレーム単位）。時刻の丸めで 0.99999 になった 1 フレを 1 とみなす。 */
 const FRAME_EPS = 1e-6;
 
-/** `time` が属するスロット（先頭は 0）とその開始時刻。`slotForTime` と同じ 1e-4 の許容。 */
-function slotAt(time: number, slots: readonly number[]): { start: number; index: number } {
+/** `time` が属するスロット。既定は `slotForTime` と同じ許容。フリップだけ厳密な切替点を使う。 */
+function slotAt(time: number, slots: readonly number[], tolerance = 1e-4): { start: number; index: number } {
   let start = slots[0] ?? 0;
   let index = 0;
   for (let i = 1; i < slots.length; i += 1) {
     const t = slots[i]!;
-    if (time + 1e-4 >= t) {
+    if (time + tolerance >= t) {
       start = t;
       index = i;
     } else {
@@ -624,6 +638,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ * - flip: S−4..S+4 の 8 フレ。横幅は 1→0→1、S で裏面の写真へ切替。先頭は静止。
  *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
 export function swapFx(
@@ -635,7 +650,7 @@ export function swapFx(
   if (slots.length === 0) {
     return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
   }
-  const { start, index } = slotAt(time, slots);
+  const { start, index } = slotAt(time, slots, style === "flip" ? 0 : 1e-4);
   const k = (time - start) * TEMPLATE_FPS;
 
   if (style === "jump") {
@@ -657,6 +672,30 @@ export function swapFx(
     };
   }
 
+  if (style === "flip") {
+    const next = slots[index + 1];
+    const untilNext = next === undefined ? Infinity : (next - time) * TEMPLATE_FPS;
+    // 先頭の 0 秒では回さない。実在するカットだけを挟んで表→裏へ回す。
+    const outgoing = untilNext <= FLIP_HALF_FRAMES + FRAME_EPS;
+    const active = outgoing || (index > 0 && k < FLIP_HALF_FRAMES);
+    if (!active) return { ...NO_FX, plateSlot: index, scale: 1, dy: 0, cutIndex: index };
+    const tau = outgoing ? -untilNext : Math.max(0, k);
+    const width = Math.abs(tau) < FRAME_EPS
+      ? 0
+      : Math.sin(Math.min(1, Math.abs(tau) / FLIP_HALF_FRAMES) * Math.PI / 2);
+    const turn = Math.sqrt(Math.max(0, 1 - width * width));
+    return {
+      ...NO_FX,
+      plateSlot: index,
+      scale: 1,
+      dy: 0,
+      flipWidth: width,
+      flipPerspective: (tau < 0 ? 1 : -1) * 0.12 * turn,
+      flipShade: 0.18 * turn,
+      cutIndex: outgoing ? index + 1 : index,
+    };
+  }
+
   // zoom: 横の実測 τ をそのまま使う。縦はカットからの実フレームを ZOOM_PORTRAIT_TIME_SCALE で割ってから、
   // 同じ分岐（縮み・S+1 の写真入れ替わり・寄り）に入れる。振幅は分岐の中で変わらない。
   const next = slots[index + 1];
@@ -667,6 +706,7 @@ export function swapFx(
     // S..S+1（縦はその時間を ZOOM_PORTRAIT_TIME_SCALE 倍）: 前の写真が縮み切ったまま残る。
     const key = zoomKeyAt(kRef);
     return {
+      ...FLIP_NEUTRAL,
       ...key,
       plateSlot: index - 1,
       scale: zoomOutScale(0),
@@ -684,6 +724,7 @@ export function swapFx(
     const key = zoomKeyAt(tau);
     const scale = zoomOutScale(tau);
     return {
+      ...FLIP_NEUTRAL,
       ...key,
       plateSlot: index,
       scale,
@@ -699,6 +740,7 @@ export function swapFx(
     // S+1 以降: 新写真が寄りから引く。縦はこの減衰も同じ倍率で遅い。
     const key = zoomKeyAt(kRef);
     return {
+      ...FLIP_NEUTRAL,
       ...key,
       plateSlot: index,
       scale: zoomInScale(kRef),
