@@ -222,6 +222,9 @@ describe("trace sampling", () => {
 });
 
 describe("trace attribute allowlist", () => {
+  it("retains mist for Sentry and performance spans", () => {
+    expect(pickTraceAttributes({ effect: "mist" })).toEqual({ effect: "mist" });
+  });
   it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
     expect(
       pickTraceAttributes({

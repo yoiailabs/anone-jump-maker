@@ -84,25 +84,27 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 /**
  * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
  * スロット時刻 S（landscape-cuts.json。縦横共通）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
- * ジャンプは S に新写真、ズームは縦横とも S+1 に新写真（S はブラー頂点）。
+ * ジャンプ・白いモヤは S に新写真、ズームは縦横とも S+1 に新写真（S はブラー頂点）。
  */
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
+ * - mist: ノイズの白い霧でカットを覆い、膨らみながら散る。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "mist";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "mist"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  mist: "白いモヤ",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return value === "jump" || value === "zoom" || value === "mist";
 }
 
 /**
@@ -357,7 +359,17 @@ export type SwapFx = {
   backdrop: boolean;
   /** この窓が属するカット（スロット境界）。先頭スロット内で切替が無ければ 0。 */
   cutIndex: number;
+  /** 白いモヤ専用。既存エフェクトのフィールドは変更しない。 */
+  mist?: { amount: number; frame: number };
 };
+
+/** S±7 フレームでゼロ、S で最大。前後とも滑らかに立ち上がり／減衰する。 */
+export const MIST_WINDOW_FRAMES = 7;
+
+export function mistAmount(frame: number): number {
+  const t = Math.max(0, 1 - Math.abs(frame) / MIST_WINDOW_FRAMES);
+  return t * t * (3 - 2 * t);
+}
 
 const NO_FX = {
   flashAdd: 0,
@@ -657,6 +669,27 @@ export function swapFx(
     };
   }
 
+  if (style === "mist") {
+    // 写真と同じ slotAt の許容を使い、丸めたカット時刻でも S に確実に切り替える。
+    const frameAt = (cut: number) => Math.floor((time + 1e-4 - cut) * TEMPLATE_FPS);
+    let cutIndex = index;
+    let frame = Math.max(0, frameAt(start));
+    const next = slots[index + 1];
+    if (next !== undefined && frameAt(next) >= -MIST_WINDOW_FRAMES) {
+      const upcoming = Math.min(-1, frameAt(next));
+      // 短いスロットでも、強い方の窓を選んでカットを覆う。
+      if (index === 0 || mistAmount(upcoming) > mistAmount(frame)) {
+        cutIndex = index + 1;
+        frame = upcoming;
+      }
+    }
+    const amount = cutIndex > 0 ? mistAmount(frame) : 0;
+    return {
+      ...NO_FX, plateSlot: index, scale: 1, dy: 0, cutIndex,
+      ...(amount > 0 ? { mist: { amount, frame } } : {}),
+    };
+  }
+
   // zoom: 横の実測 τ をそのまま使う。縦はカットからの実フレームを ZOOM_PORTRAIT_TIME_SCALE で割ってから、
   // 同じ分岐（縮み・S+1 の写真入れ替わり・寄り）に入れる。振幅は分岐の中で変わらない。
   const next = slots[index + 1];
@@ -715,7 +748,7 @@ export function swapFx(
 
 /** 切替 FX が何か描画に影響するか（全面 FX の作業キャンバスを省くため）。 */
 export function hasFrameFx(fx: SwapFx): boolean {
-  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
+  return (fx.mist?.amount ?? 0) > 0 || fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
 }
 
 function clamp01(v: number): number {

@@ -1,3 +1,4 @@
+import { drawMist, softenMistPhoto } from "./mist.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -371,6 +372,8 @@ function composeMain(
     }
   }
 
+  if (fx.mist) softenMistPhoto(main, mainCtx, surfaces, fx.mist.amount);
+
   if (character) {
     if (composeDetailActive()) {
       traceCompose("compose.character", () => drawCharacter(mainCtx, surfaces, character, mw, mh, mode, characterSize));
@@ -605,6 +608,10 @@ function applyFrameFx(
   surfaces: FxSurfaces,
   fx: SwapFx,
 ): void {
+  if (fx.mist) {
+    drawMist(main, mainCtx, fx.cutIndex, fx.mist);
+    return;
+  }
   const w = main.width;
   const h = main.height;
   const { fxA, fxACtx, fxB, fxBCtx } = surfaces;

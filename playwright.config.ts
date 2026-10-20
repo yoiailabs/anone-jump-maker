@@ -9,7 +9,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  // 1080p の保存が重なると Chromium の描画プロセスが落ちるため、ローカルも CI と同じ上限。
+  workers: 2,
   timeout: 60_000,
   expect: { timeout: 20_000 },
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
