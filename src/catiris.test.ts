@@ -35,7 +35,7 @@ describe.each(["landscape", "portrait"] as const)("%s catiris", (mode) => {
       const fx = swapFx(n / 30, cuts.slots, "catiris", mode);
       expect(fx.scale).toBe(1);
       expect(fx.dy).toBe(0);
-      expect(hasFrameFx(fx), `frame ${n}`).toBe(owner !== undefined);
+      expect(hasFrameFx(fx), `frame ${n}`).toBe(false);
       expect(fx.flashAdd + fx.flashScreen + fx.flashGlobal + fx.blur + fx.rgb + fx.wave + fx.lift + fx.haze).toBe(0);
       if (owner !== undefined) {
         expect(fx.plateSlot).toBe(owner - 1);
@@ -79,10 +79,38 @@ describe.each(["landscape", "portrait"] as const)("%s catiris", (mode) => {
     expect(easeOutBack(0.7)).toBeGreaterThan(1);
     expect(radius(-3)).toBeCloseTo(Math.min(w, h) * 0.035);
     expect(radius(-1)).toBeGreaterThan(radius(1));
-    expect(radius(-1)).toBeLessThan(Math.min(w, h) * 0.35);
+    expect(radius(-1) / radius(1)).toBeGreaterThan(1.12);
     expect(radius(2)).toBeGreaterThan(radius(1));
     expect(radius(4) - Math.min(w, h) * 0.10).toBeGreaterThan(Math.hypot(w, h) / 2);
   });
+
+  it("centers and contains the entire middle silhouette including its peak, border and shadow", () => {
+    const { width: w, height: h } = OUTPUTS[mode];
+    const short = Math.min(w, h);
+    // 耳先〜あごの正規化寸法は2×2.35。白縁半分＋影のぼかし3倍＋影のずれを余白に含める。
+    const padding = short * 0.025 * (0.5 + 3 * 0.45 + 0.15);
+    // S-1〜S+1を連続走査し、書き出しフレーム間のオーバーシュートも検査する。
+    for (let tick = 0; tick <= 2000; tick++) {
+      const progress = (2 + tick / 1000) / 7;
+      const radius = catIrisRadius(progress, w, h);
+      const halfHeight = radius * 1.175;
+      expect(halfHeight * 2 / short).toBeGreaterThanOrEqual(0.60 - 1e-12);
+      expect(halfHeight * 2 / short).toBeLessThanOrEqual(0.70);
+      expect(w / 2 - radius - padding).toBeGreaterThan(short * 0.10);
+      expect(w / 2 + radius + padding).toBeLessThan(w - short * 0.10);
+      expect(h / 2 - halfHeight - padding).toBeGreaterThan(short * 0.10);
+      expect(h / 2 + halfHeight + padding).toBeLessThan(h - short * 0.10);
+    }
+  });
+});
+
+it("keeps reveal independent from composited frame effects", () => {
+  const fx = swapFx(58 / 30, cuts.slots, "catiris");
+  expect(fx.reveal).toBeDefined();
+  expect(hasFrameFx(fx)).toBe(false);
+  for (const field of ["blur", "rgb", "lift", "haze", "wave"] as const) {
+    expect(hasFrameFx({ ...fx, [field]: 0.1 })).toBe(true);
+  }
 });
 
 it("does not reveal at the beginning or without real cuts", () => {

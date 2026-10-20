@@ -735,9 +735,9 @@ export function swapFx(
   return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
 }
 
-/** 切替 FX が何か描画に影響するか（全面 FX の作業キャンバスを省くため）。 */
+/** 全面 FX が必要か。写真層だけの reveal は作業キャンバスを使わない。 */
 export function hasFrameFx(fx: SwapFx): boolean {
-  return fx.reveal !== undefined || fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
+  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
 }
 
 function clamp01(v: number): number {

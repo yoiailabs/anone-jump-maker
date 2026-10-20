@@ -368,12 +368,12 @@ function composeMain(
     if (composeDetailActive()) {
       traceCompose("compose.photo", () => {
         drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
-        if (fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
+        if (style === "catiris" && fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
       });
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
       drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
-      if (fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
+      if (style === "catiris" && fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
   }
@@ -612,8 +612,8 @@ function applyFrameFx(
   surfaces: FxSurfaces,
   fx: SwapFx,
 ): void {
-  // reveal は写真層で合成済み。全面 FX の作業面は使わない。
-  if (fx.reveal) return;
+  // 写真層の reveal の有無ではなく、全面 FX の各量で作業面が必要か判断する。
+  if (!hasFrameFx(fx)) return;
   const w = main.width;
   const h = main.height;
   const { fxA, fxACtx, fxB, fxBCtx } = surfaces;

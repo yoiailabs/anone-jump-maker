@@ -46,6 +46,45 @@ function edgeLine(data: Uint8ClampedArray, w: number, h: number): number {
 }
 
 for (const mode of ["landscape", "portrait"] as const) {
+  it(`${mode}: centers the rendered middle silhouette and leaves room for its border and shadow`, async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = mode === "landscape" ? 640 : 360;
+    canvas.height = mode === "landscape" ? 360 : 640;
+    const { width: w, height: h } = canvas;
+    const ctx = canvas.getContext("2d")!;
+    const p = await photo(203, 401, "#a00");
+    try {
+      // 整数フレームと、その間にある弾みの最大点を実際のPath2Dで検査する。
+      for (const progress of [2 / 7, 3 / 7, 4 / 7, (4 / 7) * (1 - 4.5 / 9.75)]) {
+        ctx.clearRect(0, 0, w, h);
+        drawCatIris(ctx, p.bitmap, w, h, progress);
+        const data = pixels(canvas);
+        let left = w, right = 0, top = h, bottom = 0;
+        let margin = Math.min(w, h);
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const alpha = data[(y * w + x) * 4 + 3]!;
+            if (alpha > 0) {
+              margin = Math.min(margin, x, w - 1 - x, y, h - 1 - y);
+            }
+            // 影を除いた白縁＋穴の外接矩形で中心を測る。
+            if (alpha >= 250) {
+              left = Math.min(left, x); right = Math.max(right, x);
+              top = Math.min(top, y); bottom = Math.max(bottom, y);
+            }
+          }
+        }
+        expect(margin).toBeGreaterThan(Math.min(w, h) * 0.10);
+        expect(Math.abs((left + right + 1) / 2 - w / 2)).toBeLessThanOrEqual(1);
+        expect(Math.abs((top + bottom + 1) / 2 - h / 2)).toBeLessThanOrEqual(1);
+        expect((bottom - top + 1) / Math.min(w, h)).toBeGreaterThan(0.60);
+        expect((bottom - top + 1) / Math.min(w, h)).toBeLessThan(0.73);
+      }
+    } finally {
+      p.bitmap.close();
+    }
+  });
+
   for (const resolutionScale of [0.1, 0.3325, 1]) {
     it(`${mode} ${resolutionScale}: every window phase stays covered, has no edge line and seeks deterministically`, async () => {
       const a = createCompositor({ resolutionScale, createKeyer: () => null });
@@ -122,14 +161,21 @@ it("adds no drawing outside windows, allocates no surfaces and never reads pixel
   const clip = vi.spyOn(CanvasRenderingContext2D.prototype, "clip");
   const stroke = vi.spyOn(CanvasRenderingContext2D.prototype, "stroke");
   const allocate = vi.spyOn(document, "createElement");
+  const resizeWidth = vi.spyOn(HTMLCanvasElement.prototype, "width", "set");
+  const resizeHeight = vi.spyOn(HTMLCanvasElement.prototype, "height", "set");
   try {
     for (let n = 0; n < 470; n++) {
       draw.mockClear(); clip.mockClear(); stroke.mockClear();
+      resizeWidth.mockClear(); resizeHeight.mockClear();
       compositor.draw(video, [p], cuts, n / 30, "catiris");
       const active = swapFx(n / 30, cuts.slots, "catiris").reveal !== undefined;
       expect(draw).toHaveBeenCalledTimes(active ? 3 : 2);
       expect(clip).toHaveBeenCalledTimes(active ? 1 : 0);
       expect(stroke).toHaveBeenCalledTimes(active ? 1 : 0);
+      // mainの初期化だけを許し、未描画の全面FX作業面の確保・リサイズも検出する。
+      const main = (draw.mock.contexts[0] as CanvasRenderingContext2D).canvas;
+      expect(resizeWidth.mock.contexts).toEqual([main]);
+      expect(resizeHeight.mock.contexts).toEqual([main]);
     }
     expect(read).not.toHaveBeenCalled();
     expect(allocate).not.toHaveBeenCalled();
