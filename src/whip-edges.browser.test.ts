@@ -39,9 +39,74 @@ function gradients(image: ImageData, axis: "x" | "y"): number[] {
   return result;
 }
 
+// 帯の行間差を測る。クレジットを避け、横縞が最も強い行を採用する。
+function rowContrast(image: ImageData, from: number, to: number): number {
+  const { width: w, height: h, data } = image;
+  const start = Math.floor(from * w);
+  const end = Math.floor(to * w);
+  let peak = 0;
+  for (let y = Math.ceil(h * 0.1); y < h * 0.7; y++) {
+    let sum = 0;
+    for (let x = start; x < end; x++) {
+      const i = (y * w + x) * 4;
+      sum += Math.abs(data[i]! - data[i - w * 4]!);
+    }
+    peak = Math.max(peak, sum / (end - start));
+  }
+  return peak;
+}
+
 describe("whip shared preview / export compositor", () => {
   for (const mode of ["landscape", "portrait"] as const) {
     for (const resolutionScale of [1 / 3, 1]) {
+      it(`${mode} at ${resolutionScale}: blurs alternating edge rows without stretching them into horizontal stripes`, async () => {
+        const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
+        compositor.setAspect(mode);
+        const { width: w, height: h } = compositor.canvas;
+        const fixture = document.createElement("canvas");
+        fixture.width = w;
+        fixture.height = h;
+        const ctx = fixture.getContext("2d")!;
+        const video = document.createElement("video");
+        let maxEdge = 0;
+        try {
+          for (const tau of [-2, -1, 0, 1, 2]) {
+            const time = timeline.slots[1]! + tau * F;
+            const progress = swapFx(time, timeline.slots, "whip", mode).pan!.progress;
+            // パン後の左右端に来る各1列だけを行交互の白黒にする。鏡映なら周囲の灰色と平均される。
+            const edgeX = Math.round(progress * w);
+            const photos: LoadedPhoto[] = [];
+            try {
+              for (const x of [edgeX, edgeX - 1]) {
+                ctx.fillStyle = "#808080";
+                ctx.fillRect(0, 0, w, h);
+                for (let y = 0; y < h; y++) {
+                  ctx.fillStyle = y % 2 === 0 ? "#000000" : "#ffffff";
+                  ctx.fillRect(x, y, 1, 1);
+                }
+                photos.push({ id: `edge-${x}`, name: "edge-stripes.png", bitmap: await createImageBitmap(fixture), thumbUrl: "" });
+              }
+              compositor.draw(video, photos, timeline, time, "whip");
+              const frame = compositor.canvas.getContext("2d")!.getImageData(0, 0, w, h);
+              const inner = rowContrast(frame, 0.4, 0.6);
+              // 1列の模様が残す差を帯の画素数に合わせて換算し、8bit 平均の丸めに1階調を許容する。
+              const tolerance = 3 / resolutionScale + 1;
+              for (const [side, from, to] of [["left", 0, 0.1], ["right", 0.9, 1]] as const) {
+                const edge = rowContrast(frame, from, to);
+                maxEdge = Math.max(maxEdge, edge);
+                expect(edge, `${side} rows at τ=${tau}, inner=${inner}`).toBeLessThanOrEqual(inner + tolerance);
+                expect(edge, `${side} rows at τ=${tau}`).toBeLessThanOrEqual(tolerance);
+              }
+            } finally {
+              photos.forEach((photo) => photo.bitmap.close());
+            }
+          }
+          console.info(`whip-row-contrast ${mode} scale=${resolutionScale}: max=${maxEdge}`);
+        } finally {
+          compositor.destroy();
+        }
+      });
+
       it(`${mode} at ${resolutionScale}: keeps all four edges and the join smooth`, async () => {
         const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
         compositor.setAspect(mode);

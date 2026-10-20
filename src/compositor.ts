@@ -419,7 +419,7 @@ function resetCtx(ctx: CanvasRenderingContext2D): void {
 /**
  * 写真をパネル比率に cover で切り抜いてから隣接させる。元画像の余白は境界を越えない。
  * 共有する境界を整数画素に揃え、source-over の小数被覆で下地が線状に透けるのを防ぐ。
- * 外側のブラー参照は applyFrameFx の padFrameX が端画素で延長する。
+ * 外側のブラー参照は applyWhipBlur の mirrorWhipFrameX がフレーム端で鏡映する。
  */
 function drawWhipPlates(
   ctx: CanvasRenderingContext2D,
@@ -628,10 +628,31 @@ function padFrameX(
   return fxPad;
 }
 
+/** ホイップ専用。端の1列を引き伸ばさず鏡映し、細かい縦模様が硬い横縞になるのを防ぐ。 */
+function mirrorWhipFrameX(
+  source: HTMLCanvasElement,
+  { fxPad, fxPadCtx }: FxSurfaces,
+  pad: number,
+): HTMLCanvasElement {
+  const w = source.width;
+  const h = source.height;
+  // ブラー長は幅の1/4以下で各段の pad は幅内に収まるため、左右とも1回の反転で埋まる。
+  ensureCanvasSize(fxPad, w + pad * 2, h);
+  resetCtx(fxPadCtx);
+  fxPadCtx.imageSmoothingEnabled = false;
+  fxPadCtx.drawImage(source, pad, 0);
+  fxPadCtx.setTransform(-1, 0, 0, 1, pad, 0);
+  fxPadCtx.drawImage(source, 0, 0, pad, h, 0, 0, pad, h);
+  fxPadCtx.setTransform(-1, 0, 0, 1, w + pad * 2, 0);
+  fxPadCtx.drawImage(source, w - pad, 0, pad, h, 0, 0, pad, h);
+  fxPadCtx.setTransform(1, 0, 0, 1, 0, 0);
+  return fxPad;
+}
+
 /**
  * 長いホイップ残像を二分平均で作る。ずらし幅を半分ずつにして 2^n 個の露光を分布させる。
  * 多数の 1/N 合成は 8bit Canvas の丸めで暗くなるため、毎回 50% で平均する。
- * 2^n はサンプル間隔が約 2.5px 以下になる数。各段の外側も端画素で延長する。
+ * 2^n はサンプル間隔が約 2.5px 以下になる数。各段の外側はフレーム端で鏡映する。
  */
 function applyWhipBlur(surfaces: FxSurfaces, blurPx: number): void {
   const { fxA, fxACtx, fxB, fxBCtx } = surfaces;
@@ -642,7 +663,7 @@ function applyWhipBlur(surfaces: FxSurfaces, blurPx: number): void {
     const target = source === fxA ? fxB : fxA;
     const ctx = source === fxA ? fxBCtx : fxACtx;
     const pad = Math.ceil(shift) + 1;
-    const padded = padFrameX(source, surfaces, pad);
+    const padded = mirrorWhipFrameX(source, surfaces, pad);
     resetCtx(ctx);
     ctx.clearRect(0, 0, target.width, target.height);
     ctx.drawImage(padded, -shift - pad, 0);
