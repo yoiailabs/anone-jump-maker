@@ -66,8 +66,8 @@ describe("spin plate edges", () => {
       });
     }
 
-    it(`${mode}: keeps gradients smooth throughout the frame and restores identical still pixels`, async () => {
-      const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+    it.each([1 / 3, 1])(`${mode} at %s: keeps gradients smooth throughout the frame and restores identical still pixels`, async (resolutionScale) => {
+      const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
       compositor.setAspect(mode);
       const { width, height } = OUTPUTS[mode];
       const photo = await makePhoto(width, height, true);
@@ -96,7 +96,49 @@ describe("spin plate edges", () => {
           expect(Math.max(edgeStep, innerStep), `τ=${tau}`).toBeLessThanOrEqual(3);
         }
         compositor.draw(video, [photo], timeline, 0.2, "spin");
-        expect(pixels(compositor.canvas).data).toEqual(before);
+        // 原寸の巨大な配列をアサーション側で展開せず、全バイトの厳密一致を数える。
+        const after = pixels(compositor.canvas).data;
+        let differentBytes = 0;
+        for (let i = 0; i < before.length; i++) if (after[i] !== before[i]) differentBytes++;
+        expect(differentBytes).toBe(0);
+      } finally {
+        photo.bitmap.close();
+        compositor.destroy();
+      }
+    });
+
+    it(`${mode}: integrates a bright edge into a continuous arc at export resolution`, async () => {
+      const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+      compositor.setAspect(mode);
+      const source = document.createElement("canvas");
+      source.width = source.height = 1024;
+      const ctx = source.getContext("2d")!;
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, 1024, 1024);
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.moveTo(512, 512);
+      ctx.arc(512, 512, 1024, -0.02, 0.02);
+      ctx.fill();
+      const photo = { id: "arc", name: "arc.png", bitmap: await createImageBitmap(source), thumbUrl: "" };
+      try {
+        const rotation = mode === "landscape" ? 0 : Math.PI / 2;
+        vi.mocked(swapFx).mockReturnValueOnce({
+          ...swapFx(S, timeline.slots, "spin", mode), rotation, rotationBlur: 0.36,
+        });
+        compositor.draw(document.createElement("video"), [photo], timeline, S, "spin");
+        const { width: w, height: h, data } = pixels(compositor.canvas);
+        const radius = Math.max(w, h) * 0.43;
+        const samples: number[] = [];
+        for (let i = 0; i <= 100; i++) {
+          const angle = rotation - 0.12 + i * 0.0024;
+          const x = Math.round(w / 2 + radius * Math.cos(angle));
+          const y = Math.round(h / 2 + radius * Math.sin(angle));
+          samples.push(data[(y * w + x) * 4]!);
+        }
+        // 固定 5 タップでは黒い谷と明るいコピーが交互に残る。積分した円弧は一定の明るさになる。
+        expect(Math.min(...samples)).toBeGreaterThan(15);
+        expect(Math.max(...samples) - Math.min(...samples)).toBeLessThanOrEqual(5);
       } finally {
         photo.bitmap.close();
         compositor.destroy();

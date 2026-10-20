@@ -39,6 +39,7 @@ import {
 } from "./layout.ts";
 import { composeDetailActive, studioTrace, traceChildSync, traceCompose } from "./perf-trace.ts";
 import type { LoadedPhoto } from "./photos.ts";
+import { spinBlurPlan } from "./spin-blur.ts";
 import { DEFAULT_LOCALE, songCreditLine, type Locale } from "./i18n.ts";
 import { photoForSlot, slotForTime, type SlotTimeline } from "./timeline.ts";
 
@@ -210,6 +211,7 @@ export function createCompositor(options?: {
     fxPadCtx,
     blur,
     blurCtx,
+    spinSums: new Uint32Array(0),
     get gpuKeyer() {
       return gpuKeyer;
     },
@@ -312,6 +314,7 @@ export function createCompositor(options?: {
       fxPad.height = 0;
       blur.width = 0;
       blur.height = 0;
+      surfaces.spinSums = new Uint32Array(0);
     },
   };
 }
@@ -331,6 +334,7 @@ type FxSurfaces = {
   fxPadCtx: CanvasRenderingContext2D;
   blur: HTMLCanvasElement;
   blurCtx: CanvasRenderingContext2D;
+  spinSums: Uint32Array;
   gpuKeyer: GpuKeyer | null;
   dropGpuKeyer: () => void;
 };
@@ -499,36 +503,60 @@ function drawCharacter(
   paintCharacterOverlay(mainCtx, surfaces, keyedSource, placed, keyW, keyH, mw, mode);
 }
 
-/** 各タップを不透明な写真から平均合成する。角度区間全体を覆い、端に 2px の補間余白を取る。 */
+/** 各タップの整数和を最後に一度だけ平均し、逐次の 8bit 丸めによる筋を防ぐ。 */
 function drawSpinPhoto(
   ctx: CanvasRenderingContext2D,
-  { photoTiles, photoTilesCtx: tilesCtx }: FxSurfaces,
+  surfaces: FxSurfaces,
   photo: LoadedPhoto,
   fx: SwapFx,
   w: number,
   h: number,
 ): void {
+  const { blur, blurCtx } = surfaces;
   const cover = spinCoverScale(w, h, fx.rotation, fx.rotationBlur);
   const dest = coverDest(photo.bitmap.width, photo.bitmap.height, w, h, {
     scale: fx.scale * cover * (1 + 4 / Math.min(w, h)),
   });
-  // 5 タップに抑え、8bit の平均合成で丸め差が筋状に積み重なるのを防ぐ。
-  const taps = fx.rotationBlur > 0 ? 5 : 1;
-  ensureCanvasSize(photoTiles, w, h);
-  ctx.save();
+  if (fx.rotationBlur <= 0) {
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(fx.rotation);
+    ctx.drawImage(photo.bitmap, -dest.w / 2, -dest.h / 2, dest.w, dest.h);
+    ctx.restore();
+    return;
+  }
+  const { width: sw, height: sh, taps } = spinBlurPlan(w, h, fx.rotationBlur);
+  ensureCanvasSize(blur, sw, sh);
+  if (surfaces.spinSums.length !== sw * sh * 4) surfaces.spinSums = new Uint32Array(sw * sh * 4);
+  const sums = surfaces.spinSums;
+  sums.fill(0);
+  let image: ImageData | undefined;
   for (let i = 0; i < taps; i++) {
     const offset = taps === 1 ? 0 : (i / (taps - 1) - 0.5) * fx.rotationBlur;
-    // 回転と半透明合成を分け、補間時の丸めによる細い線を防ぐ。透過写真の下地もタップごとに揃える。
-    resetCtx(tilesCtx);
-    tilesCtx.fillStyle = "#0a0806";
-    tilesCtx.fillRect(0, 0, w, h);
-    tilesCtx.translate(w / 2, h / 2);
-    tilesCtx.rotate(fx.rotation + offset);
-    tilesCtx.drawImage(photo.bitmap, -dest.w / 2, -dest.h / 2, dest.w, dest.h);
-    ctx.globalAlpha = 1 / (i + 1);
-    ctx.drawImage(photoTiles, 0, 0);
+    resetCtx(blurCtx);
+    blurCtx.fillStyle = "#0a0806";
+    blurCtx.fillRect(0, 0, sw, sh);
+    blurCtx.translate(sw / 2, sh / 2);
+    blurCtx.scale(sw / w, sh / h);
+    blurCtx.rotate(fx.rotation + offset);
+    blurCtx.drawImage(photo.bitmap, -dest.w / 2, -dest.h / 2, dest.w, dest.h);
+    image = blurCtx.getImageData(0, 0, sw, sh);
+    // 最大 192 × 255。整数和には丸めが入らず、alpha は各タップで 255 に揃う。
+    for (let j = 0; j < sums.length; j += 4) {
+      sums[j] = sums[j]! + image.data[j]!;
+      sums[j + 1] = sums[j + 1]! + image.data[j + 1]!;
+      sums[j + 2] = sums[j + 2]! + image.data[j + 2]!;
+    }
   }
-  ctx.restore();
+  if (!image) return;
+  for (let j = 0; j < sums.length; j += 4) {
+    image.data[j] = Math.round(sums[j]! / taps);
+    image.data[j + 1] = Math.round(sums[j + 1]! / taps);
+    image.data[j + 2] = Math.round(sums[j + 2]! / taps);
+  }
+  resetCtx(blurCtx);
+  blurCtx.putImageData(image, 0, 0);
+  ctx.drawImage(blur, 0, 0, w, h);
 }
 
 function keyCharacterBand(
