@@ -1,9 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const port = 4173;
-// 既にビルド済みの専用 preview を指定すると、別 worktree のサーバーを参照せずに検証できる。
-const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
-const baseURL = externalBaseURL ?? `http://127.0.0.1:${port}`;
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -11,8 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  // ローカルのソフトウェア描画では複数の1080pエンコーダが資源を奪い合うため直列化する。
-  workers: process.env.CI ? 2 : 1,
+  workers: process.env.CI ? 2 : undefined,
   timeout: 60_000,
   expect: { timeout: 20_000 },
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
@@ -25,7 +22,7 @@ export default defineConfig({
     serviceWorkers: "block",
     video: "off",
   },
-  webServer: externalBaseURL ? undefined : {
+  webServer: {
     command: `pnpm build && pnpm preview --host 127.0.0.1 --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,

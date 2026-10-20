@@ -542,8 +542,8 @@ const SLOT_TIME_EPS = 1e-4;
 /** 最短13フレーム間隔でも窓の間に3枚以上のクリーンな写真を残す。後端は含まない。 */
 export const MOYA_BEFORE_FRAMES = 5;
 export const MOYA_AFTER_FRAMES = 5;
-export const MOYA_DISSOLVE_START = -3;
-export const MOYA_DISSOLVE_END = 2;
+export const MOYA_DISSOLVE_START = -4;
+export const MOYA_DISSOLVE_END = 3;
 
 function smoothstep01(value: number): number {
   const u = clamp01(value);
@@ -688,9 +688,12 @@ export function swapFx(
     }
     const active = cutIndex > 0 && frame >= -MOYA_BEFORE_FRAMES && frame < MOYA_AFTER_FRAMES;
     const amount = frame < 0
-      ? smoothstep01((frame + MOYA_BEFORE_FRAMES + 1) / (MOYA_BEFORE_FRAMES + 1))
+      ? Math.sin((frame + MOYA_BEFORE_FRAMES + 1) / (MOYA_BEFORE_FRAMES + 1) * Math.PI / 2)
       : smoothstep01(1 - frame / MOYA_AFTER_FRAMES);
-    const mix = smoothstep01((frame - MOYA_DISSOLVE_START) / (MOYA_DISSOLVE_END - MOYA_DISSOLVE_START));
+    // S で半々。端を平らにせず、前半から大きな雲が透ける時間を確保する。
+    const mix = clamp01(frame <= 0
+      ? (frame - MOYA_DISSOLVE_START) / -MOYA_DISSOLVE_START * 0.5
+      : 0.5 + frame / MOYA_DISSOLVE_END * 0.5);
     return {
       ...NO_FX, plateSlot: index, scale: 1, dy: 0, cutIndex,
       ...(active ? { moya: { amount, frame, mix } } : {}),

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCompositor } from "./compositor.ts";
+import { createMoyaMask, maskMoyaPhoto } from "./moya.ts";
 import { swapFx, type AspectMode } from "./layout.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import type { LoadedPhoto } from "./photos.ts";
@@ -116,8 +117,8 @@ describe.each(["landscape", "portrait"] as const)("%s moya rendering", (mode: As
       for (let y = 10; y < compositor.canvas.height * 0.8; y += 3) {
         for (let x = 10; x < compositor.canvas.width - 10; x += 3) reds.add(data[(y * compositor.canvas.width + x) * 4]!);
       }
-      expect(Math.min(...reds)).toBeLessThan(85);
-      expect(Math.max(...reds)).toBeGreaterThan(190);
+      expect(Math.min(...reds)).toBeLessThan(125);
+      expect(Math.max(...reds)).toBeGreaterThan(180);
       expect(reds.size).toBeGreaterThan(30);
       flat.forEach((p) => p.bitmap.close());
     } finally {
@@ -144,7 +145,7 @@ describe.each(["landscape", "portrait"] as const)("%s moya rendering", (mode: As
         draws.mockClear();
         compositor.draw(video, photos, timeline, 0.5 + frame * F, "moya");
         const sourceDraws = draws.mock.calls.filter(([source]) => photos.some((p) => p.bitmap === source));
-        expect(sourceDraws.length).toBe(frame > -3 && frame < 2 ? 2 : 1);
+        expect(sourceDraws.length).toBe(frame > -4 && frame < 3 ? 2 : 1);
       }
       expect(read).not.toHaveBeenCalled();
       expect(create).not.toHaveBeenCalled();
@@ -173,8 +174,8 @@ describe.each(["landscape", "portrait"] as const)("%s moya rendering", (mode: As
       const data = pixels(target);
       let red = 0; let blue = 0;
       for (let i = 0; i < data.length; i += 4) {
-        if (data[i]! > 180 && data[i + 2]! < 100) red++;
-        if (data[i]! < 100 && data[i + 2]! > 180) blue++;
+        if (data[i]! > 160 && data[i + 2]! < 120) red++;
+        if (data[i]! < 130 && data[i + 2]! > 140) blue++;
       }
       before.push(`${red > 0}:${blue > 0}`);
       original(target, ...args);
@@ -204,4 +205,42 @@ describe.each(["landscape", "portrait"] as const)("%s moya rendering", (mode: As
       compositor.destroy();
     }
   });
+});
+
+// 旧来の2フレームの斑点ワイプに戻らないよう、実カット全てで半透明の面積を測る。
+it.each(["landscape", "portrait"] as const)("%s keeps both photos visible for at least four frames on every real cut", async (mode) => {
+  const cuts: { slots: number[]; slotFrames: number[] } = await fetch("/official-assets/template/landscape-cuts.json").then((response) => response.json());
+  const mask = createMoyaMask();
+  const canvas = document.createElement("canvas");
+  canvas.width = mode === "landscape" ? 192 : 108;
+  canvas.height = mode === "landscape" ? 108 : 192;
+  const ctx = canvas.getContext("2d")!;
+  for (let cut = 1; cut < cuts.slots.length; cut++) {
+    let mixedFrames = 0;
+    for (let frame = -3; frame <= 2; frame++) {
+      ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const mix = swapFx((cuts.slotFrames[cut]! + frame) / 30, cuts.slots, "moya").moya!.mix;
+      maskMoyaPhoto(canvas, ctx, mask, cut, mix);
+      const data = mask.image.data;
+      let translucent = 0;
+      let alpha = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        alpha += data[i]! / 255;
+        if (data[i]! > 25 && data[i]! < 230) translucent++;
+      }
+      // 面積の1/4以上で両方の写真が10%以上寄与するフレームを数える。
+      if (translucent / (data.length / 4) > 0.25) mixedFrames++;
+      if (frame === 0) expect(alpha / (data.length / 4)).toBeGreaterThan(0.3);
+      if (frame === 0) expect(alpha / (data.length / 4)).toBeLessThan(0.7);
+    }
+    expect(mixedFrames, `cut ${cut}`).toBeGreaterThanOrEqual(4);
+  }
+  const key = `1:${canvas.width / canvas.height}`;
+  const cached = mask.clouds.get(key);
+  expect(cached).toBeDefined();
+  expect(Math.min(...cached!)).toBeCloseTo(0);
+  expect(Math.max(...cached!)).toBeCloseTo(1);
+  maskMoyaPhoto(canvas, ctx, mask, 1, 0.5);
+  expect(mask.clouds.size).toBe(cuts.slots.length - 1);
+  expect(mask.clouds.get(key)).toBe(cached);
 });

@@ -1,12 +1,13 @@
 import { ensureCanvasSize } from "./canvas-size.ts";
 import type { SwapFx } from "./layout.ts";
 
-export const MOYA_AMPLITUDE = 0.022;
-export const MOYA_BANDS = 32;
+export const MOYA_AMPLITUDE = 0.038;
+export const MOYA_BANDS = 24;
 export const MOYA_MASK_SIZE = 48;
-export const MOYA_MASK_FEATHER = 0.16;
+export const MOYA_CLOUD_SCALE = 2.4;
+export const MOYA_MASK_FEATHER = 0.55;
 /** 縮小・拡大で作る軽いボケの最大画素幅（短辺比）。 */
-export const MOYA_SOFTNESS = 0.003;
+export const MOYA_SOFTNESS = 0.004;
 
 export type MoyaMask = ReturnType<typeof createMoyaMask>;
 type MoyaSurfaces = {
@@ -51,7 +52,7 @@ export function createMoyaMask() {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas2D が使えません");
   const image = ctx.createImageData(MOYA_MASK_SIZE, MOYA_MASK_SIZE);
-  return { canvas, ctx, image };
+  return { canvas, ctx, image, clouds: new Map<string, Float32Array>() };
 }
 
 /** 新写真のアルファだけを雲状に切り抜く。端点は完全な旧／新になる。 */
@@ -67,20 +68,36 @@ export function maskMoyaPhoto(
     ctx.clearRect(0, 0, photo.width, photo.height);
     return;
   }
-  const short = Math.min(photo.width, photo.height);
-  const sx = 4 * photo.width / short;
-  const sy = 4 * photo.height / short;
-  const { data } = mask.image;
-  for (let y = 0; y < MOYA_MASK_SIZE; y++) {
-    for (let x = 0; x < MOYA_MASK_SIZE; x++) {
-      const nx = x / (MOYA_MASK_SIZE - 1) * sx;
-      const ny = y / (MOYA_MASK_SIZE - 1) * sy;
-      const noise = 0.75 * valueNoise(nx, ny, cut) + 0.25 * valueNoise(nx * 2 + 13, ny * 2 + 7, cut);
-      const a = smooth((mix * (1 + 2 * MOYA_MASK_FEATHER) - noise) / (2 * MOYA_MASK_FEATHER));
-      const i = (y * MOYA_MASK_SIZE + x) * 4;
-      data[i] = data[i + 1] = data[i + 2] = 255;
-      data[i + 3] = Math.round(a * 255);
+  // 雲の実値域をカット・縦横比ごとに一度だけ正規化する。再シークでも同じ雲になる。
+  const key = `${cut}:${photo.width / photo.height}`;
+  let cloud = mask.clouds.get(key);
+  if (!cloud) {
+    cloud = new Float32Array(MOYA_MASK_SIZE * MOYA_MASK_SIZE);
+    const short = Math.min(photo.width, photo.height);
+    const sx = MOYA_CLOUD_SCALE * photo.width / short;
+    const sy = MOYA_CLOUD_SCALE * photo.height / short;
+    let low = Infinity;
+    let high = -Infinity;
+    for (let y = 0; y < MOYA_MASK_SIZE; y++) {
+      for (let x = 0; x < MOYA_MASK_SIZE; x++) {
+        const nx = x / (MOYA_MASK_SIZE - 1) * sx;
+        const ny = y / (MOYA_MASK_SIZE - 1) * sy;
+        const noise = 0.85 * valueNoise(nx, ny, cut) + 0.15 * valueNoise(nx * 2 + 13, ny * 2 + 7, cut);
+        cloud[y * MOYA_MASK_SIZE + x] = noise;
+        low = Math.min(low, noise);
+        high = Math.max(high, noise);
+      }
     }
+    for (let i = 0; i < cloud.length; i++) cloud[i] = (cloud[i]! - low) / (high - low || 1);
+    mask.clouds.set(key, cloud);
+  }
+  const { data } = mask.image;
+  for (let i = 0; i < cloud.length; i++) {
+    const cloudAlpha = smooth((mix * (1 + 2 * MOYA_MASK_FEATHER) - cloud[i]!) / (2 * MOYA_MASK_FEATHER));
+    // 雲の薄い領域でも透過を進め、数フレームの斑点ワイプへの集中を防ぐ。
+    const a = mix * 0.4 + cloudAlpha * 0.6;
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = 255;
+    data[i * 4 + 3] = Math.round(a * 255);
   }
   mask.ctx.putImageData(mask.image, 0, 0);
   ctx.save();
@@ -99,7 +116,7 @@ function reset(ctx: CanvasRenderingContext2D): void {
   ctx.imageSmoothingEnabled = true;
 }
 
-/** 四辺と四隅を端の画素で延長し、縦横の変位でも下地の隙間を作らない。 */
+/** 四辺と四隅を鏡映しで延長し、隙間と端の画素を引き延ばした帯を防ぐ。 */
 function padFrame(source: HTMLCanvasElement, surfaces: MoyaSurfaces, pad: number): HTMLCanvasElement {
   const { fxPad, fxPadCtx: ctx } = surfaces;
   const w = source.width;
@@ -107,15 +124,18 @@ function padFrame(source: HTMLCanvasElement, surfaces: MoyaSurfaces, pad: number
   ensureCanvasSize(fxPad, w + pad * 2, h + pad * 2);
   reset(ctx);
   ctx.imageSmoothingEnabled = false;
-  for (const [sx, sw, dx, dw] of [[0, 1, 0, pad], [0, w, pad, w], [w - 1, 1, pad + w, pad]]) {
-    for (const [sy, sh, dy, dh] of [[0, 1, 0, pad], [0, h, pad, h], [h - 1, 1, pad + h, pad]]) {
-      ctx.drawImage(source, sx!, sy!, sw!, sh!, dx!, dy!, dw!, dh!);
+  const edgeX = Math.min(pad, w);
+  const edgeY = Math.min(pad, h);
+  for (const [sx, sw, dx, dw, flipX] of [[0, edgeX, 0, pad, 1], [0, w, pad, w, 0], [w - edgeX, edgeX, pad + w, pad, 1]] as const) {
+    for (const [sy, sh, dy, dh, flipY] of [[0, edgeY, 0, pad, 1], [0, h, pad, h, 0], [h - edgeY, edgeY, pad + h, pad, 1]] as const) {
+      ctx.setTransform(flipX ? -1 : 1, 0, 0, flipY ? -1 : 1, dx + (flipX ? dw : 0), dy + (flipY ? dh : 0));
+      ctx.drawImage(source, sx, sy, sw, sh, 0, 0, dw, dh);
     }
   }
   return fxPad;
 }
 
-/** 写真合成後・フィルターとキャラより前。32帯を線形シアーでつなぎ、境界の段差を防ぐ。 */
+/** 写真合成後・フィルターとキャラより前。24帯を線形シアーでつなぎ、境界の段差を防ぐ。 */
 export function warpMoyaPhoto(
   main: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
@@ -140,9 +160,9 @@ export function warpMoyaPhoto(
   const drift = hash(cut, phaseFrame, 702) * (1 - driftMix) + hash(cut, phaseFrame + 8, 702) * driftMix;
   const phase = hash(cut, 0, 701) * Math.PI * 2 + drift * 0.3;
   const wave = (u: number, axis: number) => amp * (
-    0.62 * Math.sin(u * Math.PI * 2.1 + phase + frame * 0.25 + axis) +
-    0.27 * Math.sin(u * Math.PI * 5.3 - phase * 0.7 - frame * 0.17 + axis) +
-    0.11 * Math.sin(u * Math.PI * 9.1 + phase * 1.3 + frame * 0.12 + axis));
+    0.62 * Math.sin(u * Math.PI * 2.1 + phase + frame * 0.85 + axis) +
+    0.27 * Math.sin(u * Math.PI * 5.3 - phase * 0.7 - frame * 0.63 + axis) +
+    0.11 * Math.sin(u * Math.PI * 9.1 + phase * 1.3 + frame * 0.47 + axis));
   let padded = padFrame(fxA, surfaces, pad);
   for (let band = 0; band < MOYA_BANDS; band++) {
     const y = Math.round(band * h / MOYA_BANDS);

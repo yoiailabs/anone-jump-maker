@@ -12,14 +12,14 @@ it("accepts only the public moya value and Japanese label", () => {
   expect(isSwapStyle("moya")).toBe(true);
   expect(isSwapStyle("Moya")).toBe(false);
   expect(SWAP_STYLE_LABELS.moya).toBe("モヤモヤ");
-  expect(MOYA_AMPLITUDE).toBe(0.022);
-  expect(MOYA_BANDS).toBe(32);
+  expect(MOYA_AMPLITUDE).toBe(0.038);
+  expect(MOYA_BANDS).toBe(24);
   expect(moyaSource).not.toMatch(/Math\.random|getImageData/);
 });
 
 describe.each(["landscape", "portrait"] as const)("%s moya clock", (mode) => {
-  it("fixes a ten-frame window, five-frame dissolve, and clean photos across all 470 frames", () => {
-    expect([MOYA_BEFORE_FRAMES, MOYA_AFTER_FRAMES, MOYA_DISSOLVE_START, MOYA_DISSOLVE_END]).toEqual([5, 5, -3, 2]);
+  it("fixes a ten-frame window, seven-frame dissolve, and clean photos across all 470 frames", () => {
+    expect([MOYA_BEFORE_FRAMES, MOYA_AFTER_FRAMES, MOYA_DISSOLVE_START, MOYA_DISSOLVE_END]).toEqual([5, 5, -4, 3]);
     const clean = new Array(cuts.slots.length).fill(0);
     const frames = Math.round(cuts.duration * TEMPLATE_FPS);
     expect(frames).toBe(470);
@@ -50,12 +50,14 @@ describe.each(["landscape", "portrait"] as const)("%s moya clock", (mode) => {
     expect(13 - MOYA_BEFORE_FRAMES - MOYA_AFTER_FRAMES).toBe(3);
     for (const cut of cuts.slotFrames.slice(1)) {
       const at = (frame: number) => swapFx((cut + frame) / TEMPLATE_FPS, cuts.slots, "moya", mode).moya!;
-      expect(at(-3).mix).toBe(0);
-      expect(at(2).mix).toBe(1);
+      expect(at(-4).mix).toBe(0);
+      expect(at(3).mix).toBe(1);
       expect(at(0).amount).toBe(1);
+      expect(at(0).mix).toBe(0.5);
+      expect(at(-4).amount).toBeGreaterThan(0.49);
       for (let f = -4; f <= 0; f++) expect(at(f).amount).toBeGreaterThan(at(f - 1).amount);
       for (let f = 1; f < 5; f++) expect(at(f).amount).toBeLessThan(at(f - 1).amount);
-      for (let f = -2; f <= 2; f++) expect(at(f).mix).toBeGreaterThan(at(f - 1).mix);
+      for (let f = -3; f <= 3; f++) expect(at(f).mix).toBeGreaterThan(at(f - 1).mix);
     }
   });
 
