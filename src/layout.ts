@@ -335,6 +335,9 @@ export function zoomReferenceTau(framesFromCut: number, mode: AspectMode = "land
 /** フリップは縦横とも全体 8 フレ。最短 13 フレのカットにも収まる。 */
 export const FLIP_HALF_FRAMES = 4;
 
+/** エッジオンでの背景切替を和らげる。jump より控えめな全面発光だけを使う。 */
+export const FLIP_FLASH_GLOBAL = 0.05;
+
 export type SwapFx = {
   /** 縦軸回転の横倍率。通常 1、エッジオン 0。 */
   flipWidth: number;
@@ -650,7 +653,9 @@ export function swapFx(
   if (slots.length === 0) {
     return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
   }
-  const { start, index } = slotAt(time, slots, style === "flip" ? 0 : 1e-4);
+  // カット表は秒を小数 6 桁に丸めている。flip も 1µs だけ許容し、
+  // 59/30 秒などの書き出しフレームをエッジオンで確実に新写真にする。
+  const { start, index } = slotAt(time, slots, style === "flip" ? 1e-6 : 1e-4);
   const k = (time - start) * TEMPLATE_FPS;
 
   if (style === "jump") {
@@ -684,6 +689,9 @@ export function swapFx(
       ? 0
       : Math.sin(Math.min(1, Math.abs(tau) / FLIP_HALF_FRAMES) * Math.PI / 2);
     const turn = Math.sqrt(Math.max(0, 1 - width * width));
+    // S−3 / S+4 の浮動小数点誤差で微小な発光が残らないよう、包絡の端だけ揃える。
+    const flash = tau <= -JUMP_FLASH_IN_FRAMES + FRAME_EPS || tau >= JUMP_FLASH_FRAMES - FRAME_EPS
+      ? 0 : jumpFlashEnvelope(tau);
     return {
       ...NO_FX,
       plateSlot: index,
@@ -691,7 +699,8 @@ export function swapFx(
       dy: 0,
       flipWidth: width,
       flipPerspective: (tau < 0 ? 1 : -1) * 0.12 * turn,
-      flipShade: 0.18 * turn,
+      flipShade: 0.28 * turn,
+      flashGlobal: FLIP_FLASH_GLOBAL * flash,
       cutIndex: outgoing ? index + 1 : index,
     };
   }

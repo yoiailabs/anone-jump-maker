@@ -480,63 +480,77 @@ function drawPhotoPlate(
 /** フリップ専用。既存のジャンプ／ズームの合成順序や画素には触れない。 */
 function drawFlipPlate(
   ctx: CanvasRenderingContext2D,
-  { photoTiles, photoTilesCtx: card }: FxSurfaces,
+  { photoTiles, photoTilesCtx: card, fxA, fxACtx: down, blur, blurCtx: small }: FxSurfaces,
   photo: LoadedPhoto,
   fx: SwapFx,
   w: number,
   h: number,
 ): void {
+  // flip の 8 フレだけ縮小→拡大で強くぼかす。ctx.filter／画素読み戻しは使わない。
+  // WebKit の一度の大幅縮小は細部がエイリアスになるため、約 1/2 ずつ長辺 24px まで落とす。
+  // 2 枚の作業面は最初の大きさのまま使い回し、縮小のたびに確保し直さない。
+  const downW = Math.max(1, Math.round(w / 2));
+  const downH = Math.max(1, Math.round(h / 2));
+  ensureCanvasSize(fxA, downW, downH);
+  ensureCanvasSize(blur, downW, downH);
+  resetCtx(down);
+  resetCtx(small);
+  down.imageSmoothingEnabled = small.imageSmoothingEnabled = true;
+  down.imageSmoothingQuality = small.imageSmoothingQuality = "low";
+  const bg = plateDest(photo.bitmap.width, photo.bitmap.height, downW, downH, { scale: 1, dy: 0 }, "flip");
+  down.fillStyle = "#0a0806";
+  down.fillRect(0, 0, downW, downH);
+  down.drawImage(photo.bitmap, bg.x, bg.y, bg.w, bg.h);
+  let source = fxA;
+  let target = blur;
+  let targetCtx = small;
+  let sw = downW;
+  let sh = downH;
+  while (Math.max(sw, sh) > 24) {
+    const tw = Math.max(1, Math.round(sw / 2));
+    const th = Math.max(1, Math.round(sh / 2));
+    targetCtx.drawImage(source, 0, 0, sw, sh, 0, 0, tw, th);
+    const previous = source;
+    source = target;
+    target = previous;
+    targetCtx = target === fxA ? down : small;
+    sw = tw;
+    sh = th;
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(source, 0, 0, sw, sh, 0, 0, w, h);
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(0, 0, w, h);
+
+  const projectedW = w * fx.flipWidth;
+  if (projectedW < 1) return; // エッジオンでは背景だけ。極細の線を描かない。
+
   ensureCanvasSize(photoTiles, w, h);
   resetCtx(card);
-  card.clearRect(0, 0, w, h);
-  // 同じ写真の cover を背景にする。鏡映タイルを極細カードに追従させると反復が増え、
-  // エッジオン付近で縞になるため、背景は等倍で保つ。縁はフェザーで連続させ、
-  // 小数境界の被覆漏れや下地色の 1px 線を作らない。ぼかしの画素読み戻しも不要。
+  // 背景とは別に不透明な写真面を作る。フェザー／透過マスクは掛けない。
   card.fillStyle = "#0a0806";
   card.fillRect(0, 0, w, h);
   const dest = plateDest(photo.bitmap.width, photo.bitmap.height, w, h, { scale: 1, dy: 0 }, "flip");
   card.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
-  ctx.drawImage(photoTiles, 0, 0);
-  const projectedW = w * fx.flipWidth;
-  if (projectedW < 1) return; // エッジオンは線を描かず、写真背景だけを残す。
-
   const shade = card.createLinearGradient(0, 0, w, 0);
-  const reverse = fx.flipPerspective < 0;
-  shade.addColorStop(0, `rgba(0,0,0,${fx.flipShade * (reverse ? 1 : 0.25)})`);
-  shade.addColorStop(1, `rgba(0,0,0,${fx.flipShade * (reverse ? 0.25 : 1)})`);
+  const farLeft = fx.flipPerspective > 0;
+  shade.addColorStop(0, `rgba(0,0,0,${fx.flipShade * (farLeft ? 1 : 0.15)})`);
+  shade.addColorStop(1, `rgba(0,0,0,${fx.flipShade * (farLeft ? 0.15 : 1)})`);
   card.fillStyle = shade;
   card.fillRect(0, 0, w, h);
-  card.globalCompositeOperation = "destination-in";
-  // 横フェザーは画面上の短辺の 4% を保つ。カードが細くなるほど面全体が自然に消える。
-  const featherX = Math.min(0.5, Math.min(w, h) * 0.04 / projectedW);
-  const edgeOpacity = Math.min(1, projectedW / (Math.min(w, h) * 0.08));
-  const maskX = card.createLinearGradient(0, 0, w, 0);
-  maskX.addColorStop(0, "transparent");
-  maskX.addColorStop(featherX, `rgba(255,255,255,${edgeOpacity})`);
-  maskX.addColorStop(1 - featherX, `rgba(255,255,255,${edgeOpacity})`);
-  maskX.addColorStop(1, "transparent");
-  card.fillStyle = maskX;
-  card.fillRect(0, 0, w, h);
-  const maskY = card.createLinearGradient(0, 0, 0, h);
-  maskY.addColorStop(0, "transparent");
-  maskY.addColorStop(0.04, "white");
-  maskY.addColorStop(0.96, "white");
-  maskY.addColorStop(1, "transparent");
-  card.fillStyle = maskY;
-  card.fillRect(0, 0, w, h);
-  resetCtx(card);
 
-  // 最大 96 本の短冊で台形を近似。出力の列境界を整数に揃えるので継ぎ目が透けず、
-  // 全面ブラーや読み戻しなしでプレビュー／書き出しに同じ軽い描画を使える。
+  // 遠い側は低く・暗く、近い側は高く・明るく。エッジオンへ向け高さも 0.94 倍に。
+  // 整数の列境界で不透明な短冊を接続し、下地の 1px 線や短冊の隙間を作らない。
+  const depthScale = 1 - 0.06 * Math.sqrt(Math.max(0, 1 - fx.flipWidth * fx.flipWidth));
   const left = Math.round((w - projectedW) / 2);
   const right = w - left;
-  const bands = Math.min(96, right - left);
+  const bands = Math.min(192, right - left);
   for (let i = 0; i < bands; i++) {
     const x0 = Math.round(left + (right - left) * i / bands);
     const x1 = Math.round(left + (right - left) * (i + 1) / bands);
     const u0 = (x0 - left) / (right - left);
     const u1 = (x1 - left) / (right - left);
-    const height = h * (1 + fx.flipPerspective * (u0 + u1 - 1));
+    const height = h * depthScale * (1 + fx.flipPerspective * (u0 + u1 - 1));
     ctx.drawImage(photoTiles, u0 * w, 0, (u1 - u0) * w, h, x0, (h - height) / 2, x1 - x0, height);
   }
 }
