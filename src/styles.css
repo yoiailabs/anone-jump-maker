@@ -419,7 +419,17 @@ html[lang="ja"] .ja-phrase {
 }
 
 .export-panel {
-  scroll-margin: 1rem;
+  margin: auto;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  max-width: min(26rem, calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--ink);
+}
+
+.export-panel::backdrop {
+  background: rgb(0 0 0 / 55%);
 }
 
 .export-panel:focus {
@@ -447,7 +457,7 @@ html[lang="ja"] .ja-phrase {
   box-shadow: 4px 5px 0 var(--ink);
 }
 
-.export-panel.export-sheet[data-open="true"] {
+.export-panel.export-sheet[open] {
   display: flex;
 }
 
@@ -504,6 +514,10 @@ html[lang="ja"] .ja-phrase {
   font-size: 0.72rem;
   line-height: 1.55;
   color: var(--mute);
+}
+
+.export-sheet > * {
+  flex-shrink: 0;
 }
 
 .export-sheet .btn {

@@ -19,6 +19,7 @@ import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
 import { scheduleHeroLogoHop } from "../hero-logo-hop.ts";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import type { ExportActions } from "../app.ts";
 
 const PhotoThumbs = lazy(async () => {
   const { PhotoThumbs: Thumbs } = await import("@/components/PhotoThumbs.tsx");
@@ -94,6 +95,7 @@ type OptionTab = (typeof OPTION_TABS)[number][0];
 
 export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const started = useRef(false);
+  const exportActions = useRef<ExportActions | null>(null);
   const landingLogoRef = useRef<HTMLImageElement>(null);
   const [optionTab, setOptionTab] = useState<OptionTab>("aspect");
   const linksHtml = linkBannersHtml(undefined, locale);
@@ -114,7 +116,12 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
     window.addEventListener("unhandledrejection", onFirstGesture, { once: true });
     const sentryTimer = window.setTimeout(startSentry, 20000);
     void import("../app.ts")
-      .then(({ boot }) => boot(root, { locale }))
+      .then(({ boot }) => boot(root, {
+        locale,
+        onExportActionsReady: (actions) => {
+          exportActions.current = actions;
+        },
+      }))
       .catch((error: unknown) => {
         reportError(error);
         root.textContent = error instanceof Error ? error.message : t(locale, "makerBootFailed");
@@ -423,13 +430,37 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                 text={t(locale, "previewSaveHint")}
               />
             </div>
-            <section
+            <dialog
               className="export-panel export-sheet"
               id="exportPanel"
               data-export-phase="busy"
               aria-labelledby="exportTitle"
               aria-describedby="exportKeepOpen"
               tabIndex={-1}
+              onClose={() => exportActions.current?.syncClose()}
+              onCancel={(event) => {
+                event.preventDefault();
+                if (event.currentTarget.dataset.exportPhase === "done") exportActions.current?.close();
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Tab") return;
+                const dialog = event.currentTarget;
+                const buttons = [...dialog.querySelectorAll<HTMLButtonElement>("button:not([hidden]):enabled")];
+                const first = buttons[0];
+                const last = buttons.at(-1);
+                const active = document.activeElement;
+                // ネイティブ dialog からブラウザの UI へ Tab が抜けるのを防ぐ。
+                if (!first || !last) {
+                  event.preventDefault();
+                  dialog.focus();
+                } else if (event.shiftKey && (active === first || active === dialog)) {
+                  event.preventDefault();
+                  last.focus();
+                } else if (!event.shiftKey && (active === last || active === dialog)) {
+                  event.preventDefault();
+                  first.focus();
+                }
+              }}
             >
               <header className="preview-head">
                 <h2 id="exportTitle">{t(locale, "exportTitle")}</h2>
@@ -453,16 +484,36 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                 locale={locale}
                 text={t(locale, "exportKeepOpen")}
               />
-              <Button variant="site" type="button" id="cancelExportBtn" className="btn ghost">
+              <Button
+                variant="site"
+                type="button"
+                id="cancelExportBtn"
+                className="btn ghost"
+                onClick={() => exportActions.current?.cancel()}
+              >
                 {t(locale, "exportCancel")}
               </Button>
-              <Button variant="site" type="button" id="downloadExportBtn" className="btn" hidden>
+              <Button
+                variant="site"
+                type="button"
+                id="downloadExportBtn"
+                className="btn"
+                hidden
+                onClick={() => exportActions.current?.save()}
+              >
                 {t(locale, "exportDownload")}
               </Button>
-              <Button variant="site" type="button" id="closeExportBtn" className="btn ghost" hidden>
+              <Button
+                variant="site"
+                type="button"
+                id="closeExportBtn"
+                className="btn ghost"
+                hidden
+                onClick={() => exportActions.current?.close()}
+              >
                 {t(locale, "exportClose")}
               </Button>
-            </section>
+            </dialog>
             <LiveFeedback id="saveFeedback" place="save" />
           </section>
           <LanguageNav locale={locale} view="studio" />
