@@ -92,8 +92,28 @@ it("makes deterministic warm palettes, different edges and smooth travelling pla
         palettes.add(plan.palette);
       }
       const start = lightLeakPlan(cut, -4);
+      const peak = lightLeakPlan(cut, 0);
       const end = lightLeakPlan(cut, 4);
-      expect(Math.abs(end.x - start.x)).toBeCloseTo(1.57);
+      const fromEntry = (plan: ReturnType<typeof lightLeakPlan>) => plan.edge >= 2
+        ? plan.y : plan.edge === 0 ? plan.x : 1 - plan.x;
+      expect(fromEntry(start)).toBeLessThan(0);
+      expect(fromEntry(peak)).toBeGreaterThanOrEqual(0.15);
+      expect(fromEntry(peak)).toBeLessThanOrEqual(0.25);
+      expect(fromEntry(end)).toBeGreaterThan(fromEntry(peak));
+      expect(fromEntry(end) - fromEntry(peak)).toBeLessThanOrEqual(0.1);
+      expect(fromEntry(end)).toBeLessThan(0.3);
+      for (let frame = -3; frame <= 4; frame++) {
+        const previous = lightLeakPlan(cut, frame - 1);
+        const plan = lightLeakPlan(cut, frame);
+        expect(fromEntry(plan)).toBeGreaterThan(fromEntry(previous));
+        expect(fromEntry(plan)).toBeLessThan(0.5);
+        // 縦横とも入口に沿う長辺があり、円いスポットにならない。
+        for (const [w, h] of [[1920, 1080], [1080, 1920]]) {
+          const along = plan.edge >= 2 ? plan.radiusX * w! : plan.radiusY * h!;
+          const across = plan.edge >= 2 ? plan.radiusY * h! : plan.radiusX * w!;
+          expect(along / across).toBeGreaterThan(1.7);
+        }
+      }
       expect(end.radiusX).toBeGreaterThan(start.radiusX);
     }
     expect(edges.size).toBe(4);

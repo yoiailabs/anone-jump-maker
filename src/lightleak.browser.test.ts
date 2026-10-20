@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createCompositor } from "./compositor.ts";
-import { lightLeakPlan, LIGHT_LEAK_CHARACTER_GAIN } from "./lightleak.ts";
+import { lightLeakPlan, paintLightLeak, LIGHT_LEAK_CHARACTER_GAIN } from "./lightleak.ts";
 import type { LoadedPhoto } from "./photos.ts";
 
 const timeline = { slots: [0, 0.5, 1] };
@@ -60,7 +60,33 @@ describe.each(["landscape", "portrait"] as const)("%s light leak rendering", (mo
     });
   }
 
-  it("peaks in warm color on one side and keeps most of the photo visible", async () => {
+  it("keeps all palettes orange with only a faint pink fringe, including the tail", () => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
+    const [w, h] = mode === "landscape" ? [240, 135] : [135, 240];
+    for (let cut = 1; cut <= 32; cut++) {
+      for (const frame of [0, 4]) {
+        paintLightLeak(canvas, ctx, w!, h!, cut, { frame, amount: 1 });
+        const data = pixels(canvas);
+        let red = 0, green = 0, blue = 0, orange = 0, colored = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i]!, g = data[i + 1]!, b = data[i + 2]!, alpha = data[i + 3]! / 255;
+          // 8%まで消えた合成結果の1階調の丸めに左右されず、透明度込みの光の色を測る。
+          red += r * alpha; green += g * alpha; blue += b * alpha;
+          if (alpha > 0.03) {
+            colored++;
+            if (r > g * 1.1 && g > b * 1.5) orange++;
+          }
+        }
+        const label = `cut=${cut} frame=${frame}`;
+        expect(red, label).toBeGreaterThan(blue * 3);
+        expect(green, label).toBeGreaterThan(blue * 1.8);
+        expect(orange / colored, label).toBeGreaterThan(0.75);
+      }
+    }
+  });
+
+  it("stays on the entry side through the tail, leaving the lower center clear", async () => {
     const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
     compositor.setAspect(mode);
     const flat = await photo();
@@ -68,27 +94,41 @@ describe.each(["landscape", "portrait"] as const)("%s light leak rendering", (mo
     try {
       for (let cut = 1; cut <= 32; cut++) {
         const slots = Array.from({ length: cut + 1 }, (_, i) => i * 0.5);
-        compositor.draw(video(), [flat], { slots }, cut * 0.5, "lightleak");
-        const { width: w, height: h } = compositor.canvas;
-        const data = pixels(compositor.canvas);
-        const edge = lightLeakPlan(cut, 0).edge;
-        let near = 0, far = 0, red = 0, blue = 0, white = 0, visible = 0;
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4;
-            const r = data[i]! - 64, g = data[i + 1]! - 64, b = data[i + 2]! - 64;
-            const onNearSide = edge >= 2 ? y < h / 2 : edge === 0 ? x < w / 2 : x >= w / 2;
-            if (onNearSide) near += r + g + b;
-            else far += r + g + b;
-            red += r; blue += b;
-            if (data[i]! > 230 && data[i + 1]! > 230 && data[i + 2]! > 230) white++;
-            if (g < 80) visible++;
+        for (let frame = -4; frame <= 4; frame++) {
+          compositor.draw(video(), [flat], { slots }, cut * 0.5 + frame / 30, "lightleak");
+          const { width: w, height: h } = compositor.canvas;
+          const data = pixels(compositor.canvas);
+          const edge = lightLeakPlan(cut, 0).edge;
+          let near = 0, far = 0, red = 0, green = 0, blue = 0, white = 0, visible = 0;
+          let moment = 0, lowerCenter = 0;
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const i = (y * w + x) * 4;
+              const r = data[i]! - 64, g = data[i + 1]! - 64, b = data[i + 2]! - 64;
+              const distance = edge >= 2 ? y / h : edge === 0 ? x / w : 1 - x / w;
+              const onNearSide = distance < 0.5;
+              if (onNearSide) near += r + g + b;
+              else far += r + g + b;
+              red += r; green += g; blue += b;
+              moment += distance * (r + g + b);
+              if (x > w * 0.4 && x < w * 0.6 && y > h * 0.55 && y < h * 0.9) {
+                lowerCenter = Math.max(lowerCenter, r, g, b);
+              }
+              if (data[i]! > 230 && data[i + 1]! > 230 && data[i + 2]! > 230) white++;
+              if (g < 80) visible++;
+            }
           }
+          const label = `cut=${cut} frame=${frame}`;
+          expect(near, label).toBeGreaterThan(far * 10);
+          expect(moment / (near + far), label).toBeLessThan(0.3);
+          if (frame === 0) {
+            expect(red, label).toBeGreaterThan(blue * 3);
+            expect(green, label).toBeGreaterThan(blue * 1.8);
+          }
+          expect(lowerCenter, label).toBeLessThan(10);
+          expect(white / (w * h)).toBeLessThan(0.02);
+          expect(visible / (w * h)).toBeGreaterThan(0.7);
         }
-        expect(near, `cut=${cut}`).toBeGreaterThan(far * 3);
-        expect(red).toBeGreaterThan(blue * 1.5);
-        expect(white / (w * h)).toBeLessThan(0.02);
-        expect(visible / (w * h)).toBeGreaterThan(0.7);
       }
     } finally {
       credit.mockRestore(); flat.bitmap.close(); compositor.destroy();

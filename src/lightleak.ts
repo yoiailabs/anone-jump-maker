@@ -6,12 +6,12 @@ export const LIGHT_LEAK_SHORT_SIDE = 135;
 export const LIGHT_LEAK_CHARACTER_GAIN = 0.2;
 export const LIGHT_LEAK_PHOTO_GAIN = 0.86;
 
-// 芯は淡い暖色、外側はアンバー→オレンジ→ピンク。白い全面フラッシュにはしない。
+// アンバーとオレンジを主役にし、ピンクはごく薄い外縁だけに使う。
 export const LIGHT_LEAK_PALETTES = [
-  ["#fff1cc", "#ffc16b", "#ff681c", "#f02c83"],
-  ["#fff0d8", "#ffaf59", "#ff7b28", "#ed397c"],
-  ["#fff4d4", "#ffd080", "#ff8429", "#e93791"],
-  ["#ffe9d0", "#ffb776", "#ff582d", "#ed438c"],
+  ["#ffe6af", "#ffd27a", "#ff9a3c", "#ff6a2a", "#f02c83"],
+  ["#ffe3b0", "#ffc36b", "#ff942f", "#ff7028", "#ed397c"],
+  ["#ffe9b8", "#ffd080", "#ffa343", "#ff7829", "#e93791"],
+  ["#ffe0a6", "#ffc776", "#ff963a", "#ff682d", "#ed438c"],
 ] as const;
 
 /** 整数カット番号だけから選ぶ。呼び出し順・時刻・乱数源には依存しない。 */
@@ -26,17 +26,22 @@ export function lightLeakPlan(cutIndex: number, frame: number) {
   const seed = hash(cutIndex);
   const unit = (salt: number) => hash(seed ^ salt) / 0x100000000;
   const progress = Math.max(0, Math.min(1, (frame + 4) / 8));
-  // ピークでは入口から18%、その後は反対側の外まで抜ける。
-  const travel = progress <= 0.5 ? -0.32 + progress : 0.18 + (progress - 0.5) * 2.14;
+  // 外から差し込み、ピークで16〜20%。余韻は8%だけ奥へ流し、入口側に残す。
+  const peak = 0.16 + unit(11) * 0.04;
+  const travel = progress <= 0.5
+    ? -0.18 + progress * 2 * (peak + 0.18)
+    : peak + (progress - 0.5) * 0.16;
   const edge = seed % 4;
-  const cross = 0.24 + unit(31) * 0.25 + (progress - 0.5) * (unit(53) - 0.5) * 0.3;
+  const cross = 0.23 + unit(31) * 0.13 + (progress - 0.5) * (unit(53) - 0.5) * 0.08;
+  const right = edge === 1 || edge === 3;
+  const growth = 0.9 + progress * 0.16;
   return {
     palette: LIGHT_LEAK_PALETTES[hash(seed ^ 17) % LIGHT_LEAK_PALETTES.length]!,
     edge,
-    x: edge === 1 || edge === 3 ? 1 - travel : travel,
+    x: edge >= 2 ? (right ? 1 - cross : cross) : (right ? 1 - travel : travel),
     y: edge >= 2 ? travel : cross,
-    radiusX: (0.4 + unit(71) * 0.08) * (0.8 + progress * 0.4),
-    radiusY: (0.53 + unit(97) * 0.1) * (0.8 + progress * 0.4),
+    radiusX: (edge >= 2 ? 0.75 + unit(71) * 0.1 : 0.23 + unit(71) * 0.04) * growth,
+    radiusY: (edge >= 2 ? 0.21 + unit(97) * 0.03 : 0.85 + unit(97) * 0.1) * growth,
   };
 }
 
@@ -58,17 +63,26 @@ export function paintLightLeak(
   for (let blob = 0; blob < 3; blob++) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    ctx.globalAlpha = [0.95, 0.62, 0.4][blob]!;
-    const offset = blob * 0.1;
+    ctx.globalAlpha = [0.82, 0.38, 0.22][blob]!;
     const direction = plan.edge === 1 || plan.edge === 3 ? -1 : 1;
-    ctx.translate((plan.x - offset * direction) * w, (plan.y + offset) * h);
-    ctx.scale(plan.radiusX * w * (1 - blob * 0.14), plan.radiusY * h * (1 - blob * 0.12));
+    // 副光は端へ寄せつつ長辺方向へずらし、三つの同心円にしない。
+    const along = [0, -0.19, 0.24][blob]!;
+    const inward = [0, -0.08, -0.04][blob]!;
+    ctx.translate(
+      (plan.x + (plan.edge >= 2 ? along * direction : inward * direction)) * w,
+      (plan.y + (plan.edge >= 2 ? inward : along)) * h,
+    );
+    ctx.scale(plan.radiusX * w * [1, 0.72, 0.88][blob]!, plan.radiusY * h * [1, 0.86, 0.65][blob]!);
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-    gradient.addColorStop(0, plan.palette[0]);
-    gradient.addColorStop(0.12, plan.palette[1]);
-    gradient.addColorStop(0.36, plan.palette[2]);
-    gradient.addColorStop(0.66, plan.palette[3]);
-    gradient.addColorStop(1, "#ed398000");
+    // 色とアルファを一緒に減衰。近白の芯を小さく、外縁のピンクは数%以下にする。
+    // 副光の芯はアンバー／オレンジへずらし、主光と色も少し変える。
+    gradient.addColorStop(0, `${plan.palette[blob]}b3`);
+    gradient.addColorStop(0.04, `${plan.palette[Math.max(1, blob)]}ad`);
+    gradient.addColorStop(0.22, `${plan.palette[2]}85`);
+    gradient.addColorStop(0.45, `${plan.palette[3]}47`);
+    gradient.addColorStop(0.68, `${plan.palette[3]}14`);
+    gradient.addColorStop(0.82, `${plan.palette[4]}06`);
+    gradient.addColorStop(1, `${plan.palette[4]}00`);
     ctx.fillStyle = gradient;
     ctx.fillRect(-1, -1, 2, 2);
     ctx.restore();
