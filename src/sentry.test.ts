@@ -522,3 +522,8 @@ describe("expected UX errors", () => {
     ).not.toBeNull();
   });
 });
+
+it("keeps lightleak in Sentry and perf trace tags", () => {
+  expect(pickTraceAttributes({ aspect: "portrait", effect: "lightleak" })).toEqual({ aspect: "portrait", effect: "lightleak" });
+  expect(scrubSentrySpan({ name: "export.generate", attributes: { effect: "lightleak" } }).attributes).toEqual({ effect: "lightleak", "sentry.op": "export.generate" });
+});

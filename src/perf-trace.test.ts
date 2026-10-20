@@ -255,3 +255,12 @@ describe("studio transactions", () => {
     expect(records[0]?.attributes.fingerprint).toBeUndefined();
   });
 });
+
+it("passes lightleak to preview and export spans", () => {
+  const records = installFakeTracing();
+  studioTrace.beginPreviewStart({ trigger: "play", aspect: "landscape", effect: "lightleak" });
+  studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "lightleak" });
+  studioTrace.finishExport("success");
+  expect(records.find((span) => span.name === "preview.start")?.attributes.effect).toBe("lightleak");
+  expect(records.find((span) => span.name === "export.generate")?.attributes.effect).toBe("lightleak");
+});

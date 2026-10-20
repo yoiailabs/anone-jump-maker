@@ -102,3 +102,7 @@ describe("generateFailReason", () => {
     expect(generateFailReason("nope")).toBe("export_failed");
   });
 });
+
+it.each(["portrait", "landscape"] as const)("accepts lightleak analytics in %s", (aspect) => {
+  expect(videoEventParams(aspect, "lightleak")).toEqual({ aspect, effect: "lightleak", swap: "lightleak" });
+});

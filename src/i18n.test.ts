@@ -264,3 +264,10 @@ describe("document crawlers", () => {
     ).toBe(false);
   });
 });
+
+it("labels light leak in every locale", () => {
+  expect(t("ja", "makerLightLeak")).toBe("光漏れ");
+  expect(t("en", "makerLightLeak")).toBe("Light leak");
+  expect(t("ko", "makerLightLeak")).toBe("라이트 릭");
+  expect(t("zh", "makerLightLeak")).toBe("漏光");
+});

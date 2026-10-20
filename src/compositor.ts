@@ -1,3 +1,4 @@
+import { blendLightLeak, paintLightLeak, LIGHT_LEAK_CHARACTER_GAIN, LIGHT_LEAK_PHOTO_GAIN } from "./lightleak.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -185,6 +186,10 @@ export function createCompositor(options?: {
   const blurCtx = blur.getContext("2d", { alpha: false, willReadFrequently: true });
   if (!blurCtx) throw new Error("Canvas2D が使えません");
 
+  const lightLeak = document.createElement("canvas");
+  const lightLeakCtx = lightLeak.getContext("2d");
+  if (!lightLeakCtx) throw new Error("Canvas2D が使えません");
+
   const dropGpuKeyer = () => {
     const debug = gpuKeyer?.debug;
     gpuKeyer?.destroy();
@@ -195,6 +200,8 @@ export function createCompositor(options?: {
       : describeKeying("cpu");
   };
   const surfaces: FxSurfaces = {
+    lightLeak,
+    lightLeakCtx,
     photoTiles,
     photoTilesCtx,
     keyed,
@@ -309,6 +316,8 @@ export function createCompositor(options?: {
       fxB.height = 0;
       fxPad.width = 0;
       fxPad.height = 0;
+      lightLeak.width = 0;
+      lightLeak.height = 0;
       blur.width = 0;
       blur.height = 0;
     },
@@ -316,6 +325,8 @@ export function createCompositor(options?: {
 }
 
 type FxSurfaces = {
+  lightLeak: HTMLCanvasElement;
+  lightLeakCtx: CanvasRenderingContext2D;
   photoTiles: HTMLCanvasElement;
   photoTilesCtx: CanvasRenderingContext2D;
   keyed: HTMLCanvasElement;
@@ -369,6 +380,11 @@ function composeMain(
       drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
+  }
+
+  if (fx.lightleak) {
+    paintLightLeak(surfaces.lightLeak, surfaces.lightLeakCtx, mw, mh, fx.cutIndex, fx.lightleak);
+    blendLightLeak(mainCtx, surfaces.lightLeak, mw, mh, fx.lightleak.amount * LIGHT_LEAK_PHOTO_GAIN);
   }
 
   if (character) {
@@ -605,6 +621,10 @@ function applyFrameFx(
   surfaces: FxSurfaces,
   fx: SwapFx,
 ): void {
+  if (fx.lightleak) {
+    blendLightLeak(mainCtx, surfaces.lightLeak, main.width, main.height, fx.lightleak.amount * LIGHT_LEAK_CHARACTER_GAIN);
+    return;
+  }
   const w = main.width;
   const h = main.height;
   const { fxA, fxACtx, fxB, fxBCtx } = surfaces;

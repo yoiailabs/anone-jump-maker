@@ -868,3 +868,27 @@ async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"
   if (outcome === "") throw new Error("export outcome was empty");
   return outcome;
 }
+
+for (const [locale, label] of [["ja", "光漏れ"], ["en", "Light leak"]] as const) {
+  test(`${locale}: selects light leak and keeps it after changing orientation`, async ({ page }) => {
+    if (locale === "en") {
+      await page.goto("/en/make");
+      await waitForAppReady(page);
+    } else {
+      await openStudio(page);
+    }
+    await page.locator("#swapTab").click();
+    const choices = page.locator('#studioView input[name="swap"]');
+    expect(await choices.evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)))
+      .toEqual(["zoom", "jump", "lightleak"]);
+    await expect(page.locator('#studioView input[name="swap"][value="zoom"]')).toBeChecked();
+    const option = page.locator('#studioView label:has(input[name="swap"][value="lightleak"])');
+    await expect(option).toContainText(label);
+    await option.click();
+    await expect(page.locator('#studioView input[name="swap"][value="lightleak"]')).toBeChecked();
+    await page.locator("#aspectTab").click();
+    await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+    await page.locator("#swapTab").click();
+    await expect(page.locator('#studioView input[name="swap"][value="lightleak"]')).toBeChecked();
+  });
+}

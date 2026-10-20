@@ -66,6 +66,7 @@ describe("selection order through decode, preview, and export", () => {
     expect(oneIndexed).toEqual([...Array(SLOT_COUNT).keys()].map((slot) => (slot % selected.length) + 1));
     expect(oneIndexed).not.toEqual(REPORTED_SCRAMBLED_PLAYBACK);
     expectExportPlates(photos, "jump");
+    expectExportPlates(photos, "lightleak");
     expectExportPlates(photos, "zoom");
   });
 
@@ -90,6 +91,7 @@ describe("selection order through decode, preview, and export", () => {
     expect(slotPlates(photos, "jump").slice(0, kept.length)).toEqual(namesOf(kept));
     expect(photoForSlot(photos, kept.length)?.name).toBe(kept[0]?.name);
     expectExportPlates(photos, "jump");
+    expectExportPlates(photos, "lightleak");
     expectExportPlates(photos, "zoom");
   });
 });
@@ -110,7 +112,7 @@ function expectExportPlates(photos: readonly LoadedPhoto[], style: SwapStyle): v
       swapFx(time, templateCuts.slots, style, "portrait").plateSlot,
       count,
     );
-    if (style === "jump") {
+    if (style !== "zoom") {
       expect(portraitPlate, `portrait ${style} frame ${time}`).toBe(plate);
       expect(plate, `${style} frame ${time}`).toBe(current);
     } else {

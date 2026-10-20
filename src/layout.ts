@@ -89,20 +89,22 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
+ * - lightleak: カットで即時切替。片側から暖色の光が流れる。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "lightleak";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "lightleak"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  lightleak: "光漏れ",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return value === "jump" || value === "zoom" || value === "lightleak";
 }
 
 /**
@@ -357,6 +359,8 @@ export type SwapFx = {
   backdrop: boolean;
   /** この窓が属するカット（スロット境界）。先頭スロット内で切替が無ければ 0。 */
   cutIndex: number;
+  /** 光漏れの相対フレームと強さ。窓外では持たない。 */
+  lightleak?: { frame: number; amount: number };
 };
 
 const NO_FX = {
@@ -533,6 +537,10 @@ export function rectToUvBottomLeft(rect: Rect, canvasW: number, canvasH: number)
 
 /** フレーム境界の比較に使う許容（フレーム単位）。時刻の丸めで 0.99999 になった 1 フレを 1 とみなす。 */
 const FRAME_EPS = 1e-6;
+const SLOT_TIME_EPS = 1e-4;
+
+/** カット前4枚・カット1枚・後4枚。窓外では追加描画しない。 */
+export const LIGHT_LEAK_AMOUNTS = [0.15, 0.35, 0.65, 0.9, 1, 0.75, 0.45, 0.22, 0.08] as const;
 
 /** `time` が属するスロット（先頭は 0）とその開始時刻。`slotForTime` と同じ 1e-4 の許容。 */
 function slotAt(time: number, slots: readonly number[]): { start: number; index: number } {
@@ -540,7 +548,7 @@ function slotAt(time: number, slots: readonly number[]): { start: number; index:
   let index = 0;
   for (let i = 1; i < slots.length; i += 1) {
     const t = slots[i]!;
-    if (time + 1e-4 >= t) {
+    if (time + SLOT_TIME_EPS >= t) {
       start = t;
       index = i;
     } else {
@@ -621,6 +629,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻り。フラッシュはカット前 3／後 4 フレ。
  *   縦の下ずれは jumpDropFrac（短辺比を高さ比に直した値）。横は実測の JUMP_DROP_FRAC。
+ * - lightleak: S で即時切替。前4枚・カット・後4枚に暖色の光。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
@@ -637,6 +646,21 @@ export function swapFx(
   }
   const { start, index } = slotAt(time, slots);
   const k = (time - start) * TEMPLATE_FPS;
+
+  if (style === "lightleak") {
+    const still: SwapFx = { ...NO_FX, plateSlot: index, scale: 1, dy: 0, cutIndex: index };
+    // 写真を選ぶ境界と同じ許容幅から導く。丸めた S と保存の n/30 を揃える。
+    const relativeFrame = (cut: number) => Math.floor((time + SLOT_TIME_EPS - cut) * TEMPLATE_FPS);
+    const next = slots[index + 1];
+    const before = next === undefined ? -Infinity : Math.min(-1, relativeFrame(next));
+    const after = Math.max(0, relativeFrame(start));
+    // 合成した短いスロットで窓が重なっても所有者は一つ。カット当日は現在を優先。
+    const upcoming = (after > 0 || index === 0) && before >= -4;
+    const frame = upcoming ? before : after;
+    if ((!upcoming && index === 0) || frame < -4 || frame > 4) return still;
+    return { ...still, cutIndex: upcoming ? index + 1 : index,
+      lightleak: { frame, amount: LIGHT_LEAK_AMOUNTS[frame + 4]! } };
+  }
 
   if (style === "jump") {
     // 参考 Short は 0 秒の先頭スロットも同じサイクル＋フラッシュで始まる。
@@ -715,7 +739,7 @@ export function swapFx(
 
 /** 切替 FX が何か描画に影響するか（全面 FX の作業キャンバスを省くため）。 */
 export function hasFrameFx(fx: SwapFx): boolean {
-  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
+  return !!fx.lightleak || fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
 }
 
 function clamp01(v: number): number {
