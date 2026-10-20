@@ -330,9 +330,6 @@ export function zoomReferenceTau(framesFromCut: number, mode: AspectMode = "land
   return framesFromCut / zoomTransitionScale(mode);
 }
 
-/** 縮んだ出ていく写真の後ろに敷く、同じ写真の cover ぼかし（黒帯を見せない）。幅比。 */
-export const ZOOM_BACKDROP_BLUR_FRAC = 0.02;
-
 export type SwapFx = {
   /** 表示する写真のスロット。ズームは S+1 まで前の写真が残る。 */
   plateSlot: number;
@@ -356,7 +353,7 @@ export type SwapFx = {
   haze: number;
   /** 行ごとの横波打ち振幅（パネル幅比）。 */
   wave: number;
-  /** 縮んだ写真の後ろに cover ぼかしを敷くか。 */
+  /** 縮んだ写真の外側を、プレートの縁で鏡映した写真で埋めるか。 */
   backdrop: boolean;
   /** この窓が属するカット（スロット境界）。先頭スロット内で切替が無ければ 0。 */
   cutIndex: number;
