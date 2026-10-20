@@ -236,12 +236,13 @@ export const JUMP_RISE_POW = 2.3;
 export const JUMP_RISE_SCALE_POW = 2;
 
 /**
- * カット直後の白フラッシュ。カットの前には無い（−3..−1 フレは輝度マッピングが恒等）。
- * 写真層のみ（キャラの黒線はほぼ黒のまま）。位置合わせした画素マッピングは
- * k=0: 45→150 / 75→175 / 105→200 / 135→220、k=1: 約 +45、k=2: 約 +15、k=3: 0。
- * 加算 0.30 ＋スクリーン 0.20 を (1−k/3)^2 で減衰させると乗る。
+ * カット前 3 フレから立ち上がり、カット後 4 フレで消える白フラッシュ。
+ * 前側は u² のイーズイン、後側は r² で減衰し、カット瞬間の加算 0.30 ＋スクリーン 0.20 は維持する。
+ * 写真層のみ（キャラの黒線はほぼ黒のまま）。ピークは実測の画素マッピング
+ * 45→150 / 75→175 / 105→200 / 135→220 を基準にしている。
  */
-export const JUMP_FLASH_FRAMES = 3;
+export const JUMP_FLASH_IN_FRAMES = 3;
+export const JUMP_FLASH_FRAMES = 4;
 export const JUMP_FLASH_ADD = 0.3;
 export const JUMP_FLASH_SCREEN = 0.2;
 /** キャラを含む全面にごく薄く乗る白（黒線が 0→約 14 に上がる分）。 */
@@ -576,11 +577,10 @@ export function jumpCycle(k: number, mode: AspectMode = "landscape"): { scale: n
   };
 }
 
-/** ジャンプ系のフラッシュ包絡。k=0 で 1、(1−k/3)^2 で 3 フレ後に 0。 */
+/** ジャンプ系のフラッシュ包絡。前 3 フレで立ち上がり、k=0 で 1、後 4 フレで 0。前側は u²、後側は r²。 */
 export function jumpFlashEnvelope(k: number): number {
-  if (k < 0 || k >= JUMP_FLASH_FRAMES - FRAME_EPS) return 0;
-  const r = 1 - k / JUMP_FLASH_FRAMES;
-  return r * r;
+  const u = k < 0 ? clamp01((k + JUMP_FLASH_IN_FRAMES) / JUMP_FLASH_IN_FRAMES) : clamp01(1 - k / JUMP_FLASH_FRAMES);
+  return u * u;
 }
 
 /** ズーム系の出ていく写真の倍率。τ = S からのフレーム（−3..0 で縮む、0..1 は縮み切った値で待つ）。 */
@@ -622,7 +622,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
 
 /**
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
- * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻りとフラッシュ。
+ * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻り。フラッシュはカット前 3／後 4 フレ。
  *   縦の下ずれは jumpDropFrac（短辺比を高さ比に直した値）。横は実測の JUMP_DROP_FRAC。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
@@ -644,7 +644,10 @@ export function swapFx(
   if (style === "jump") {
     // 参考 Short は 0 秒の先頭スロットも同じサイクル＋フラッシュで始まる。
     const motion = jumpCycle(k, mode);
-    const env = jumpFlashEnvelope(k);
+    // 次の実在するカットだけ先行発光する。短い間隔では減衰と立ち上がりの大きい方を使う。
+    const next = slots[index + 1];
+    const upcoming = next === undefined ? 0 : jumpFlashEnvelope((time - next) * TEMPLATE_FPS);
+    const env = Math.max(jumpFlashEnvelope(k), upcoming);
     return {
       ...NO_FX,
       plateSlot: index,

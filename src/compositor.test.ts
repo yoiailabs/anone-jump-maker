@@ -160,7 +160,8 @@ describe("swap fx draw path", () => {
     const slots = [0, 0.5, 1.0];
     expect(swapFx(0.12, slots, "jump")).toEqual(swapFx(0.12, slots, "jump"));
     expect(swapFx(0.5, slots, "zoom")).toEqual(swapFx(0.5, slots, "zoom"));
-    expect(swapFx(0.12, slots, "jump").flashAdd).toBe(0);
+    expect(swapFx(0.12, slots, "jump").flashAdd).toBeCloseTo(0.3 * 0.01, 8);
+    expect(swapFx(4 * F, slots, "jump").flashAdd).toBe(0);
   });
 });
 
