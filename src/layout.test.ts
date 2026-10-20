@@ -77,6 +77,7 @@ import {
   SPIN_OUT_ANGLE,
   SPIN_IN_ANGLE,
   SPIN_ZOOM,
+  SPIN_BLUR_ANGLE,
   swapFx,
   templateBandRect,
   usesBlurBackdrop,
@@ -803,14 +804,14 @@ describe("spin cycle", () => {
     const stretch = zoomTransitionScale(mode);
     const at = (tau: number) => swapFx(1 + tau * stretch * F, slots, "spin", mode);
     it(`${mode}: accelerates the outgoing photo and settles the incoming photo in five frames`, () => {
-      const before = [-3, -2, -1, -0.01].map(at);
-      expect(before.map((fx) => fx.plateSlot)).toEqual([0, 0, 0, 0]);
+      const before = [-3, -2, -zoomReferenceTau(1, mode)].map(at);
+      expect(before.map((fx) => fx.plateSlot)).toEqual([0, 0, 0]);
       expect(before[0]!.scale).toBe(1);
       expect(before[1]!.rotation).toBeGreaterThan(0);
       expect(before[2]!.rotation - before[1]!.rotation).toBeGreaterThan(before[1]!.rotation);
-      expect(before[3]!.rotation).toBeCloseTo(SPIN_OUT_ANGLE, 1);
-      expect(before[3]!.scale).toBeCloseTo(1 + SPIN_ZOOM, 2);
-      expect(before[3]!.rotationBlur).toBeGreaterThan(before[1]!.rotationBlur);
+      expect(before[2]!.rotation).toBeCloseTo(SPIN_OUT_ANGLE, 10);
+      expect(before[2]!.scale).toBeCloseTo(1 + SPIN_ZOOM, 10);
+      expect(before[2]!.rotationBlur).toBeGreaterThan(before[1]!.rotationBlur);
       const cut = at(0);
       expect(cut.plateSlot).toBe(1);
       expect(cut.rotation).toBeCloseTo(SPIN_IN_ANGLE, 8);
@@ -833,6 +834,61 @@ describe("spin cycle", () => {
       }
       const shortest = Math.min(...templateCuts.slotFrames.slice(1).map((frame, i) => frame - templateCuts.slotFrames[i]!));
       expect((SPIN_OUT_FRAMES + SPIN_IN_FRAMES) * stretch).toBeLessThan(shortest);
+    });
+
+    it(`${mode}: advances across every real template cut at exported frame times`, () => {
+      // JSON の丸め済み秒数と実際の frame/30 を併用し、存在しない τ=-0.01 に依存しない。
+      const frames = templateCuts.slotFrames;
+      const sample = (frame: number) => swapFx(frame / 30, templateCuts.slots, "spin", mode);
+      const degrees = (angle: number) => angle * 180 / Math.PI;
+      for (let slot = 1; slot < frames.length; slot++) {
+        const cut = frames[slot]!;
+        const last = sample(cut - 1);
+        const first = sample(cut);
+        expect(last.plateSlot).toBe(slot - 1);
+        expect(first.plateSlot).toBe(slot);
+        expect(degrees(last.rotation)).toBeCloseTo(120, 2);
+        expect(degrees(first.rotation)).toBeCloseTo(-45, 2);
+        // 長方形の向きは mod 180°。新写真も同じ回転方向へ少し進み、逆戻りも停止もしない。
+        expect(degrees(first.rotation + Math.PI - last.rotation)).toBeCloseTo(15, 2);
+        expect(last.scale).toBeCloseTo(1 + SPIN_ZOOM, 5);
+        expect(first.scale).toBeCloseTo(1 + SPIN_ZOOM, 5);
+        expect(last.rotationBlur).toBeCloseTo(SPIN_BLUR_ANGLE, 5);
+        expect(first.rotationBlur).toBeCloseTo(SPIN_BLUR_ANGLE, 5);
+
+        const outStart = cut - Math.ceil(SPIN_OUT_FRAMES * stretch);
+        let previous = sample(outStart);
+        let previousStep = 0;
+        for (let frame = outStart + 1; frame < cut; frame++) {
+          const fx = sample(frame);
+          const step = fx.rotation - previous.rotation;
+          expect(step).toBeGreaterThan(0);
+          expect(step).toBeGreaterThan(previousStep);
+          expect(fx.scale).toBeGreaterThan(previous.scale);
+          expect(fx.rotationBlur).toBeGreaterThan(previous.rotationBlur);
+          previous = fx;
+          previousStep = step;
+        }
+
+        previous = first;
+        previousStep = Infinity;
+        const settled = cut + Math.ceil(SPIN_IN_FRAMES * stretch) + 1;
+        for (let frame = cut + 1; frame <= settled; frame++) {
+          const fx = sample(frame);
+          const step = fx.rotation - previous.rotation;
+          expect(step).toBeGreaterThanOrEqual(0);
+          expect(step).toBeLessThanOrEqual(previousStep);
+          expect(fx.scale).toBeLessThanOrEqual(previous.scale);
+          expect(fx.rotationBlur).toBeLessThanOrEqual(previous.rotationBlur);
+          previous = fx;
+          previousStep = step;
+        }
+        const next = frames[slot + 1] ?? Math.floor(templateCuts.duration * 30);
+        for (let frame = settled; frame <= next - Math.ceil(SPIN_OUT_FRAMES * stretch); frame++) {
+          expect(sample(frame)).toMatchObject({ rotation: 0, rotationBlur: 0, scale: 1 });
+        }
+      }
+      expect(sample(0)).toMatchObject({ rotation: 0, rotationBlur: 0, scale: 1 });
     });
 
     it(`${mode}: covers all four panel corners throughout the rotation and its blur`, () => {

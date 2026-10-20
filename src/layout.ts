@@ -625,11 +625,11 @@ export function zoomKeyAt(tau: number): ZoomKey {
   return zero;
 }
 
-/** スピンは前 3 フレで 120° まで加速し、新写真は −60° から後 5 フレで静止する。 */
+/** スピンは旧写真の最終フレームで 120°、新写真は向きを 15° 進めた −45° から後 5 フレで静止する。 */
 export const SPIN_OUT_FRAMES = 3;
 export const SPIN_IN_FRAMES = 5;
 export const SPIN_OUT_ANGLE = 2 * Math.PI / 3;
-export const SPIN_IN_ANGLE = -Math.PI / 3;
+export const SPIN_IN_ANGLE = -Math.PI / 4;
 export const SPIN_ZOOM = 0.14;
 export const SPIN_BLUR_ANGLE = Math.PI / 8;
 
@@ -700,10 +700,15 @@ export function swapFx(
     const untilNext = next === undefined ? Infinity : (next - time) * TEMPLATE_FPS;
     const tau = zoomReferenceTau(k, mode);
     const remaining = zoomReferenceTau(untilNext, mode);
-    const outgoing = remaining < SPIN_OUT_FRAMES - FRAME_EPS;
-    const incoming = index > 0 && tau < SPIN_IN_FRAMES - FRAME_EPS;
+    // カット表の秒数は小数 6 桁。境界で最大 0.00001 フレの誤差が出ても静止を保つ。
+    const spinFrameEps = 1e-4;
+    const outgoing = remaining < SPIN_OUT_FRAMES - spinFrameEps;
+    const incoming = index > 0 && tau < SPIN_IN_FRAMES - spinFrameEps;
+    // 30fps の旧写真はカットの 1 フレ前が最後。縦の時間倍率も含め、その標本で最大値に届かせる。
+    // カット自体は新写真なので、そこで 120° に達する曲線では書き出し時に回転が足りなくなる。
+    const lastOutgoing = zoomReferenceTau(1, mode);
     const progress = outgoing
-      ? clamp01(1 - remaining / SPIN_OUT_FRAMES)
+      ? clamp01((SPIN_OUT_FRAMES - remaining) / (SPIN_OUT_FRAMES - lastOutgoing))
       : incoming ? clamp01(1 - tau / SPIN_IN_FRAMES) : 0;
     return {
       ...NO_FX,

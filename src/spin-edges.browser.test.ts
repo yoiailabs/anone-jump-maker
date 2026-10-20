@@ -1,10 +1,18 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCompositor } from "./compositor.ts";
 import { OUTPUTS, swapFx, zoomTransitionScale } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 
 vi.mock("./layout.ts", { spy: true });
-afterEach(() => vi.mocked(swapFx).mockReset());
+beforeEach(() => {
+  // 写真層だけを検査する。クレジットの影はフォントによって最外周まで届くため、矩形では除外できない。
+  // 文字描画だけを止め、Canvas の補間・回転・平均合成は実ブラウザで全画素を検査する。
+  vi.spyOn(CanvasRenderingContext2D.prototype, "fillText").mockImplementation(() => {});
+});
+afterEach(() => {
+  vi.mocked(swapFx).mockReset();
+  vi.restoreAllMocks();
+});
 
 const S = 0.5;
 const F = 1 / 30;
@@ -29,11 +37,6 @@ function pixels(canvas: HTMLCanvasElement): ImageData {
   return canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-// 右下の文字・影だけを避け、最外周と四隅も含む写真の画素を調べる。
-function isCredit(x: number, y: number, w: number, h: number): boolean {
-  return x > w * 0.15 && x < w - 3 && y > h * 0.85 && y < h - 3;
-}
-
 describe("spin plate edges", () => {
   for (const mode of ["landscape", "portrait"] as const) {
     for (const resolutionScale of [1 / 3, 0.3325, 1]) {
@@ -49,7 +52,6 @@ describe("spin plate edges", () => {
             let maxError = 0;
             let minAlpha = 255;
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-              if (isCredit(x, y, w, h)) continue;
               const i = (y * w + x) * 4;
               for (let c = 0; c < 3; c++) maxError = Math.max(maxError, Math.abs(data[i + c]! - UNIFORM_COLOR[c]!));
               minAlpha = Math.min(minAlpha, data[i + 3]!);
@@ -79,7 +81,6 @@ describe("spin plate edges", () => {
           let edgeStep = 0;
           let innerStep = 0;
           for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-            if (isCredit(x, y, w, h) || isCredit(x - 1, y, w, h) || isCredit(x, y - 1, w, h)) continue;
             const i = (y * w + x) * 4;
             for (const offset of [x > 0 ? 4 : 0, y > 0 ? w * 4 : 0]) {
               for (let c = 0; c < 3; c++) {
