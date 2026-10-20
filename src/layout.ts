@@ -376,7 +376,7 @@ const NO_FX = {
 } as const;
 
 /** 前 3 枚で強まり、カットの 1 枚を空けて後 3 枚で減衰する。 */
-const GLITCH_AMOUNTS = [0.2, 0.55, 1, 0, 0.35, 0.2, 0.1] as const;
+const GLITCH_AMOUNTS = [0.35, 0.65, 1, 0, 0.35, 0.2, 0.1] as const;
 
 /**
  * キャラ倍率の基準。横は公式 16:9 フレーム等倍。
@@ -541,13 +541,15 @@ export function rectToUvBottomLeft(rect: Rect, canvasW: number, canvasH: number)
 /** フレーム境界の比較に使う許容（フレーム単位）。時刻の丸めで 0.99999 になった 1 フレを 1 とみなす。 */
 const FRAME_EPS = 1e-6;
 
+const SLOT_TIME_EPS = 1e-4;
+
 /** `time` が属するスロット（先頭は 0）とその開始時刻。`slotForTime` と同じ 1e-4 の許容。 */
 function slotAt(time: number, slots: readonly number[]): { start: number; index: number } {
   let start = slots[0] ?? 0;
   let index = 0;
   for (let i = 1; i < slots.length; i += 1) {
     const t = slots[i]!;
-    if (time + 1e-4 >= t) {
+    if (time + SLOT_TIME_EPS >= t) {
       start = t;
       index = i;
     } else {
@@ -631,7 +633,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
- * - glitch: 写真は S に即時切替。前 3／後 3 フレだけ小さなデジタルずれ、S の 1 枚はクリーン。
+ * - glitch: 写真は S に即時切替。前 3 フレで強まるデジタルずれ、S の 1 枚はクリーン、後 3 フレは弱い余韻。
  *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
 export function swapFx(
@@ -666,13 +668,20 @@ export function swapFx(
   }
 
   if (style === "glitch") {
-    // 30fps のフレーム内では同じ値。カットの 1 枚は完全にクリーン、次の 3 枚は弱い余韻。
+    // 写真を選んだ slotAt と同じ境界 time + SLOT_TIME_EPS >= S を使う。
+    // 丸めた S=1.966667 と保存時刻 59/30 でも、写真と FX は共にカット後の frame 0。
+    // 任意のプレビュー時刻でも、この境界から 1 フレーム分は常にクリーン。
+    const frameAt = (cut: number) => Math.floor((time + SLOT_TIME_EPS - cut) * TEMPLATE_FPS);
     let cutIndex = index;
-    let frame = Math.floor(k + FRAME_EPS);
+    let frame = Math.max(0, frameAt(start));
     const next = slots[index + 1];
-    if (next !== undefined && (next - time) * TEMPLATE_FPS <= 3 + FRAME_EPS) {
-      cutIndex = index + 1;
-      frame = Math.floor((time - next) * TEMPLATE_FPS + FRAME_EPS);
+    if (next !== undefined) {
+      // 符号は同じスロット判定から導く（境界上の浮動小数の誤差にも対応）。
+      const nextFrame = Math.min(-1, frameAt(next));
+      if (nextFrame >= -3) {
+        cutIndex = index + 1;
+        frame = nextFrame;
+      }
     }
     // 先頭には写真の切替がないのでグリッチを出さない。
     const amount = cutIndex > 0 ? GLITCH_AMOUNTS[frame + 3] ?? 0 : 0;
