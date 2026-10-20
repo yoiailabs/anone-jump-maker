@@ -375,8 +375,13 @@ const NO_FX = {
   backdrop: false,
 } as const;
 
-/** 前 3 枚で強まり、カットの 1 枚を空けて後 3 枚で減衰する。 */
-const GLITCH_AMOUNTS = [0.35, 0.65, 1, 0, 0.35, 0.2, 0.1] as const;
+const GLITCH_BEFORE_FRAMES = 5;
+const GLITCH_AFTER_FRAMES = 4;
+/** 前 5 枚で強まり、カットの 1 枚を空けて後 4 枚で減衰する。 */
+const GLITCH_AMOUNTS = [0.2, 0.4, 0.6, 0.8, 1, 0, 0.45, 0.3, 0.18, 0.08] as const;
+/** 明滅の強さと期間は延長前のまま。スライスや RGB の量から切り離す。 */
+const GLITCH_FLASH_BEFORE_FRAMES = 3;
+const GLITCH_FLASH_AMOUNTS = [0.35, 0.65, 1, 0, 0.35, 0.2, 0.1] as const;
 
 /**
  * キャラ倍率の基準。横は公式 16:9 フレーム等倍。
@@ -633,7 +638,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
- * - glitch: 写真は S に即時切替。前 3 フレで強まるデジタルずれ、S の 1 枚はクリーン、後 3 フレは弱い余韻。
+ * - glitch: 写真は S に即時切替。前 5 フレで強まるデジタルずれ、S の 1 枚はクリーン、後 4 フレは弱い余韻。
  *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
 export function swapFx(
@@ -678,14 +683,17 @@ export function swapFx(
     if (next !== undefined) {
       // 符号は同じスロット判定から導く（境界上の浮動小数の誤差にも対応）。
       const nextFrame = Math.min(-1, frameAt(next));
-      if (nextFrame >= -3) {
+      // 窓が重なるほど短い間隔でも、写真初出の frame 0 は必ず空け、以後は次のカットを優先する。
+      if (nextFrame >= -GLITCH_BEFORE_FRAMES && (index === 0 || frame > 0)) {
         cutIndex = index + 1;
         frame = nextFrame;
       }
     }
     // 先頭には写真の切替がないのでグリッチを出さない。
-    const amount = cutIndex > 0 ? GLITCH_AMOUNTS[frame + 3] ?? 0 : 0;
-    const env = amount * jumpFlashEnvelope(frame);
+    const inWindow = cutIndex > 0 && frame >= -GLITCH_BEFORE_FRAMES && frame <= GLITCH_AFTER_FRAMES;
+    const amount = inWindow ? GLITCH_AMOUNTS[frame + GLITCH_BEFORE_FRAMES] ?? 0 : 0;
+    const flashAmount = cutIndex > 0 ? GLITCH_FLASH_AMOUNTS[frame + GLITCH_FLASH_BEFORE_FRAMES] ?? 0 : 0;
+    const env = flashAmount * jumpFlashEnvelope(frame);
     return {
       ...NO_FX,
       plateSlot: index,

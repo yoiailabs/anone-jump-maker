@@ -298,12 +298,12 @@ describe("glitch swap", () => {
     expect(SWAP_STYLE_LABELS.glitch).toBe("グリッチ");
   });
 
-  it.each(["landscape", "portrait"] as const)("%s: limits the effect to three frames on each side of real cuts", (mode) => {
+  it.each(["landscape", "portrait"] as const)("%s: limits the effect to five frames before and four after real cuts", (mode) => {
     for (const cutIndex of [1, 2]) {
       const cut = slots[cutIndex]!;
       for (let frame = -6; frame <= 7; frame++) {
         const fx = swapFx(cut + frame * F, slots, "glitch", mode);
-        const active = frame >= -3 && frame <= 3 && frame !== 0;
+        const active = frame >= -5 && frame <= 4 && frame !== 0;
         expect(hasFrameFx(fx), `cut ${cutIndex}, frame ${frame}`).toBe(active);
         expect(fx.scale).toBe(1);
         expect(fx.dy).toBe(0);
@@ -311,8 +311,10 @@ describe("glitch swap", () => {
         if (active) {
           expect(fx.glitch!.frame).toBe(frame);
           expect(fx.cutIndex).toBe(cutIndex);
-          expect(fx.glitch!.amount).toBeGreaterThan(0);
-          expect(fx.flashAdd).toBeCloseTo(0.06 * fx.glitch!.amount * jumpFlashEnvelope(frame), 12);
+          expect(fx.glitch!.amount).toBe([0.2, 0.4, 0.6, 0.8, 1, 0, 0.45, 0.3, 0.18, 0.08][frame + 5]);
+          // 延長前と同じ明滅量・包絡。追加したフレームには発光させない。
+          const flashAmount = [0.35, 0.65, 1, 0, 0.35, 0.2, 0.1][frame + 3] ?? 0;
+          expect(fx.flashAdd).toBeCloseTo(0.06 * flashAmount * jumpFlashEnvelope(frame), 12);
           expect(fx.flashScreen).toBeCloseTo(fx.flashAdd / 2, 12);
           expect(fx.flashAdd).toBeLessThan(0.03);
         } else {
@@ -333,7 +335,7 @@ describe("glitch swap", () => {
   });
 
   it("is independent of calls, aspect, and subframe jitter at template frame timestamps", () => {
-    for (const frame of [-3, -2, -1, 0, 1, 2, 3]) {
+    for (const frame of [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4]) {
       const time = slots[1]! + frame * F;
       const expected = swapFx(time, slots, "glitch");
       swapFx(0.97, slots, "glitch");

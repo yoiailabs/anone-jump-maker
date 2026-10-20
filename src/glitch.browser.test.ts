@@ -7,7 +7,7 @@ import type { SlotTimeline } from "./timeline.ts";
 
 const F = 1 / TEMPLATE_FPS;
 const timeline = { slots: [0, 0.5, 1] };
-const activeFrames = [-3, -2, -1, 1, 2, 3];
+const activeFrames = [-5, -4, -3, -2, -1, 1, 2, 3, 4];
 
 async function photo(pattern: boolean, id = "fixture"): Promise<LoadedPhoto> {
   const canvas = document.createElement("canvas");
@@ -108,26 +108,29 @@ describe.each(["landscape", "portrait"] as const)("%s glitch", (mode: AspectMode
     try {
       compositor.draw(video, [newPhoto], { slots: [0] }, 0.2, "zoom");
       const clean = await digest(pixels(compositor.canvas));
-      for (const frame of [-3, -1, 1, 3, 0, -4, 4]) {
+      for (const frame of [...activeFrames, 0, -6, 5]) {
         const time = 0.5 + frame * F;
         const fx = swapFx(time, timeline.slots, "glitch", mode);
         const reads = vi.spyOn(CanvasRenderingContext2D.prototype, "getImageData");
         const draws = vi.spyOn(CanvasRenderingContext2D.prototype, "drawImage");
+        const creates = vi.spyOn(document, "createElement");
         let drawCount: number;
         try {
           compositor.draw(video, [oldPhoto, newPhoto], timeline, time, "glitch");
           expect(reads).not.toHaveBeenCalled();
+          expect(creates).not.toHaveBeenCalled();
           drawCount = draws.mock.calls.length;
         } finally {
           reads.mockRestore();
           draws.mockRestore();
+          creates.mockRestore();
         }
         if (!hasFrameFx(fx)) {
           // 写真→本編、本編→出力の 2 回だけ。作業面へのコピー・色分解をしない。
           expect(drawCount).toBe(2);
         }
-        if (frame === 0 || frame === 4) expect(await digest(pixels(compositor.canvas))).toBe(clean);
-        if (frame === -4) {
+        if (frame === 0 || frame === 5) expect(await digest(pixels(compositor.canvas))).toBe(clean);
+        if (frame === -6) {
           const actual = await digest(pixels(compositor.canvas));
           compositor.draw(video, [oldPhoto], { slots: [0] }, 0.2, "zoom");
           expect(actual).toBe(await digest(pixels(compositor.canvas)));
@@ -147,17 +150,18 @@ describe.each(["landscape", "portrait"] as const)("%s glitch", (mode: AspectMode
     const oldPhoto = await photo(false, "old");
     const newPhoto = await photo(true, "new");
     const video = document.createElement("video");
-    // Photos follow the selected array order: slot 3 -> old, slot 4 -> new.
+    // 選択順で写真を配置。スロット 3 は旧写真、4 は新写真。
     const photos = [oldPhoto, oldPhoto, oldPhoto, oldPhoto, newPhoto];
     try {
       compositor.draw(video, [oldPhoto], { slots: [0] }, 0.2, "glitch");
       const oldClean = await digest(pixels(compositor.canvas));
       compositor.draw(video, [newPhoto], { slots: [0] }, 0.2, "glitch");
       const newClean = await digest(pixels(compositor.canvas));
-      for (let n = 56; n <= 62; n++) {
+      for (let n = 53; n <= 64; n++) {
         compositor.draw(video, photos, realCuts, n / TEMPLATE_FPS, "glitch");
         const actual = await digest(pixels(compositor.canvas));
-        if (n === 59) expect(actual).toBe(newClean);
+        if (n === 59 || n === 64) expect(actual).toBe(newClean);
+        else if (n === 53) expect(actual).toBe(oldClean);
         else expect(actual).not.toBe(n < 59 ? oldClean : newClean);
       }
       for (const time of [1.9666, 1.966667, 1.975, 1.9998]) {
@@ -171,7 +175,7 @@ describe.each(["landscape", "portrait"] as const)("%s glitch", (mode: AspectMode
     }
   });
 
-  it("builds to 8–10 thick, strongly displaced slices then leaves only 1–2 thin afterimage slices", () => {
+  it("builds to 10–12 displaced slices and five fragments, then fades 2–3 thin afterimage slices", () => {
     const { width, height } = mode === "landscape" ? { width: 640, height: 360 } : { width: 360, height: 640 };
     const canvas = () => Object.assign(document.createElement("canvas"), { width, height });
     const main = canvas();
@@ -182,46 +186,51 @@ describe.each(["landscape", "portrait"] as const)("%s glitch", (mode: AspectMode
     const fxBCtx = fxB.getContext("2d")!;
     const short = Math.min(width, height);
     const draws = vi.spyOn(fxBCtx, "drawImage");
+    const fragments = vi.spyOn(fxBCtx, "fillRect");
     const rgbDraws = vi.spyOn(ctx, "drawImage");
     try {
-      let previousCount = 0;
       for (const frame of activeFrames) {
         const { glitch } = swapFx(0.5 + frame * F, timeline.slots, "glitch", mode);
-        // Only full-opacity source slices, excluding copies, blocks, and RGB composition.
+        const amount = glitch!.amount;
+        // 等倍コピー・断片・RGB 合成を除き、不透明なスライスだけを数える。
         const slices: number[][] = [];
         draws.mockImplementation(function (this: CanvasRenderingContext2D, ...args: unknown[]) {
           if (this.globalAlpha === 1 && args[0] === fxA) slices.push(args.slice(1) as number[]);
         });
         rgbDraws.mockClear();
+        fragments.mockClear();
         drawGlitch(main, ctx, { fxA, fxACtx, fxB, fxBCtx }, 1, glitch!);
-        const count = slices.length / 2; // Each nonzero offset is drawn with two wrapped pieces.
+        const count = slices.length / 2; // 横ずれの各スライスは折り返した 2 片で描く。
         if (frame < 0) {
-          expect(count).toBeGreaterThan(previousCount);
-          previousCount = count;
-        } else {
-          expect(count).toBeGreaterThanOrEqual(1);
-          expect(count).toBeLessThanOrEqual(2);
-          for (const slice of slices) expect(slice[3]).toBeLessThanOrEqual(Math.round(short * 0.009));
-        }
-        if (frame === -1) {
-          expect(count).toBeGreaterThanOrEqual(8);
-          expect(count).toBeLessThanOrEqual(10);
+          expect(count).toBeGreaterThanOrEqual(Math.round(3 + 7 * amount));
+          expect(count).toBeLessThanOrEqual(Math.round(3 + 7 * amount) + 2);
+          expect(fragments).toHaveBeenCalledTimes(5);
           for (let i = 0; i < slices.length; i += 2) {
             const slice = slices[i]!;
-            expect(slice[3]).toBeGreaterThanOrEqual(Math.round(short * 0.02));
-            expect(slice[3]).toBeLessThanOrEqual(Math.round(short * 0.08));
+            expect(slice[3]).toBeGreaterThanOrEqual(Math.round(short * 0.02 * amount));
+            expect(slice[3]).toBeLessThanOrEqual(Math.round(short * 0.08 * amount));
             const shift = Math.min(slice[4]!, width - slice[4]!);
-            expect(shift).toBeGreaterThanOrEqual(Math.round(short * 0.08));
-            expect(shift).toBeLessThanOrEqual(Math.round(short * 0.14));
+            expect(shift).toBeGreaterThanOrEqual(Math.round(short * 0.1 * amount));
+            expect(shift).toBeLessThanOrEqual(Math.round(short * 0.18 * amount));
           }
-          const rgbX = rgbDraws.mock.calls[0]![5] as number;
-          const rgbShift = Math.min(rgbX, width - rgbX);
-          expect(rgbShift).toBeGreaterThanOrEqual(Math.round(short * 0.01));
-          expect(rgbShift).toBeLessThanOrEqual(Math.round(short * 0.015));
+        } else {
+          expect(count).toBeGreaterThanOrEqual(2);
+          expect(count).toBeLessThanOrEqual(3);
+          expect(fragments).not.toHaveBeenCalled();
+          for (const slice of slices) expect(slice[3]).toBeLessThanOrEqual(Math.round(short * 0.009));
+          for (let i = 0; i < slices.length; i += 2) {
+            const shift = Math.min(slices[i]![4]!, width - slices[i]![4]!);
+            expect(shift).toBe(Math.round(short * 0.03 * amount));
+            if (frame === 4) expect(shift).toBeLessThanOrEqual(1);
+          }
         }
+        const rgbX = rgbDraws.mock.calls[0]![5] as number;
+        const rgbShift = Math.min(rgbX, width - rgbX);
+        expect(rgbShift).toBe(Math.max(1, Math.round(short * (frame < 0 ? 0.016 : 0.004) * amount)));
       }
     } finally {
       draws.mockRestore();
+      fragments.mockRestore();
       rgbDraws.mockRestore();
     }
   });

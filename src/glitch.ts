@@ -57,19 +57,19 @@ export function drawGlitch(
 
   const rand = (lane: number) => noise(cut, frame, lane);
   const before = frame < 0;
-  const sliceCount = before ? (frame === -1 ? 8 + Math.floor(rand(90) * 3) : frame === -2 ? 7 : 4) : 1 + Math.floor(rand(90) * 2);
+  const sliceCount = before ? Math.round(3 + 7 * amount) + Math.floor(rand(90) * 3) : 2 + Math.floor(rand(90) * 2);
   for (let i = 0; i < sliceCount; i++) {
     const thickness = before ? (0.02 + rand(i * 3) * 0.06) * amount : 0.003 + rand(i * 3) * 0.006;
     const bh = Math.min(h, Math.max(1, Math.round(short * thickness)));
     const y = Math.floor(rand(i * 3 + 1) * (h - bh + 1));
-    const offset = before ? 0.08 + rand(i * 3 + 2) * 0.06 : 0.02;
+    const offset = before ? 0.1 + rand(i * 3 + 2) * 0.08 : 0.03;
     const direction = rand(100 + i) < 0.5 ? -1 : 1;
     const dx = Math.round(direction * short * offset * amount);
     wrapSlice(fxBCtx, fxA, y, bh, dx);
   }
 
   // 小さな写真断片に薄い色を足す。全画面のランダムノイズ・強い白黒明滅は使わない。
-  for (let i = 0; before && i < 3; i++) {
+  for (let i = 0; before && i < 5; i++) {
     const bw = Math.min(w, Math.max(1, Math.round(short * (0.025 + rand(30 + i) * 0.08))));
     const bh = Math.min(h, Math.max(1, Math.round(short * (0.005 + rand(40 + i) * 0.02))));
     const x = Math.floor(rand(50 + i) * (w - bw + 1));
@@ -84,7 +84,7 @@ export function drawGlitch(
     reset(fxBCtx);
   }
 
-  const rgb = Math.max(1, Math.round(short * (before ? 0.0125 : 0.003) * amount));
+  const rgb = Math.max(1, Math.round(short * (before ? 0.016 : 0.004) * amount));
   const direction = rand(80) < 0.5 ? -1 : 1;
   ctx.save();
   reset(ctx);
