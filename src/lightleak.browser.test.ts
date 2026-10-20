@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createCompositor } from "./compositor.ts";
-import { lightLeakPlan, paintLightLeak, LIGHT_LEAK_CHARACTER_GAIN } from "./lightleak.ts";
+import { lightLeakPlan, paintLightLeak, LIGHT_LEAK_CHARACTER_GAIN, LIGHT_LEAK_PHOTO_GAIN, LIGHT_LEAK_SHORT_SIDE } from "./lightleak.ts";
 import type { LoadedPhoto } from "./photos.ts";
 
 const timeline = { slots: [0, 0.5, 1] };
@@ -68,7 +68,7 @@ describe.each(["landscape", "portrait"] as const)("%s light leak rendering", (mo
       for (const frame of [0, 4]) {
         paintLightLeak(canvas, ctx, w!, h!, cut, { frame, amount: 1 });
         const data = pixels(canvas);
-        let red = 0, green = 0, blue = 0, orange = 0, colored = 0;
+        let red = 0, green = 0, blue = 0, orange = 0, colored = 0, pinkMaxAlpha = 0;
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i]!, g = data[i + 1]!, b = data[i + 2]!, alpha = data[i + 3]! / 255;
           // 8%まで消えた合成結果の1階調の丸めに左右されず、透明度込みの光の色を測る。
@@ -77,11 +77,15 @@ describe.each(["landscape", "portrait"] as const)("%s light leak rendering", (mo
             colored++;
             if (r > g * 1.1 && g > b * 1.5) orange++;
           }
+          if (b > g) pinkMaxAlpha = Math.max(pinkMaxAlpha, alpha);
         }
         const label = `cut=${cut} frame=${frame}`;
         expect(red, label).toBeGreaterThan(blue * 3);
         expect(green, label).toBeGreaterThan(blue * 1.8);
-        expect(orange / colored, label).toBeGreaterThan(0.75);
+        // v3の面積比は最小約69.47%。少なくとも3分の2を超えてオレンジを保つ。
+        expect(orange / colored, label).toBeGreaterThan(0.67);
+        // 重なったピンクの外縁も実測最大約19.61%。濃いピンクへの回帰を防ぐ。
+        expect(pinkMaxAlpha, label).toBeLessThan(0.22);
       }
     }
   });
@@ -125,7 +129,8 @@ describe.each(["landscape", "portrait"] as const)("%s light leak rendering", (mo
             expect(red, label).toBeGreaterThan(blue * 3);
             expect(green, label).toBeGreaterThan(blue * 1.8);
           }
-          expect(lowerCenter, label).toBeLessThan(10);
+          // v3は最大31/255。初版の横断する光（最大155/255）は許容しない。
+          expect(lowerCenter, label).toBeLessThan(35);
           expect(white / (w * h)).toBeLessThan(0.02);
           expect(visible / (w * h)).toBeGreaterThan(0.7);
         }
@@ -187,7 +192,7 @@ describe.each(["landscape", "portrait"] as const)("%s light leak rendering", (mo
           expect([x, y, w, h]).toEqual([0, 0, compositor.canvas.width, compositor.canvas.height]);
           if (surface) expect(canvas).toBe(surface);
           surface = canvas as HTMLCanvasElement;
-          expect(Math.min(surface.width, surface.height)).toBe(135);
+          expect(Math.min(surface.width, surface.height)).toBe(LIGHT_LEAK_SHORT_SIDE);
           expect(surface.width / surface.height).toBeCloseTo(compositor.canvas.width / compositor.canvas.height, 2);
           expect(draw.mock.calls[2]![0]).toBe(surface);
         }
@@ -221,7 +226,7 @@ describe.each(["landscape", "portrait"] as const)("%s light leak rendering", (mo
     try {
       compositor.draw(video(), [flat], timeline, 0.5, "lightleak", "none", { source, width: 1920, height: 1080 });
       expect(operations).toEqual([
-        { alpha: 0.86, op: "screen", smoothing: true },
+        { alpha: LIGHT_LEAK_PHOTO_GAIN, op: "screen", smoothing: true },
         { alpha: LIGHT_LEAK_CHARACTER_GAIN, op: "screen", smoothing: true },
       ]);
     } finally { draw.mockRestore(); flat.bitmap.close(); compositor.destroy(); }

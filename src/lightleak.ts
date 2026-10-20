@@ -4,7 +4,7 @@ import type { SwapFx } from "./layout.ts";
 /** 短辺135pxの作業面を縦横で共用し、写真とキャラに同じ光を使う。 */
 export const LIGHT_LEAK_SHORT_SIDE = 135;
 export const LIGHT_LEAK_CHARACTER_GAIN = 0.2;
-export const LIGHT_LEAK_PHOTO_GAIN = 0.86;
+export const LIGHT_LEAK_PHOTO_GAIN = 0.95;
 
 // アンバーとオレンジを主役にし、ピンクはごく薄い外縁だけに使う。
 export const LIGHT_LEAK_PALETTES = [
@@ -26,10 +26,10 @@ export function lightLeakPlan(cutIndex: number, frame: number) {
   const seed = hash(cutIndex);
   const unit = (salt: number) => hash(seed ^ salt) / 0x100000000;
   const progress = Math.max(0, Math.min(1, (frame + 4) / 8));
-  // 外から差し込み、ピークで16〜20%。余韻は8%だけ奥へ流し、入口側に残す。
-  const peak = 0.16 + unit(11) * 0.04;
+  // 外から差し込み、ピークで13〜17%。余韻は8%だけ奥へ流し、入口側に残す。
+  const peak = 0.13 + unit(11) * 0.04;
   const travel = progress <= 0.5
-    ? -0.18 + progress * 2 * (peak + 0.18)
+    ? -0.22 + progress * 2 * (peak + 0.22)
     : peak + (progress - 0.5) * 0.16;
   const edge = seed % 4;
   const cross = 0.23 + unit(31) * 0.13 + (progress - 0.5) * (unit(53) - 0.5) * 0.08;
@@ -40,8 +40,8 @@ export function lightLeakPlan(cutIndex: number, frame: number) {
     edge,
     x: edge >= 2 ? (right ? 1 - cross : cross) : (right ? 1 - travel : travel),
     y: edge >= 2 ? travel : cross,
-    radiusX: (edge >= 2 ? 0.75 + unit(71) * 0.1 : 0.23 + unit(71) * 0.04) * growth,
-    radiusY: (edge >= 2 ? 0.21 + unit(97) * 0.03 : 0.85 + unit(97) * 0.1) * growth,
+    radiusX: (edge >= 2 ? 0.75 + unit(71) * 0.1 : 0.31 + unit(71) * 0.05) * growth,
+    radiusY: (edge >= 2 ? 0.28 + unit(97) * 0.04 : 0.85 + unit(97) * 0.1) * growth,
   };
 }
 
@@ -63,7 +63,7 @@ export function paintLightLeak(
   for (let blob = 0; blob < 3; blob++) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    ctx.globalAlpha = [0.82, 0.38, 0.22][blob]!;
+    ctx.globalAlpha = [1, 0.55, 0.35][blob]!;
     const direction = plan.edge === 1 || plan.edge === 3 ? -1 : 1;
     // 副光は端へ寄せつつ長辺方向へずらし、三つの同心円にしない。
     const along = [0, -0.19, 0.24][blob]!;
@@ -76,12 +76,12 @@ export function paintLightLeak(
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
     // 色とアルファを一緒に減衰。近白の芯を小さく、外縁のピンクは数%以下にする。
     // 副光の芯はアンバー／オレンジへずらし、主光と色も少し変える。
-    gradient.addColorStop(0, `${plan.palette[blob]}b3`);
-    gradient.addColorStop(0.04, `${plan.palette[Math.max(1, blob)]}ad`);
-    gradient.addColorStop(0.22, `${plan.palette[2]}85`);
-    gradient.addColorStop(0.45, `${plan.palette[3]}47`);
-    gradient.addColorStop(0.68, `${plan.palette[3]}14`);
-    gradient.addColorStop(0.82, `${plan.palette[4]}06`);
+    gradient.addColorStop(0, `${plan.palette[blob]}f2`);
+    gradient.addColorStop(0.04, `${plan.palette[Math.max(1, blob)]}eb`);
+    gradient.addColorStop(0.22, `${plan.palette[2]}c7`);
+    gradient.addColorStop(0.45, `${plan.palette[3]}73`);
+    gradient.addColorStop(0.68, `${plan.palette[3]}2e`);
+    gradient.addColorStop(0.82, `${plan.palette[4]}0d`);
     gradient.addColorStop(1, `${plan.palette[4]}00`);
     ctx.fillStyle = gradient;
     ctx.fillRect(-1, -1, 2, 2);
