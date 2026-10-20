@@ -72,11 +72,11 @@ function tearPaths(cut: number, w: number, h: number, mode: AspectMode): TearPat
   return result;
 }
 
-/** 写真層だけを2Dで裂く。下の写真は等倍 cover、作業キャンバスや画素読み出しは不要。 */
+/** 写真層だけを2Dで裂く。フィルター済みの写真も受け取り、白縁・影はここで重ねる。 */
 export function drawPaperTear(
   ctx: CanvasRenderingContext2D,
-  outgoing: ImageBitmap,
-  incoming: ImageBitmap,
+  outgoing: ImageBitmap | HTMLCanvasElement,
+  incoming: ImageBitmap | HTMLCanvasElement,
   w: number,
   h: number,
   mode: AspectMode,
@@ -84,6 +84,9 @@ export function drawPaperTear(
   progress: number,
 ): void {
   const next = coverDest(incoming.width, incoming.height, w, h);
+  // 透過・半透明の写真も窓後の通常描画と同じ下地に載せる。
+  ctx.fillStyle = "#0a0806";
+  ctx.fillRect(0, 0, w, h);
   ctx.drawImage(incoming, next.x, next.y, next.w, next.h);
   const { halves, fibers } = tearPaths(cut, w, h, mode);
   const short = Math.min(w, h);
@@ -107,8 +110,12 @@ export function drawPaperTear(
     ctx.shadowBlur = ctx.shadowOffsetY = 0;
     ctx.save();
     ctx.clip(halves[i]!);
+    // 旧写真の透明部分から新写真を見せず、窓前の見た目を保つ。
+    ctx.fillStyle = "#0a0806";
+    ctx.fillRect(old.x, old.y, old.w, old.h);
     ctx.drawImage(outgoing, old.x, old.y, old.w, old.h);
     ctx.restore();
+    ctx.fillStyle = "#fffdf7";
     ctx.fill(fibers[i]!);
     ctx.restore();
   }

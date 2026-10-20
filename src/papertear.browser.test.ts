@@ -30,6 +30,126 @@ async function hash(canvas: HTMLCanvasElement): Promise<string> {
 }
 
 for (const mode of ["landscape", "portrait"] as const) {
+  for (const filter of ["blur-weak", "blur-strong"] as const) {
+    for (const resolutionScale of [1 / 3, 1]) {
+      it(`${mode} ${filter} ${resolutionScale}: keeps fibers and shadows sharp without mixing colors across the seam`, async () => {
+        const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
+        compositor.setAspect(mode);
+        const photos = [await photo("#e02020"), await photo("#2040e0")];
+        const video = document.createElement("video");
+        const create = vi.spyOn(document, "createElement");
+        try {
+          let filteredMs = 0;
+          for (let frame = 14; frame <= 20; frame++) {
+            // 単色の写真はぼかしても同色。縁・影を含め、描画元の補間差2階調以外は一致する。
+            compositor.draw(video, photos, cuts, frame / 30, "papertear");
+            const expected = pixels(compositor.canvas);
+            const start = performance.now();
+            compositor.draw(video, photos, cuts, frame / 30, "papertear", filter);
+            filteredMs += performance.now() - start;
+            const actual = pixels(compositor.canvas);
+            let error = 0;
+            for (let i = 0; i < actual.length; i++) {
+              const d = Math.abs(actual[i]! - expected[i]!);
+              error = Math.max(error, d);
+            }
+            expect(error, `frame ${frame}`).toBeLessThanOrEqual(2);
+          }
+          console.info(`papertear ${mode} ${filter} scale=${resolutionScale}: mean draw ${(filteredMs / 7).toFixed(2)}ms, no canvas allocation`);
+          expect(create).not.toHaveBeenCalled();
+        } finally {
+          create.mockRestore();
+          photos.forEach((p) => p.bitmap.close());
+          compositor.destroy();
+        }
+      });
+    }
+
+    it(`${mode} ${filter}: blurs photo detail while the revealed photo matches filtered still cover`, async () => {
+      const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+      compositor.setAspect(mode);
+      const photos = [await photo("#d02020", true), await photo("#2040d0", true)];
+      const video = document.createElement("video");
+      try {
+        compositor.draw(video, photos, cuts, 18 / 30, "papertear", filter);
+        const filtered = pixels(compositor.canvas);
+        compositor.draw(video, photos, cuts, 18 / 30, "papertear");
+        const plain = pixels(compositor.canvas);
+        compositor.draw(video, photos, cuts, 21 / 30, "papertear", filter);
+        const still = pixels(compositor.canvas);
+        const { width: w, height: h } = compositor.canvas;
+        let changed = 0;
+        let error = 0;
+        for (let y = Math.floor(h * 0.4); y < h * 0.6; y++) {
+          for (let x = Math.floor(w * 0.4); x < w * 0.6; x++) {
+            const i = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+              changed += Math.abs(filtered[i + c]! - plain[i + c]!);
+              error = Math.max(error, Math.abs(filtered[i + c]! - still[i + c]!));
+            }
+          }
+        }
+        expect(changed).toBeGreaterThan(0);
+        expect(error).toBe(0);
+      } finally {
+        photos.forEach((p) => p.bitmap.close());
+        compositor.destroy();
+      }
+    });
+  }
+
+  for (const mime of ["image/png", "image/webp"]) {
+    it(`${mode} ${mime}: transparent and translucent old/new plates stay continuous at both window ends`, async () => {
+      const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+      compositor.setAspect(mode);
+      const video = document.createElement("video");
+      try {
+        for (const [oldAlpha, nextAlpha] of [[0, 0.5], [0.5, 0], [0.5, 0.5]]) {
+          const photos: LoadedPhoto[] = [];
+          for (const [index, alpha] of [oldAlpha, nextAlpha].entries()) {
+            const canvas = document.createElement("canvas");
+            canvas.width = 303;
+            canvas.height = 227;
+            const ctx = canvas.getContext("2d")!;
+            ctx.fillStyle = index === 0 ? `rgba(220,40,40,${alpha})` : `rgba(40,80,220,${alpha})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), mime));
+            expect(blob.type).toBe(mime);
+            photos.push({ id: `${index}`, name: mime, bitmap: await createImageBitmap(blob), thumbUrl: "" });
+          }
+          try {
+            for (const filter of ["none", "blur-weak", "blur-strong"] as const) {
+              compositor.draw(video, photos, cuts, 13 / 30, "papertear", filter);
+              const before = pixels(compositor.canvas);
+              compositor.draw(video, photos, cuts, 21 / 30, "papertear", filter);
+              const after = pixels(compositor.canvas);
+              const afterHash = await hash(compositor.canvas);
+              compositor.draw(video, photos, cuts, 14 / 30, "papertear", filter);
+              const start = pixels(compositor.canvas);
+              const { width: w, height: h } = compositor.canvas;
+              // 窓の最初で両半分の内部と四隅が通常の旧写真と一致する。
+              for (const [x, y] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1],
+                [Math.floor(w * 0.2), Math.floor(h * 0.2)], [Math.floor(w * 0.8), Math.floor(h * 0.8)]]) {
+                const i = (y! * w + x!) * 4;
+                expect(Array.from(start.slice(i, i + 4)), `${filter} old alpha=${oldAlpha}`).toEqual(Array.from(before.slice(i, i + 4)));
+              }
+              compositor.draw(video, photos, cuts, 18 / 30, "papertear", filter);
+              const middle = pixels(compositor.canvas);
+              const center = (Math.floor(h / 2) * w + Math.floor(w / 2)) * 4;
+              expect(Array.from(middle.slice(center, center + 4))).toEqual(Array.from(after.slice(center, center + 4)));
+              compositor.draw(video, photos, cuts, 20 / 30, "papertear", filter);
+              expect(await hash(compositor.canvas), `${filter} next alpha=${nextAlpha}`).toBe(afterHash);
+            }
+          } finally {
+            photos.forEach((p) => p.bitmap.close());
+          }
+        }
+      } finally {
+        compositor.destroy();
+      }
+    });
+  }
+
   for (const resolutionScale of [1 / 3, 0.3325, 1]) {
     it(`${mode} ${resolutionScale}: covers every window pixel including fractional canvas edges`, async () => {
       const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
