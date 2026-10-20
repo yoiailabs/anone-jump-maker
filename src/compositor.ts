@@ -11,7 +11,6 @@ import {
 } from "./keying-gpu.ts";
 import { keyImageData } from "./keying.ts";
 import {
-  ZOOM_BACKDROP_BLUR_FRAC,
   characterDest,
   characterOutlinePx,
   portraitCutY,
@@ -158,6 +157,10 @@ export function createCompositor(options?: {
   const mainCtx = main.getContext("2d", { alpha: false });
   if (!mainCtx) throw new Error("Canvas2D が使えません");
 
+  const photoTiles = document.createElement("canvas");
+  const photoTilesCtx = photoTiles.getContext("2d");
+  if (!photoTilesCtx) throw new Error("Canvas2D が使えません");
+
   const keyed = document.createElement("canvas");
   const keyedCtx = keyed.getContext("2d", { willReadFrequently: true });
   if (!keyedCtx) throw new Error("Canvas2D が使えません");
@@ -174,6 +177,10 @@ export function createCompositor(options?: {
   const fxBCtx = fxB.getContext("2d", { alpha: false });
   if (!fxBCtx) throw new Error("Canvas2D が使えません");
 
+  const fxPad = document.createElement("canvas");
+  const fxPadCtx = fxPad.getContext("2d", { alpha: false });
+  if (!fxPadCtx) throw new Error("Canvas2D が使えません");
+
   const blur = document.createElement("canvas");
   const blurCtx = blur.getContext("2d", { alpha: false, willReadFrequently: true });
   if (!blurCtx) throw new Error("Canvas2D が使えません");
@@ -188,6 +195,8 @@ export function createCompositor(options?: {
       : describeKeying("cpu");
   };
   const surfaces: FxSurfaces = {
+    photoTiles,
+    photoTilesCtx,
     keyed,
     keyedCtx,
     halo,
@@ -196,6 +205,8 @@ export function createCompositor(options?: {
     fxACtx,
     fxB,
     fxBCtx,
+    fxPad,
+    fxPadCtx,
     blur,
     blurCtx,
     get gpuKeyer() {
@@ -286,6 +297,8 @@ export function createCompositor(options?: {
       canvas.height = 0;
       main.width = 0;
       main.height = 0;
+      photoTiles.width = 0;
+      photoTiles.height = 0;
       keyed.width = 0;
       keyed.height = 0;
       halo.width = 0;
@@ -294,6 +307,8 @@ export function createCompositor(options?: {
       fxA.height = 0;
       fxB.width = 0;
       fxB.height = 0;
+      fxPad.width = 0;
+      fxPad.height = 0;
       blur.width = 0;
       blur.height = 0;
     },
@@ -301,6 +316,8 @@ export function createCompositor(options?: {
 }
 
 type FxSurfaces = {
+  photoTiles: HTMLCanvasElement;
+  photoTilesCtx: CanvasRenderingContext2D;
   keyed: HTMLCanvasElement;
   keyedCtx: CanvasRenderingContext2D;
   halo: HTMLCanvasElement;
@@ -309,6 +326,8 @@ type FxSurfaces = {
   fxACtx: CanvasRenderingContext2D;
   fxB: HTMLCanvasElement;
   fxBCtx: CanvasRenderingContext2D;
+  fxPad: HTMLCanvasElement;
+  fxPadCtx: CanvasRenderingContext2D;
   blur: HTMLCanvasElement;
   blurCtx: CanvasRenderingContext2D;
   gpuKeyer: GpuKeyer | null;
@@ -344,10 +363,10 @@ function composeMain(
 
   if (plate) {
     if (composeDetailActive()) {
-      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, plate, fx, style, mw, mh));
+      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh));
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
-      drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
+      drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
   }
@@ -404,11 +423,12 @@ export function plateDest(
 }
 
 /**
- * 写真層。ズームで縮んだときは同じ写真の cover ぼかしを後ろに敷いて黒帯を見せない。
+ * 写真層。ズームで縮んだときはプレートの縁で鏡映し、色と輝度を連続させる。
  * ジャンプのフラッシュ（加算＋スクリーン）は写真層にだけ乗せる。
  */
 function drawPhotoPlate(
   ctx: CanvasRenderingContext2D,
+  surfaces: FxSurfaces,
   photo: LoadedPhoto,
   fx: SwapFx,
   style: SwapStyle,
@@ -417,17 +437,30 @@ function drawPhotoPlate(
 ): void {
   const bitmap = photo.bitmap;
   resetCtx(ctx);
-  if (fx.backdrop) {
-    const full = coverDest(bitmap.width, bitmap.height, mw, mh, { scale: 1.06 });
-    ctx.save();
-    ctx.filter = `blur(${Math.max(2, Math.round(mw * ZOOM_BACKDROP_BLUR_FRAC))}px)`;
-    ctx.drawImage(bitmap, full.x, full.y, full.w, full.h);
-    ctx.restore();
-    ctx.fillStyle = "rgba(10, 8, 6, 0.25)";
-    ctx.fillRect(0, 0, mw, mh);
-  }
   const dest = plateDest(bitmap.width, bitmap.height, mw, mh, fx, style);
-  ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
+  // cover 矩形の丸め誤差ではなく実倍率で判定し、backdrop の閾値未満の縮みも補完する。
+  if (style === "zoom" && fx.scale < 1) {
+    const { photoTiles, photoTilesCtx: tilesCtx } = surfaces;
+    photoTiles.width = mw;
+    photoTiles.height = mh;
+    // 小数位置で接するタイルの被覆率を加算する。source-over では境界に下地が残る。
+    // 透明な面で合成してから既存の下地に重ね、透過部分にも同じ下地色を残す。
+    tilesCtx.globalCompositeOperation = "lighter";
+    for (const row of [-1, 0, 1]) {
+      for (const col of [-1, 0, 1]) {
+        const x = dest.x + col * dest.w;
+        const y = dest.y + row * dest.h;
+        if (x >= mw || x + dest.w <= 0 || y >= mh || y + dest.h <= 0) continue;
+        const sx = col === 0 ? 1 : -1;
+        const sy = row === 0 ? 1 : -1;
+        tilesCtx.setTransform(sx, 0, 0, sy, x + (sx < 0 ? dest.w : 0), y + (sy < 0 ? dest.h : 0));
+        tilesCtx.drawImage(bitmap, 0, 0, dest.w, dest.h);
+      }
+    }
+    ctx.drawImage(photoTiles, 0, 0);
+  } else {
+    ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
+  }
   if (fx.flashAdd > 0.002) {
     ctx.globalCompositeOperation = "lighter";
     ctx.fillStyle = `rgba(255, 255, 255, ${fx.flashAdd})`;
@@ -545,6 +578,23 @@ export function blurTapCount(blurPx: number): number {
   return Math.min(15, Math.max(3, Math.round(blurPx / 2.5) | 1));
 }
 
+/** 横ずらしのサンプル範囲を端の画素で延長する。各タップを一度で描き、隙間や二重加算を防ぐ。 */
+function padFrameX(
+  source: HTMLCanvasElement,
+  { fxPad, fxPadCtx }: FxSurfaces,
+  pad: number,
+): HTMLCanvasElement {
+  const w = source.width;
+  const h = source.height;
+  ensureCanvasSize(fxPad, w + pad * 2, h);
+  resetCtx(fxPadCtx);
+  fxPadCtx.imageSmoothingEnabled = false;
+  fxPadCtx.drawImage(source, pad, 0);
+  fxPadCtx.drawImage(source, 0, 0, 1, h, 0, 0, pad, h);
+  fxPadCtx.drawImage(source, w - 1, 0, 1, h, pad + w, 0, pad, h);
+  return fxPad;
+}
+
 /**
  * 参考ズーム（hagikaze_sami）の全面 FX。合成済み本編（写真＋キャラ）に対して
  * 行波打ち → 横モーションブラー → RGB 横ずれ（R 右・B 左）→ 白加算／灰かぶり の順。
@@ -552,11 +602,16 @@ export function blurTapCount(blurPx: number): number {
 function applyFrameFx(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
-  { fxA, fxACtx, fxB, fxBCtx }: FxSurfaces,
+  surfaces: FxSurfaces,
   fx: SwapFx,
 ): void {
   const w = main.width;
   const h = main.height;
+  const { fxA, fxACtx, fxB, fxBCtx } = surfaces;
+  const waveAmp = fx.wave * w;
+  const blurPx = fx.blur * w;
+  const rgbPx = fx.rgb * w;
+  const pad = Math.ceil(Math.max(waveAmp, blurPx / 2, rgbPx)) + 1;
   fxA.width = w;
   fxA.height = h;
   fxB.width = w;
@@ -565,27 +620,29 @@ function applyFrameFx(
   resetCtx(fxBCtx);
 
   // 1) 波打ち: 行帯ごとに横へずらしながら main → fxA
-  const waveAmp = fx.wave * w;
   if (waveAmp >= 0.5) {
+    const padded = padFrameX(main, surfaces, pad);
     const bands = 24;
-    const bh = h / bands;
     for (let i = 0; i < bands; i += 1) {
-      const y = i * bh;
+      // 行帯の境界を整数画素に揃え、小数高さで生じる被覆の隙間もなくす。
+      const y = Math.round(i * h / bands);
+      const bh = Math.round((i + 1) * h / bands) - y;
+      if (bh === 0) continue;
       const dx = Math.sin((i / bands) * Math.PI * 3.4 + fx.blur * 40) * waveAmp;
-      fxACtx.drawImage(main, 0, y, w, bh, dx, y, w, bh);
+      fxACtx.drawImage(padded, 0, y, padded.width, bh, dx - pad, y, padded.width, bh);
     }
   } else {
     fxACtx.drawImage(main, 0, 0);
   }
 
   // 2) 横モーションブラー: fxA を N 回ずらして平均 → fxB
-  const blurPx = fx.blur * w;
   const taps = blurTapCount(blurPx);
   if (taps > 1) {
+    const padded = padFrameX(fxA, surfaces, pad);
     for (let i = 0; i < taps; i += 1) {
       const t = i / (taps - 1) - 0.5;
       fxBCtx.globalAlpha = 1 / (i + 1);
-      fxBCtx.drawImage(fxA, t * blurPx, 0);
+      fxBCtx.drawImage(padded, t * blurPx - pad, 0);
     }
     fxBCtx.globalAlpha = 1;
   } else {
@@ -594,7 +651,6 @@ function applyFrameFx(
 
   // 3) RGB 横ずれ: fxB をチャンネル分解して加算合成で main に戻す
   resetCtx(mainCtx);
-  const rgbPx = fx.rgb * w;
   if (rgbPx >= 0.5) {
     mainCtx.fillStyle = "#000";
     mainCtx.fillRect(0, 0, w, h);
@@ -611,14 +667,7 @@ function applyFrameFx(
       fxACtx.fillRect(0, 0, w, h);
       fxACtx.globalCompositeOperation = "source-over";
       mainCtx.globalCompositeOperation = "lighter";
-      mainCtx.drawImage(fxA, dx, 0);
-      if (dx !== 0) {
-        // ずらして空いた端は同じチャンネルを端で埋める
-        const edgeW = Math.ceil(Math.abs(dx));
-        const sx = dx > 0 ? 0 : w - edgeW;
-        const dxEdge = dx > 0 ? 0 : w - edgeW;
-        mainCtx.drawImage(fxA, sx, 0, edgeW, h, dxEdge, 0, edgeW, h);
-      }
+      mainCtx.drawImage(padFrameX(fxA, surfaces, pad), dx - pad, 0);
     }
     mainCtx.globalCompositeOperation = "source-over";
   } else {
