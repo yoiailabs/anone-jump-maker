@@ -34,8 +34,6 @@ export async function stubShortTemplate(page: Page): Promise<void> {
     body: webm,
     contentType: "video/webm",
     headers: {
-      // Chromium は Range 対応を宣言しないメディアを seekable=[0,0] と扱う。
-      "Accept-Ranges": "bytes",
       "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": "*",
     },

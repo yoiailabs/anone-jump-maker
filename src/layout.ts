@@ -363,8 +363,8 @@ export type SwapFx = {
   mist?: { amount: number; frame: number };
 };
 
-/** S±7 フレームでゼロ、S で最大。前後とも滑らかに立ち上がり／減衰する。 */
-export const MIST_WINDOW_FRAMES = 7;
+/** S±5 フレームでゼロ、S で最大。テンプレのスロットは約 15 フレームなので、写真がきれいに見える時間を残す。 */
+export const MIST_WINDOW_FRAMES = 5;
 
 export function mistAmount(frame: number): number {
   const t = Math.max(0, 1 - Math.abs(frame) / MIST_WINDOW_FRAMES);

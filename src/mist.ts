@@ -54,7 +54,7 @@ function mistMasks(): HTMLCanvasElement[] {
       const n = field[p]!;
       // 頂点では不透明のまま雲の陰影を残す。散るときは薄い場所から穴が開く。
       const alpha = stage === 0 ? 0 : Math.max(smooth((n - threshold) / 0.19), smooth((amount - 0.88) / 0.12));
-      const white = 222 + n * 33;
+      const white = 210 + n * 45;
       image.data.set([white + 2, white + 1, white, alpha * 255], p * 4);
     }
     ctx.putImageData(image, 0, 0);
