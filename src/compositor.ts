@@ -1,3 +1,4 @@
+import { createMoyaMask, maskMoyaPhoto, warpMoyaPhoto, type MoyaMask } from "./moya.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -185,6 +186,8 @@ export function createCompositor(options?: {
   const blurCtx = blur.getContext("2d", { alpha: false, willReadFrequently: true });
   if (!blurCtx) throw new Error("Canvas2D が使えません");
 
+  const moyaMask = createMoyaMask();
+
   const dropGpuKeyer = () => {
     const debug = gpuKeyer?.debug;
     gpuKeyer?.destroy();
@@ -195,6 +198,7 @@ export function createCompositor(options?: {
       : describeKeying("cpu");
   };
   const surfaces: FxSurfaces = {
+    moyaMask,
     photoTiles,
     photoTilesCtx,
     keyed,
@@ -232,7 +236,11 @@ export function createCompositor(options?: {
     const h = canvas.height;
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle, mode);
-    const plate = photoForSlot(photos, fx.plateSlot);
+    const plate = photoForSlot(photos, fx.moya
+      ? fx.cutIndex - (fx.moya.mix < 1 ? 1 : 0)
+      : fx.plateSlot);
+    const nextPlate = fx.moya && fx.moya.mix > 0 && fx.moya.mix < 1
+      ? photoForSlot(photos, fx.cutIndex) : undefined;
     const characterSource = resolveCharacterSource(video, character);
 
     composeMain(
@@ -247,6 +255,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
+      nextPlate,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -311,11 +320,13 @@ export function createCompositor(options?: {
       fxPad.height = 0;
       blur.width = 0;
       blur.height = 0;
+      moyaMask.canvas.width = moyaMask.canvas.height = 0;
     },
   };
 }
 
 type FxSurfaces = {
+  moyaMask: MoyaMask;
   photoTiles: HTMLCanvasElement;
   photoTilesCtx: CanvasRenderingContext2D;
   keyed: HTMLCanvasElement;
@@ -352,6 +363,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
+  nextPlate?: LoadedPhoto,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -361,12 +373,30 @@ function composeMain(
   mainCtx.fillStyle = "#0a0806";
   mainCtx.fillRect(0, 0, mw, mh);
 
+  const drawPhoto = () => {
+    drawPhotoPlate(mainCtx, surfaces, plate!, fx, style, mw, mh);
+    if (fx.moya) {
+      if (nextPlate) {
+        const { photoTiles, photoTilesCtx } = surfaces;
+        photoTiles.width = mw;
+        photoTiles.height = mh;
+        // 透過写真も旧写真を透かさず、従来と同じ下地に載せてからマスクする。
+        photoTilesCtx.fillStyle = "#0a0806";
+        photoTilesCtx.fillRect(0, 0, mw, mh);
+        drawPhotoPlate(photoTilesCtx, surfaces, nextPlate, fx, style, mw, mh);
+        maskMoyaPhoto(photoTiles, photoTilesCtx, surfaces.moyaMask, fx.cutIndex, fx.moya.mix);
+        resetCtx(mainCtx);
+        mainCtx.drawImage(photoTiles, 0, 0);
+      }
+      warpMoyaPhoto(main, mainCtx, surfaces, fx.cutIndex, fx.moya);
+    }
+  };
   if (plate) {
     if (composeDetailActive()) {
-      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh));
+      traceCompose("compose.photo", drawPhoto);
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
-      drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
+      drawPhoto();
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
   }
@@ -379,9 +409,10 @@ function composeMain(
     }
   }
 
-  if (composeDetailActive() && (hasFrameFx(fx) || fx.flashGlobal > 0.002)) {
+  const frameFx = !fx.moya && hasFrameFx(fx);
+  if (composeDetailActive() && (frameFx || fx.flashGlobal > 0.002)) {
     traceCompose("compose.fx", () => {
-      if (hasFrameFx(fx)) applyFrameFx(main, mainCtx, surfaces, fx);
+      if (frameFx) applyFrameFx(main, mainCtx, surfaces, fx);
       if (fx.flashGlobal > 0.002) {
         resetCtx(mainCtx);
         mainCtx.fillStyle = `rgba(255, 255, 255, ${fx.flashGlobal})`;
@@ -389,7 +420,7 @@ function composeMain(
       }
     });
   } else {
-    if (hasFrameFx(fx)) {
+    if (frameFx) {
       applyFrameFx(main, mainCtx, surfaces, fx);
     }
     if (fx.flashGlobal > 0.002) {

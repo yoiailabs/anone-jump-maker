@@ -255,3 +255,9 @@ describe("studio transactions", () => {
     expect(records[0]?.attributes.fingerprint).toBeUndefined();
   });
 });
+
+it("keeps moya on export performance spans", () => {
+  const records = installFakeTracing();
+  studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "moya" });
+  expect(records.find((span) => span.name === "export.generate")?.attributes.effect).toBe("moya");
+});

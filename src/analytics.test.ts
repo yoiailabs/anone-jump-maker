@@ -21,6 +21,9 @@ afterEach(() => {
 });
 
 describe("videoEventParams", () => {
+  it.each(["portrait", "landscape"] as const)("accepts moya for %s", (aspect) => {
+    expect(videoEventParams(aspect, "moya")).toEqual({ aspect, effect: "moya", swap: "moya" });
+  });
   it("sends only aspect and effect/swap, never identifying extras", () => {
     expect(videoEventParams("portrait", "jump")).toEqual({
       aspect: "portrait",

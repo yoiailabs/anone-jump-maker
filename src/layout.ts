@@ -89,20 +89,22 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
+ * - moya: 写真だけが陽炎のように揺らぎ、雲状のまだらで入れ替わる。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "moya";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "moya"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  moya: "モヤモヤ",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return value === "jump" || value === "zoom" || value === "moya";
 }
 
 /**
@@ -357,6 +359,8 @@ export type SwapFx = {
   backdrop: boolean;
   /** この窓が属するカット（スロット境界）。先頭スロット内で切替が無ければ 0。 */
   cutIndex: number;
+  /** 写真層だけの揺らぎと雲状ディゾルブ。 */
+  moya?: { amount: number; frame: number; mix: number };
 };
 
 const NO_FX = {
@@ -533,6 +537,18 @@ export function rectToUvBottomLeft(rect: Rect, canvasW: number, canvasH: number)
 
 /** フレーム境界の比較に使う許容（フレーム単位）。時刻の丸めで 0.99999 になった 1 フレを 1 とみなす。 */
 const FRAME_EPS = 1e-6;
+const SLOT_TIME_EPS = 1e-4;
+
+/** 最短13フレーム間隔でも窓の間に3枚以上のクリーンな写真を残す。後端は含まない。 */
+export const MOYA_BEFORE_FRAMES = 5;
+export const MOYA_AFTER_FRAMES = 5;
+export const MOYA_DISSOLVE_START = -3;
+export const MOYA_DISSOLVE_END = 2;
+
+function smoothstep01(value: number): number {
+  const u = clamp01(value);
+  return u * u * (3 - 2 * u);
+}
 
 /** `time` が属するスロット（先頭は 0）とその開始時刻。`slotForTime` と同じ 1e-4 の許容。 */
 function slotAt(time: number, slots: readonly number[]): { start: number; index: number } {
@@ -540,7 +556,7 @@ function slotAt(time: number, slots: readonly number[]): { start: number; index:
   let index = 0;
   for (let i = 1; i < slots.length; i += 1) {
     const t = slots[i]!;
-    if (time + 1e-4 >= t) {
+    if (time + SLOT_TIME_EPS >= t) {
       start = t;
       index = i;
     } else {
@@ -657,6 +673,30 @@ export function swapFx(
     };
   }
 
+  if (style === "moya") {
+    // slotAt と同じ許容で数え、丸めたカットと n/30 の保存時刻も揃える。
+    const frameAt = (cut: number) => Math.floor((time + SLOT_TIME_EPS - cut) * TEMPLATE_FPS);
+    let cutIndex = index;
+    let frame = Math.max(0, frameAt(start));
+    const next = slots[index + 1];
+    if (next !== undefined) {
+      const upcoming = Math.min(-1, frameAt(next));
+      if (upcoming >= -MOYA_BEFORE_FRAMES) {
+        cutIndex = index + 1;
+        frame = upcoming;
+      }
+    }
+    const active = cutIndex > 0 && frame >= -MOYA_BEFORE_FRAMES && frame < MOYA_AFTER_FRAMES;
+    const amount = frame < 0
+      ? smoothstep01((frame + MOYA_BEFORE_FRAMES + 1) / (MOYA_BEFORE_FRAMES + 1))
+      : smoothstep01(1 - frame / MOYA_AFTER_FRAMES);
+    const mix = smoothstep01((frame - MOYA_DISSOLVE_START) / (MOYA_DISSOLVE_END - MOYA_DISSOLVE_START));
+    return {
+      ...NO_FX, plateSlot: index, scale: 1, dy: 0, cutIndex,
+      ...(active ? { moya: { amount, frame, mix } } : {}),
+    };
+  }
+
   // zoom: 横の実測 τ をそのまま使う。縦はカットからの実フレームを ZOOM_PORTRAIT_TIME_SCALE で割ってから、
   // 同じ分岐（縮み・S+1 の写真入れ替わり・寄り）に入れる。振幅は分岐の中で変わらない。
   const next = slots[index + 1];
@@ -713,9 +753,9 @@ export function swapFx(
   return { ...NO_FX, plateSlot: 0, scale: 1, dy: 0, cutIndex: 0 };
 }
 
-/** 切替 FX が何か描画に影響するか（全面 FX の作業キャンバスを省くため）。 */
+/** 切替 FX が何か描画に影響するか（写真層・全面 FX 共通の窓判定）。 */
 export function hasFrameFx(fx: SwapFx): boolean {
-  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
+  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5 || (fx.moya?.amount ?? 0) > 0;
 }
 
 function clamp01(v: number): number {

@@ -264,3 +264,10 @@ describe("document crawlers", () => {
     ).toBe(false);
   });
 });
+
+it("labels moya in every locale", () => {
+  expect(t("ja", "makerMoya")).toBe("モヤモヤ");
+  expect(t("en", "makerMoya")).toBe("Haze");
+  expect(t("ko", "makerMoya")).toBe("아지랑이");
+  expect(t("zh", "makerMoya")).toBe("朦胧");
+});

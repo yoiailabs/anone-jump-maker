@@ -222,6 +222,9 @@ describe("trace sampling", () => {
 });
 
 describe("trace attribute allowlist", () => {
+  it("retains moya in Sentry and performance attributes", () => {
+    expect(pickTraceAttributes({ effect: "moya" })).toEqual({ effect: "moya" });
+  });
   it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
     expect(
       pickTraceAttributes({
