@@ -55,6 +55,14 @@ function installFakeTracing(recording: (name: string) => boolean = () => true): 
   return records;
 }
 
+it("keeps papertear on the actual preview and export performance spans", () => {
+  const records = installFakeTracing();
+  studioTrace.beginPreviewStart({ trigger: "resume", aspect: "landscape", effect: "papertear" });
+  studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "papertear" });
+  expect(records.find((span) => span.name === "preview.start")?.attributes.effect).toBe("papertear");
+  expect(records.find((span) => span.name === "export.generate")?.attributes.effect).toBe("papertear");
+});
+
 const readyPaint = {
   currentTime: 0,
   paused: true,

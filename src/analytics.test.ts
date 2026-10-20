@@ -21,6 +21,9 @@ afterEach(() => {
 });
 
 describe("videoEventParams", () => {
+  it.each(["portrait", "landscape"] as const)("accepts papertear for %s", (aspect) => {
+    expect(videoEventParams(aspect, "papertear")).toEqual({ aspect, effect: "papertear", swap: "papertear" });
+  });
   it("sends only aspect and effect/swap, never identifying extras", () => {
     expect(videoEventParams("portrait", "jump")).toEqual({
       aspect: "portrait",

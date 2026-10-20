@@ -1,3 +1,4 @@
+import { drawPaperTear } from "./papertear.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -247,6 +248,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
+      fx.reveal ? photoForSlot(photos, fx.reveal.nextSlot) : undefined,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -352,6 +354,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
+  nextPlate?: LoadedPhoto,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -362,11 +365,18 @@ function composeMain(
   mainCtx.fillRect(0, 0, mw, mh);
 
   if (plate) {
+    const drawPlate = () => {
+      if (style === "papertear" && fx.reveal && nextPlate) {
+        drawPaperTear(mainCtx, plate.bitmap, nextPlate.bitmap, mw, mh, mode, fx.cutIndex, fx.reveal.progress);
+      } else {
+        drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
+      }
+    };
     if (composeDetailActive()) {
-      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh));
+      traceCompose("compose.photo", drawPlate);
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
-      drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
+      drawPlate();
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
   }

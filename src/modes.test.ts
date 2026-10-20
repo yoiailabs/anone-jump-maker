@@ -10,7 +10,7 @@ import { exportFileName } from "./modes.ts";
 
 const ASPECTS: readonly AspectMode[] = ["portrait", "landscape"];
 
-describe("2x2 mode matrix", () => {
+describe("aspect and effect matrix", () => {
   it("tags the saved file with both the effect and the aspect", () => {
     const seen = new Set<string>();
     for (const mode of ASPECTS) {
@@ -18,7 +18,8 @@ describe("2x2 mode matrix", () => {
         seen.add(exportFileName(mode, style, "mp4"));
       }
     }
-    expect(seen.size).toBe(4);
+    expect(seen.size).toBe(2 * SWAP_STYLES.length);
+    expect(exportFileName("portrait", "papertear", "mp4")).toBe("anone-papertear-9x16.mp4");
     expect(exportFileName("portrait", "jump", "mp4")).toBe("anone-jump-9x16.mp4");
     expect(exportFileName("landscape", "zoom", "webm")).toBe("anone-zoom-16x9.webm");
   });
@@ -38,7 +39,7 @@ describe("image filter in filename", () => {
         }
       }
     }
-    expect(seen.size).toBe(12);
+    expect(seen.size).toBe(2 * SWAP_STYLES.length * IMAGE_FILTERS.length);
     expect(exportFileName("portrait", "jump", "mp4", "blur-strong")).toBe(
       "anone-jump-9x16-blur-strong.mp4",
     );
