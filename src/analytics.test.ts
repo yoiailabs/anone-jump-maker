@@ -21,18 +21,22 @@ afterEach(() => {
 });
 
 describe("videoEventParams", () => {
-  it("sends only aspect and effect/swap, never identifying extras", () => {
+  it("sends only settings, never identifying extras", () => {
     expect(videoEventParams("portrait", "jump")).toEqual({
       aspect: "portrait",
       effect: "jump",
       swap: "jump",
+      filter: "none",
+      color_filter: "none",
     });
     expect(videoEventParams("landscape", "zoom")).toEqual({
       aspect: "landscape",
       effect: "zoom",
       swap: "zoom",
+      filter: "none",
+      color_filter: "none",
     });
-    expect(Object.keys(videoEventParams("portrait", "jump")).sort()).toEqual(["aspect", "effect", "swap"]);
+    expect(Object.keys(videoEventParams("portrait", "jump")).sort()).toEqual(["aspect", "color_filter", "effect", "filter", "swap"]);
   });
 });
 

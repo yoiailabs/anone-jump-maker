@@ -1,10 +1,11 @@
+import type { ColorFilter } from "./color-filter.ts";
 import {
   TEMPLATE_DECODE_MESSAGE,
   TEMPLATE_FRAME_FROZEN_MESSAGE,
   TEMPLATE_FRAME_MISSING_MESSAGE,
   UNSUPPORTED_EXPORT_MESSAGE,
 } from "./export.ts";
-import type { AspectMode, SwapStyle } from "./layout.ts";
+import type { AspectMode, ImageFilter, SwapStyle } from "./layout.ts";
 import { MESSAGES } from "./messages.ts";
 
 /**
@@ -46,11 +47,13 @@ export type AnalyticsEventName =
   | typeof GENERATE_CANCEL_EVENT
   | typeof MAKE_OPEN_EVENT;
 
-/** 向きとエフェクトだけ。写真名やファイルは載せない。 */
+/** 設定値だけ。写真名やファイルは載せない。 */
 export type AnalyticsEventParams = {
   aspect: AspectMode;
   effect: SwapStyle;
   swap: SwapStyle;
+  filter: ImageFilter;
+  color_filter: ColorFilter;
 };
 
 /** ファネル用。count と短い reason だけ。 */
@@ -88,8 +91,10 @@ function hostGtag(): GtagFn | undefined {
   return typeof gtag === "function" ? (gtag as GtagFn) : undefined;
 }
 
-export function videoEventParams(aspect: AspectMode, effect: SwapStyle): AnalyticsEventParams {
-  return { aspect, effect, swap: effect };
+export function videoEventParams(
+  aspect: AspectMode, effect: SwapStyle, filter: ImageFilter = "none", colorFilter: ColorFilter = "none",
+): AnalyticsEventParams {
+  return { aspect, effect, swap: effect, filter, color_filter: colorFilter };
 }
 
 /** 既知の書き出しエラーだけ短い reason にする。未知の文面はそのまま送らない。 */

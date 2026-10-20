@@ -1,3 +1,4 @@
+import { COLOR_FILTERS } from "./color-filter.ts";
 import type { BrowserOptions } from "@sentry/browser";
 import {
   ASPECT_MODES,
@@ -207,6 +208,7 @@ const TRACE_STRING_ENUMS: Record<string, ReadonlySet<string>> = {
   aspect: new Set(ASPECT_MODES),
   effect: new Set(SWAP_STYLES),
   filter: new Set(IMAGE_FILTERS),
+  color_filter: new Set(COLOR_FILTERS),
   character_size: new Set(CHARACTER_SIZES),
   character_path: new Set(["rgba-copyTo", "html-video-seek"]),
   probe_outcome: new Set(["rgba-copyTo", "html-video-seek"]),

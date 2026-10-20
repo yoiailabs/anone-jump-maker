@@ -1,3 +1,4 @@
+import { isColorFilter, type ColorFilter } from "./color-filter.ts";
 import {
   GENERATE_CANCEL_EVENT,
   GENERATE_FAIL_EVENT,
@@ -188,6 +189,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const aspectInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="aspect"]')];
   const swapInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="swap"]')];
   const filterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="filter"]')];
+  const colorFilterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="color_filter"]')];
+  const colorFilterValue = checkedNamedValue(colorFilterInputs, "color_filter");
+  let colorFilter: ColorFilter = colorFilterValue && isColorFilter(colorFilterValue) ? colorFilterValue : "none";
   const characterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="character"]')];
 
   const aspectValue = checkedNamedValue(aspectInputs, "aspect");
@@ -366,6 +370,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     for (const input of filterInputs) {
       input.disabled = recording;
     }
+    for (const input of colorFilterInputs) {
+      input.disabled = recording;
+    }
     for (const input of characterInputs) {
       input.disabled = recording;
     }
@@ -383,7 +390,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     const timing = benchFlags.bench || watchPreview;
     const started = timing ? performance.now() : 0;
     const cuts = timeline();
-    compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize);
+    compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize, colorFilter);
     const duration = timing ? performance.now() - started : 0;
     if (benchFlags.bench) {
       if (paintClockStart === 0) paintClockStart = started;
@@ -484,7 +491,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     stopLoop = startVideoPaintLoop(video, paint);
   };
 
-  const analyticsParams = () => videoEventParams(mode, swapStyle);
+  const analyticsParams = () => videoEventParams(mode, swapStyle, imageFilter, colorFilter);
 
   const trackPreviewStart = () => {
     if (!shouldTrackPreviewStart({ event: "start", recording, trackedThisPlayback: previewTracked })) {
@@ -536,6 +543,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       aspect: mode,
       effect: swapStyle,
       filter: imageFilter,
+      color_filter: colorFilter,
       character_size: characterSize,
       has_photos: photos.length > 0,
     });
@@ -903,6 +911,14 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     paint();
   };
 
+  const applyColor = (next: ColorFilter) => {
+    if (next === colorFilter) return;
+    studioTrace.onPreviewStop("settings");
+    colorFilter = next;
+    for (const input of colorFilterInputs) input.checked = input.value === next;
+    paint();
+  };
+
   const applyCharacterSize = (next: CharacterSize) => {
     if (next === characterSize) return;
     studioTrace.onPreviewStop("settings");
@@ -996,6 +1012,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     input.addEventListener("change", () => {
       if (recording || !input.checked || !isImageFilter(input.value)) return;
       applyFilter(input.value);
+    });
+  }
+
+  for (const input of colorFilterInputs) {
+    input.addEventListener("change", () => {
+      if (recording || !input.checked || !isColorFilter(input.value)) return;
+      applyColor(input.value);
     });
   }
 
@@ -1167,6 +1190,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
         aspect: mode,
         effect: swapStyle,
         filter: imageFilter,
+        color_filter: colorFilter,
         character_size: characterSize,
         has_photos: true,
       });
@@ -1200,7 +1224,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
           setExportProgress(exportProgressPercent(progress.current, progress.total));
         },
       });
-      const filename = exportFileName(mode, swapStyle, result.extension, imageFilter);
+      const filename = exportFileName(mode, swapStyle, result.extension, imageFilter, colorFilter);
       pendingExport = { blob: result.blob, filename, mime: result.mime, extension: result.extension };
       exportAbort = null;
       showExportReady();

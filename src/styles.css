@@ -1175,6 +1175,11 @@ html[lang="ja"] .ja-phrase {
 }
 
 @media (max-width: 420px) {
+  .studio-option-tab {
+    font-size: 0.75rem;
+    letter-spacing: 0;
+  }
+
   .studio-option-tab-full {
     display: none;
   }
@@ -1245,6 +1250,10 @@ html[lang="ja"] .ja-phrase {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
+}
+
+.color-filter-toggle {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .aspect-toggle.cols-3 {

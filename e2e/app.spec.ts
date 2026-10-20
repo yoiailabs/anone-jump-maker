@@ -194,7 +194,7 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   );
   await jumpOption.click();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
-  await page.locator("#filterTab").click();
+  await page.locator("#blurTab").click();
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
   await page.locator("#characterTab").click();
   await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
@@ -867,4 +867,46 @@ async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"
     .not.toBe("");
   if (outcome === "") throw new Error("export outcome was empty");
   return outcome;
+}
+
+for (const locale of ["ja", "en"] as const) {
+  test(`${locale}: combines color filters and blur at 375px and names the saved clip`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(locale === "ja" ? "/make" : "/en/make");
+    await waitForAppReady(page);
+    await uploadPhoto(page);
+    await expect(page.locator("#saveBtn")).toBeEnabled();
+    await expect(page.locator(".studio-option-tab")).toHaveCount(5);
+    const tabs = page.locator(".studio-option-tabs");
+    expect(await tabs.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    for (const tab of await page.locator(".studio-option-tab").all()) {
+      const box = await tab.boundingBox();
+      expect(box && box.x >= 0 && box.x + box.width <= 375).toBe(true);
+      expect(await tab.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    }
+    await expect(page.locator("#blurTab")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
+    await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
+    await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
+    const canvas = page.locator("canvas.stage-canvas");
+    const original = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+    await page.locator("#filterTab").click();
+    await expect(page.locator('#filterPanel input[type="radio"]')).toHaveCount(8);
+    await page.locator('label:has(input[name="color_filter"][value="sepia"])').click();
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(original);
+    await page.locator("#blurTab").click();
+    await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
+    await page.locator("#aspectTab").click();
+    await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+    await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
+    await expect(page.locator('input[name="filter"][value="blur-weak"]')).toBeChecked();
+    await expect(page.locator('input[name="color_filter"][value="sepia"]')).toBeChecked();
+    await page.evaluate(() => Object.defineProperty(navigator, "canShare", { configurable: true, value: () => false }));
+    await page.locator("#saveBtn").click();
+    await expect(page.locator("#exportPanel")).toHaveAttribute("data-export-phase", "done");
+    const download = page.waitForEvent("download");
+    await page.locator("#downloadExportBtn").click();
+    expect((await download).suggestedFilename()).toMatch(/^anone-zoom-16x9-blur-weak-sepia\.(mp4|webm)$/);
+  });
 }
