@@ -7,6 +7,38 @@ import type { LoadedPhoto } from "./photos.ts";
 vi.mock("./papertear.ts", { spy: true });
 const cuts: CutTimeline & { slotFrames: number[] } = await fetch("/official-assets/template/landscape-cuts.json").then((r) => r.json());
 
+// Fixed 303×227 RGBA fixtures: transparent, red (220, 40, 40, 128), blue (40, 80, 220, 128).
+// Generated once with Pillow Image.new, saved as PNG (optimize=True) and WebP
+// (lossless=True). Decoding must not depend on the browser's WebP encoder.
+const transparentFixtures = {
+  "image/png": {
+    transparent: "iVBORw0KGgoAAAANSUhEUgAAAS8AAADjCAYAAADUg5KjAAABIklEQVR42u3BMQEAAADCoPVPbQhfoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgNMAM9MAAa6FOaMAAAAASUVORK5CYII=",
+    red: "iVBORw0KGgoAAAANSUhEUgAAAS8AAADjCAYAAADUg5KjAAACR0lEQVR42u3UQREAMAjAsDE1yEQoYrABd4mEPhqdWQ/gmC8BYF4A5gVgXoB5AZgXgHkB5gVgXgDmBWBegHkBmBeAeQHmBWBeAOYFmBeAeQGYF4B5AeYFYF4A5gWYF4B5AZgXYF4A5gVgXgDmBZgXgHkBmBdgXgDmBWBegHkBmBeAeQGYF2BeAOYFYF6AeQGYF4B5AeYFYF4A5gVgXoB5AZgXgHkB5gVgXgDmBZgXgHkBmBeAeQHmBWBeAOYFmBeAeQGYF4B5AeYFYF4A5gWYF4B5AZgXYF4A5gVgXgDmBZgXgHkBmBdgXgDmBWBegHkBmBeAeQGYF2BeAOYFYF6AeQGYF4B5AeYFYF4A5gVgXoB5AZgXgHkB5gVgXgDmBZgXgHkBmBeAeQHmBWBeAOYFmBeAeQGYF2BeAOYFYF4A5gWYF4B5AZgXYF4A5gVgXoB5AZgXgHkBmBdgXgDmBWBegHkBmBeAeQGYF2BeAOYFYF6AeQGYF4B5AeYFYF4A5gVgXoB5AZgXgHkB5gVgXgDmBZgXgHkBmBeAeQHmBWBeAOYFmBeAeQGYF2BeAOYFYF4A5gWYF4B5AZgXYF4A5gVgXoB5AZgXgHkBmBdgXgDmBWBegHkBmBeAeQHmBWBeAOYFYF6AeQGYF4B5AeYFYF4A5gWYF4B5AZgXgHkB5gVgXgDmBZgXgHkBmBeAeQHmBWBeAOYFmBeAeQGYF2BeAOYFYF4A5gWYF4B5AZgXYF4A5gVgXoB5AZgXgHkBmBdgXgDmBWBegHkBrDLQyANyyfpl0gAAAABJRU5ErkJggg==",
+    blue: "iVBORw0KGgoAAAANSUhEUgAAAS8AAADjCAYAAADUg5KjAAACSUlEQVR42u3UQREAMAjAsDE1kzNJCEUMNuAukdBH4/3KA7DMlQAwLwDzAjAvwLwAzAvAvADzAjAvAPMCMC/AvADMC8C8APMCMC8A8wLMC8C8AMwLwLwA8wIwLwDzAswLwLwAzAswLwDzAjAvAPMCzAvAvADMCzAvAPMCMC/AvADMC8C8AMwLMC8A8wIwL8C8AMwLwLwA8wIwLwDzAjAvwLwAzAvAvADzAjAvAPMCzAvAvADMC8C8APMCMC8A8wLMC8C8AMwLwLwA8wIwLwDzAswLwLwAzAswLwDzAjAvAPMCzAvAvADMCzAvAPMCMC/AvADMC8C8AMwLMC8A8wIwL8C8AMwLwLwA8wIwLwDzAjAvwLwAzAvAvADzAjAvAPMCzAvAvADMC8C8APMCMC8A8wLMC8C8AMwLMC8A8wIwLwDzAswLwLwAzAswLwDzAjAvwLwAzAvAvADMCzAvAPMCMC/AvADMC8C8AMwLMC8A8wIwL8C8AMwLwLwA8wIwLwDzAjAvwLwAzAvAvADzAjAvAPMCzAvAvADMC8C8APMCMC8A8wLMC8C8AMwLMC8A8wIwLwDzAswLwLwAzAswLwDzAjAvwLwAzAvAvADMCzAvAPMCMC/AvADMC8C8APMCMC8A8wIwL8C8AMwLwLwA8wIwLwDzAswLwLwAzAvAvADzAjAvAPMCzAvAvADMC8C8APMCMC8A8wLMC8C8AMwLMC8A8wIwLwDzAswLwLwAzAswLwDzAjAvwLwAzAvAvADMCzAvAPMCMC/AvABGaeiAA5qb1TEVAAAAAElFTkSuQmCC",
+  },
+  "image/webp": {
+    transparent: "UklGRiQAAABXRUJQVlA4TBcAAAAvLoE4EAcQEREQEiT+f28iov8Z//m/DAA=",
+    red: "UklGRigAAABXRUJQVlA4TBsAAAAvLoE4EAdQlHIXpYABIUHi//cmIvqf8Z//ywAA",
+    blue: "UklGRigAAABXRUJQVlA4TBsAAAAvLoE4EAdQqKKUu4ABIUHi//cmIvqf8Z//ywAA",
+  },
+} as const;
+
+async function transparentPhoto(
+  mime: keyof typeof transparentFixtures,
+  color: keyof (typeof transparentFixtures)["image/png"],
+): Promise<LoadedPhoto> {
+  const bytes = Uint8Array.from(atob(transparentFixtures[mime][color]), (char) => char.charCodeAt(0));
+  const bitmap = await createImageBitmap(new Blob([bytes], { type: mime }));
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0);
+  expect([bitmap.width, bitmap.height]).toEqual([303, 227]);
+  expect(ctx.getImageData(151, 113, 1, 1).data[3]).toBe(color === "transparent" ? 0 : 128);
+  return { id: color, name: mime, bitmap, thumbUrl: "" };
+}
+
 async function photo(color: string, gradient = false): Promise<LoadedPhoto> {
   const canvas = document.createElement("canvas");
   canvas.width = 303;
@@ -98,7 +130,7 @@ for (const mode of ["landscape", "portrait"] as const) {
     });
   }
 
-  for (const mime of ["image/png", "image/webp"]) {
+  for (const mime of ["image/png", "image/webp"] as const) {
     it(`${mode} ${mime}: transparent and translucent old/new plates stay continuous at both window ends`, async () => {
       const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
       compositor.setAspect(mode);
@@ -106,18 +138,9 @@ for (const mode of ["landscape", "portrait"] as const) {
       try {
         for (const [oldAlpha, nextAlpha] of [[0, 0.5], [0.5, 0], [0.5, 0.5]]) {
           const photos: LoadedPhoto[] = [];
-          for (const [index, alpha] of [oldAlpha, nextAlpha].entries()) {
-            const canvas = document.createElement("canvas");
-            canvas.width = 303;
-            canvas.height = 227;
-            const ctx = canvas.getContext("2d")!;
-            ctx.fillStyle = index === 0 ? `rgba(220,40,40,${alpha})` : `rgba(40,80,220,${alpha})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), mime));
-            expect(blob.type).toBe(mime);
-            photos.push({ id: `${index}`, name: mime, bitmap: await createImageBitmap(blob), thumbUrl: "" });
-          }
           try {
+            photos.push(await transparentPhoto(mime, oldAlpha === 0 ? "transparent" : "red"));
+            photos.push(await transparentPhoto(mime, nextAlpha === 0 ? "transparent" : "blue"));
             for (const filter of ["none", "blur-weak", "blur-strong"] as const) {
               compositor.draw(video, photos, cuts, 13 / 30, "papertear", filter);
               const before = pixels(compositor.canvas);
