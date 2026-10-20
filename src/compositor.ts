@@ -1,4 +1,5 @@
 import { applySoftwareBlur } from "./blur.ts";
+import { drawGlitch } from "./glitch.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
   createGpuKeyer,
@@ -605,6 +606,10 @@ function applyFrameFx(
   surfaces: FxSurfaces,
   fx: SwapFx,
 ): void {
+  if (fx.glitch) {
+    drawGlitch(main, mainCtx, surfaces, fx.cutIndex, fx.glitch);
+    return;
+  }
   const w = main.width;
   const h = main.height;
   const { fxA, fxACtx, fxB, fxBCtx } = surfaces;

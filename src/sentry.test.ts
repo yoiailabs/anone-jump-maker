@@ -222,6 +222,9 @@ describe("trace sampling", () => {
 });
 
 describe("trace attribute allowlist", () => {
+  it("retains glitch for Sentry and performance spans", () => {
+    expect(pickTraceAttributes({ effect: "glitch" })).toEqual({ effect: "glitch" });
+  });
   it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
     expect(
       pickTraceAttributes({

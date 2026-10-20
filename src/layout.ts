@@ -84,25 +84,27 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 /**
  * テンプレは 30fps。切替エフェクトはフレーム単位で実測しているので、この値で時間→フレームに直す。
  * スロット時刻 S（landscape-cuts.json。縦横共通）は色分け Short utNIG60-li0 の色切替＝テンプレのポーズ切替フレーム。
- * ジャンプは S に新写真、ズームは縦横とも S+1 に新写真（S はブラー頂点）。
+ * ジャンプ・グリッチは S に新写真、ズームは縦横とも S+1 に新写真（S はブラー頂点）。
  */
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
+ * - glitch: カット前後だけ RGB・横スライス・ブロックがずれ、カットでは新写真をクリーンに出す。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "glitch";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "glitch"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  glitch: "グリッチ",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return value === "jump" || value === "zoom" || value === "glitch";
 }
 
 /**
@@ -357,6 +359,8 @@ export type SwapFx = {
   backdrop: boolean;
   /** この窓が属するカット（スロット境界）。先頭スロット内で切替が無ければ 0。 */
   cutIndex: number;
+  /** グリッチ専用。旧エフェクトの値は変えず、必要なフレームだけ作る。 */
+  glitch?: { amount: number; frame: number };
 };
 
 const NO_FX = {
@@ -370,6 +374,9 @@ const NO_FX = {
   wave: 0,
   backdrop: false,
 } as const;
+
+/** 前 3 枚で強まり、カットの 1 枚を空けて後 3 枚で減衰する。 */
+const GLITCH_AMOUNTS = [0.2, 0.55, 1, 0, 0.35, 0.2, 0.1] as const;
 
 /**
  * キャラ倍率の基準。横は公式 16:9 フレーム等倍。
@@ -624,6 +631,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
+ * - glitch: 写真は S に即時切替。前 3／後 3 フレだけ小さなデジタルずれ、S の 1 枚はクリーン。
  *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
  */
 export function swapFx(
@@ -654,6 +662,30 @@ export function swapFx(
       flashScreen: JUMP_FLASH_SCREEN * env,
       flashGlobal: JUMP_FLASH_GLOBAL * env,
       cutIndex: index,
+    };
+  }
+
+  if (style === "glitch") {
+    // 30fps のフレーム内では同じ値。カットの 1 枚は完全にクリーン、次の 3 枚は弱い余韻。
+    let cutIndex = index;
+    let frame = Math.floor(k + FRAME_EPS);
+    const next = slots[index + 1];
+    if (next !== undefined && (next - time) * TEMPLATE_FPS <= 3 + FRAME_EPS) {
+      cutIndex = index + 1;
+      frame = Math.floor((time - next) * TEMPLATE_FPS + FRAME_EPS);
+    }
+    // 先頭には写真の切替がないのでグリッチを出さない。
+    const amount = cutIndex > 0 ? GLITCH_AMOUNTS[frame + 3] ?? 0 : 0;
+    const env = amount * jumpFlashEnvelope(frame);
+    return {
+      ...NO_FX,
+      plateSlot: index,
+      scale: 1,
+      dy: 0,
+      cutIndex,
+      flashAdd: 0.06 * env,
+      flashScreen: 0.03 * env,
+      ...(amount > 0 ? { glitch: { amount, frame } } : {}),
     };
   }
 
@@ -715,7 +747,7 @@ export function swapFx(
 
 /** 切替 FX が何か描画に影響するか（全面 FX の作業キャンバスを省くため）。 */
 export function hasFrameFx(fx: SwapFx): boolean {
-  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
+  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5 || (fx.glitch?.amount ?? 0) > 0;
 }
 
 function clamp01(v: number): number {

@@ -264,3 +264,8 @@ describe("document crawlers", () => {
     ).toBe(false);
   });
 });
+
+it("labels the glitch picker in Japanese and English", () => {
+  expect(t("ja", "makerGlitch")).toBe("グリッチ");
+  expect(t("en", "makerGlitch")).toBe("Glitch");
+});

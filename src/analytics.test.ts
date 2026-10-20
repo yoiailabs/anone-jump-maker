@@ -21,6 +21,9 @@ afterEach(() => {
 });
 
 describe("videoEventParams", () => {
+  it.each(["portrait", "landscape"] as const)("accepts glitch for %s", (aspect) => {
+    expect(videoEventParams(aspect, "glitch")).toEqual({ aspect, effect: "glitch", swap: "glitch" });
+  });
   it("sends only aspect and effect/swap, never identifying extras", () => {
     expect(videoEventParams("portrait", "jump")).toEqual({
       aspect: "portrait",

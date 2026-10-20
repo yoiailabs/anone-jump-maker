@@ -67,6 +67,7 @@ describe("selection order through decode, preview, and export", () => {
     expect(oneIndexed).not.toEqual(REPORTED_SCRAMBLED_PLAYBACK);
     expectExportPlates(photos, "jump");
     expectExportPlates(photos, "zoom");
+    expectExportPlates(photos, "glitch");
   });
 
   it("drops one failed decode without letting the race reorder the rest", async () => {
@@ -91,6 +92,7 @@ describe("selection order through decode, preview, and export", () => {
     expect(photoForSlot(photos, kept.length)?.name).toBe(kept[0]?.name);
     expectExportPlates(photos, "jump");
     expectExportPlates(photos, "zoom");
+    expectExportPlates(photos, "glitch");
   });
 });
 
@@ -98,7 +100,7 @@ function slotPlates(photos: readonly LoadedPhoto[], style: SwapStyle): string[] 
   return templateCuts.slots.map((time) => plateAt(photos, time, style));
 }
 
-/** 保存は全フレームをこの順で描く。ジャンプはスロットの選択順、ズームは直前 1 フレだけ前の写真。 */
+/** 保存は全フレームをこの順で描く。ジャンプ・グリッチはスロットの選択順、ズームは直前 1 フレだけ前の写真。 */
 function expectExportPlates(photos: readonly LoadedPhoto[], style: SwapStyle): void {
   const count = photos.length;
   for (const time of frameTimes(templateCuts.duration, EXPORT_FPS)) {
@@ -110,7 +112,7 @@ function expectExportPlates(photos: readonly LoadedPhoto[], style: SwapStyle): v
       swapFx(time, templateCuts.slots, style, "portrait").plateSlot,
       count,
     );
-    if (style === "jump") {
+    if (style !== "zoom") {
       expect(portraitPlate, `portrait ${style} frame ${time}`).toBe(plate);
       expect(plate, `${style} frame ${time}`).toBe(current);
     } else {

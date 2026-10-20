@@ -33,6 +33,10 @@ import {
   characterDest,
   characterScale,
   mainPanelRect,
+  hasFrameFx,
+  isSwapStyle,
+  jumpFlashEnvelope,
+  SWAP_STYLE_LABELS,
   swapFx,
   usesBlurBackdrop,
 } from "./layout.ts";
@@ -282,5 +286,60 @@ describe("character size draw path", () => {
     expect(appSrc).toContain('input[name="character"]');
     expect(appSrc).toContain("characterSize");
     expect(appSrc).toContain("applyCharacterSize");
+  });
+});
+
+describe("glitch swap", () => {
+  const slots = [0, 15 * F, 30 * F];
+
+  it("accepts the public value and Japanese label", () => {
+    expect(isSwapStyle("glitch")).toBe(true);
+    expect(isSwapStyle("Glitch")).toBe(false);
+    expect(SWAP_STYLE_LABELS.glitch).toBe("グリッチ");
+  });
+
+  it.each(["landscape", "portrait"] as const)("%s: limits the effect to three frames on each side of real cuts", (mode) => {
+    for (const cutIndex of [1, 2]) {
+      const cut = slots[cutIndex]!;
+      for (let frame = -6; frame <= 7; frame++) {
+        const fx = swapFx(cut + frame * F, slots, "glitch", mode);
+        const active = frame >= -3 && frame <= 3 && frame !== 0;
+        expect(hasFrameFx(fx), `cut ${cutIndex}, frame ${frame}`).toBe(active);
+        expect(fx.scale).toBe(1);
+        expect(fx.dy).toBe(0);
+        expect(fx.plateSlot).toBe(frame < 0 ? cutIndex - 1 : cutIndex);
+        if (active) {
+          expect(fx.glitch!.frame).toBe(frame);
+          expect(fx.cutIndex).toBe(cutIndex);
+          expect(fx.glitch!.amount).toBeGreaterThan(0);
+          expect(fx.flashAdd).toBeCloseTo(0.06 * fx.glitch!.amount * jumpFlashEnvelope(frame), 12);
+          expect(fx.flashScreen).toBeCloseTo(fx.flashAdd / 2, 12);
+          expect(fx.flashAdd).toBeLessThan(0.03);
+        } else {
+          expect(fx.glitch).toBeUndefined();
+          expect(fx.flashAdd).toBe(0);
+          expect(fx.flashScreen).toBe(0);
+        }
+      }
+      expect(swapFx(cut + 0.001, slots, "glitch", mode).plateSlot).toBe(cutIndex);
+      expect(hasFrameFx(swapFx(cut + 0.001, slots, "glitch", mode))).toBe(false);
+    }
+    for (const time of [0, F, 2 * F, 3 * F, 5 * F]) {
+      expect(hasFrameFx(swapFx(time, slots, "glitch", mode))).toBe(false);
+    }
+    for (const empty of [[], [0]]) {
+      expect(hasFrameFx(swapFx(F, empty, "glitch", mode))).toBe(false);
+    }
+  });
+
+  it("is independent of calls, aspect, and subframe jitter at template frame timestamps", () => {
+    for (const frame of [-3, -2, -1, 0, 1, 2, 3]) {
+      const time = slots[1]! + frame * F;
+      const expected = swapFx(time, slots, "glitch");
+      swapFx(0.97, slots, "glitch");
+      expect(swapFx(time, slots, "glitch")).toEqual(expected);
+      expect(swapFx(time + 1e-9, slots, "glitch", "portrait")).toEqual(expected);
+      expect(swapFx(time - 1e-9, slots, "glitch", "landscape")).toEqual(expected);
+    }
   });
 });
