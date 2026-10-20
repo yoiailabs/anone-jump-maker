@@ -7,6 +7,13 @@ import type { LoadedPhoto } from "./photos.ts";
 
 const timeline = { slots: [0, 1] };
 const filters = ["none", "blur-weak", "blur-strong"] as const;
+// Fixed 256×256 RGBA fixtures: left half transparent, right half (240, 0, 0, 128).
+// Generated once with Pillow Image.new/paste, saved as PNG (optimize=True) and
+// WebP (lossless=True). Decoding must not depend on the browser's WebP encoder.
+const transparentFixtures = {
+  "image/png": "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAACX0lEQVR42u3UQQEAMAjEsGPKkYwEDMwBiYQ+WuG0SVqFu54EYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGAAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGABgAIABAAYAGAAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYAGAAgAEABgAYABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgAYACAAQAGABgA8LMgjANwKK9G+wAAAABJRU5ErkJggg==",
+  "image/webp": "UklGRigAAABXRUJQVlA4TBwAAAAv/8A/EA8QAx8DGAwhAeH/adEEEf2fALJ5/w0+",
+} as const;
 const pixels = (canvas: HTMLCanvasElement) => canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
 function snapshot(source: HTMLCanvasElement): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
@@ -14,35 +21,39 @@ function snapshot(source: HTMLCanvasElement): HTMLCanvasElement {
   canvas.getContext("2d")!.drawImage(source, 0, 0);
   return canvas;
 }
-async function photo(color: string, transparent = false, mime?: string): Promise<LoadedPhoto> {
+async function transparentPhoto(mime: keyof typeof transparentFixtures): Promise<LoadedPhoto> {
+  const bytes = Uint8Array.from(atob(transparentFixtures[mime]), (char) => char.charCodeAt(0));
+  const bitmap = await createImageBitmap(new Blob([bytes], { type: mime }));
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0);
+  expect([bitmap.width, bitmap.height]).toEqual([256, 256]);
+  expect(ctx.getImageData(64, 128, 1, 1).data[3]).toBe(0);
+  expect(ctx.getImageData(192, 128, 1, 1).data[3]).toBe(128);
+  return { id: mime, name: "fixture", bitmap, thumbUrl: "" };
+}
+async function photo(color: string): Promise<LoadedPhoto> {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 256;
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = color;
-  if (transparent) {
-    // 左半分は完全透過、右半分は半透明。PNG/WebPの実デコードでもアルファを残す。
-    ctx.globalAlpha = 0.5;
-    ctx.fillRect(128, 0, 128, 256);
-  } else {
-    ctx.fillRect(0, 0, 256, 256);
-    ctx.fillStyle = "#000";
-    for (let x = 0; x < 256; x += 8) ctx.fillRect(x, 0, 3, 256);
-  }
-  const source = mime ? await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!), mime, 1)) : canvas;
-  if (source instanceof Blob) expect(source.type).toBe(mime);
-  return { id: color, name: "fixture", bitmap: await createImageBitmap(source), thumbUrl: "" };
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = "#000";
+  for (let x = 0; x < 256; x += 8) ctx.fillRect(x, 0, 3, 256);
+  return { id: color, name: "fixture", bitmap: await createImageBitmap(canvas), thumbUrl: "" };
 }
 function equal(a: Uint8ClampedArray, b: Uint8ClampedArray): boolean {
   return a.length === b.length && a.every((value, i) => value === b[i]);
 }
 
 for (const mode of ["landscape", "portrait"] as const) {
-  for (const mime of ["image/png", "image/webp"]) {
+  for (const mime of ["image/png", "image/webp"] as const) {
     it(`${mode} ${mime}: transparent and translucent reveal interiors match normal drawing at the window end`, async () => {
       const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
       compositor.setAspect(mode);
       const old = await photo("#00c000");
-      const next = await photo("#f00000", true, mime);
+      const next = await transparentPhoto(mime);
       const video = document.createElement("video");
       try {
         for (const filter of filters) {
