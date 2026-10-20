@@ -25,6 +25,7 @@ import {
   hasImageFilter,
   mainPanelRect,
   OUTPUTS,
+  PHOTO_BASE_COLOR,
   outputSize,
   plateCoverScale,
   plateRestShiftFrac,
@@ -361,20 +362,40 @@ function composeMain(
   const mw = main.width;
   const mh = main.height;
   resetCtx(mainCtx);
-  mainCtx.fillStyle = "#0a0806";
+  mainCtx.fillStyle = PHOTO_BASE_COLOR;
   mainCtx.fillRect(0, 0, mw, mh);
 
   if (plate) {
     if (composeDetailActive()) {
       traceCompose("compose.photo", () => {
         drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
-        if (style === "catiris" && fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
       });
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
       drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
-      if (style === "catiris" && fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
+    }
+    if (style === "catiris" && fx.reveal && nextPlate) {
+      const { progress } = fx.reveal;
+      const reveal = () => {
+        let source: ImageBitmap | HTMLCanvasElement = nextPlate.bitmap;
+        if (hasImageFilter(imageFilter)) {
+          // 全面FX用の既存作業面を窓内だけ借りる。写真を個別に加工して境界の色混ざりを防ぐ。
+          const { fxA, fxACtx } = surfaces;
+          ensureCanvasSize(fxA, mw, mh);
+          resetCtx(fxACtx);
+          fxACtx.fillStyle = PHOTO_BASE_COLOR;
+          fxACtx.fillRect(0, 0, mw, mh);
+          const dest = coverDest(source.width, source.height, mw, mh);
+          fxACtx.drawImage(source, dest.x, dest.y, dest.w, dest.h);
+          applyPhotoFilter(fxA, fxACtx, surfaces, imageFilter);
+          source = fxA;
+        }
+        // 白フチと影は写真フィルターの後で描く。
+        drawCatIris(mainCtx, source, mw, mh, progress);
+      };
+      if (composeDetailActive()) traceCompose("compose.photo", reveal);
+      else reveal();
     }
   }
 

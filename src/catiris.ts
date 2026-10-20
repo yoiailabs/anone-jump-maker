@@ -1,4 +1,4 @@
-import { coverDest } from "./layout.ts";
+import { coverDest, PHOTO_BASE_COLOR } from "./layout.ts";
 
 /** 中間サイズで一度だけ弾む。進捗は単調、半径だけが easeOutBack で行き過ぎて戻る。 */
 export function easeOutBack(t: number): number {
@@ -38,7 +38,7 @@ function catHead(): Path2D {
 /** 写真はフレームへ cover したまま、等方拡大したネコ形の穴だけに描く。画素読み戻しなし。 */
 export function drawCatIris(
   ctx: CanvasRenderingContext2D,
-  bitmap: ImageBitmap,
+  bitmap: ImageBitmap | HTMLCanvasElement,
   w: number,
   h: number,
   progress: number,
@@ -53,6 +53,9 @@ export function drawCatIris(
   ctx.save();
   ctx.clip(path);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // 透過・半透明の次写真も通常描画と同じ下地へ重ね、旧写真を残さない。
+  ctx.fillStyle = PHOTO_BASE_COLOR;
+  ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
   ctx.restore();
   ctx.strokeStyle = "#fff";

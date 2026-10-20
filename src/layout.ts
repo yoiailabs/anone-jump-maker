@@ -116,6 +116,9 @@ export function isSwapStyle(value: string): value is SwapStyle {
   return value === "jump" || value === "zoom" || value === "catiris";
 }
 
+/** 透過写真にも使う、通常描画と切替中で共通の写真層の下地色。 */
+export const PHOTO_BASE_COLOR = "#0a0806";
+
 /**
  * 写真層フィルター。向き・切替と独立に選べる。線画キャラには掛けない。
  * - none: 加工なし
