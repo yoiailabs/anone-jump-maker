@@ -222,29 +222,29 @@ test("opens a generation modal from the preview save button", async ({ page }) =
 
 test("opens a generation modal with progress and cancel", async ({ page }) => {
   await uploadPhoto(page);
+  let releaseTemplate!: () => void;
+  const templateGate = new Promise<void>((resolve) => { releaseTemplate = resolve; });
   await page.route("**/official-assets/template/*.mp4", async (route) => {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 8_000);
-    });
-    try {
-      await route.continue();
-    } catch {
-      // キャンセルで fetch が中断されると continue は失敗する
-    }
+    await templateGate;
+    await route.fallback();
   });
   const dialog = page.locator("#exportPanel");
   await page.locator("#saveBtn").click();
   try {
     await expect(dialog).toBeVisible({ timeout: 3_000 });
   } catch {
+    releaseTemplate();
     await expect(page.locator("#saveFeedback")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
     return;
   }
   await expect(page.locator("#exportTitle")).toHaveText("動画を生成中");
-  await expect(page.locator("dialog")).toHaveCount(0);
-  const saveBox = await page.locator("#saveBtn").boundingBox();
-  const panelBox = await page.locator("#exportPanel").boundingBox();
-  expect(saveBox && panelBox && panelBox.y > saveBox.y).toBe(true);
+  await expect(page.locator("dialog:modal")).toHaveCount(1);
+  await expect(dialog).toHaveAttribute("aria-labelledby", "exportTitle");
+  await expect(dialog).toHaveAttribute("aria-describedby", "exportKeepOpen");
+  await expect(page.locator("#saveBtn")).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute("data-export-phase", "busy");
   await expect(page.locator("#exportProgress")).toHaveAttribute("max", "100");
   await expect(page.locator("#exportProgressLabel")).toContainText("%");
   await expect(page.locator("#exportKeepOpen")).toBeVisible();
@@ -257,7 +257,10 @@ test("opens a generation modal with progress and cancel", async ({ page }) => {
   await expect(page.locator("#exportStatus")).toHaveText("");
   await expect(page.locator("#exportProgress")).toBeVisible();
   await page.locator("#cancelExportBtn").click();
+  releaseTemplate();
   await expect(dialog).toBeHidden({ timeout: 15_000 });
+  await expect(dialog).not.toHaveAttribute("data-open");
+  await expect(page.locator("#saveBtn")).toBeFocused();
   await expect(page.locator("#saveFeedback")).toBeHidden();
   await expect(page.locator("#saveFeedback")).not.toContainText("生成をキャンセルしました");
 });
@@ -521,6 +524,8 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     await expect(page.locator("#saveFeedback")).toBeHidden();
     await page.locator("#closeExportBtn").click();
     await expect(exportDialog).toBeHidden();
+    await expect(exportDialog).not.toHaveAttribute("data-open");
+    await expect(page.locator("#saveBtn")).toBeFocused();
     return;
   }
   await expect(exportDialog).toBeHidden();

@@ -95,8 +95,16 @@ function checkedNamedValue(inputs: readonly HTMLInputElement[], name: string): s
   return inputs.find((input) => input.name === name && input.checked)?.value;
 }
 
+export type ExportActions = {
+  cancel: () => void;
+  save: () => void;
+  close: () => void;
+  syncClose: () => void;
+};
+
 export type BootOptions = {
   locale?: Locale;
+  onExportActionsReady?: (actions: ExportActions) => void;
 };
 
 export async function boot(root: HTMLElement, options: BootOptions = {}): Promise<void> {
@@ -161,7 +169,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const previewSeek = must(root, "#previewSeek") as HTMLInputElement;
   const previewTime = must(root, "#previewTime");
   const studioEmpty = must(root, "#studioEmpty") as HTMLButtonElement;
-  const exportPanel = must(root, "#exportPanel");
+  const exportPanel = must(root, "#exportPanel") as HTMLDialogElement;
   const exportTitle = must(root, "#exportTitle");
   const exportStatus = must(root, "#exportStatus");
   const exportProgress = must(root, "#exportProgress") as HTMLProgressElement;
@@ -654,8 +662,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const revealExportPanel = () => {
+    if (!exportPanel.open) exportPanel.showModal();
     exportPanel.dataset.open = "true";
-    exportPanel.scrollIntoView({ block: "center", inline: "nearest" });
   };
 
   const openExportPanel = () => {
@@ -669,8 +677,24 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const closeExportPanel = () => {
+    const wasOpen = exportPanel.dataset.open === "true";
     pendingExport = null;
+    // close イベントより先に解除し、アプリ自身の閉鎖では開き直さない。
     delete exportPanel.dataset.open;
+    if (exportPanel.open) exportPanel.close();
+    if (wasOpen) saveBtn.focus({ preventScroll: true });
+  };
+
+  const syncExportPanelClose = () => {
+    // 遅れて届いた close と、アプリ自身が閉じた場合は処理しない。
+    if (exportPanel.open || exportPanel.dataset.open !== "true") return;
+    if (exportPanel.dataset.exportPhase === "busy") {
+      // Esc 連打などで cancel を抑止できなくても、生成を継続してモーダルを戻す。
+      revealExportPanel();
+      exportPanel.focus({ preventScroll: true });
+    } else {
+      closeExportPanel();
+    }
   };
 
   const cancelExport = () => {
@@ -1101,16 +1125,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     applyPreviewMute();
   });
 
-  cancelExportBtn.addEventListener("click", () => {
-    cancelExport();
-  });
-
-  downloadExportBtn.addEventListener("click", () => {
-    void savePendingExport();
-  });
-
-  closeExportBtn.addEventListener("click", () => {
-    closeExportPanel();
+  options.onExportActionsReady?.({
+    cancel: cancelExport,
+    save: () => {
+      void savePendingExport();
+    },
+    close: closeExportPanel,
+    syncClose: syncExportPanelClose,
   });
 
   window.addEventListener("beforeunload", (event) => {
@@ -1205,8 +1226,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       haltLoop();
       video.pause();
       applyPreviewMute();
-      if (!pendingExport) closeExportPanel();
       refreshButtons();
+      if (!pendingExport) closeExportPanel();
       paint();
     }
   };
