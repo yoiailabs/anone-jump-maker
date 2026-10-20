@@ -440,30 +440,32 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
     expect(portraitSlack).toBeGreaterThan(landscapeSlack);
   });
 
-  it("smoothly fades in over 3 frames and out over 4 frames", () => {
-    expect(JUMP_FLASH_IN_FRAMES).toBe(3);
-    expect(JUMP_FLASH_FRAMES).toBe(4);
-    for (const [k, value] of [[-4, 0], [-3, 0], [-2, 1 / 9], [-1, 4 / 9],
-      [0, 1], [1, 0.5625], [2, 0.25], [3, 0.0625], [4, 0], [5, 0]]) {
+  it("smoothly fades in over 5 frames and out over 6 frames", () => {
+    expect(JUMP_FLASH_IN_FRAMES).toBe(5);
+    expect(JUMP_FLASH_FRAMES).toBe(6);
+    for (const [k, value] of [[-6, 0], [-5, 0], [-4, 0.072], [-3, 0.256], [-2, 0.504], [-1, 0.768],
+      [0, 1], [1, 25 / 36], [2, 4 / 9], [3, 0.25], [4, 1 / 9], [5, 1 / 36], [6, 0], [7, 0]]) {
       expect(jumpFlashEnvelope(k!)).toBeCloseTo(value!, 10);
     }
-    for (let k = -5; k <= 6; k += 0.01) {
+    for (let k = -6; k <= 7; k += 0.01) {
       const value = jumpFlashEnvelope(k);
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(1);
       if (k < 0) expect(jumpFlashEnvelope(Math.min(0, k + 0.01))).toBeGreaterThanOrEqual(value);
       else expect(jumpFlashEnvelope(k + 0.01)).toBeLessThanOrEqual(value);
     }
-    for (const k of [-3, 0, 4]) {
+    for (const k of [-5, 0, 6]) {
       expect(jumpFlashEnvelope(k - 1e-7)).toBeCloseTo(jumpFlashEnvelope(k), 6);
       expect(jumpFlashEnvelope(k + 1e-7)).toBeCloseTo(jumpFlashEnvelope(k), 6);
     }
-    // 30fps のカット前に、中間の明るさが少なくとも 2 枚入る。
+    // 30fps のカット前に、中間の明るさが 4 枚入る。
     const preCut = Array.from({ length: JUMP_FLASH_IN_FRAMES }, (_, i) =>
       swapFx((15 - JUMP_FLASH_IN_FRAMES + i) * F, [0, 15 * F], "jump").flashAdd / JUMP_FLASH_ADD);
-    expect(preCut.filter((value) => value > 1e-10 && value < 1 - 1e-10)).toHaveLength(2);
-    expect(preCut[1]).toBeCloseTo(1 / 9, 10);
-    expect(preCut[2]).toBeCloseTo(4 / 9, 10);
+    expect(preCut.filter((value) => value > 1e-10 && value < 1 - 1e-10)).toHaveLength(4);
+    for (const [i, value] of [0, 0.072, 0.256, 0.504, 0.768].entries()) {
+      expect(preCut[i]).toBeCloseTo(value, 10);
+    }
+    expect(swapFx(16 * F, [0, 15 * F], "jump").flashAdd / JUMP_FLASH_ADD).toBeLessThan(0.75);
     expect(JUMP_FLASH_ADD).toBe(0.3);
     expect(JUMP_FLASH_SCREEN).toBe(0.2);
     expect(JUMP_FLASH_GLOBAL).toBe(0.06);
@@ -471,12 +473,12 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
 
   it("only anticipates real cuts and combines overlapping flashes continuously", () => {
     expect(swapFx(0, [0], "jump").flashAdd).toBe(JUMP_FLASH_ADD);
-    for (const k of [4, 12, 13, 14, 15, 30]) {
+    for (const k of [6, 12, 13, 14, 15, 30]) {
       expect(swapFx(k * F, [0], "jump").flashAdd).toBe(0);
       expect(swapFx((15 + k) * F, [0, 15 * F], "jump").flashAdd).toBeCloseTo(0, 12);
     }
     const slots = [0, 2 * F, 4 * F];
-    for (let k = 0; k <= 9; k += 0.025) {
+    for (let k = 0; k <= 11; k += 0.025) {
       const time = k * F;
       const expected = Math.max(...slots.map((s) => jumpFlashEnvelope((time - s) / F)));
       const fx = swapFx(time, slots, "jump");
@@ -495,12 +497,12 @@ describe("jump cycle (Short o1ROhNU0UNw)", () => {
     const slots = [0, 15 * F, 30 * F, 45 * F];
     const before = swapFx(15 * F - 1 * F, slots, "jump");
     expect(before.plateSlot).toBe(0);
-    expect(before.flashAdd).toBeCloseTo(JUMP_FLASH_ADD * 4 / 9, 6);
-    expect(before.flashScreen).toBeCloseTo(JUMP_FLASH_SCREEN * 4 / 9, 6);
-    expect(before.flashGlobal).toBeCloseTo(JUMP_FLASH_GLOBAL * 4 / 9, 6);
+    expect(before.flashAdd).toBeCloseTo(JUMP_FLASH_ADD * 0.768, 6);
+    expect(before.flashScreen).toBeCloseTo(JUMP_FLASH_SCREEN * 0.768, 6);
+    expect(before.flashGlobal).toBeCloseTo(JUMP_FLASH_GLOBAL * 0.768, 6);
     const earlier = swapFx(13 * F, slots, "jump");
     expect(earlier.plateSlot).toBe(0);
-    expect(earlier.flashAdd).toBeCloseTo(JUMP_FLASH_ADD * 1 / 9, 6);
+    expect(earlier.flashAdd).toBeCloseTo(JUMP_FLASH_ADD * 0.504, 6);
     // one frame before the cut the outgoing photo is already sinking (k=14 of its own cycle)
     expect(before.dy).toBeCloseTo(jumpCycle(14).dy, 6);
     expect(before.scale).toBeCloseTo(jumpCycle(14).scale, 6);

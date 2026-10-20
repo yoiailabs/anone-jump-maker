@@ -236,13 +236,13 @@ export const JUMP_RISE_POW = 2.3;
 export const JUMP_RISE_SCALE_POW = 2;
 
 /**
- * カット前 3 フレから立ち上がり、カット後 4 フレで消える白フラッシュ。
- * 前側は u² のイーズイン、後側は r² で減衰し、カット瞬間の加算 0.30 ＋スクリーン 0.20 は維持する。
+ * カット前 5 フレから立ち上がり、カット後 6 フレで消える白フラッシュ。
+ * 前側は u²(2−u) のイーズイン、後側は r² で減衰し、カット瞬間の加算 0.30 ＋スクリーン 0.20 は維持する。
  * 写真層のみ（キャラの黒線はほぼ黒のまま）。ピークは実測の画素マッピング
  * 45→150 / 75→175 / 105→200 / 135→220 を基準にしている。
  */
-export const JUMP_FLASH_IN_FRAMES = 3;
-export const JUMP_FLASH_FRAMES = 4;
+export const JUMP_FLASH_IN_FRAMES = 5;
+export const JUMP_FLASH_FRAMES = 6;
 export const JUMP_FLASH_ADD = 0.3;
 export const JUMP_FLASH_SCREEN = 0.2;
 /** キャラを含む全面にごく薄く乗る白（黒線が 0→約 14 に上がる分）。 */
@@ -577,10 +577,16 @@ export function jumpCycle(k: number, mode: AspectMode = "landscape"): { scale: n
   };
 }
 
-/** ジャンプ系のフラッシュ包絡。前 3 フレで立ち上がり、k=0 で 1、後 4 フレで 0。前側は u²、後側は r²。 */
+/** ジャンプ系のフラッシュ包絡。前 5 フレで立ち上がり、k=0 で 1、後 6 フレで 0。 */
 export function jumpFlashEnvelope(k: number): number {
-  const u = k < 0 ? clamp01((k + JUMP_FLASH_IN_FRAMES) / JUMP_FLASH_IN_FRAMES) : clamp01(1 - k / JUMP_FLASH_FRAMES);
-  return u * u;
+  if (k < 0) {
+    const u = clamp01((k + JUMP_FLASH_IN_FRAMES) / JUMP_FLASH_IN_FRAMES);
+    // u² と smoothstep の平均 u²(2−u)。u² より早めに明るくなり、入りが柔らかくなる。
+    return u * u * (2 - u);
+  }
+  // ピークはカット瞬間のまま、後側は r² で速やかに明るさを落とす。
+  const r = clamp01(1 - k / JUMP_FLASH_FRAMES);
+  return r * r;
 }
 
 /** ズーム系の出ていく写真の倍率。τ = S からのフレーム（−3..0 で縮む、0..1 は縮み切った値で待つ）。 */
@@ -622,7 +628,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
 
 /**
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
- * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻り。フラッシュはカット前 3／後 4 フレ。
+ * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻り。フラッシュはカット前 5／後 6 フレ。
  *   縦の下ずれは jumpDropFrac（短辺比を高さ比に直した値）。横は実測の JUMP_DROP_FRAC。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
