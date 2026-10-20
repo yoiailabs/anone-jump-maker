@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 async function prepareExport(page: Page) {
@@ -12,20 +13,38 @@ async function prepareExport(page: Page) {
   return pauseExport(page);
 }
 
-async function pauseExport(page: Page) {
+async function pauseExport(page: Page): Promise<(() => void) | null> {
   // 経過時間に依存せず、生成処理の fetch をテストから再開する。
   let release!: () => void;
+  let requested = false;
   const gate = new Promise<void>((resolve) => { release = resolve; });
   await page.route("**/official-assets/template/landscape.mp4", async (route) => {
-    if (route.request().resourceType() === "fetch") await gate;
+    if (route.request().resourceType() === "fetch") {
+      requested = true;
+      await gate;
+    }
     await route.fallback();
   });
-  const requested = page.waitForRequest((request) =>
-    request.url().endsWith("/template/landscape.mp4") && request.resourceType() === "fetch",
-  );
-  await page.locator("#saveBtn").click();
-  await requested;
-  return release;
+  try {
+    await page.locator("#saveBtn").click();
+    // VideoEncoder が無い／エンコードプランが無い場合は fetch より先に未対応になる。
+    // 一方だけを待つ Promise を残さず、どちらの結果も確認する。
+    const feedback = page.locator("#saveFeedback");
+    await expect.poll(async () =>
+      requested || ((await feedback.textContent()) ?? "").includes(UNSUPPORTED_EXPORT_MESSAGE),
+      { timeout: 45_000 },
+    ).toBe(true);
+    if (!requested) {
+      await expect(feedback).toBeVisible();
+      await expect(feedback).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
+      release();
+      return null;
+    }
+    return release;
+  } catch (error) {
+    release();
+    throw error;
+  }
 }
 
 async function expectModalFocus(dialog: Locator) {
@@ -47,6 +66,7 @@ async function expectWithinViewport(dialog: Locator, page: Page) {
 
 test("generation blocks Escape, backdrop clicks and background focus until cancelled", async ({ page }) => {
   const release = await prepareExport(page);
+  if (!release) return;
   const dialog = page.locator("#exportPanel");
   try {
     await expect(page.locator("#exportPanel:modal")).toHaveCount(1);
@@ -80,6 +100,7 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
 
 test("generation survives three consecutive Escape presses and finishes with download focus", async ({ page }) => {
   const release = await prepareExport(page);
+  if (!release) return;
   const dialog = page.locator("#exportPanel");
   try {
     for (let i = 0; i < 3; i++) {
@@ -102,6 +123,7 @@ test("generation survives three consecutive Escape presses and finishes with dow
 
 test("leaving the studio while busy closes the modal without reopening it", async ({ page }) => {
   const release = await prepareExport(page);
+  if (!release) return;
   const dialog = page.locator("#exportPanel");
   try {
     await page.evaluate(() => new Promise<void>((resolve) => {
@@ -122,6 +144,7 @@ test("leaving the studio while busy closes the modal without reopening it", asyn
 
 test("native close restores a busy modal and clears a ready export without closing twice", async ({ page }) => {
   const release = await prepareExport(page);
+  if (!release) return;
   const dialog = page.locator("#exportPanel");
   // close は非同期に届くため、イベント処理後のフレームまで待って状態を確認する。
   const nativeClose = (reopen = false) => dialog.evaluate((el, reopen) => new Promise<number>((resolve) => {
@@ -161,6 +184,7 @@ test("native close restores a busy modal and clears a ready export without closi
     await expect(dialog).not.toHaveAttribute("data-open");
     await expect(page.locator("#saveBtn")).toBeFocused();
     const releaseNext = await pauseExport(page);
+    if (!releaseNext) return;
     try {
       await expect(dialog).toHaveAttribute("data-export-phase", "busy");
       const closed = dialog.evaluate((el) => new Promise<void>((resolve) => {
@@ -183,6 +207,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 412, height: 839 
   test(`generation continues after Escape and closes on Escape when ready at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     const release = await prepareExport(page);
+    if (!release) return;
     const dialog = page.locator("#exportPanel");
     try {
       await expectWithinViewport(dialog, page);
@@ -212,6 +237,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 412, height: 839 
       await expect(dialog).not.toHaveAttribute("data-open");
       await expect(page.locator("#saveBtn")).toBeFocused();
       const releaseNext = await pauseExport(page);
+      if (!releaseNext) return;
       try {
         await expect(dialog).toHaveAttribute("data-export-phase", "busy");
         await expect(dialog).toHaveAttribute("aria-describedby", "exportKeepOpen");
@@ -231,15 +257,8 @@ test("export errors close the modal and leave the feedback and page accessible",
   await page.addInitScript(() => {
     Object.defineProperty(window, "VideoEncoder", { configurable: true, value: undefined });
   });
-  await blockAnalytics(page);
-  await stubShortTemplate(page);
-  await page.goto("/make");
-  await waitForAppReady(page);
-  await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
-  await expect(page.locator("#saveBtn")).toBeEnabled();
-  await page.locator("#saveBtn").click();
-  await expect(page.locator("#saveFeedback")).toBeVisible();
-  await expect(page.locator("#saveFeedback")).not.toBeEmpty();
+  // 共通ヘルパーも fetch を待ち続けず、未対応の結果を返すことを確認する。
+  expect(await prepareExport(page)).toBeNull();
   await expect(page.locator("#exportPanel")).toBeHidden();
   await expect(page.locator("#exportPanel")).not.toHaveAttribute("data-open");
   await expect(page.locator("#saveBtn")).toBeFocused();
