@@ -157,6 +157,10 @@ export function createCompositor(options?: {
   const mainCtx = main.getContext("2d", { alpha: false });
   if (!mainCtx) throw new Error("Canvas2D が使えません");
 
+  const photoTiles = document.createElement("canvas");
+  const photoTilesCtx = photoTiles.getContext("2d");
+  if (!photoTilesCtx) throw new Error("Canvas2D が使えません");
+
   const keyed = document.createElement("canvas");
   const keyedCtx = keyed.getContext("2d", { willReadFrequently: true });
   if (!keyedCtx) throw new Error("Canvas2D が使えません");
@@ -191,6 +195,8 @@ export function createCompositor(options?: {
       : describeKeying("cpu");
   };
   const surfaces: FxSurfaces = {
+    photoTiles,
+    photoTilesCtx,
     keyed,
     keyedCtx,
     halo,
@@ -291,6 +297,8 @@ export function createCompositor(options?: {
       canvas.height = 0;
       main.width = 0;
       main.height = 0;
+      photoTiles.width = 0;
+      photoTiles.height = 0;
       keyed.width = 0;
       keyed.height = 0;
       halo.width = 0;
@@ -308,6 +316,8 @@ export function createCompositor(options?: {
 }
 
 type FxSurfaces = {
+  photoTiles: HTMLCanvasElement;
+  photoTilesCtx: CanvasRenderingContext2D;
   keyed: HTMLCanvasElement;
   keyedCtx: CanvasRenderingContext2D;
   halo: HTMLCanvasElement;
@@ -353,10 +363,10 @@ function composeMain(
 
   if (plate) {
     if (composeDetailActive()) {
-      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, plate, fx, style, mw, mh));
+      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh));
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
-      drawPhotoPlate(mainCtx, plate, fx, style, mw, mh);
+      drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
   }
@@ -418,6 +428,7 @@ export function plateDest(
  */
 function drawPhotoPlate(
   ctx: CanvasRenderingContext2D,
+  surfaces: FxSurfaces,
   photo: LoadedPhoto,
   fx: SwapFx,
   style: SwapStyle,
@@ -427,13 +438,14 @@ function drawPhotoPlate(
   const bitmap = photo.bitmap;
   resetCtx(ctx);
   const dest = plateDest(bitmap.width, bitmap.height, mw, mh, fx, style);
-  // backdrop の閾値未満の縮みでも、小数画素の余白を残さない。
-  if (fx.backdrop || (style === "zoom" && (dest.x > 0 || dest.y > 0))) {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, mw, mh);
-    ctx.save();
+  // cover 矩形の丸め誤差ではなく実倍率で判定し、backdrop の閾値未満の縮みも補完する。
+  if (style === "zoom" && fx.scale < 1) {
+    const { photoTiles, photoTilesCtx: tilesCtx } = surfaces;
+    photoTiles.width = mw;
+    photoTiles.height = mh;
     // 小数位置で接するタイルの被覆率を加算する。source-over では境界に下地が残る。
-    ctx.globalCompositeOperation = "lighter";
+    // 透明な面で合成してから既存の下地に重ね、透過部分にも同じ下地色を残す。
+    tilesCtx.globalCompositeOperation = "lighter";
     for (const row of [-1, 0, 1]) {
       for (const col of [-1, 0, 1]) {
         const x = dest.x + col * dest.w;
@@ -441,11 +453,11 @@ function drawPhotoPlate(
         if (x >= mw || x + dest.w <= 0 || y >= mh || y + dest.h <= 0) continue;
         const sx = col === 0 ? 1 : -1;
         const sy = row === 0 ? 1 : -1;
-        ctx.setTransform(sx, 0, 0, sy, x + (sx < 0 ? dest.w : 0), y + (sy < 0 ? dest.h : 0));
-        ctx.drawImage(bitmap, 0, 0, dest.w, dest.h);
+        tilesCtx.setTransform(sx, 0, 0, sy, x + (sx < 0 ? dest.w : 0), y + (sy < 0 ? dest.h : 0));
+        tilesCtx.drawImage(bitmap, 0, 0, dest.w, dest.h);
       }
     }
-    ctx.restore();
+    ctx.drawImage(photoTiles, 0, 0);
   } else {
     ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
   }

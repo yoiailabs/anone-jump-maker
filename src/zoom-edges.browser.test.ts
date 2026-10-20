@@ -27,6 +27,91 @@ function pixels(canvas: HTMLCanvasElement): ImageData {
   return canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height);
 }
 
+async function makeTransparentPhoto(alpha?: number): Promise<LoadedPhoto> {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 303;
+  const ctx = canvas.getContext("2d")!;
+  if (alpha === undefined) {
+    // 完全透明・半透明・不透明を含め、303px の cover 丸め誤差も再現する。
+    ctx.fillStyle = "rgba(96, 128, 160, 0.5)";
+    ctx.fillRect(101, 0, 101, 303);
+    ctx.fillStyle = "rgb(96, 128, 160)";
+    ctx.fillRect(202, 0, 101, 303);
+  } else {
+    ctx.fillStyle = `rgba(96, 128, 160, ${alpha})`;
+    ctx.fillRect(0, 0, 303, 303);
+  }
+  return { id: "transparent", name: "transparent.png", bitmap: await createImageBitmap(canvas), thumbUrl: "" };
+}
+
+// クレジットより上の全画素を比較。写真の透明部分とタイルの小数境界も含む。
+function maxPhotoError(actual: ImageData, expected: ImageData): number {
+  let error = 0;
+  for (let i = 0; i < actual.width * Math.floor(actual.height * 0.8) * 4; i++) {
+    error = Math.max(error, Math.abs(actual.data[i]! - expected.data[i]!));
+  }
+  return error;
+}
+
+describe("transparent zoom photos", () => {
+  for (const mode of ["landscape", "portrait"] as const) {
+    for (const resolutionScale of [1 / 3, 1]) {
+      it(`${mode} at ${resolutionScale}: preserves the original still over the existing background`, async () => {
+        const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
+        compositor.setAspect(mode);
+        const photo = await makeTransparentPhoto();
+        const video = document.createElement("video");
+        try {
+          const { width: w, height: h } = compositor.canvas;
+          const reference = document.createElement("canvas");
+          reference.width = w;
+          reference.height = h;
+          const ctx = reference.getContext("2d")!;
+          ctx.fillStyle = "#0a0806";
+          ctx.fillRect(0, 0, w, h);
+          const dest = plateDest(303, 303, w, h, { scale: 1, dy: 0 }, "zoom");
+          ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+          const expected = pixels(reference);
+          for (const time of [0.2, S - 2 * zoomTransitionScale(mode) * F, 0.2]) {
+            compositor.draw(video, [photo], timeline, time, "zoom");
+            if (time === 0.2) expect(maxPhotoError(pixels(compositor.canvas), expected)).toBe(0);
+          }
+        } finally {
+          photo.bitmap.close();
+          compositor.destroy();
+        }
+      });
+
+      it.each([0, 0.5, 1])(`${mode} at ${resolutionScale}: preserves alpha=%s over the existing background while reflecting`, async (alpha) => {
+        const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
+        compositor.setAspect(mode);
+        const photo = await makeTransparentPhoto(alpha);
+        const video = document.createElement("video");
+        try {
+          const { width: w, height: h } = compositor.canvas;
+          const reference = document.createElement("canvas");
+          reference.width = w;
+          reference.height = h;
+          const ctx = reference.getContext("2d")!;
+          ctx.fillStyle = "#0a0806";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(photo.bitmap, 0, 0, w, h);
+          const expected = pixels(reference);
+          // 閾値未満の縮みも含める。全面 FX を止め、写真層だけで比較する。
+          for (const scale of [0.9995, 0.988, 0.947, 0.866]) {
+            vi.mocked(swapFx).mockReturnValueOnce({ ...swapFx(0.2, timeline.slots, "zoom", mode), scale, backdrop: scale < 0.999 });
+            compositor.draw(video, [photo], timeline, 0.2, "zoom");
+            expect(maxPhotoError(pixels(compositor.canvas), expected), `scale=${scale}`).toBeLessThanOrEqual(2);
+          }
+        } finally {
+          photo.bitmap.close();
+          compositor.destroy();
+        }
+      });
+    }
+  }
+});
+
 // 全高の縦線／全幅の横線を、各列／行の画素差の中央値で拾う。クレジットは中央値に影響しない。
 function edgeGradient(image: ImageData, axis: "x" | "y"): { edge: number; inner: number } {
   const { width: w, height: h, data } = image;
