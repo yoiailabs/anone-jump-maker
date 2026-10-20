@@ -67,6 +67,8 @@ describe("selection order through decode, preview, and export", () => {
     expect(oneIndexed).not.toEqual(REPORTED_SCRAMBLED_PLAYBACK);
     expectExportPlates(photos, "jump");
     expectExportPlates(photos, "zoom");
+    expectExportPlates(photos, "spin");
+    expect(slotPlates(photos, "spin")).toEqual(slotPlates(photos, "jump"));
   });
 
   it("drops one failed decode without letting the race reorder the rest", async () => {
@@ -91,6 +93,8 @@ describe("selection order through decode, preview, and export", () => {
     expect(photoForSlot(photos, kept.length)?.name).toBe(kept[0]?.name);
     expectExportPlates(photos, "jump");
     expectExportPlates(photos, "zoom");
+    expectExportPlates(photos, "spin");
+    expect(slotPlates(photos, "spin")).toEqual(slotPlates(photos, "jump"));
   });
 });
 
@@ -110,7 +114,7 @@ function expectExportPlates(photos: readonly LoadedPhoto[], style: SwapStyle): v
       swapFx(time, templateCuts.slots, style, "portrait").plateSlot,
       count,
     );
-    if (style === "jump") {
+    if (style !== "zoom") {
       expect(portraitPlate, `portrait ${style} frame ${time}`).toBe(plate);
       expect(plate, `${style} frame ${time}`).toBe(current);
     } else {

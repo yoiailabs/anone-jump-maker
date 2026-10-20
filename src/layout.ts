@@ -89,20 +89,22 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
+ * - spin: 写真が中心を軸に加速回転し、カット後は回転ブラーとともに減速して戻る。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "spin";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "spin"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  spin: "スピン",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return value === "jump" || value === "zoom" || value === "spin";
 }
 
 /**
@@ -335,6 +337,10 @@ export type SwapFx = {
   plateSlot: number;
   /** 写真の倍率（基準 cover に対して。静止時 1）。 */
   scale: number;
+  /** 写真の中心を軸にした時計回りの回転角（ラジアン）。 */
+  rotation: number;
+  /** 写真の回転方向に重ねるブラーの角度幅（ラジアン）。 */
+  rotationBlur: number;
   /** 写真の縦ずれ（パネル高さ比、+ が下）。 */
   dy: number;
   /** 写真層に乗せる白の加算量 0–1（ジャンプ）。 */
@@ -360,6 +366,8 @@ export type SwapFx = {
 };
 
 const NO_FX = {
+  rotation: 0,
+  rotationBlur: 0,
   flashAdd: 0,
   flashScreen: 0,
   flashGlobal: 0,
@@ -617,6 +625,35 @@ export function zoomKeyAt(tau: number): ZoomKey {
   return zero;
 }
 
+/** スピンは前 3 フレで 120° まで加速し、新写真は −60° から後 5 フレで静止する。 */
+export const SPIN_OUT_FRAMES = 3;
+export const SPIN_IN_FRAMES = 5;
+export const SPIN_OUT_ANGLE = 2 * Math.PI / 3;
+export const SPIN_IN_ANGLE = -Math.PI / 3;
+export const SPIN_ZOOM = 0.14;
+export const SPIN_BLUR_ANGLE = Math.PI / 8;
+
+/**
+ * パネルの四隅を逆回転した矩形を収める cover 倍率。ブラーの角度区間の極大も含む。
+ * 単なる回転後の外接矩形では、細長いパネルの隅を覆えない。
+ */
+export function spinCoverScale(w: number, h: number, rotation: number, rotationBlur = 0): number {
+  const lo = rotation - rotationBlur / 2;
+  const hi = rotation + rotationBlur / 2;
+  const ratios = [h / w, w / h];
+  let scale = 1;
+  for (const ratio of ratios) {
+    const at = (angle: number) => Math.abs(Math.cos(angle)) + ratio * Math.abs(Math.sin(angle));
+    scale = Math.max(scale, at(lo), at(hi));
+    const peak = Math.atan(ratio);
+    for (const phase of [peak, Math.PI - peak]) {
+      const angle = phase + Math.ceil((lo - phase) / Math.PI) * Math.PI;
+      if (angle <= hi) scale = Math.max(scale, Math.hypot(1, ratio));
+    }
+  }
+  return scale;
+}
+
 /**
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻り。フラッシュはカット前 3／後 4 フレ。
@@ -624,7 +661,8 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。
- *   プレビューと保存は同じ compositor.draw からここを呼ぶ。
+ * - spin: カット前 3／後 5 フレの写真回転と寄り。縦はズームと同じ時間倍率で伸ばす。
+ *   回転角とブラー幅から描画側で cover 倍率を補い、プレビューと保存は同じ compositor.draw を使う。
  */
 export function swapFx(
   time: number,
@@ -657,6 +695,27 @@ export function swapFx(
     };
   }
 
+  if (style === "spin") {
+    const next = slots[index + 1];
+    const untilNext = next === undefined ? Infinity : (next - time) * TEMPLATE_FPS;
+    const tau = zoomReferenceTau(k, mode);
+    const remaining = zoomReferenceTau(untilNext, mode);
+    const outgoing = remaining < SPIN_OUT_FRAMES - FRAME_EPS;
+    const incoming = index > 0 && tau < SPIN_IN_FRAMES - FRAME_EPS;
+    const progress = outgoing
+      ? clamp01(1 - remaining / SPIN_OUT_FRAMES)
+      : incoming ? clamp01(1 - tau / SPIN_IN_FRAMES) : 0;
+    return {
+      ...NO_FX,
+      plateSlot: index,
+      scale: 1 + SPIN_ZOOM * (outgoing ? progress ** 2 : progress ** 3),
+      rotation: progress === 0 ? 0 : outgoing ? SPIN_OUT_ANGLE * progress ** 2 : SPIN_IN_ANGLE * progress ** 3,
+      rotationBlur: SPIN_BLUR_ANGLE * (outgoing ? progress : progress ** 2),
+      dy: 0,
+      cutIndex: outgoing ? index + 1 : index,
+    };
+  }
+
   // zoom: 横の実測 τ をそのまま使う。縦はカットからの実フレームを ZOOM_PORTRAIT_TIME_SCALE で割ってから、
   // 同じ分岐（縮み・S+1 の写真入れ替わり・寄り）に入れる。振幅は分岐の中で変わらない。
   const next = slots[index + 1];
@@ -667,6 +726,7 @@ export function swapFx(
     // S..S+1（縦はその時間を ZOOM_PORTRAIT_TIME_SCALE 倍）: 前の写真が縮み切ったまま残る。
     const key = zoomKeyAt(kRef);
     return {
+      ...NO_FX,
       ...key,
       plateSlot: index - 1,
       scale: zoomOutScale(0),
@@ -684,6 +744,7 @@ export function swapFx(
     const key = zoomKeyAt(tau);
     const scale = zoomOutScale(tau);
     return {
+      ...NO_FX,
       ...key,
       plateSlot: index,
       scale,
@@ -699,6 +760,7 @@ export function swapFx(
     // S+1 以降: 新写真が寄りから引く。縦はこの減衰も同じ倍率で遅い。
     const key = zoomKeyAt(kRef);
     return {
+      ...NO_FX,
       ...key,
       plateSlot: index,
       scale: zoomInScale(kRef),

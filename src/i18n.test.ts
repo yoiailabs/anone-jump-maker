@@ -264,3 +264,8 @@ describe("document crawlers", () => {
     ).toBe(false);
   });
 });
+
+it("localizes the spin effect", () => {
+  expect(t("ja", "makerSpin")).toBe("スピン");
+  expect(t("en", "makerSpin")).toBe("Spin");
+});

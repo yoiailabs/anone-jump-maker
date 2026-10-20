@@ -194,6 +194,10 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   );
   await jumpOption.click();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
+  const spinOption = page.locator('#studioView label:has(input[name="swap"][value="spin"])');
+  await expect(spinOption).toHaveText("スピン");
+  await spinOption.click();
+  await expect(page.locator('#studioView input[name="swap"][value="spin"]')).toBeChecked();
   await page.locator("#filterTab").click();
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
   await page.locator("#characterTab").click();
@@ -531,6 +535,28 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
   await expect(exportDialog).toBeHidden();
   await expect(page.locator("#saveFeedback")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
 });
+
+for (const aspect of ["landscape", "portrait"] as const) {
+  test(`exports a ${aspect} spin clip with the effect in its filename`, async ({ page }) => {
+    await uploadPhoto(page);
+    if (aspect === "portrait") {
+      await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+    }
+    await page.locator("#swapTab").click();
+    await page.locator('#studioView label:has(input[name="swap"][value="spin"])').click();
+    await page.locator("#saveBtn").click();
+    const outcome = await waitForExportOutcome(page);
+    if (outcome === "unsupported") {
+      await expect(page.locator("#saveFeedback")).toContainText(UNSUPPORTED_EXPORT_MESSAGE);
+      return;
+    }
+    expect(outcome).toBe("ready");
+    const downloadPromise = page.waitForEvent("download");
+    await page.locator("#downloadExportBtn").click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(new RegExp(`^anone-spin-${aspect === "portrait" ? "9x16" : "16x9"}\\.(mp4|webm)$`));
+  });
+}
 
 test("download opens a file share sheet when the browser can share files", async ({ page }) => {
   await page.addInitScript(() => {

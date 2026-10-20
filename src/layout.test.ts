@@ -71,6 +71,12 @@ import {
   plateCoverScale,
   plateRestShiftFrac,
   rectToUvBottomLeft,
+  spinCoverScale,
+  SPIN_OUT_FRAMES,
+  SPIN_IN_FRAMES,
+  SPIN_OUT_ANGLE,
+  SPIN_IN_ANGLE,
+  SPIN_ZOOM,
   swapFx,
   templateBandRect,
   usesBlurBackdrop,
@@ -91,7 +97,7 @@ describe("output size", () => {
   });
 
   it("lists zoom first and uses it as the default effect", () => {
-    expect(SWAP_STYLES).toEqual(["zoom", "jump"]);
+    expect(SWAP_STYLES).toEqual(["zoom", "jump", "spin"]);
     expect(DEFAULT_SWAP_STYLE).toBe("zoom");
     expect(DEFAULT_SWAP_STYLE).toBe(SWAP_STYLES[0]);
   });
@@ -736,9 +742,10 @@ describe("zoom cycle (hagikaze_sami)", () => {
     expect(punch.scale).toBeCloseTo(swapFx(S + F, slots, "zoom", "landscape").scale, 5);
   });
 
-  it("is available in both aspects (2x2 matrix)", () => {
+  it("is available in both aspects (2x3 matrix)", () => {
     expect(isSwapStyle("jump")).toBe(true);
     expect(isSwapStyle("zoom")).toBe(true);
+    expect(isSwapStyle("spin")).toBe(true);
     expect(isSwapStyle("slide")).toBe(false);
     expect(isImageFilter("none")).toBe(true);
     expect(isImageFilter("blur-strong")).toBe(true);
@@ -787,4 +794,62 @@ describe("image filter", () => {
     expect(filterBlurPx("blur-strong", short)).toBeLessThanOrEqual(filterBlurPx("blur-weak", short) * 2 + 1);
     expect(filterBlurPx("blur-strong", 1440)).toBeGreaterThan(filterBlurPx("blur-strong", short));
   });
+});
+
+describe("spin cycle", () => {
+  const F = 1 / TEMPLATE_FPS;
+  const slots = [0, 1, 2];
+  for (const mode of ASPECT_MODES) {
+    const stretch = zoomTransitionScale(mode);
+    const at = (tau: number) => swapFx(1 + tau * stretch * F, slots, "spin", mode);
+    it(`${mode}: accelerates the outgoing photo and settles the incoming photo in five frames`, () => {
+      const before = [-3, -2, -1, -0.01].map(at);
+      expect(before.map((fx) => fx.plateSlot)).toEqual([0, 0, 0, 0]);
+      expect(before[0]!.scale).toBe(1);
+      expect(before[1]!.rotation).toBeGreaterThan(0);
+      expect(before[2]!.rotation - before[1]!.rotation).toBeGreaterThan(before[1]!.rotation);
+      expect(before[3]!.rotation).toBeCloseTo(SPIN_OUT_ANGLE, 1);
+      expect(before[3]!.scale).toBeCloseTo(1 + SPIN_ZOOM, 2);
+      expect(before[3]!.rotationBlur).toBeGreaterThan(before[1]!.rotationBlur);
+      const cut = at(0);
+      expect(cut.plateSlot).toBe(1);
+      expect(cut.rotation).toBeCloseTo(SPIN_IN_ANGLE, 8);
+      expect(cut.scale).toBeCloseTo(1 + SPIN_ZOOM, 8);
+      expect(cut.rotationBlur).toBeGreaterThan(0);
+      const tail = [0, 1, 2, 3, 4, 5].map(at);
+      for (let i = 1; i < tail.length; i++) {
+        expect(tail[i]!.rotation).toBeGreaterThan(tail[i - 1]!.rotation);
+        expect(tail[i]!.scale).toBeLessThan(tail[i - 1]!.scale);
+        expect(tail[i]!.rotationBlur).toBeLessThan(tail[i - 1]!.rotationBlur);
+      }
+      expect(tail[2]!.rotation - tail[1]!.rotation).toBeLessThan(tail[1]!.rotation - tail[0]!.rotation);
+      for (const fx of [at(-4), at(5), at(8), swapFx(0, [], "spin", mode), swapFx(0, [0], "spin", mode)]) {
+        expect(fx.rotation).toBeCloseTo(0, 12);
+        expect(fx.rotationBlur).toBe(0);
+        expect(fx.scale).toBe(1);
+        expect(fx.dy).toBe(0);
+        expect(fx.flashAdd).toBe(0);
+        expect(hasFrameFx(fx)).toBe(false);
+      }
+      const shortest = Math.min(...templateCuts.slotFrames.slice(1).map((frame, i) => frame - templateCuts.slotFrames[i]!));
+      expect((SPIN_OUT_FRAMES + SPIN_IN_FRAMES) * stretch).toBeLessThan(shortest);
+    });
+
+    it(`${mode}: covers all four panel corners throughout the rotation and its blur`, () => {
+      const { width: w, height: h } = OUTPUTS[mode];
+      expect(spinCoverScale(w, h, 0)).toBe(1);
+      expect(spinCoverScale(w, h, Math.PI / 2)).toBeCloseTo(Math.max(w / h, h / w), 10);
+      for (let tau = -3; tau <= 5; tau += 0.125) {
+        const fx = at(tau);
+        const scale = fx.scale * spinCoverScale(w, h, fx.rotation, fx.rotationBlur);
+        for (let tap = 0; tap <= 32; tap++) {
+          const theta = fx.rotation + (tap / 32 - 0.5) * fx.rotationBlur;
+          for (const x of [-w / 2, w / 2]) for (const y of [-h / 2, h / 2]) {
+            expect(Math.abs(x * Math.cos(theta) + y * Math.sin(theta))).toBeLessThanOrEqual(w * scale / 2 + 1e-8);
+            expect(Math.abs(-x * Math.sin(theta) + y * Math.cos(theta))).toBeLessThanOrEqual(h * scale / 2 + 1e-8);
+          }
+        }
+      }
+    });
+  }
 });

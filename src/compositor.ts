@@ -28,6 +28,7 @@ import {
   plateCoverScale,
   plateRestShiftFrac,
   STAGE_MAX_REM,
+  spinCoverScale,
   swapFx,
   templateBandRect,
   type AspectMode,
@@ -437,6 +438,10 @@ function drawPhotoPlate(
 ): void {
   const bitmap = photo.bitmap;
   resetCtx(ctx);
+  if (style === "spin" && (fx.rotation !== 0 || fx.rotationBlur > 0)) {
+    drawSpinPhoto(ctx, surfaces, photo, fx, mw, mh);
+    return;
+  }
   const dest = plateDest(bitmap.width, bitmap.height, mw, mh, fx, style);
   // cover 矩形の丸め誤差ではなく実倍率で判定し、backdrop の閾値未満の縮みも補完する。
   if (style === "zoom" && fx.scale < 1) {
@@ -492,6 +497,38 @@ function drawCharacter(
   const keyH = mode === "portrait" ? Math.max(1, Math.round(placed.h)) : mh;
   const keyedSource = keyCharacterBand(surfaces, character, band, keyW, keyH);
   paintCharacterOverlay(mainCtx, surfaces, keyedSource, placed, keyW, keyH, mw, mode);
+}
+
+/** 各タップを不透明な写真から平均合成する。角度区間全体を覆い、端に 2px の補間余白を取る。 */
+function drawSpinPhoto(
+  ctx: CanvasRenderingContext2D,
+  { photoTiles, photoTilesCtx: tilesCtx }: FxSurfaces,
+  photo: LoadedPhoto,
+  fx: SwapFx,
+  w: number,
+  h: number,
+): void {
+  const cover = spinCoverScale(w, h, fx.rotation, fx.rotationBlur);
+  const dest = coverDest(photo.bitmap.width, photo.bitmap.height, w, h, {
+    scale: fx.scale * cover * (1 + 4 / Math.min(w, h)),
+  });
+  // 5 タップに抑え、8bit の平均合成で丸め差が筋状に積み重なるのを防ぐ。
+  const taps = fx.rotationBlur > 0 ? 5 : 1;
+  ensureCanvasSize(photoTiles, w, h);
+  ctx.save();
+  for (let i = 0; i < taps; i++) {
+    const offset = taps === 1 ? 0 : (i / (taps - 1) - 0.5) * fx.rotationBlur;
+    // 回転と半透明合成を分け、補間時の丸めによる細い線を防ぐ。透過写真の下地もタップごとに揃える。
+    resetCtx(tilesCtx);
+    tilesCtx.fillStyle = "#0a0806";
+    tilesCtx.fillRect(0, 0, w, h);
+    tilesCtx.translate(w / 2, h / 2);
+    tilesCtx.rotate(fx.rotation + offset);
+    tilesCtx.drawImage(photo.bitmap, -dest.w / 2, -dest.h / 2, dest.w, dest.h);
+    ctx.globalAlpha = 1 / (i + 1);
+    ctx.drawImage(photoTiles, 0, 0);
+  }
+  ctx.restore();
 }
 
 function keyCharacterBand(

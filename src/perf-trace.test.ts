@@ -96,6 +96,15 @@ describe("detail frames", () => {
 });
 
 describe("studio transactions", () => {
+  it("retains spin on preview and export spans", () => {
+    const records = installFakeTracing();
+    studioTrace.beginPreviewStart({ trigger: "play", aspect: "portrait", effect: "spin" });
+    studioTrace.beginExport({ export_path: "offline", aspect: "landscape", effect: "spin" });
+    studioTrace.finishExport("success");
+    expect(records.find((span) => span.name === "preview.start")?.attributes.effect).toBe("spin");
+    expect(records.find((span) => span.name === "export.generate")?.attributes.effect).toBe("spin");
+  });
+
   it("does not invent a fast span when Sentry is not ready yet", () => {
     studioTrace.beginPreviewOpen({ entry: "initial", has_photos: false });
     studioTrace.noteCompositePaint(readyPaint);

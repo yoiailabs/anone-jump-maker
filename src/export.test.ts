@@ -108,6 +108,7 @@ describe("offline export plan", () => {
     expect(slotForTime(t, slots)).toBe(0);
     expect(swapFx(t, slots, "jump")).toEqual(swapFx(t, slots, "jump", "landscape"));
     expect(swapFx(t, slots, "zoom")).toEqual(swapFx(t, slots, "zoom", "landscape"));
+    expect(swapFx(t, slots, "spin")).toEqual(swapFx(t, slots, "spin", "landscape"));
     // the export clock lands exactly on slot starts stored as frame/30
     const exact = [0, 59 / 30, 118 / 30];
     expect(slotForTime(frameTimes(4, 30)[59]!, exact)).toBe(1);

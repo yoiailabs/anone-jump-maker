@@ -222,6 +222,11 @@ describe("trace sampling", () => {
 });
 
 describe("trace attribute allowlist", () => {
+  it("preserves spin as a performance and error trace effect", () => {
+    expect(pickTraceAttributes({ effect: "spin" })).toEqual({ effect: "spin" });
+    expect(pickTraceAttributes({ effect: "unknown" })).toEqual({});
+  });
+
   it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
     expect(
       pickTraceAttributes({

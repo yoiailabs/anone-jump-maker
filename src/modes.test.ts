@@ -10,7 +10,7 @@ import { exportFileName } from "./modes.ts";
 
 const ASPECTS: readonly AspectMode[] = ["portrait", "landscape"];
 
-describe("2x2 mode matrix", () => {
+describe("2x3 mode matrix", () => {
   it("tags the saved file with both the effect and the aspect", () => {
     const seen = new Set<string>();
     for (const mode of ASPECTS) {
@@ -18,7 +18,9 @@ describe("2x2 mode matrix", () => {
         seen.add(exportFileName(mode, style, "mp4"));
       }
     }
-    expect(seen.size).toBe(4);
+    expect(seen.size).toBe(6);
+    expect(exportFileName("portrait", "spin", "mp4")).toBe("anone-spin-9x16.mp4");
+    expect(exportFileName("landscape", "spin", "webm")).toBe("anone-spin-16x9.webm");
     expect(exportFileName("portrait", "jump", "mp4")).toBe("anone-jump-9x16.mp4");
     expect(exportFileName("landscape", "zoom", "webm")).toBe("anone-zoom-16x9.webm");
   });
@@ -29,7 +31,7 @@ describe("image filter in filename", () => {
     expect(exportFileName("portrait", "jump", "mp4", "none")).toBe("anone-jump-9x16.mp4");
   });
 
-  it("appends the blur tag so 2x2x3 combinations stay unique", () => {
+  it("appends the blur tag so 2x3x3 combinations stay unique", () => {
     const seen = new Set<string>();
     for (const mode of ASPECTS) {
       for (const style of SWAP_STYLES as readonly SwapStyle[]) {
@@ -38,7 +40,7 @@ describe("image filter in filename", () => {
         }
       }
     }
-    expect(seen.size).toBe(12);
+    expect(seen.size).toBe(18);
     expect(exportFileName("portrait", "jump", "mp4", "blur-strong")).toBe(
       "anone-jump-9x16-blur-strong.mp4",
     );
