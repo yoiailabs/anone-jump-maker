@@ -89,20 +89,22 @@ export const PORTRAIT_STICKER_BOTTOM = 0.758;
 export const TEMPLATE_FPS = 30;
 
 /**
- * 切替エフェクトの系統。縦・横どちらでも選べる（2×2 の組み合わせ）。
+ * 切替エフェクトの系統。縦・横どちらでも選べる。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
+ * - catiris: 中央のネコ耳シルエットから次の写真を開く。
  */
-export type SwapStyle = "jump" | "zoom";
+export type SwapStyle = "jump" | "zoom" | "catiris";
 
 /** 設定の並び。ズームを先頭（左）にし、初期選択もズーム。 */
-export const SWAP_STYLES = ["zoom", "jump"] as const;
+export const SWAP_STYLES = ["zoom", "jump", "catiris"] as const;
 
 export const DEFAULT_SWAP_STYLE: SwapStyle = SWAP_STYLES[0];
 
 export const SWAP_STYLE_LABELS: Record<SwapStyle, string> = {
   jump: "ジャンプ",
   zoom: "ズーム",
+  catiris: "ネコアイリス",
 };
 
 export const ASPECT_LABELS: Record<AspectMode, string> = {
@@ -111,7 +113,7 @@ export const ASPECT_LABELS: Record<AspectMode, string> = {
 };
 
 export function isSwapStyle(value: string): value is SwapStyle {
-  return value === "jump" || value === "zoom";
+  return value === "jump" || value === "zoom" || value === "catiris";
 }
 
 /**
@@ -331,6 +333,8 @@ export function zoomReferenceTau(framesFromCut: number, mode: AspectMode = "land
 }
 
 export type SwapFx = {
+  /** アイリスの穴に描く次の写真と、窓内の進捗 0–1。 */
+  reveal?: { nextSlot: number; progress: number };
   /** 表示する写真のスロット。ズームは S+1 まで前の写真が残る。 */
   plateSlot: number;
   /** 写真の倍率（基準 cover に対して。静止時 1）。 */
@@ -533,6 +537,7 @@ export function rectToUvBottomLeft(rect: Rect, canvasW: number, canvasH: number)
 
 /** フレーム境界の比較に使う許容（フレーム単位）。時刻の丸めで 0.99999 になった 1 フレを 1 とみなす。 */
 const FRAME_EPS = 1e-6;
+const SLOT_TIME_EPS = 1e-4;
 
 /** `time` が属するスロット（先頭は 0）とその開始時刻。`slotForTime` と同じ 1e-4 の許容。 */
 function slotAt(time: number, slots: readonly number[]): { start: number; index: number } {
@@ -540,7 +545,7 @@ function slotAt(time: number, slots: readonly number[]): { start: number; index:
   let index = 0;
   for (let i = 1; i < slots.length; i += 1) {
     const t = slots[i]!;
-    if (time + 1e-4 >= t) {
+    if (time + SLOT_TIME_EPS >= t) {
       start = t;
       index = i;
     } else {
@@ -638,6 +643,23 @@ export function swapFx(
   const { start, index } = slotAt(time, slots);
   const k = (time - start) * TEMPLATE_FPS;
 
+  if (style === "catiris") {
+    // 写真境界と同じ許容幅。丸めた cuts の n/30 と任意の rAF 時刻で所属を揃える。
+    const relative = (cut: number) => (time + SLOT_TIME_EPS - cut) * TEMPLATE_FPS;
+    const next = slots[index + 1];
+    const cutIndex = next !== undefined && relative(next) >= -3 ? index + 1
+      : index > 0 && relative(start) < 4 ? index : 0;
+    if (cutIndex === 0) return { ...NO_FX, plateSlot: index, scale: 1, dy: 0, cutIndex: index };
+    return {
+      ...NO_FX,
+      plateSlot: cutIndex - 1,
+      scale: 1,
+      dy: 0,
+      cutIndex,
+      reveal: { nextSlot: cutIndex, progress: clamp01((relative(slots[cutIndex]!) + 3) / 7) },
+    };
+  }
+
   if (style === "jump") {
     // 参考 Short は 0 秒の先頭スロットも同じサイクル＋フラッシュで始まる。
     const motion = jumpCycle(k, mode);
@@ -715,7 +737,7 @@ export function swapFx(
 
 /** 切替 FX が何か描画に影響するか（全面 FX の作業キャンバスを省くため）。 */
 export function hasFrameFx(fx: SwapFx): boolean {
-  return fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
+  return fx.reveal !== undefined || fx.blur > 1e-4 || fx.rgb > 1e-5 || fx.lift > 1e-3 || fx.haze > 1e-3 || fx.wave > 1e-5;
 }
 
 function clamp01(v: number): number {

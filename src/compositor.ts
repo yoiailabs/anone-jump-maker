@@ -1,3 +1,4 @@
+import { drawCatIris } from "./catiris.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -247,6 +248,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
+      fx.reveal ? photoForSlot(photos, fx.reveal.nextSlot) : undefined,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -352,6 +354,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
+  nextPlate?: LoadedPhoto,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -363,10 +366,14 @@ function composeMain(
 
   if (plate) {
     if (composeDetailActive()) {
-      traceCompose("compose.photo", () => drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh));
+      traceCompose("compose.photo", () => {
+        drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
+        if (fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
+      });
       traceCompose("compose.filter", () => applyPhotoFilter(main, mainCtx, surfaces, imageFilter));
     } else {
       drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
+      if (fx.reveal && nextPlate) drawCatIris(mainCtx, nextPlate.bitmap, mw, mh, fx.reveal.progress);
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
     }
   }
@@ -605,6 +612,8 @@ function applyFrameFx(
   surfaces: FxSurfaces,
   fx: SwapFx,
 ): void {
+  // reveal は写真層で合成済み。全面 FX の作業面は使わない。
+  if (fx.reveal) return;
   const w = main.width;
   const h = main.height;
   const { fxA, fxACtx, fxB, fxBCtx } = surfaces;

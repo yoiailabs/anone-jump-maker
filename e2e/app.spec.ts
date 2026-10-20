@@ -13,6 +13,29 @@ test.beforeEach(async ({ page }) => {
   await waitForAppReady(page);
 });
 
+for (const [locale, label] of [["ja", "ネコアイリス"], ["en", "Cat iris"]] as const) {
+  test(`${locale}: selects catiris after zoom and jump`, async ({ page }) => {
+    if (locale === "en") {
+      await page.goto("/en/make");
+      await waitForAppReady(page);
+    } else {
+      await openStudio(page);
+    }
+    await page.locator("#swapTab").click();
+    const choices = page.locator('#studioView input[name="swap"]');
+    expect(await choices.evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)))
+      .toEqual(["zoom", "jump", "catiris"]);
+    const option = page.locator('#studioView label:has(input[name="swap"][value="catiris"])');
+    await expect(option).toContainText(label);
+    await option.click();
+    await expect(page.locator('#studioView input[name="swap"][value="catiris"]')).toBeChecked();
+    await page.locator("#aspectTab").click();
+    await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+    await page.locator("#swapTab").click();
+    await expect(page.locator('#studioView input[name="swap"][value="catiris"]')).toBeChecked();
+  });
+}
+
 test("boots the maker with preview and save disabled until a photo is chosen", async ({ page }) => {
   await expect(page.locator("html")).not.toHaveAttribute("translate", "no");
   await expect(page.locator("#shareFeedback")).toHaveCount(0);

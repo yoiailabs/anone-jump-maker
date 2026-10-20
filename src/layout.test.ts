@@ -91,7 +91,7 @@ describe("output size", () => {
   });
 
   it("lists zoom first and uses it as the default effect", () => {
-    expect(SWAP_STYLES).toEqual(["zoom", "jump"]);
+    expect(SWAP_STYLES).toEqual(["zoom", "jump", "catiris"]);
     expect(DEFAULT_SWAP_STYLE).toBe("zoom");
     expect(DEFAULT_SWAP_STYLE).toBe(SWAP_STYLES[0]);
   });
