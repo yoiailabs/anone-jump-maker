@@ -122,3 +122,31 @@ describe("cover のクロップ境界", () => {
     }
   });
 });
+
+describe("光源のキャッシュ", () => {
+  it("同じ写真・同じ表示配置では再計算せず同じ結果を返し、配置が変われば選び直す", () => {
+    const data = new Uint8ClampedArray(32 * 18 * 4);
+    for (let i = 0; i < 32 * 18; i++) data.set([40, 40, 40, 255], i * 4);
+    data.set([255, 255, 255, 255], (4 * 32 + 26) * 4);
+    const original = (globalThis as { document?: unknown }).document;
+    (globalThis as { document?: unknown }).document = {
+      createElement: () => ({
+        width: 0,
+        height: 0,
+        getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data }) }),
+      }),
+    };
+    try {
+      const bitmap = { width: 32, height: 18 } as ImageBitmap;
+      prepareLightLeakPhoto(bitmap);
+      const dest = { x: 0, y: 0, w: 640, h: 360 };
+      const first = lightLeakSource(bitmap, dest, 640, 360);
+      expect(first).not.toEqual(LIGHT_LEAK_FALLBACK);
+      expect(lightLeakSource(bitmap, dest, 640, 360)).toBe(first);
+      // 右端を切り落とす配置では、明るいセルが見えないのでフォールバックへ変わる。
+      expect(lightLeakSource(bitmap, { x: 0, y: 0, w: 640, h: 360 }, 480, 360)).toEqual(LIGHT_LEAK_FALLBACK);
+    } finally {
+      (globalThis as { document?: unknown }).document = original;
+    }
+  });
+});

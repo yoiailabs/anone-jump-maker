@@ -10,7 +10,11 @@ export const LIGHT_LEAK_DARK_THRESHOLD = 48;
 export const LIGHT_LEAK_CONTRAST_THRESHOLD = 12;
 export const LIGHT_LEAK_FALLBACK = { x: 0.5, y: 0.25 } as const;
 
-type LuminanceGrid = { width: number; height: number; values: Float32Array };
+type LightLeakPoint = { readonly x: number; readonly y: number };
+/** sources は表示配置（cover 矩形とパネル寸法）ごとの光源。同じ配置では再計算しない。 */
+type LuminanceGrid = { width: number; height: number; values: Float32Array; sources: Map<string, LightLeakPoint> };
+/** 縦横・解像度の切替で配置は数通りしかないが、念のため上限を置く。 */
+const SOURCE_CACHE_LIMIT = 8;
 type Rect = { x: number; y: number; w: number; h: number };
 const grids = new WeakMap<ImageBitmap, LuminanceGrid>();
 
@@ -46,7 +50,7 @@ function analyzeLightLeakPhoto(bitmap: ImageBitmap): void {
     raw[i] = (0.2126 * rgba[p]! + 0.7152 * rgba[p + 1]! + 0.0722 * rgba[p + 2]!) * rgba[p + 3]! / 255;
   }
   // ぼかしは表示範囲が決まる描画時に、見えるセルだけで行う（クロップ外の明部を混ぜない）。
-  grids.set(bitmap, { width, height, values: raw });
+  grids.set(bitmap, { width, height, values: raw, sources: new Map() });
   canvas.width = canvas.height = 0;
 }
 
@@ -57,6 +61,16 @@ function analyzeLightLeakPhoto(bitmap: ImageBitmap): void {
 export function lightLeakSource(bitmap: ImageBitmap, dest: Rect, panelW: number, panelH: number) {
   const grid = grids.get(bitmap);
   if (!grid) return LIGHT_LEAK_FALLBACK;
+  const key = `${dest.x},${dest.y},${dest.w},${dest.h},${panelW},${panelH}`;
+  const cached = grid.sources.get(key);
+  if (cached) return cached;
+  const source = findLightLeakSource(grid, dest, panelW, panelH);
+  if (grid.sources.size >= SOURCE_CACHE_LIMIT) grid.sources.clear();
+  grid.sources.set(key, source);
+  return source;
+}
+
+function findLightLeakSource(grid: LuminanceGrid, dest: Rect, panelW: number, panelH: number): LightLeakPoint {
   const cellX = (x: number) => dest.x + (x + 0.5) / grid.width * dest.w;
   const cellY = (y: number) => dest.y + (y + 0.5) / grid.height * dest.h;
   // セル中心はインデックスに対して単調なので、見えるセルは連続した範囲になる。
