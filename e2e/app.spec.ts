@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
-import { t } from "../src/i18n.ts";
+import { t, type Locale } from "../src/i18n.ts";
 import { PHOTO_MAX_COUNT } from "../src/photo-list.ts";
 import { playbackPositions } from "../src/timeline.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
@@ -846,7 +846,7 @@ async function settlePreviewPlayback(page: Page): Promise<void> {
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 }
 
-async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"> {
+async function waitForExportOutcome(page: Page, locale: Locale = "ja"): Promise<"ready" | "unsupported"> {
   let outcome: "ready" | "unsupported" | "" = "";
   await expect
     .poll(
@@ -855,8 +855,8 @@ async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"
           outcome = "ready";
           return outcome;
         }
-        const feedback = ((await page.locator("#saveFeedback").textContent()) ?? "").trim();
-        if (feedback.includes(UNSUPPORTED_EXPORT_MESSAGE)) {
+        const feedback = stripZwsp((await page.locator("#saveFeedback").textContent()) ?? "").trim();
+        if (feedback.includes(t(locale, "errorUnsupportedExport"))) {
           outcome = "unsupported";
           return outcome;
         }
@@ -904,6 +904,13 @@ for (const locale of ["ja", "en"] as const) {
     await expect(page.locator('input[name="color_filter"][value="sepia"]')).toBeChecked();
     await page.evaluate(() => Object.defineProperty(navigator, "canShare", { configurable: true, value: () => false }));
     await page.locator("#saveBtn").click();
+    const outcome = await waitForExportOutcome(page, locale);
+    if (outcome === "unsupported") {
+      await expect(page.locator("#exportPanel")).toBeHidden();
+      await expect(page.locator("#saveFeedback")).toBeVisible();
+      await expectVisibleText(page.locator("#saveFeedback"), t(locale, "errorUnsupportedExport"));
+      return;
+    }
     await expect(page.locator("#exportPanel")).toHaveAttribute("data-export-phase", "done");
     const download = page.waitForEvent("download");
     await page.locator("#downloadExportBtn").click();

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ALL_FORMATS, BlobSource, CanvasSink, Input } from "mediabunny";
 import { COLOR_FILTERS, createColorPhotoCache } from "./color-filter.ts";
 import { createCompositor } from "./compositor.ts";
-import { exportJumpVideo, hasWebCodecsVideoEncoder } from "./export.ts";
+import { copySampleRgba, exportJumpVideo, hasWebCodecsVideoEncoder, putRgbaOnCanvas, type RgbaFrame } from "./export.ts";
 import { IMAGE_FILTERS, swapFx } from "./layout.ts";
 import { pickOfflinePlan } from "./offline-encode.ts";
 import type { LoadedPhoto } from "./photos.ts";
@@ -101,45 +101,50 @@ describe("shared preview / WebCodecs photo processing", () => {
       ctx.fillRect(0, 0, 320, 180);
       ctx.fillStyle = "#64364a";
       ctx.fillRect(100, 80, 120, 80);
-      // 保存で使う WebCodecs の RGBA copyTo と同じ受け渡し。
-      const bytes = new Uint8ClampedArray(320 * 180 * 4);
+      // 製品と同じコピー処理で stride / I420 平面も扱う。
+      // copyTo は色変換を含み得るため、元 Canvas との画素一致は前提にしない。
+      let rgba: Pick<RgbaFrame, "data" | "width" | "height"> = {
+        data: ctx.getImageData(0, 0, 320, 180).data, width: 320, height: 180,
+      };
       if (typeof VideoFrame !== "undefined") {
         const frame = new VideoFrame(plate, { timestamp: 0 });
-        try { await frame.copyTo(bytes, { format: "RGBA" }); }
+        try { rgba = await copySampleRgba(frame); }
         finally { frame.close(); }
-      } else {
-        bytes.set(ctx.getImageData(0, 0, 320, 180).data);
       }
       const copied = document.createElement("canvas");
-      copied.width = 320;
-      copied.height = 180;
-      copied.getContext("2d")!.putImageData(new ImageData(bytes, 320, 180), 0, 0);
+      putRgbaOnCanvas(copied, copied.getContext("2d")!, rgba);
+      expect(maxDiff(pixels(copied), rgba.data), "RGBA canvas transfer").toBe(0);
       const video = document.createElement("video");
       const draw = (comp: typeof preview, source: HTMLCanvasElement, blur: typeof IMAGE_FILTERS[number], color: typeof COLOR_FILTERS[number], time = 0.2) => {
         comp.draw(video, [p], { slots: [0, 0.5] }, time, "zoom", blur, { source, width: 320, height: 180 }, "standard", color);
         return pixels(comp.canvas);
       };
       try {
-        const original = draw(preview, plate, "none", "none");
-        // 不透明なキャラの内部だけを選び、背景と混ざる縁は除く。
-        const characterIndices: number[] = [];
-        const whiteIndices: number[] = [];
-        for (let i = 0; i < original.length; i += 4) {
-          if (original[i] === 100 && original[i + 1] === 54 && original[i + 2] === 74) characterIndices.push(i);
-          if (original[i] === 255 && original[i + 1] === 255 && original[i + 2] === 255) whiteIndices.push(i);
-        }
-        expect(characterIndices.length).toBeGreaterThan(100);
-        expect(whiteIndices.length).toBeGreaterThan(100);
-        for (const color of COLOR_FILTERS) for (const blur of IMAGE_FILTERS) {
-          const actual = draw(preview, plate, blur, color);
-          const expected = draw(saved, copied, blur, color);
-          expect(maxDiff(actual, expected), `${color}/${blur}`).toBe(0);
-          let characterError = 0;
-          for (const i of [...characterIndices, ...whiteIndices]) for (let c = 0; c < 3; c++) {
-            characterError = Math.max(characterError, Math.abs(actual[i + c]! - original[i + c]!));
+        // 元 Canvas とコピー後の両方を検査し、それぞれ同じキャラ入力で比較する。
+        for (const [input, source] of [["canvas", plate], ["rgba-copy", copied]] as const) {
+          const original = draw(preview, source, "none", "none");
+          const characterRgb = source.getContext("2d")!.getImageData(160, 120, 1, 1).data;
+          // 入力ごとの不透明な内部色を選び、背景と混ざる縁は除く。
+          const characterIndices: number[] = [];
+          const whiteIndices: number[] = [];
+          for (let i = 0; i < original.length; i += 4) {
+            if (original[i] === characterRgb[0] && original[i + 1] === characterRgb[1] && original[i + 2] === characterRgb[2]) characterIndices.push(i);
+            if (original[i] === 255 && original[i + 1] === 255 && original[i + 2] === 255) whiteIndices.push(i);
           }
-          expect(characterError, `${color}/${blur}: character`).toBe(0);
-          if (color !== "none") expect(maxDiff(actual, original)).toBeGreaterThan(0);
+          expect(characterIndices.length, input).toBeGreaterThan(100);
+          expect(whiteIndices.length, input).toBeGreaterThan(100);
+          for (const color of COLOR_FILTERS) for (const blur of IMAGE_FILTERS) {
+            const label = `${input}: ${color}/${blur}`;
+            const actual = draw(preview, source, blur, color);
+            const expected = draw(saved, source, blur, color);
+            expect(maxDiff(actual, expected), label).toBe(0);
+            let characterError = 0;
+            for (const i of [...characterIndices, ...whiteIndices]) for (let c = 0; c < 4; c++) {
+              characterError = Math.max(characterError, Math.abs(actual[i + c]! - original[i + c]!));
+            }
+            expect(characterError, `${label}: character`).toBe(0);
+            if (color !== "none") expect(maxDiff(actual, original), label).toBeGreaterThan(0);
+          }
         }
         // 写真への白フラッシュを強制し、色処理が白に掛からないことを検査する。
         const flash = { ...swapFx(0.2, [0, 0.5], "zoom", aspect), flashAdd: 1, flashScreen: 1 };
