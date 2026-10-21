@@ -14,9 +14,20 @@ type LuminanceGrid = { width: number; height: number; values: Float32Array };
 type Rect = { x: number; y: number; w: number; h: number };
 const grids = new WeakMap<ImageBitmap, LuminanceGrid>();
 
-/** 読み込み時に一度だけ縮小・読み戻し・3×3ガウスぼかし。bitmapの寿命で解放される。 */
+/**
+ * 読み込み時に一度だけ縮小・読み戻し・3×3ガウスぼかし。bitmapの寿命で解放される。
+ * 解析に失敗しても写真の読み込みは止めない（光漏れは上中央のフォールバック位置になる）。
+ */
 export function prepareLightLeakPhoto(bitmap: ImageBitmap): void {
   if (grids.has(bitmap)) return;
+  try {
+    analyzeLightLeakPhoto(bitmap);
+  } catch {
+    // Canvas2D が使えない・読み戻せない環境。キャッシュしないので lightLeakSource はフォールバックを返す。
+  }
+}
+
+function analyzeLightLeakPhoto(bitmap: ImageBitmap): void {
   const scale = LIGHT_LEAK_GRID_EDGE / Math.max(bitmap.width, bitmap.height);
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));

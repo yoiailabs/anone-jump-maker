@@ -3,6 +3,7 @@ import cuts from "../public/official-assets/template/landscape-cuts.json" with {
 import { frameTimes, EXPORT_FPS } from "./export.ts";
 import { hasFrameFx, isSwapStyle, LIGHT_LEAK_AMOUNTS, SWAP_STYLE_LABELS, swapFx } from "./layout.ts";
 import { slotForTime } from "./timeline.ts";
+import { LIGHT_LEAK_FALLBACK, lightLeakSource, prepareLightLeakPhoto } from "./lightleak.ts";
 
 const amounts = [0.15, 0.35, 0.65, 0.9, 1, 0.75, 0.45, 0.22, 0.08];
 
@@ -70,6 +71,22 @@ describe.each(["portrait", "landscape"] as const)("%s light leak timing", (mode)
         expect(fx.lightleak).toEqual({ frame: 0, amount: 1 });
       }
       if (fx.lightleak) expect(n - Math.round(slots[fx.cutIndex]! * 30)).toBe(fx.lightleak.frame);
+    }
+  });
+});
+
+describe("prepareLightLeakPhoto の失敗時", () => {
+  it("Canvas2D が使えなくても例外を投げず、光源はフォールバックになる", () => {
+    const original = (globalThis as { document?: unknown }).document;
+    (globalThis as { document?: unknown }).document = {
+      createElement: () => ({ width: 0, height: 0, getContext: () => null }),
+    };
+    try {
+      const bitmap = { width: 64, height: 36 } as ImageBitmap;
+      expect(() => prepareLightLeakPhoto(bitmap)).not.toThrow();
+      expect(lightLeakSource(bitmap, { x: 0, y: 0, w: 64, h: 36 }, 64, 36)).toEqual(LIGHT_LEAK_FALLBACK);
+    } finally {
+      (globalThis as { document?: unknown }).document = original;
     }
   });
 });
