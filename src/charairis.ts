@@ -35,7 +35,7 @@ export function charaIrisCenter(
 export function charaIrisRadius(progress: number, w: number, h: number, center: IrisCenter): number {
   const short = Math.min(w, h);
   const farthest = Math.hypot(Math.max(Math.abs(center.x), Math.abs(w - center.x)), Math.max(Math.abs(center.y), Math.abs(h - center.y)));
-  // 白縁・重ね描きの影・AAを含む。最後の整数revealフレームでも縁を画面外へ送る。
+  // 白縁・AAを含む。最後の整数revealフレームでも縁を画面外へ送る。
   const end = farthest + short * 0.06;
   // 窓の進捗は7分割だが、最後の整数フレーム（S+3 = 6/7）で覆い切る。
   // 弱い二次のeaseOutでS-2〜S+2にも円弧を残し、後半まで隅へ動かす。
@@ -44,7 +44,7 @@ export function charaIrisRadius(progress: number, w: number, h: number, center: 
   return short * 0.035 + (end - short * 0.035) * eased;
 }
 
-/** 写真は等倍coverのまま円でクリップ。白縁・影は写真フィルターの後段。 */
+/** 写真は等倍coverのまま円でクリップ。白縁は写真フィルターの後段。 */
 export function drawCharaIris(
   ctx: CanvasRenderingContext2D, bitmap: ImageBitmap | HTMLCanvasElement,
   w: number, h: number, progress: number, center: IrisCenter,
@@ -61,21 +61,13 @@ export function drawCharaIris(
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bitmap, dest.x, dest.y, dest.w, dest.h);
   ctx.restore();
-  // 小数pxのshadowBlurは描画エンジンの影用作業面に依存するため使わない。
-  // 白縁の外側だけに見える淡い影を、広く薄い円から重ねて近似する。
-  // 中心・半径・白縁の太さは変えず、影の下方向のずれも従来どおり。
+  // 影のalpha=.001/.003は8bitで0.255/0.765。premultiplied色の丸めが
+  // 作業面に依存し得る極小alphaの重ね描きを避け、不透明な白縁だけにする。
+  // 白縁の中心・半径・太さは同じ。AA以外に半透明の帯を追加しない。
   ctx.shadowColor = "transparent";
   ctx.shadowBlur = 0;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
-  ctx.save();
-  ctx.translate(0, border * 0.15);
-  for (const [width, alpha] of [[2.2, 0.001], [1.9, 0.003], [1.6, 0.011], [1.3, 0.025], [1, 0.04], [0.7, 0.08]] as const) {
-    ctx.strokeStyle = `rgba(30, 20, 35, ${alpha})`;
-    ctx.lineWidth = border * width;
-    ctx.stroke(path);
-  }
-  ctx.restore();
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = border;
   ctx.stroke(path);

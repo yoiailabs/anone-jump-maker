@@ -3,9 +3,9 @@ let cuts: { slots: number[]; slotFrames: number[] };
 beforeAll(async () => {
   cuts = await fetch("/official-assets/template/landscape-cuts.json").then((response) => response.json());
 });
-import { createCompositor } from "./compositor.ts";
-import { charaIrisCenter, drawCharaIris } from "./charairis.ts";
-import { swapFx } from "./layout.ts";
+import { createCompositor, songCreditLayout } from "./compositor.ts";
+import { charaIrisCenter, charaIrisRadius, drawCharaIris } from "./charairis.ts";
+import { swapFx, type AspectMode } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 
 async function photo(w: number, h: number, color: string): Promise<LoadedPhoto> {
@@ -22,6 +22,46 @@ function same(a: Uint8ClampedArray, b: Uint8ClampedArray): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
+}
+
+/** 厳密一致は維持し、失敗時だけ差の大きさと位置を記録する。領域は診断用で許容には使わない。 */
+function expectSamePixels(
+  expected: Uint8ClampedArray, actual: Uint8ClampedArray, canvas: HTMLCanvasElement,
+  time: number, mode: AspectMode, label: string,
+): void {
+  if (same(expected, actual)) return;
+  expect(actual.length, label).toBe(expected.length);
+  const { width: w, height: h } = canvas;
+  const reveal = swapFx(time, cuts.slots, "charairis", mode).reveal;
+  const center = charaIrisCenter(time, w, h, mode);
+  const radius = reveal ? charaIrisRadius(reveal.progress, w, h, center) : null;
+  const border = Math.min(w, h) * 0.011;
+  const credit = songCreditLayout(w, h, mode);
+  // クレジットは影込みの保守的な矩形。白縁と重なる場合は両方に集計する。
+  const creditTop = credit.y - credit.fontSize * 2 - Math.max(3, Math.round(credit.fontSize * 0.32));
+  const regions = { whiteBorder: 0, formerShadowBand: 0, creditBox: 0, photo: 0 };
+  const samples: { x: number; y: number; expected: number[]; actual: number[]; regions: string[] }[] = [];
+  let count = 0, maxDiff = 0, left = w, right = -1, top = h, bottom = -1;
+  for (let i = 0; i < actual.length; i += 4) {
+    const delta = Math.max(...[0, 1, 2, 3].map((c) => Math.abs(expected[i + c]! - actual[i + c]!)));
+    if (!delta) continue;
+    const x = (i / 4) % w, y = Math.floor(i / 4 / w);
+    count++; maxDiff = Math.max(maxDiff, delta);
+    left = Math.min(left, x); right = Math.max(right, x);
+    top = Math.min(top, y); bottom = Math.max(bottom, y);
+    const areas: (keyof typeof regions)[] = [];
+    if (radius !== null) {
+      // AAの1pxを含む白縁と、削除した影の旧描画範囲を分ける。
+      if (Math.abs(Math.hypot(x + 0.5 - center.x, y + 0.5 - center.y) - radius) <= border / 2 + 1) areas.push("whiteBorder");
+      else if (Math.abs(Math.hypot(x + 0.5 - center.x, y + 0.5 - center.y - border * 0.15) - radius) <= border * 1.1 + 1) areas.push("formerShadowBand");
+    }
+    if (y >= creditTop) areas.push("creditBox");
+    if (!areas.length) areas.push("photo");
+    areas.forEach((area) => regions[area]++);
+    if (samples.length < 8) samples.push({ x, y, expected: [...expected.slice(i, i + 4)], actual: [...actual.slice(i, i + 4)], regions: areas });
+  }
+  expect(false, `${label}: ${JSON.stringify({ mode, frame: time * 30, w, h, count, maxDiff,
+    bbox: { left, top, right, bottom }, regions, center, radius, border, samples })}`).toBe(true);
 }
 function opaqueAndBright(data: Uint8ClampedArray): boolean {
   for (let i = 0; i < data.length; i += 4) {
@@ -94,14 +134,21 @@ for (const mode of ["landscape", "portrait"] as const) {
             a.draw(video, photos, cuts, time, "charairis");
             const expected = capture();
             if (k === 3) lastReveal = expected;
-            if (k === 4) expect(same(lastReveal!, expected), `terminal cut ${cut}`).toBe(true);
+            if (k === 4) expectSamePixels(lastReveal!, expected, a.canvas, time, mode, `terminal cut ${cut}`);
             expect(opaqueAndBright(expected), `cut ${cut}, k=${k}`).toBe(true);
             expect(edgeLine(expected, a.canvas.width, a.canvas.height), `edge at ${cut + k}`).toBeLessThanOrEqual(3);
-            a.draw(video, photos, cuts, 0, "charairis");
-            a.draw(video, photos, cuts, time, "charairis");
+            // 両面を同じ回数・同じ範囲で読む。読み戻し履歴によるバックエンド選択を
+            // テストの変数にしない。描画も各3回だが、0へのシークはaだけに残す。
             b.draw(video, photos, cuts, time, "charairis");
-            expect(same(expected, capture()), `seek ${cut + k}`).toBe(true);
-            expect(same(expected, pixels(b.canvas)), `instance ${cut + k}`).toBe(true);
+            expectSamePixels(expected, pixels(b.canvas), b.canvas, time, mode, `instance ${cut + k}`);
+            a.draw(video, photos, cuts, 0, "charairis");
+            capture();
+            b.draw(video, photos, cuts, time, "charairis");
+            expectSamePixels(expected, pixels(b.canvas), b.canvas, time, mode, `repeat ${cut + k}`);
+            a.draw(video, photos, cuts, time, "charairis");
+            expectSamePixels(expected, capture(), a.canvas, time, mode, `seek ${cut + k}`);
+            b.draw(video, photos, cuts, time, "charairis");
+            expectSamePixels(expected, pixels(b.canvas), b.canvas, time, mode, `instance after seek ${cut + k}`);
           }
         }
       } finally {
@@ -164,8 +211,8 @@ it("adds no drawing outside windows, allocates no surfaces and never reads pixel
       const active = swapFx(n / 30, cuts.slots, "charairis").reveal !== undefined;
       expect(draw).toHaveBeenCalledTimes(active ? 3 : 2);
       expect(clip).toHaveBeenCalledTimes(active ? 1 : 0);
-      // 淡い影6本と白縁1本。shadowBlur用の追加作業面は使わない。
-      expect(stroke).toHaveBeenCalledTimes(active ? 7 : 0);
+      // 不透明な白縁1本だけ。影用の作業面や極小alphaの帯は使わない。
+      expect(stroke).toHaveBeenCalledTimes(active ? 1 : 0);
       // mainの初期化だけを許し、未描画の全面FX作業面の確保・リサイズも検出する。
       const main = (draw.mock.contexts[0] as CanvasRenderingContext2D).canvas;
       expect(resizeWidth.mock.contexts).toEqual([main]);
