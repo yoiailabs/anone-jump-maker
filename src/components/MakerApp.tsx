@@ -1,3 +1,4 @@
+import { COLOR_FILTERS, colorFilterLabel } from "../color-filter.ts";
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { initSentry, reportError } from "../sentry.ts";
 import { HeaderGitHub } from "@/components/HeaderGitHub.tsx";
@@ -88,6 +89,7 @@ const OPTION_TABS = [
   ["aspect", "studioTabAspect", "makerAspectLegend"],
   ["swap", "studioTabEffect", "makerEffectLegend"],
   ["filter", "studioTabFilter", "makerFilterLegend"],
+  ["blur", "studioTabBlur", "makerBlurLegend"],
   ["character", "studioTabCharacter", "makerCharacterLegend"],
 ] as const;
 
@@ -378,13 +380,30 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                   >
                     <legend>{t(locale, "makerFilterLegend")}</legend>
                     <RadioPills
+                      name="color_filter"
+                      className="aspect-toggle color-filter-toggle"
+                      ariaLabel={t(locale, "makerFilterLegend")}
+                      options={COLOR_FILTERS.map((value) => ({
+                        value, label: colorFilterLabel(value, locale), defaultChecked: value === "none",
+                      }))}
+                    />
+                  </fieldset>
+                  <fieldset
+                    className="aspect-field"
+                    id="blurPanel"
+                    role="tabpanel"
+                    aria-labelledby="blurTab"
+                    hidden={optionTab !== "blur"}
+                  >
+                    <legend>{t(locale, "makerBlurLegend")}</legend>
+                    <RadioPills
                       name="filter"
                       className="aspect-toggle cols-3"
-                      ariaLabel={t(locale, "makerFilterLegend")}
+                      ariaLabel={t(locale, "makerBlurLegend")}
                       options={[
                         { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                        { value: "blur-weak", label: t(locale, "makerFilterBlurWeak") },
-                        { value: "blur-strong", label: t(locale, "makerFilterBlurStrong") },
+                        { value: "blur-weak", label: t(locale, "makerBlurWeak") },
+                        { value: "blur-strong", label: t(locale, "makerBlurStrong") },
                       ]}
                     />
                   </fieldset>

@@ -222,7 +222,7 @@ describe("preview save CTA", () => {
 
   it("feeds portrait and landscape zoom timing through the shared preview and export draw", () => {
     expect(compositorSrc).toContain("swapFx(time, slots, swapStyle, mode)");
-    expect(appSrc).toContain("compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize)");
+    expect(appSrc).toContain("compositor.draw(video, photos, cuts, time, swapStyle, imageFilter, character, characterSize, colorFilter)");
     expect(appSrc).toContain("draw: paint");
   });
 });
