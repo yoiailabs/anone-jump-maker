@@ -821,9 +821,9 @@ async function headerAlign(page: Page, header: string, lockupSel: string, titleS
   return metrics!;
 }
 
-async function uploadPhoto(page: Page): Promise<void> {
+async function uploadPhoto(page: Page, file: string | Awaited<ReturnType<typeof jpegInput>> = PHOTO_FILE.path): Promise<void> {
   await openStudio(page);
-  await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
+  await page.locator("#picker").setInputFiles(file);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
   await expect(page.locator("#previewSeek")).toBeEnabled({ timeout: 20_000 });
   await expect(page.locator("#previewTransport")).toBeVisible();
@@ -872,9 +872,25 @@ async function waitForExportOutcome(page: Page, locale: Locale = "ja"): Promise<
 for (const locale of ["ja", "en"] as const) {
   test(`${locale}: combines color filters and blur at 375px and names the saved clip`, async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
+    // A single cut keeps transition effects out of the photo/filter comparison.
+    await page.route("**/official-assets/template/landscape-cuts.json", (route) => route.fulfill({
+      json: { duration: 0.5, fps: 30, slots: [0] },
+    }));
     await page.goto(locale === "ja" ? "/make" : "/en/make");
     await waitForAppReady(page);
-    await uploadPhoto(page);
+    // Stripes make both the photo layer and changes in blur observable.
+    const photo = await page.evaluate(() => {
+      const image = document.createElement("canvas");
+      image.width = 96;
+      image.height = 64;
+      const ctx = image.getContext("2d")!;
+      ctx.fillStyle = "rgb(204, 84, 49)";
+      ctx.fillRect(0, 0, image.width, image.height);
+      ctx.fillStyle = "#f0dca0";
+      for (let x = 0; x < image.width; x += 16) ctx.fillRect(x, 0, 8, image.height);
+      return image.toDataURL("image/png").split(",")[1]!;
+    });
+    await uploadPhoto(page, { name: "striped-photo.png", mimeType: "image/png", buffer: Buffer.from(photo, "base64") });
     await expect(page.locator("#saveBtn")).toBeEnabled();
     await expect(page.locator(".studio-option-tab")).toHaveCount(5);
     const tabs = page.locator(".studio-option-tabs");
@@ -888,13 +904,54 @@ for (const locale of ["ja", "en"] as const) {
     await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
     await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
     const canvas = page.locator("canvas.stage-canvas");
+    // The initial WebKit canvas can still be black. Wait for photo detail, then
+    // freeze the clock so a moving frame cannot satisfy a filter diff.
+    await page.locator("#previewToggle").click();
+    await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
+    const expectPhotoDrawn = async () => {
+      await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => {
+        // This rectangle is inside the fixture video's solid green bar. Only
+        // the striped photo underneath can add horizontal contrast here, even
+        // with the character keyer's partial alpha.
+        const { data } = el.getContext("2d")!.getImageData(
+          Math.floor(el.width * 0.65), Math.floor(el.height * 0.25), Math.floor(el.width * 0.07), 1,
+        );
+        let min = 255;
+        let max = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          min = Math.min(min, data[i]!);
+          max = Math.max(max, data[i]!);
+        }
+        return max - min;
+      })).toBeGreaterThan(5);
+    };
+    await expectPhotoDrawn();
+    await showPreviewChrome(page);
+    await page.locator("#previewToggle").click();
+    await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
+    await expectPhotoDrawn();
+    const video = page.locator("video.offscreen-video");
+    await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.paused && !el.seeking)).toBe(true);
+    const pausedTime = await video.evaluate((el: HTMLVideoElement) => el.currentTime);
     const original = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
     await page.locator("#filterTab").click();
     await expect(page.locator('#filterPanel input[type="radio"]')).toHaveCount(8);
     await page.locator('label:has(input[name="color_filter"][value="sepia"])').click();
     await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(original);
+    const sepia = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+    await page.locator('label:has(input[name="color_filter"][value="none"])').click();
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(original);
+    await page.locator('label:has(input[name="color_filter"][value="sepia"])').click();
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(sepia);
     await page.locator("#blurTab").click();
     await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(sepia);
+    await page.locator('label:has(input[name="filter"][value="none"])').click();
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(sepia);
+    await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(sepia);
+    expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
+      .toEqual({ time: pausedTime, paused: true, seeking: false });
     await page.locator("#aspectTab").click();
     await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
