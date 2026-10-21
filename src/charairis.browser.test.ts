@@ -164,7 +164,8 @@ it("adds no drawing outside windows, allocates no surfaces and never reads pixel
       const active = swapFx(n / 30, cuts.slots, "charairis").reveal !== undefined;
       expect(draw).toHaveBeenCalledTimes(active ? 3 : 2);
       expect(clip).toHaveBeenCalledTimes(active ? 1 : 0);
-      expect(stroke).toHaveBeenCalledTimes(active ? 1 : 0);
+      // 淡い影6本と白縁1本。shadowBlur用の追加作業面は使わない。
+      expect(stroke).toHaveBeenCalledTimes(active ? 7 : 0);
       // mainの初期化だけを許し、未描画の全面FX作業面の確保・リサイズも検出する。
       const main = (draw.mock.contexts[0] as CanvasRenderingContext2D).canvas;
       expect(resizeWidth.mock.contexts).toEqual([main]);

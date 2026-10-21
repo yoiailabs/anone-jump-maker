@@ -2,12 +2,16 @@ import { expect, it } from "vitest";
 import track from "./generated/chara-iris-track.json";
 import { charaIrisCenter } from "./charairis.ts";
 import { characterDest, characterScale, characterShiftY, templateBandRect } from "./layout.ts";
-import { keyAlpha, sampleKeyColor } from "./keying.ts";
+import { KEY_PARAMS, keyAlpha, sampleKeyColor } from "./keying.ts";
 
-it("decoded template foreground stays at the tracked iris center in both aspects and every character size", async () => {
+it("presented template frames match the track and iris center in both aspects and every character size", async () => {
   const video = document.createElement("video");
   video.muted = true;
   video.preload = "auto";
+  video.playsInline = true;
+  // WebKitでも画面上の動画として提示させ、非表示動画の省電力制御を避ける。
+  video.width = 480; video.height = 270;
+  document.body.append(video);
   const loaded = new Promise<void>((resolve, reject) => {
     video.addEventListener("loadeddata", () => resolve(), { once: true });
     video.addEventListener("error", () => reject(video.error), { once: true });
@@ -18,16 +22,21 @@ it("decoded template foreground stays at the tracked iris center in both aspects
     const canvas = document.createElement("canvas");
     canvas.width = 480; canvas.height = 270;
     const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-    for (const frame of [56, 57, 58, 59, 60, 61, 62, 99, 100, 101, 102, 103, 104, 105, 202, 203, 204, 205, 206, 207, 208, 209]) {
-      const sought = new Promise<void>((resolve) => video.addEventListener("seeked", () => resolve(), { once: true }));
-      // フレーム内の時刻へシークし、境界のデコーダ丸めを避ける。
-      video.currentTime = (frame + 0.1) / 30;
-      await sought;
+    // seekedは要求したフレームの提示を保証しない。特にWebKitの最初のシークでは
+    // currentTimeとCanvasから読める絵がずれる可能性があるため、シークを使わない。
+    // 通常再生のrVFC内で読み戻し、要求時刻でなく実際のmediaTimeの表と比べる。
+    // 遅いCIでは提示を間引くことがあるので、各ポーズ境界の前後の観測を必須にする。
+    const windows = [[56, 58], [59, 62], [99, 101], [102, 105], [202, 204], [205, 209]] as const;
+    const observed = windows.map(() => new Set<number>());
+    const checkFrame = (frame: number) => {
       ctx.drawImage(video, 0, 0, 480, 270);
       for (const mode of ["landscape", "portrait"] as const) {
         const band = templateBandRect(480, 270, mode);
         const data = ctx.getImageData(band.x, band.y, band.w, band.h).data;
         const key = sampleKeyColor(data, band.w, band.h);
+        // 未提示の黒いCanvasはdarkProtectで全面前景となり、偽の中心(0.5, 0.5)を返す。
+        // 外接矩形を測る前に、テンプレのグリーンバックが実際に描かれたことを確認する。
+        expect(key[1] - Math.max(key[0], key[2]), `green background: frame=${frame}, ${mode}`).toBeGreaterThan(KEY_PARAMS.greenBoost);
         const rows = new Uint32Array(band.h), cols = new Uint32Array(band.w);
         for (let y = 0; y < band.h; y++) {
           for (let x = 0; x < band.w; x++) {
@@ -50,8 +59,37 @@ it("decoded template foreground stays at the tracked iris center in both aspects
           expect(Math.hypot((iris.x - dest.x) / dest.w - actual.x, (iris.y - dest.y) / dest.h - actual.y)).toBeLessThan(0.065);
         }
       }
+    };
+    let callback = 0;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onFrame: VideoFrameRequestCallback = (_now, metadata) => {
+          try {
+            // 30fpsのPTSを最近傍整数に戻し、浮動小数の境界誤差を避ける。
+            const frame = Math.round(metadata.mediaTime * track.fps);
+            expect(metadata.mediaTime * track.fps).toBeCloseTo(frame, 2);
+            const window = windows.findIndex(([from, to]) => frame >= from && frame <= to);
+            if (window >= 0) {
+              checkFrame(frame);
+              observed[window]!.add(frame);
+            }
+            if (frame >= windows.at(-1)![1]) resolve();
+            else callback = video.requestVideoFrameCallback(onFrame);
+          } catch (error) { reject(error); }
+        };
+        // play()前に登録し、初回の提示も取り逃さない。提示なしをtimeout成功にしない。
+        callback = video.requestVideoFrameCallback(onFrame);
+        video.play().catch(reject);
+      });
+      for (const [index, frames] of observed.entries()) {
+        expect(frames.size, `presented frames in ${windows[index]!.join("..")} (${[...frames]})`).toBeGreaterThan(0);
+      }
+    } finally {
+      video.cancelVideoFrameCallback(callback);
+      video.pause();
     }
   } finally {
     video.removeAttribute("src"); video.load();
+    video.remove();
   }
 });
