@@ -80,8 +80,9 @@ export function applySoftwareBlur(
   const w = target.width;
   const h = target.height;
   const down = softwareBlurDownscale(px);
-  const sw = Math.max(8, Math.round(w * down));
-  const sh = Math.max(8, Math.round(h * down));
+  // 8px未満の画像は下限で拡大せず、σと無関係な補間ボケを防ぐ。
+  const sw = Math.max(Math.min(8, w), Math.round(w * down));
+  const sh = Math.max(Math.min(8, h), Math.round(h * down));
   // 双線形補間の一段縮小で細模様を拾わないよう、各段を最大1/2縮小にする。
   // 同じバッファの左上に順次描き、追加キャンバスの確保を避ける。
   let stageW = Math.max(sw, Math.ceil(w / 2));
@@ -120,7 +121,8 @@ export function applySoftwareBlur(
   targetCtx.globalCompositeOperation = "source-over";
   targetCtx.imageSmoothingEnabled = true;
   // 端の拡大も半径に比例させ、プレビューだけ固定2pxで広がるのを避ける。
-  const pad = px * 0.35;
+  // 縮小しない経路は同寸で戻し、極小の拡大でも生じる補間誤差を避ける。
+  const pad = down === 1 ? 0 : px * 0.35;
   targetCtx.drawImage(scratch, 0, 0, sw, sh, -pad, -pad, w + pad * 2, h + pad * 2);
 }
 
