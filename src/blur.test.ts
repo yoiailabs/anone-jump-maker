@@ -34,30 +34,46 @@ describe("software blur", () => {
 
   it("downscales more for a stronger radius", () => {
     expect(softwareBlurDownscale(0)).toBe(1);
-    expect(softwareBlurDownscale(24)).toBeLessThan(softwareBlurDownscale(8));
+    expect(softwareBlurDownscale(24)).toBeLessThan(softwareBlurDownscale(6));
   });
 
   for (const filter of ["blur-weak", "blur-strong"] as const) {
-    it(`${filter}: keeps the effective radius proportional at preview and export sizes`, () => {
-      const fractions = [360, 640, 1080, 1920].map((long) => {
+    it(`${filter}: matches target variance including resampling at preview and export sizes`, () => {
+      for (const long of [360, 640, 1080, 1920]) {
         const px = filterBlurPx(filter, long);
-        const radius = softwareBlurRadius(px);
+        const kernel = softwareBlurRadius(px);
+        const radius = Math.floor(kernel);
+        const weight = kernel - radius;
         const down = softwareBlurDownscale(px);
-        expect(Number.isInteger(radius)).toBe(true);
-        expect(radius).toBeGreaterThanOrEqual(1);
-        expect(down).toBeGreaterThan(0);
-        expect(down).toBeLessThanOrEqual(1);
-        // 実際のバッファ寸法の丸めも含めた長辺方向のフル換算半径。
-        const effective = radius * long / Math.round(long * down);
-        expect(effective / px).toBeGreaterThanOrEqual(0.99);
-        expect(effective / px).toBeLessThanOrEqual(1.01);
-        return effective / long;
-      });
-      expect(Math.max(...fractions) / Math.min(...fractions)).toBeLessThanOrEqual(1.25);
+        expect(weight).toBeGreaterThanOrEqual(0);
+        expect(weight).toBeLessThan(1);
+        expect([1, 0.5, 0.25]).toContain(down);
+        const variance = 2 * (radius * (radius + 1) * (2 * radius + 1) / 3 + 2 * weight * (radius + 1) ** 2) / (2 * radius + 1 + 2 * weight);
+        const resampleVariance = (1 / down ** 2 - 1) / 4;
+        // 実際のバッファ寸法の丸めも含めたフル解像度のσ。
+        const effectiveSigma = Math.sqrt(variance * (long / Math.round(long * down)) ** 2 + resampleVariance);
+        expect(effectiveSigma / px).toBeCloseTo(1, 2);
+      }
     });
   }
 
-  it("leaves pixels alone when the radius is under 1", () => {
+  it("applies fractional outer taps with only final 8bit rounding", () => {
+    const width = 9;
+    const data = new Uint8ClampedArray(width * 4);
+    data[4 * 4] = 255;
+    // r=1、外周±2が0.5。1パスの重みは [0.5,1,1,1,0.5]/4。
+    boxBlurRgba(data, width, 1, 1.5, 1);
+    expect(Array.from({ length: width }, (_, x) => data[x * 4])).toEqual([0, 0, 32, 64, 64, 64, 32, 0, 0]);
+  });
+
+  it("supports sigmas below the smallest integer kernel without a pixel floor", () => {
+    const radius = softwareBlurRadius(0.5);
+    expect(radius).toBeGreaterThan(0);
+    expect(radius).toBeLessThan(1);
+    expect(softwareBlurDownscale(0.5)).toBe(1);
+  });
+
+  it("leaves pixels alone when the radius is zero", () => {
     const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 255]);
     boxBlurRgba(data, 2, 1, 0);
     expect([...data]).toEqual([255, 0, 0, 255, 0, 0, 0, 255]);

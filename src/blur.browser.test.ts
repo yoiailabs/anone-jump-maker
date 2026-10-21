@@ -3,6 +3,7 @@ import { applySoftwareBlur } from "./blur.ts";
 import { previewResolutionScale } from "./canvas-size.ts";
 import { createCompositor } from "./compositor.ts";
 import { filterBlurPx, mainPanelRect, OUTPUTS, type ImageFilter } from "./layout.ts";
+import { applyLegacyBlur } from "./test-support/legacy-blur.ts";
 
 vi.mock("./blur.ts", { spy: true });
 
@@ -16,7 +17,7 @@ function edgeWidth(values: number[]): number {
   return crossing(255 * 0.9) - crossing(255 * 0.1);
 }
 
-function blurredEdge(width: number, height: number, filter: ImageFilter, vertical: boolean): number {
+function blurredEdge(width: number, height: number, filter: ImageFilter, vertical: boolean, legacy = false): number {
   const target = document.createElement("canvas");
   const scratch = document.createElement("canvas");
   target.width = width;
@@ -28,7 +29,9 @@ function blurredEdge(width: number, height: number, filter: ImageFilter, vertica
     ctx.fillStyle = "white";
     if (vertical) ctx.fillRect(Math.floor(width / 2), 0, width, height);
     else ctx.fillRect(0, Math.floor(height / 2), width, height);
-    applySoftwareBlur(target, ctx, scratch, scratch.getContext("2d")!, filterBlurPx(filter, Math.max(width, height)));
+    const long = Math.max(width, height);
+    const px = legacy ? Math.max(2, Math.round(long * (filter === "blur-weak" ? 0.005 : 0.011))) : filterBlurPx(filter, long);
+    (legacy ? applyLegacyBlur : applySoftwareBlur)(target, ctx, scratch, scratch.getContext("2d")!, px);
     const { data } = vertical
       ? ctx.getImageData(0, Math.floor(height / 2), width, 1)
       : ctx.getImageData(Math.floor(width / 2), 0, 1, height);
@@ -40,9 +43,22 @@ function blurredEdge(width: number, height: number, filter: ImageFilter, vertica
 }
 
 describe("photo blur at preview / export resolutions", () => {
+  it("calibrates actual canvas edge widths against the legacy algorithm", () => {
+    for (const long of [640, 1920]) for (const filter of ["blur-weak", "blur-strong"] as const) {
+      for (const vertical of [true, false]) {
+        const old = blurredEdge(long, long * 9 / 16, filter, vertical, true);
+        const current = blurredEdge(long, long * 9 / 16, filter, vertical);
+        console.log(JSON.stringify({ long, filter, axis: vertical ? "x" : "y", old, current, ratio: current / old }));
+        if (long === 1920) {
+          expect(current / old).toBeGreaterThanOrEqual(filter === "blur-weak" ? 0.50 : 0.55);
+          expect(current / old).toBeLessThanOrEqual(filter === "blur-weak" ? 0.60 : 0.65);
+        }
+      }
+    }
+  });
   for (const aspect of ["landscape", "portrait"] as const) {
     for (const filter of ["blur-weak", "blur-strong"] as const) {
-      it(`${aspect}/${filter}: matches actual edge spread within 25% in both axes`, () => {
+      it(`${aspect}/${filter}: matches actual edge spread within 15% in both axes`, () => {
         const output = OUTPUTS[aspect];
         for (const vertical of [true, false]) {
           const fractions = [previewResolutionScale(aspect), 1].map((scale) => {
@@ -51,8 +67,9 @@ describe("photo blur at preview / export resolutions", () => {
             const height = Math.round(panel.h);
             return blurredEdge(width, height, filter, vertical) / Math.max(width, height);
           });
-          expect(fractions[0]! / fractions[1]!, `preview/export, ${vertical ? "x" : "y"}`).toBeGreaterThanOrEqual(0.75);
-          expect(fractions[0]! / fractions[1]!, `preview/export, ${vertical ? "x" : "y"}`).toBeLessThanOrEqual(1.25);
+          console.log(JSON.stringify({ aspect, filter, axis: vertical ? "x" : "y", previewExport: fractions[0]! / fractions[1]! }));
+          expect(fractions[0]! / fractions[1]!, `preview/export, ${vertical ? "x" : "y"}`).toBeGreaterThanOrEqual(0.85);
+          expect(fractions[0]! / fractions[1]!, `preview/export, ${vertical ? "x" : "y"}`).toBeLessThanOrEqual(1.15);
         }
       });
     }
@@ -64,7 +81,7 @@ describe("photo blur at preview / export resolutions", () => {
       for (const vertical of [true, false]) {
         const weak = blurredEdge(long, Math.round(long * 9 / 16), "blur-weak", vertical);
         const strong = blurredEdge(long, Math.round(long * 9 / 16), "blur-strong", vertical);
-        // 半径比は単体テストで2倍以上を固定。実画素の補間・8bit量子化には約2倍の幅を許す。
+        // 目標σ比は単体テストで2倍以上を固定。補間・8bit量子化には約2倍の幅を許す。
         expect(strong / weak, `${long}, ${vertical ? "x" : "y"}: strong/weak`).toBeGreaterThanOrEqual(1.95);
         fractions.set(`${long}/weak/${vertical}`, weak / long);
         fractions.set(`${long}/strong/${vertical}`, strong / long);
