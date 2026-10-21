@@ -1235,7 +1235,7 @@ html[lang="ja"] .ja-phrase {
 
 .aspect-toggle {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr));
   gap: 0.5rem;
   min-width: 0;
 }
@@ -1262,6 +1262,12 @@ html[lang="ja"] .ja-phrase {
 .option-choice-check {
   flex: 0 0 1em;
   visibility: hidden;
+}
+
+/* ✓ と同じ幅を右にも確保して、選択前後でラベルを中央に保つ。 */
+.aspect-toggle label::after {
+  content: "";
+  flex: 0 0 1em;
 }
 
 .aspect-toggle label:has(input:checked) .option-choice-check {
