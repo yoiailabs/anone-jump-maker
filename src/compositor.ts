@@ -249,8 +249,8 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
-      time,
       fx.reveal ? photoForSlot(photos, fx.reveal.nextSlot) : undefined,
+      time,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -356,8 +356,9 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
-  time: number,
   nextPlate?: LoadedPhoto,
+  // ネコアイリス（#165）と同じ nextPlate の位置に揃え、キャラアイリスの中心用の時刻は末尾に置く。
+  time = 0,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
