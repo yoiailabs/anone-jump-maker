@@ -96,6 +96,13 @@ describe("detail frames", () => {
 });
 
 describe("studio transactions", () => {
+  it("retains charairis on preview and export spans", () => {
+    const spans = installFakeTracing();
+    studioTrace.beginPreviewStart({ trigger: "resume", aspect: "landscape", effect: "charairis" });
+    studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "charairis" });
+    expect(spans.filter((span) => span.attributes.effect === "charairis").length).toBeGreaterThanOrEqual(2);
+  });
+
   it("does not invent a fast span when Sentry is not ready yet", () => {
     studioTrace.beginPreviewOpen({ entry: "initial", has_photos: false });
     studioTrace.noteCompositePaint(readyPaint);

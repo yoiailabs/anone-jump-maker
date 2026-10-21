@@ -1,3 +1,4 @@
+import { charaIrisCenter, drawCharaIris } from "./charairis.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -24,6 +25,7 @@ import {
   hasImageFilter,
   mainPanelRect,
   OUTPUTS,
+  PHOTO_BASE_COLOR,
   outputSize,
   plateCoverScale,
   plateRestShiftFrac,
@@ -247,6 +249,8 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
+      time,
+      fx.reveal ? photoForSlot(photos, fx.reveal.nextSlot) : undefined,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -352,13 +356,15 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
+  time: number,
+  nextPlate?: LoadedPhoto,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
   const mw = main.width;
   const mh = main.height;
   resetCtx(mainCtx);
-  mainCtx.fillStyle = "#0a0806";
+  mainCtx.fillStyle = PHOTO_BASE_COLOR;
   mainCtx.fillRect(0, 0, mw, mh);
 
   if (plate) {
@@ -368,6 +374,28 @@ function composeMain(
     } else {
       drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);
       applyPhotoFilter(main, mainCtx, surfaces, imageFilter);
+    }
+    if (style === "charairis" && fx.reveal && nextPlate) {
+      const { progress } = fx.reveal;
+      const reveal = () => {
+        let source: ImageBitmap | HTMLCanvasElement = nextPlate.bitmap;
+        if (hasImageFilter(imageFilter)) {
+          // 全面FX用の既存作業面を窓内だけ借りる。写真を個別に加工して境界の色混ざりを防ぐ。
+          const { fxA, fxACtx } = surfaces;
+          ensureCanvasSize(fxA, mw, mh);
+          resetCtx(fxACtx);
+          fxACtx.fillStyle = PHOTO_BASE_COLOR;
+          fxACtx.fillRect(0, 0, mw, mh);
+          const dest = coverDest(source.width, source.height, mw, mh);
+          fxACtx.drawImage(source, dest.x, dest.y, dest.w, dest.h);
+          applyPhotoFilter(fxA, fxACtx, surfaces, imageFilter);
+          source = fxA;
+        }
+        // 白フチと影は写真フィルターの後で描く。
+        drawCharaIris(mainCtx, source, mw, mh, progress, charaIrisCenter(time, mw, mh, mode, characterSize));
+      };
+      if (composeDetailActive()) traceCompose("compose.photo", reveal);
+      else reveal();
     }
   }
 
