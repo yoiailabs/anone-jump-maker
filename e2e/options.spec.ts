@@ -148,6 +148,10 @@ test("summaries match radios the browser restores on back navigation", async ({ 
   await page.goto("/privacy");
   await page.goBack();
   await waitForAppReady(page);
+  // Prove the browser actually restored the non-default choices first;
+  // otherwise a reset to defaults would also pass the agreement checks below.
+  await expect(page.locator('input[name="aspect"][value="portrait"]')).toBeChecked();
+  await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
   // Restored radios, app state and the tab summaries must agree.
   for (const [name, tab, panel] of [["aspect", "#aspectTab", "#aspectPanel"], ["swap", "#swapTab", "#swapPanel"]] as const) {
     const checked = page.locator(`input[name="${name}"]:checked`);
