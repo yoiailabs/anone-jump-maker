@@ -55,6 +55,7 @@ import {
   characterShiftY,
   coverDest,
   filterBlurPx,
+  FILTER_BLUR_FRAC,
   hasFrameFx,
   hasImageFilter,
   IMAGE_FILTERS,
@@ -778,13 +779,18 @@ describe("image filter", () => {
     expect(hasImageFilter("blur-strong")).toBe(true);
   });
 
-  it("uses a stronger radius for 強 than 弱, and none is zero", () => {
-    const short = 720;
-    expect(filterBlurPx("none", short)).toBe(0);
-    expect(filterBlurPx("blur-weak", short)).toBeGreaterThan(0);
-    expect(filterBlurPx("blur-weak", short)).toBeLessThan(10);
-    expect(filterBlurPx("blur-strong", short)).toBeGreaterThan(filterBlurPx("blur-weak", short));
-    expect(filterBlurPx("blur-strong", short)).toBeLessThanOrEqual(filterBlurPx("blur-weak", short) * 2 + 1);
-    expect(filterBlurPx("blur-strong", 1440)).toBeGreaterThan(filterBlurPx("blur-strong", short));
+  it("softens both radii while keeping 強 at least twice 弱, without a preview pixel floor", () => {
+    expect(FILTER_BLUR_FRAC).toEqual({ none: 0, "blur-weak": 0.0028, "blur-strong": 0.0065 });
+    expect(FILTER_BLUR_FRAC["blur-weak"]).toBeLessThan(0.005);
+    expect(FILTER_BLUR_FRAC["blur-strong"]).toBeLessThan(0.011);
+    for (const long of [360, 640, 1080, 1920]) {
+      const weak = filterBlurPx("blur-weak", long);
+      const strong = filterBlurPx("blur-strong", long);
+      expect(filterBlurPx("none", long)).toBe(0);
+      expect(weak).toBeGreaterThan(0);
+      expect(weak).toBeCloseTo(long * 0.0028, 8);
+      expect(strong).toBeCloseTo(long * 0.0065, 8);
+      expect(strong).toBeGreaterThanOrEqual(weak * 2);
+    }
   });
 });

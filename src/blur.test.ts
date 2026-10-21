@@ -3,7 +3,9 @@ import {
   CANVAS_FILTER_BLUR,
   boxBlurRgba,
   softwareBlurDownscale,
+  softwareBlurRadius,
 } from "./blur.ts";
+import { filterBlurPx } from "./layout.ts";
 
 describe("software blur", () => {
   it("does not rely on Canvas2D filter, which Safari / iOS disable", () => {
@@ -34,6 +36,26 @@ describe("software blur", () => {
     expect(softwareBlurDownscale(0)).toBe(1);
     expect(softwareBlurDownscale(24)).toBeLessThan(softwareBlurDownscale(8));
   });
+
+  for (const filter of ["blur-weak", "blur-strong"] as const) {
+    it(`${filter}: keeps the effective radius proportional at preview and export sizes`, () => {
+      const fractions = [360, 640, 1080, 1920].map((long) => {
+        const px = filterBlurPx(filter, long);
+        const radius = softwareBlurRadius(px);
+        const down = softwareBlurDownscale(px);
+        expect(Number.isInteger(radius)).toBe(true);
+        expect(radius).toBeGreaterThanOrEqual(1);
+        expect(down).toBeGreaterThan(0);
+        expect(down).toBeLessThanOrEqual(1);
+        // 実際のバッファ寸法の丸めも含めた長辺方向のフル換算半径。
+        const effective = radius * long / Math.round(long * down);
+        expect(effective / px).toBeGreaterThanOrEqual(0.99);
+        expect(effective / px).toBeLessThanOrEqual(1.01);
+        return effective / long;
+      });
+      expect(Math.max(...fractions) / Math.min(...fractions)).toBeLessThanOrEqual(1.25);
+    });
+  }
 
   it("leaves pixels alone when the radius is under 1", () => {
     const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 255]);

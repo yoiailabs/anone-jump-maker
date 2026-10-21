@@ -161,19 +161,22 @@ export function isCharacterSize(value: string): value is CharacterSize {
 }
 
 /**
- * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強はその一段上。
+ * 本編パネル長辺に対するブラー半径。
+ * 弱 0.0028 は旧値の56%で写真が分かるソフトさ、強 0.0065 は約59%で
+ * 崩れすぎないボケに抑える。半径比は約2.32倍で、弱・強の差を残す。
  * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
  */
 export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
   none: 0,
-  "blur-weak": 0.005,
-  "blur-strong": 0.011,
+  "blur-weak": 0.0028,
+  "blur-strong": 0.0065,
 };
 
-export function filterBlurPx(filter: ImageFilter, shortSide: number): number {
+export function filterBlurPx(filter: ImageFilter, panelLongSide: number): number {
   const frac = FILTER_BLUR_FRAC[filter];
   if (frac <= 0) return 0;
-  return Math.max(2, Math.round(shortSide * frac));
+  // 固定pxの床と丸めは、小さい縦プレビューだけ相対的に強くなるため避ける。
+  return panelLongSide * frac;
 }
 
 export function hasImageFilter(filter: ImageFilter): boolean {

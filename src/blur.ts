@@ -6,10 +6,21 @@ export const CANVAS_FILTER_BLUR = "unsupported-on-safari" as const;
 
 export const SOFTWARE_BLUR_PASSES = 2;
 
-/** 半径に対する縮小率。小さいほど強いボケで、画素処理も軽い。 */
+/**
+ * 縮小空間の半径を共通にし、2パスの分布の形も解像度間で揃える。
+ * 半径を変えると r / down が同じでも1パスの分散 r(r+1) / (3 down²) は一致しない。
+ */
+export function softwareBlurRadius(px: number): number {
+  return px < 1 ? 0 : 1;
+}
+
+/**
+ * 整数半径 / 縮小率を入力pxに揃え、二重丸めによる解像度間の強度差を防ぐ。
+ * 2px未満では縮小率を0.5より上げ、縦プレビューの弱にも固定2pxの床を作らない。
+ */
 export function softwareBlurDownscale(px: number): number {
   if (px < 1) return 1;
-  return Math.max(0.14, Math.min(0.5, 6 / px));
+  return softwareBlurRadius(px) / px;
 }
 
 /**
@@ -52,7 +63,7 @@ export function applySoftwareBlur(
   scratchCtx.globalCompositeOperation = "source-over";
   scratchCtx.imageSmoothingEnabled = true;
   scratchCtx.drawImage(target, 0, 0, sw, sh);
-  const radius = Math.max(1, Math.round(px * down));
+  const radius = softwareBlurRadius(px);
   try {
     const image = scratchCtx.getImageData(0, 0, sw, sh);
     boxBlurRgba(image.data, sw, sh, radius);
@@ -65,7 +76,8 @@ export function applySoftwareBlur(
   targetCtx.globalAlpha = 1;
   targetCtx.globalCompositeOperation = "source-over";
   targetCtx.imageSmoothingEnabled = true;
-  const pad = Math.max(2, Math.round(px * 0.35));
+  // 端の拡大も半径に比例させ、プレビューだけ固定2pxで広がるのを避ける。
+  const pad = px * 0.35;
   targetCtx.drawImage(scratch, -pad, -pad, w + pad * 2, h + pad * 2);
 }
 
