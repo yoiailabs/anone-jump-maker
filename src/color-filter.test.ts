@@ -27,6 +27,12 @@ it("has short, distinct labels in every locale", () => {
 });
 
 describe("deterministic matrix and tone LUT", () => {
+  const sample = (filter: typeof COLOR_FILTERS[number], rgb: readonly number[]) => {
+    const data = new Uint8ClampedArray([...rgb, 255]);
+    applyColorFilter(data, filter);
+    return [...data].slice(0, 3);
+  };
+
   it("none has identity matrix/LUT and preserves every input byte", () => {
     const { matrix, lut } = buildColorTransform("none");
     expect(matrix).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
@@ -56,15 +62,36 @@ describe("deterministic matrix and tone LUT", () => {
     for (let i = 3; i < data.length; i += 4) expect(data[i]).toBe(before[i]);
   });
 
-  it("keeps a lifted film black, warm/cool balance, and stronger dynamic saturation", () => {
-    const sample = (filter: typeof COLOR_FILTERS[number], rgb: number[]) => {
-      const data = new Uint8ClampedArray([...rgb, 255]);
-      applyColorFilter(data, filter);
-      return [...data].slice(0, 3);
-    };
+  it.each([
+    ["cool", [115, 125, 141]],
+    ["warm", [146, 132, 118]],
+  ] as const)("%s makes its color temperature clear on mid-gray", (filter, expected) => {
+    const actual = sample(filter, [128, 128, 128]);
+    expect(actual).toEqual(expected);
+    const redBlueDifference = filter === "warm" ? actual[0]! - actual[2]! : actual[2]! - actual[0]!;
+    expect(redBlueDifference).toBeGreaterThanOrEqual(20);
+  });
+
+  it.each([
+    ["cool", [79, 148, 247]],
+    ["warm", [110, 153, 191]],
+  ] as const)("%s preserves blue sky without clipping its blue channel", (filter, expected) => {
+    const actual = sample(filter, [90, 150, 220]);
+    expect(actual).toEqual(expected);
+    expect(actual[2]).toBeGreaterThan(actual[1]!);
+    expect(actual[1]).toBeGreaterThan(actual[0]!);
+    expect(actual[2]).toBeLessThan(255);
+  });
+
+  it("warm preserves the red, green, blue ordering of skin tones", () => {
+    const actual = sample("warm", [224, 172, 140]);
+    expect(actual).toEqual([243, 173, 130]);
+    expect(actual[0]).toBeGreaterThan(actual[1]!);
+    expect(actual[1]).toBeGreaterThan(actual[2]!);
+  });
+
+  it("keeps a lifted film black and stronger dynamic saturation", () => {
     expect(sample("film", [0, 0, 0]).every((v) => v >= 20)).toBe(true);
-    expect(sample("warm", [128, 128, 128])[0]).toBeGreaterThan(sample("warm", [128, 128, 128])[2]!);
-    expect(sample("cool", [128, 128, 128])[2]).toBeGreaterThan(sample("cool", [128, 128, 128])[0]!);
     expect(sample("dynamic", [180, 100, 80])[0]! - sample("dynamic", [180, 100, 80])[2]!).toBeGreaterThan(100);
     expect(sample("dramatic", [40, 40, 40])[0]).toBeLessThan(40);
   });

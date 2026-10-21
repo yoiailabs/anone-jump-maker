@@ -30,7 +30,7 @@ type Recipe = {
   gain: readonly [number, number, number];
 };
 
-/** sRGB の穏やかなトーン調整。肌色・夕焼けのハイライトを残す強さに留める。 */
+/** sRGB のトーン調整。cool/warm は色温度の違いを明確にし、空や肌の色を保つ。 */
 export const COLOR_FILTER_RECIPES: Record<ColorFilter, Recipe> = {
   none: { saturation: 1, contrast: 1, gamma: 1, lift: 0, gain: [1, 1, 1] },
   dramatic: { saturation: 0.82, contrast: 1.18, gamma: 1.06, lift: 0, gain: [1, 1, 1] },
@@ -38,8 +38,8 @@ export const COLOR_FILTER_RECIPES: Record<ColorFilter, Recipe> = {
   sepia: { saturation: 0.12, contrast: 0.94, gamma: 1, lift: 4, gain: [1.08, 1, 0.84] },
   mono: { saturation: 0, contrast: 1.06, gamma: 1, lift: 0, gain: [1, 1, 1] },
   film: { saturation: 0.78, contrast: 0.88, gamma: 1, lift: 10, gain: [1.03, 1, 0.96] },
-  cool: { saturation: 0.96, contrast: 1.03, gamma: 1, lift: 0, gain: [0.97, 1, 1.04] },
-  warm: { saturation: 0.96, contrast: 0.96, gamma: 1, lift: 2, gain: [1.04, 1, 0.96] },
+  cool: { saturation: 1, contrast: 1.05, gamma: 1, lift: 0, gain: [0.9, 0.98, 1.1] },
+  warm: { saturation: 0.95, contrast: 0.94, gamma: 1, lift: 6, gain: [1.12, 1.01, 0.9] },
 };
 
 const clamp = (v: number) => Math.max(0, Math.min(255, v));
