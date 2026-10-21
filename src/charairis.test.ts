@@ -90,6 +90,27 @@ describe.each(["landscape", "portrait"] as const)("%s charairis", (mode) => {
       }
     }
   });
+
+  it("keeps a visible arc inside the screen at S-2 through S+2 at every cut", () => {
+    const { width: w, height: h } = OUTPUTS[mode];
+    const borderHalf = Math.min(w, h) * 0.011 / 2;
+    for (const cut of cuts.slotFrames.slice(1)) {
+      for (let offset = -2; offset <= 2; offset++) {
+        const time = (cut + offset) / 30;
+        const center = charaIrisCenter(time, w, h, mode);
+        const radius = charaIrisRadius(swapFx(time, cuts.slots, "charairis", mode).reveal!.progress, w, h, center);
+        // 半径/Fだけでは中心や画面形状を保証できない。実際の円周上に、
+        // 白縁の太さまで画面内に入る点が連続してあることを検査する。
+        const inside = Array.from({ length: 720 }, (_, i) => {
+          const angle = i * Math.PI / 360;
+          const x = center.x + radius * Math.cos(angle), y = center.y + radius * Math.sin(angle);
+          return x > borderHalf && x < w - borderHalf && y > borderHalf && y < h - borderHalf;
+        });
+        const arcLength = inside.filter(Boolean).length * Math.PI / 360 * radius;
+        expect(arcLength, `cut ${cut}, offset ${offset}`).toBeGreaterThan(Math.min(w, h) * 0.1);
+      }
+    }
+  });
 });
 
 it("keeps reveal independent from composited frame effects", () => {

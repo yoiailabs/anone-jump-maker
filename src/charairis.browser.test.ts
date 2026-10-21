@@ -46,6 +46,34 @@ function edgeLine(data: Uint8ClampedArray, w: number, h: number): number {
 }
 
 for (const mode of ["landscape", "portrait"] as const) {
+  it(`${mode}: draws a white arc at every cut from S-2 through S+2 and clears it at S+3`, async () => {
+    const w = mode === "landscape" ? 640 : 360, h = mode === "landscape" ? 360 : 640;
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d")!;
+    const black = await photo(2, 2, "#000");
+    try {
+      for (const cut of cuts.slotFrames.slice(1)) {
+        for (let offset = -2; offset <= 3; offset++) {
+          const time = (cut + offset) / 30;
+          ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h);
+          drawCharaIris(ctx, black.bitmap, w, h, swapFx(time, cuts.slots, "charairis", mode).reveal!.progress, charaIrisCenter(time, w, h, mode));
+          const data = pixels(canvas);
+          if (offset === 3) {
+            // 最終フレームは白縁・影・AAも残らず通常写真と全面一致。
+            expect(data.every((v, i) => v === (i % 4 === 3 ? 255 : 0)), `cut ${cut}`).toBe(true);
+          } else {
+            let white = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              if (data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255) white++;
+            }
+            expect(white, `cut ${cut}, offset ${offset}`).toBeGreaterThan(Math.min(w, h) * 0.1);
+          }
+        }
+      }
+    } finally { black.bitmap.close(); }
+  });
+
   for (const resolutionScale of [0.1, 0.3325, 1]) {
     it(`${mode} ${resolutionScale}: every window phase stays covered, has no edge line and seeks deterministically`, async () => {
       const a = createCompositor({ resolutionScale, createKeyer: () => null });

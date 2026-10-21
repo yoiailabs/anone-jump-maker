@@ -37,8 +37,11 @@ export function charaIrisRadius(progress: number, w: number, h: number, center: 
   const farthest = Math.hypot(Math.max(Math.abs(center.x), Math.abs(w - center.x)), Math.max(Math.abs(center.y), Math.abs(h - center.y)));
   // 白縁半分＋影の3σ以上とAAを含む。最後の整数revealフレームでも縁を画面外へ送る。
   const end = farthest + short * 0.06;
-  const t = Math.max(0, Math.min(1, progress));
-  return short * 0.035 + (end - short * 0.035) * (1 - (1 - t) ** 3);
+  // 窓の進捗は7分割だが、最後の整数フレーム（S+3 = 6/7）で覆い切る。
+  // 弱い二次のeaseOutでS-2〜S+2にも円弧を残し、後半まで隅へ動かす。
+  const t = Math.max(0, Math.min(1, progress * 7 / 6));
+  const eased = t + 0.12 * t * (1 - t);
+  return short * 0.035 + (end - short * 0.035) * eased;
 }
 
 /** 写真は等倍coverのまま円でクリップ。白縁・影は写真フィルターの後段。 */
