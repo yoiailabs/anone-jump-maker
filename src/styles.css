@@ -694,16 +694,18 @@ html[lang="ja"] .ja-phrase {
   gap: 0.5rem;
   flex: 1 1 auto;
   min-height: 0;
-  width: 100%;
-  overflow: hidden;
+  /* プレビューだけ本文の列幅から広げる。右端には既存の影の余地を残す。 */
+  width: min(60rem, calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  flex-shrink: 0;
+  overflow: visible;
 }
 
-/* プレビュー確認用。向き／エフェクト切替が残るよう、表示は小さめ。 */
+/* 枠の内側で比率を保つ。内部ビットマップの解像度は変えない。 */
 .stage {
+  box-sizing: content-box;
   display: block;
   position: relative;
-  width: min(100%, 16rem, calc((100svh - 20rem) * 1080 / 1920));
-  max-height: calc(100svh - 20rem);
+  width: min(calc(100% - 7px), calc((75svh - 7px) * 1080 / 1920));
   aspect-ratio: 1080 / 1920;
   height: auto;
   flex: 0 0 auto;
@@ -724,8 +726,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 .stage[data-aspect="landscape"] {
-  width: min(100%, 22rem);
-  max-height: calc(100svh - 20rem);
+  width: calc(100% - 7px);
   aspect-ratio: 16 / 9;
 }
 
@@ -799,17 +800,6 @@ html[lang="ja"] .ja-phrase {
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
-}
-
-/* 縦だけ一段大きく。横は下の landscape 指定のまま。画面の約 55svh、幅は列を超えない。 */
-#studioView .stage {
-  width: min(100%, 86vw, 18rem, calc(55svh * 1080 / 1920));
-  max-height: 55svh;
-}
-
-#studioView .stage[data-aspect="landscape"] {
-  width: min(100%, calc(36svh * 16 / 9));
-  max-height: 36svh;
 }
 
 .studio-empty {
