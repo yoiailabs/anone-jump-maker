@@ -368,24 +368,21 @@ function composeMain(
     const tearing = style === "papertear" && fx.reveal && nextPlate;
     const drawPlate = () => {
       if (tearing) {
-        // 新旧を別々にぼかしてから裂く。合成後の白縁・影や境界の向こうの写真には掛けない。
-        let outgoing: ImageBitmap | HTMLCanvasElement = plate.bitmap;
-        let incoming: ImageBitmap | HTMLCanvasElement = nextPlate.bitmap;
-        if (hasImageFilter(imageFilter)) {
-          const prepare = (photo: LoadedPhoto, target: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
-            ensureCanvasSize(target, mw, mh);
-            resetCtx(ctx);
-            ctx.fillStyle = "#0a0806";
-            ctx.fillRect(0, 0, mw, mh);
-            const dest = coverDest(photo.bitmap.width, photo.bitmap.height, mw, mh);
-            ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
-            applyPhotoFilter(target, ctx, surfaces, imageFilter);
-            return target;
-          };
-          // 全面FXと排他的な窓なので既存の作業面を再利用する。窓外では触らない。
-          outgoing = prepare(plate, surfaces.fxA, surfaces.fxACtx);
-          incoming = prepare(nextPlate, surfaces.fxB, surfaces.fxBCtx);
-        }
+        // 下地と写真を先に不透明な1枚にする。AAクリップ内で別々に描くと下地が縁に混ざる。
+        const prepare = (photo: LoadedPhoto, target: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+          ensureCanvasSize(target, mw, mh);
+          resetCtx(ctx);
+          ctx.fillStyle = "#0a0806";
+          ctx.fillRect(0, 0, mw, mh);
+          const dest = coverDest(photo.bitmap.width, photo.bitmap.height, mw, mh);
+          ctx.drawImage(photo.bitmap, dest.x, dest.y, dest.w, dest.h);
+          // 新旧を別々にぼかし、白縁・影や境界の向こうの写真には掛けない。
+          applyPhotoFilter(target, ctx, surfaces, imageFilter);
+          return target;
+        };
+        // 全面FXと排他的な窓なので既存の作業面を再利用する。窓外では触らない。
+        const outgoing = prepare(plate, surfaces.fxA, surfaces.fxACtx);
+        const incoming = prepare(nextPlate, surfaces.fxB, surfaces.fxBCtx);
         drawPaperTear(mainCtx, outgoing, incoming, mw, mh, mode, fx.cutIndex, fx.reveal!.progress);
       } else {
         drawPhotoPlate(mainCtx, surfaces, plate, fx, style, mw, mh);

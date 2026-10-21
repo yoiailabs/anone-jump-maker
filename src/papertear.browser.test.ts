@@ -61,6 +61,39 @@ async function hash(canvas: HTMLCanvasElement): Promise<string> {
   return Array.from(new Uint8Array(digest), (x) => x.toString(16).padStart(2, "0")).join("");
 }
 
+it("does not darken partially covered pixels when opaque tear plates have fractional rotated edges", () => {
+  const canvas = document.createElement("canvas");
+  canvas.width = 400;
+  canvas.height = 260;
+  const ctx = canvas.getContext("2d")!;
+  const plate = document.createElement("canvas");
+  plate.width = 320;
+  plate.height = 180;
+  const plateCtx = plate.getContext("2d")!;
+  plateCtx.fillStyle = "rgb(112,152,184)";
+  plateCtx.fillRect(0, 0, plate.width, plate.height);
+  let maxDarkening = 0;
+  let minAlpha = 255;
+  for (const progress of [0, 1 / 3, 0.5, 2 / 3]) {
+    ctx.fillStyle = "rgb(112,152,184)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    // Rotated outer edges expose fractional coverage in Chromium as well as WebKit.
+    ctx.translate(40.25, 40.5);
+    ctx.rotate(0.013);
+    drawPaperTear(ctx, plate, plate, plate.width, plate.height, "landscape", 4, progress);
+    ctx.restore();
+    const data = pixels(canvas);
+    for (let i = 0; i < data.length; i += 4) {
+      minAlpha = Math.min(minAlpha, data[i + 3]!);
+      maxDarkening = Math.max(maxDarkening, 112 - data[i]!, 152 - data[i + 1]!, 184 - data[i + 2]!);
+    }
+  }
+  console.info(`papertear fractional rotated edges dark=${maxDarkening}`);
+  expect(minAlpha).toBe(255);
+  expect(maxDarkening).toBeLessThanOrEqual(30);
+});
+
 for (const mode of ["landscape", "portrait"] as const) {
   for (const filter of ["blur-weak", "blur-strong"] as const) {
     for (const resolutionScale of [1 / 3, 1]) {
