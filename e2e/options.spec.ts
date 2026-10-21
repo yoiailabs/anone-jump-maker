@@ -138,3 +138,22 @@ test("ten effects fit narrow enlarged text and reduced motion disables movement"
     await expect(target).toHaveCSS("transition-duration", "0s");
   }
 });
+
+test("summaries match radios the browser restores on back navigation", async ({ page }) => {
+  await page.goto("/make");
+  await waitForAppReady(page);
+  await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
+  await page.locator("#swapTab").click();
+  await page.locator('label:has(input[name="swap"][value="jump"])').click();
+  await page.goto("/privacy");
+  await page.goBack();
+  await waitForAppReady(page);
+  // Restored radios, app state and the tab summaries must agree.
+  for (const [name, tab, panel] of [["aspect", "#aspectTab", "#aspectPanel"], ["swap", "#swapTab", "#swapPanel"]] as const) {
+    const checked = page.locator(`input[name="${name}"]:checked`);
+    await expect(checked).toHaveCount(1);
+    const label = await page.locator(`${panel} label:has(input:checked) span:not([aria-hidden])`).textContent();
+    await expect(page.locator(`${tab} .studio-option-tab-value`)).toHaveText(label!);
+  }
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", await page.locator('input[name="aspect"]:checked').inputValue());
+});
