@@ -62,34 +62,3 @@ jobs:
             test-results
             playwright-report
           if-no-files-found: ignore
-
-  # TEMPORARY (remove before merge): repeat the flaky WebKit export-modal test.
-  flaky-repeat:
-    name: TEMP flaky repeat (webkit export-modal)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          version: 10.15.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22.22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit
-      - run: pnpm exec playwright test e2e/export-modal.spec.ts --project=webkit --grep 863x360 --repeat-each=100 --workers=4 --retries=0 --trace=retain-on-failure
-      - run: pnpm exec playwright test e2e/export-modal.spec.ts --project=webkit --project=ios-safari --repeat-each=10 --workers=4 --retries=0 --trace=retain-on-failure
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: flaky-repeat-output
-          path: test-results
-          if-no-files-found: ignore
