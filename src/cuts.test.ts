@@ -1,3 +1,4 @@
+import { glitchEnvelope, glitchStyle } from "./glitch-style.ts";
 import { describe, expect, it } from "vitest";
 import landscapeCuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 import { hasFrameFx, swapFx, TEMPLATE_FPS, TEMPLATES } from "./layout.ts";
@@ -40,7 +41,7 @@ describe("template cut tables", () => {
         expect(pre.plateSlot).toBe(fx.plateSlot - 1);
         expect(pre.cutIndex).toBe(fx.plateSlot);
         expect(pre.glitch?.frame, `frame ${n - before} before cut ${n}`).toBe(-before);
-        expect(pre.glitch?.amount).toBe([1, 0.8, 0.6, 0.4, 0.2][before - 1]);
+        expect(pre.glitch?.amount).toBe(glitchEnvelope(-before, glitchStyle(fx.cutIndex).peak));
         expect(hasFrameFx(pre)).toBe(true);
       }
       for (let after = 1; after <= 4; after++) {
@@ -48,13 +49,12 @@ describe("template cut tables", () => {
         expect(post.plateSlot).toBe(fx.plateSlot);
         expect(post.cutIndex).toBe(fx.cutIndex);
         expect(post.glitch?.frame).toBe(after);
-        expect(post.glitch!.amount).toBe([0.45, 0.3, 0.18, 0.08][after - 1]);
+        expect(post.glitch!.amount).toBe(glitchEnvelope(after, glitchStyle(fx.cutIndex).peak));
       }
       expect(hasFrameFx(frames[n + 5]!)).toBe(false);
     }
     expect(changes).toEqual(slotFrames.slice(1));
     // 全フレームを独立した実カットの整数表と照合し、窓外の漏れや別カットへの誤帰属も検出する。
-    const amounts = [0.2, 0.4, 0.6, 0.8, 1, 0, 0.45, 0.3, 0.18, 0.08];
     for (let n = 0; n < frames.length; n++) {
       const owners = slotFrames.slice(1).flatMap((cut, i) => {
         const relative = n - cut;
@@ -63,7 +63,7 @@ describe("template cut tables", () => {
       expect(owners.length, `owners at frame ${n}`).toBeLessThanOrEqual(1);
       const owner = owners[0];
       expect(frames[n]!.glitch, `glitch at frame ${n}`).toEqual(owner
-        ? { amount: amounts[owner.relative + 5], frame: owner.relative }
+        ? { amount: glitchEnvelope(owner.relative, glitchStyle(owner.index).peak), frame: owner.relative }
         : undefined);
       expect(hasFrameFx(frames[n]!)).toBe(owner !== undefined);
       if (owner) expect(frames[n]!.cutIndex).toBe(owner.index);

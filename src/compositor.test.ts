@@ -1,3 +1,4 @@
+import { glitchEnvelope, glitchStyle } from "./glitch-style.ts";
 import { describe, expect, it } from "vitest";
 import appSrc from "./app.ts?raw";
 import compositorSrc from "./compositor.ts?raw";
@@ -311,7 +312,7 @@ describe("glitch swap", () => {
         if (active) {
           expect(fx.glitch!.frame).toBe(frame);
           expect(fx.cutIndex).toBe(cutIndex);
-          expect(fx.glitch!.amount).toBe([0.2, 0.4, 0.6, 0.8, 1, 0, 0.45, 0.3, 0.18, 0.08][frame + 5]);
+          expect(fx.glitch!.amount).toBe(glitchEnvelope(frame, glitchStyle(cutIndex).peak));
           // 延長前と同じ明滅量・包絡。追加したフレームには発光させない。
           const flashAmount = [0.35, 0.65, 1, 0, 0.35, 0.2, 0.1][frame + 3] ?? 0;
           expect(fx.flashAdd).toBeCloseTo(0.06 * flashAmount * jumpFlashEnvelope(frame), 12);

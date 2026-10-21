@@ -1,4 +1,6 @@
 import { ensureCanvasSize } from "./canvas-size.ts";
+import { glitchNoise, glitchStyle } from "./glitch-style.ts";
+export { glitchStyle } from "./glitch-style.ts";
 
 type GlitchSurfaces = {
   fxA: HTMLCanvasElement;
@@ -7,14 +9,6 @@ type GlitchSurfaces = {
   fxBCtx: CanvasRenderingContext2D;
 };
 
-/** カットと相対フレームだけで決まるハッシュ。再生順や呼び出し回数には依存しない。 */
-function noise(cut: number, frame: number, lane: number): number {
-  let x = Math.imul(cut, 0x9e3779b1) ^ Math.imul(frame, 0x85ebca6b) ^ Math.imul(lane, 0xc2b2ae35);
-  x = Math.imul(x ^ (x >>> 16), 0x7feb352d);
-  x = Math.imul(x ^ (x >>> 15), 0x846ca68b);
-  return ((x ^ (x >>> 16)) >>> 0) / 0x100000000;
-}
-
 /** 整数座標の横スライスを折り返す。左右とも全幅を一度ずつ埋め、境界の暗線を防ぐ。 */
 function wrapSlice(
   ctx: CanvasRenderingContext2D,
@@ -22,11 +16,20 @@ function wrapSlice(
   y: number,
   height: number,
   offset: number,
+  targetY = y,
 ): void {
   const w = source.width;
   const dx = ((offset % w) + w) % w;
-  ctx.drawImage(source, 0, y, w - dx, height, dx, y, w - dx, height);
-  if (dx > 0) ctx.drawImage(source, w - dx, y, dx, height, 0, y, dx, height);
+  ctx.drawImage(source, 0, y, w - dx, height, dx, targetY, w - dx, height);
+  if (dx > 0) ctx.drawImage(source, w - dx, y, dx, height, 0, targetY, dx, height);
+}
+
+/** 縦ずれも整数の折り返しで埋める。追加の作業面や拡大補間を使わない。 */
+function wrapPlane(ctx: CanvasRenderingContext2D, source: HTMLCanvasElement, dx: number, offsetY: number): void {
+  const h = source.height;
+  const dy = ((offsetY % h) + h) % h;
+  wrapSlice(ctx, source, 0, h - dy, dx, dy);
+  if (dy > 0) wrapSlice(ctx, source, h - dy, dy, dx, 0);
 }
 
 function reset(ctx: CanvasRenderingContext2D): void {
@@ -52,52 +55,58 @@ export function drawGlitch(
   ensureCanvasSize(fxB, w, h);
   reset(fxACtx);
   reset(fxBCtx);
-  fxACtx.drawImage(main, 0, 0);
-  fxBCtx.drawImage(main, 0, 0);
-
-  const rand = (lane: number) => noise(cut, frame, lane);
+  const style = glitchStyle(cut);
+  const power = amount * style.strength;
   const before = frame < 0;
-  const sliceCount = before ? Math.round(3 + 7 * amount) + Math.floor(rand(90) * 3) : 2 + Math.floor(rand(90) * 2);
+  const jitter = before ? Math.round(short * style.jitter * power) * (frame % 2 === 0 ? -1 : 1) : 0;
+  wrapPlane(fxACtx, main, 0, jitter);
+  fxBCtx.drawImage(fxA, 0, 0);
+
+  const rand = (lane: number) => glitchNoise(cut, frame, lane);
+  const sliceCount = before ? Math.round(2 + (style.slices - 2) * amount) : 2 + Math.floor(rand(90) * 2);
   for (let i = 0; i < sliceCount; i++) {
-    const thickness = before ? (0.02 + rand(i * 3) * 0.06) * amount : 0.003 + rand(i * 3) * 0.006;
+    const thickness = before ? (style.thickness[0] + rand(i * 3) * (style.thickness[1] - style.thickness[0])) * power : 0.003 + rand(i * 3) * 0.006;
     const bh = Math.min(h, Math.max(1, Math.round(short * thickness)));
     const y = Math.floor(rand(i * 3 + 1) * (h - bh + 1));
     const offset = before ? 0.1 + rand(i * 3 + 2) * 0.08 : 0.03;
-    const direction = rand(100 + i) < 0.5 ? -1 : 1;
-    const dx = Math.round(direction * short * offset * amount);
+    const direction = style.direction || (i % 2 === 0 ? -1 : 1);
+    const dx = Math.round(direction * short * offset * power);
     wrapSlice(fxBCtx, fxA, y, bh, dx);
   }
 
   // 小さな写真断片に薄い色を足す。全画面のランダムノイズ・強い白黒明滅は使わない。
-  for (let i = 0; before && i < 5; i++) {
+  for (let i = 0; before && i < style.fragments; i++) {
     const bw = Math.min(w, Math.max(1, Math.round(short * (0.025 + rand(30 + i) * 0.08))));
     const bh = Math.min(h, Math.max(1, Math.round(short * (0.005 + rand(40 + i) * 0.02))));
     const x = Math.floor(rand(50 + i) * (w - bw + 1));
-    const y = Math.floor(rand(60 + i) * (h - bh + 1));
+    const y = Math.round(Math.max(0, Math.min(1, style.fragmentBand + (rand(60 + i) - 0.5) * 0.5)) * (h - bh));
     const sx = Math.floor(rand(70 + i) * (w - bw + 1));
-    fxBCtx.globalAlpha = amount * 0.65;
+    fxBCtx.globalAlpha = Math.min(0.85, power * 0.65);
     fxBCtx.drawImage(fxA, sx, y, bw, bh, x, y, bw, bh);
-    fxBCtx.globalAlpha = amount * 0.08;
+    fxBCtx.globalAlpha = power * 0.08;
     fxBCtx.globalCompositeOperation = "lighter";
     fxBCtx.fillStyle = i % 2 === 0 ? "#d06880" : "#68a0c0";
     fxBCtx.fillRect(x, y, bw, bh);
     reset(fxBCtx);
   }
 
-  const rgb = Math.max(1, Math.round(short * (before ? 0.016 : 0.004) * amount));
-  const direction = rand(80) < 0.5 ? -1 : 1;
+  const rgb = Math.max(1, Math.round(short * (before ? 0.016 : 0.004) * power * style.rgbScale));
+  const rgbY = Math.round(rgb * style.rgbVertical);
   ctx.save();
   reset(ctx);
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, w, h);
-  for (const [color, dx] of [["#ff0000", rgb * direction], ["#00ff00", 0], ["#0000ff", -rgb * direction]] as const) {
+  const colors = ["#ff0000", "#00ff00", "#0000ff"];
+  for (let channel = 0; channel < 3; channel++) {
+    const displacement = [1, 0, -1][(channel - style.rgbLead + 3) % 3]!;
+    const dx = rgb * style.rgbDirection * displacement;
     reset(fxACtx);
     fxACtx.drawImage(fxB, 0, 0);
     fxACtx.globalCompositeOperation = "multiply";
-    fxACtx.fillStyle = color;
+    fxACtx.fillStyle = colors[channel]!;
     fxACtx.fillRect(0, 0, w, h);
     ctx.globalCompositeOperation = "lighter";
-    wrapSlice(ctx, fxA, 0, h, dx);
+    wrapPlane(ctx, fxA, dx, rgbY * displacement);
   }
   ctx.restore();
 }

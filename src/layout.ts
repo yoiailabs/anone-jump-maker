@@ -1,3 +1,5 @@
+import { glitchEnvelope, glitchStyle } from "./glitch-style.ts";
+
 export type AspectMode = "portrait" | "landscape";
 
 /** X 投稿でよく使う横を先に出し、初期選択にする。 */
@@ -377,8 +379,6 @@ const NO_FX = {
 
 const GLITCH_BEFORE_FRAMES = 5;
 const GLITCH_AFTER_FRAMES = 4;
-/** 前 5 枚で強まり、カットの 1 枚を空けて後 4 枚で減衰する。 */
-const GLITCH_AMOUNTS = [0.2, 0.4, 0.6, 0.8, 1, 0, 0.45, 0.3, 0.18, 0.08] as const;
 /** 明滅の強さと期間は延長前のまま。スライスや RGB の量から切り離す。 */
 const GLITCH_FLASH_BEFORE_FRAMES = 3;
 const GLITCH_FLASH_AMOUNTS = [0.35, 0.65, 1, 0, 0.35, 0.2, 0.1] as const;
@@ -691,7 +691,7 @@ export function swapFx(
     }
     // 先頭には写真の切替がないのでグリッチを出さない。
     const inWindow = cutIndex > 0 && frame >= -GLITCH_BEFORE_FRAMES && frame <= GLITCH_AFTER_FRAMES;
-    const amount = inWindow ? GLITCH_AMOUNTS[frame + GLITCH_BEFORE_FRAMES] ?? 0 : 0;
+    const amount = inWindow ? glitchEnvelope(frame, glitchStyle(cutIndex).peak) : 0;
     const flashAmount = cutIndex > 0 ? GLITCH_FLASH_AMOUNTS[frame + GLITCH_FLASH_BEFORE_FRAMES] ?? 0 : 0;
     const env = flashAmount * jumpFlashEnvelope(frame);
     return {
