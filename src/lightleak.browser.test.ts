@@ -196,7 +196,9 @@ it("生成表の光源が実テンプレの異なる3ポーズのアルファ重
   const ctx = canvas.getContext("2d")!;
   try {
     for (const frame of [59, 102, 205]) {
-      await new Promise<void>((resolve) => { source.onseeked = () => resolve(); source.currentTime = frame / 30 + 0.001; });
+      // カットはポーズが切り替わるフレーム。境界直後（+1ms）だと WebKit は前のフレーム（前のポーズ）を出すことがあるので、
+      // フレームの中央の時刻へシークしてどのブラウザでも同じフレームを読む。
+      await new Promise<void>((resolve) => { source.onseeked = () => resolve(); source.currentTime = (frame + 0.5) / 30; });
       for (const mode of ["landscape", "portrait"] as const) {
         const band = templateBandRect(source.videoWidth, source.videoHeight, mode);
         ctx.drawImage(source, band.x, band.y, band.w, band.h, 0, 0, 320, 180);
