@@ -6,15 +6,21 @@ const viewports = [
   { width: 768, height: 1024 },
   { width: 1280, height: 900 },
   { width: 375, height: 480 },
+  { width: 812, height: 375 },
+  { width: 1280, height: 480 },
 ];
 
 for (const locale of ["ja", "en", "ko", "zh"]) {
   for (const viewport of viewports) {
-    test(`${locale}: preview fills available width and caps portrait height at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    test(`${locale}: preview fits available width and viewport height at ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await blockAnalytics(page);
       await page.goto(locale === "ja" ? "/make" : `/${locale}/make`);
       await waitForAppReady(page);
+      // Reserve the preview's height even before its canvas is created lazily.
+      const emptyFrame = await page.locator("#stage").boundingBox();
+      expect(emptyFrame!.height).toBeGreaterThan(100);
+      expect(emptyFrame!.height).toBeLessThanOrEqual(viewport.height * 0.75 + 1);
       await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
       const canvas = page.locator("#stage canvas.stage-canvas");
       await expect(canvas).toBeVisible();
@@ -45,15 +51,16 @@ for (const locale of ["ja", "en", "ko", "zh"]) {
         expect(Math.abs(size.width - size.height * ratio)).toBeLessThan(1);
         expect(size.width).toBeLessThanOrEqual(size.available + 1);
         expect(size.scrollWidth).toBeLessThanOrEqual(viewport.width);
-        if (aspect === "landscape") {
-          // The frame uses the whole preview column, including on narrow phones.
-          expect(size.width).toBeGreaterThanOrEqual(size.available - 2);
+        const heightLimitedWidth = (viewport.height * 0.75 - size.borderY) * ratio;
+        const expected = Math.min(size.available, heightLimitedWidth);
+        expect(Math.abs(size.width - expected)).toBeLessThan(2);
+        expect(size.frameHeight).toBeLessThanOrEqual(viewport.height * 0.75 + 1);
+        // The frame must wrap the canvas exactly, without a border-sized gap.
+        expect(Math.abs(size.frameHeight - size.height - size.borderY)).toBeLessThan(1);
+        if (aspect === "landscape" && heightLimitedWidth >= size.available) {
           expect(size.width).toBeGreaterThan(size.pageContent);
           expect(size.width).toBeGreaterThanOrEqual(viewport.width === 1280 ? 640 : viewport.width - 24);
-        } else {
-          const expected = Math.min(size.available, (viewport.height * 0.75 - size.borderY) * ratio);
-          expect(Math.abs(size.width - expected)).toBeLessThan(2);
-          expect(size.frameHeight).toBeLessThanOrEqual(viewport.height * 0.75 + 1);
+        } else if (aspect === "portrait") {
           // Growth at the three reference sizes; short screens deliberately shrink.
           if (viewport.height >= 800) expect(size.width).toBeGreaterThan(320);
         }

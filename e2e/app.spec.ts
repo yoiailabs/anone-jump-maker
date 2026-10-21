@@ -904,8 +904,16 @@ for (const locale of ["ja", "en"] as const) {
     await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
     await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
     const canvas = page.locator("canvas.stage-canvas");
-    // The initial WebKit canvas can still be black. Wait for photo detail, then
-    // freeze the clock so a moving frame cannot satisfy a filter diff.
+    // Sample photo detail through the fixture's static green bar. Its moving
+    // horizontal band lies outside this rectangle: pausing the media clock does
+    // not guarantee the decoder's last frame was already copied to the canvas.
+    // Whole-canvas PNG equality can therefore fail on a later filter repaint.
+    const photoPixels = () => canvas.evaluate((el: HTMLCanvasElement) => Array.from(
+      el.getContext("2d")!.getImageData(
+        Math.floor(el.width * 0.65), Math.floor(el.height * 0.25), Math.floor(el.width * 0.07), 1,
+      ).data,
+    ));
+    // The initial WebKit canvas can still be black. Wait for photo detail.
     await page.locator("#previewToggle").click();
     await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
     const expectPhotoDrawn = async () => {
@@ -933,26 +941,26 @@ for (const locale of ["ja", "en"] as const) {
     const video = page.locator("video.offscreen-video");
     await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.paused && !el.seeking)).toBe(true);
     const pausedTime = await video.evaluate((el: HTMLVideoElement) => el.currentTime);
-    const original = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+    const original = await photoPixels();
     await page.locator("#filterTab").click();
     await expect(page.locator('#filterPanel input[type="radio"]')).toHaveCount(4);
     expect(await page.locator('input[name="color_filter"]').evaluateAll((inputs) =>
       inputs.map((input) => (input as HTMLInputElement).value),
     )).toEqual(["none", "dynamic", "dramatic", "film"]);
     await page.locator('label:has(input[name="color_filter"][value="film"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(original);
-    const film = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+    await expect.poll(photoPixels).not.toEqual(original);
+    const film = await photoPixels();
     await page.locator('label:has(input[name="color_filter"][value="none"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(original);
+    await expect.poll(photoPixels).toEqual(original);
     await page.locator('label:has(input[name="color_filter"][value="film"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(film);
+    await expect.poll(photoPixels).toEqual(film);
     await page.locator("#blurTab").click();
     await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(film);
+    await expect.poll(photoPixels).not.toEqual(film);
     await page.locator('label:has(input[name="filter"][value="none"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(film);
+    await expect.poll(photoPixels).toEqual(film);
     await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(film);
+    await expect.poll(photoPixels).not.toEqual(film);
     expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
       .toEqual({ time: pausedTime, paused: true, seeking: false });
     await page.locator("#aspectTab").click();
