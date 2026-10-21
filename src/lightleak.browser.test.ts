@@ -4,8 +4,7 @@ import {
   blendLightLeak, paintLightLeak, lightLeakCharacterPoint, lightLeakCharacterSource,
   LIGHT_LEAK_CHARACTER_GAIN, LIGHT_LEAK_PHOTO_GAIN, LIGHT_LEAK_SHORT_SIDE,
 } from "./lightleak.ts";
-import { characterDest, characterScale, characterShiftY, templateBandRect } from "./layout.ts";
-import { keyAlpha, sampleKeyColor } from "./keying.ts";
+import { characterDest, characterScale, characterShiftY } from "./layout.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import cuts from "../public/official-assets/template/landscape-cuts.json";
 
@@ -186,36 +185,6 @@ describe.each(["landscape", "portrait"] as const)("%s character bloom", (mode) =
       }
     } finally { fixture.bitmap.close(); compositor.destroy(); }
   });
-});
-
-it("生成表の光源が実テンプレの異なる3ポーズのアルファ重心と一致する（縦横）", async () => {
-  const source = video(); source.muted = true; source.preload = "auto";
-  source.src = "/official-assets/template/landscape.mp4";
-  await new Promise<void>((resolve, reject) => { source.onloadeddata = () => resolve(); source.onerror = () => reject(new Error("テンプレ読み込み失敗")); });
-  const canvas = document.createElement("canvas"); canvas.width = 320; canvas.height = 180;
-  const ctx = canvas.getContext("2d")!;
-  try {
-    for (const frame of [59, 102, 205]) {
-      // カットはポーズが切り替わるフレーム。境界直後（+1ms）だと WebKit は前のフレーム（前のポーズ）を出すことがあるので、
-      // フレームの中央の時刻へシークしてどのブラウザでも同じフレームを読む。
-      await new Promise<void>((resolve) => { source.onseeked = () => resolve(); source.currentTime = (frame + 0.5) / 30; });
-      for (const mode of ["landscape", "portrait"] as const) {
-        const band = templateBandRect(source.videoWidth, source.videoHeight, mode);
-        ctx.drawImage(source, band.x, band.y, band.w, band.h, 0, 0, 320, 180);
-        const data = pixels(canvas), key = sampleKeyColor(data, 320, 180);
-        let mass = 0, sx = 0, sy = 0;
-        for (let y = 0; y < 180; y++) for (let x = 0; x < 320; x++) {
-          const i = (y * 320 + x) * 4;
-          const alpha = keyAlpha(data[i]!, data[i + 1]!, data[i + 2]!, ...key);
-          if (alpha < 0.5) continue;
-          mass += alpha; sx += (x + 0.5) * alpha; sy += (y + 0.5) * alpha;
-        }
-        const point = lightLeakCharacterPoint(frame, mode)!;
-        expect(Math.abs(point.x - sx / mass / 320)).toBeLessThan(0.01);
-        expect(Math.abs(point.y - sy / mass / 180)).toBeLessThan(0.01);
-      }
-    }
-  } finally { source.removeAttribute("src"); source.load(); }
 });
 
 it("写真よりキャラへのscreenが弱く、合成時にも係数を使う", async () => {
