@@ -14,6 +14,7 @@ import { reactionEmbedHtml } from "../reactions.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../share.ts";
 import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT } from "../preview.ts";
 import { getPreviewChrome, subscribePreviewChrome } from "../preview-chrome-store.ts";
+import { getOptions, getInitialOptions, subscribeOptions } from "../options-store.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { getFeedback, subscribeFeedback, type FeedbackPlace } from "../feedback-store.ts";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
@@ -86,11 +87,11 @@ type MakerAppProps = {
 };
 
 const OPTION_TABS = [
-  ["aspect", "studioTabAspect", "makerAspectLegend"],
-  ["swap", "studioTabEffect", "makerEffectLegend"],
-  ["filter", "studioTabFilter", "makerFilterLegend"],
-  ["blur", "studioTabBlur", "makerBlurLegend"],
-  ["character", "studioTabCharacter", "makerCharacterLegend"],
+  ["aspect", "studioTabAspect", "aspect"],
+  ["swap", "studioTabEffect", "swap"],
+  ["filter", "studioTabFilter", "color_filter"],
+  ["blur", "studioTabBlur", "filter"],
+  ["character", "studioTabCharacter", "character"],
 ] as const;
 
 type OptionTab = (typeof OPTION_TABS)[number][0];
@@ -100,6 +101,31 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const exportActions = useRef<ExportActions | null>(null);
   const landingLogoRef = useRef<HTMLImageElement>(null);
   const [optionTab, setOptionTab] = useState<OptionTab>("aspect");
+  const options = useSyncExternalStore(subscribeOptions, getOptions, getInitialOptions);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const optionChoices = {
+    aspect: [
+      { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+      { value: "portrait", label: t(locale, "makerPortrait") },
+    ],
+    swap: [
+      { value: "zoom", label: t(locale, "makerZoom"), defaultChecked: DEFAULT_SWAP_STYLE === "zoom" },
+      { value: "jump", label: t(locale, "makerJump"), defaultChecked: DEFAULT_SWAP_STYLE === "jump" },
+    ],
+    filter: COLOR_FILTERS.map((value) => ({
+      value, label: colorFilterLabel(value, locale), defaultChecked: value === "none",
+    })),
+    blur: [
+      { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+      { value: "blur-weak", label: t(locale, "makerBlurWeak") },
+      { value: "blur-strong", label: t(locale, "makerBlurStrong") },
+    ],
+    character: [
+      { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+      { value: "1.2", label: t(locale, "makerCharacter12") },
+      { value: "1.4", label: t(locale, "makerCharacter14") },
+    ],
+  };
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
@@ -313,7 +339,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
               </h2>
               <div className="studio-option-sheet">
                 <div className="studio-option-tabs" role="tablist" aria-labelledby="studioOptionsTitle">
-                  {OPTION_TABS.map(([id, labelKey, legendKey]) => (
+                  {OPTION_TABS.map(([id, labelKey, name], index) => (
                     <button
                       key={id}
                       type="button"
@@ -322,17 +348,29 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                       role="tab"
                       aria-selected={optionTab === id}
                       aria-controls={`${id}Panel`}
-                      aria-label={t(locale, legendKey)}
+                      ref={(node) => { tabRefs.current[index] = node; }}
+                      tabIndex={optionTab === id ? 0 : -1}
+                      onKeyDown={(event) => {
+                        let next: number;
+                        switch (event.key) {
+                          case "ArrowRight":
+                          case "ArrowDown": next = (index + 1) % OPTION_TABS.length; break;
+                          case "ArrowLeft":
+                          case "ArrowUp": next = (index + OPTION_TABS.length - 1) % OPTION_TABS.length; break;
+                          case "Home": next = 0; break;
+                          case "End": next = OPTION_TABS.length - 1; break;
+                          default: return;
+                        }
+                        event.preventDefault();
+                        setOptionTab(OPTION_TABS[next]![0]);
+                        tabRefs.current[next]?.focus();
+                      }}
                       onClick={() => setOptionTab(id)}
                     >
-                      {id === "character" ? (
-                        <>
-                          <span className="studio-option-tab-full">{t(locale, labelKey)}</span>
-                          <span className="studio-option-tab-short">{t(locale, "studioTabCharacterShort")}</span>
-                        </>
-                      ) : (
-                        t(locale, labelKey)
-                      )}
+                      <span className="studio-option-tab-label">{t(locale, labelKey)}</span>
+                      <span className="studio-option-tab-value">
+                        {optionChoices[id].find((choice) => choice.value === options[name])?.label}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -348,10 +386,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                     <RadioPills
                       name="aspect"
                       ariaLabel={t(locale, "makerAspectLegend")}
-                      options={[
-                        { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                        { value: "portrait", label: t(locale, "makerPortrait") },
-                      ]}
+                      options={optionChoices.aspect}
                     />
                   </fieldset>
                   <fieldset
@@ -365,10 +400,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                     <RadioPills
                       name="swap"
                       ariaLabel={t(locale, "makerEffectLegend")}
-                      options={[
-                        { value: "zoom", label: t(locale, "makerZoom"), defaultChecked: DEFAULT_SWAP_STYLE === "zoom" },
-                        { value: "jump", label: t(locale, "makerJump"), defaultChecked: DEFAULT_SWAP_STYLE === "jump" },
-                      ]}
+                      options={optionChoices.swap}
                     />
                   </fieldset>
                   <fieldset
@@ -383,9 +415,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                       name="color_filter"
                       className="aspect-toggle color-filter-toggle"
                       ariaLabel={t(locale, "makerFilterLegend")}
-                      options={COLOR_FILTERS.map((value) => ({
-                        value, label: colorFilterLabel(value, locale), defaultChecked: value === "none",
-                      }))}
+                      options={optionChoices.filter}
                     />
                   </fieldset>
                   <fieldset
@@ -400,11 +430,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                       name="filter"
                       className="aspect-toggle cols-3"
                       ariaLabel={t(locale, "makerBlurLegend")}
-                      options={[
-                        { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                        { value: "blur-weak", label: t(locale, "makerBlurWeak") },
-                        { value: "blur-strong", label: t(locale, "makerBlurStrong") },
-                      ]}
+                      options={optionChoices.blur}
                     />
                   </fieldset>
                   <fieldset
@@ -419,11 +445,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                       name="character"
                       className="aspect-toggle cols-3"
                       ariaLabel={t(locale, "makerCharacterLegend")}
-                      options={[
-                        { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                        { value: "1.2", label: t(locale, "makerCharacter12") },
-                        { value: "1.4", label: t(locale, "makerCharacter14") },
-                      ]}
+                      options={optionChoices.character}
                     />
                   </fieldset>
                 </div>
@@ -579,6 +601,7 @@ function RadioPills({
       {options.map((option) => (
         <label key={`${name}-${option.value}`}>
           <input type="radio" name={name} value={option.value} defaultChecked={option.defaultChecked} />
+          <span className="option-choice-check" aria-hidden="true">✓</span>
           <span>{option.label}</span>
         </label>
       ))}

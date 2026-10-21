@@ -340,8 +340,14 @@ test.describe("source repository link", () => {
       await expectRepoLink(page.locator("#makerHeaderGitHub"), "GitHub");
       await expect(page.locator("#makerHeaderGitHub")).toHaveAttribute("aria-label", "GitHub");
       await expect(page.locator("#studioHeaderGitHub")).toHaveCount(0);
-      const footerBox = await page.locator("#footerGitHub").boundingBox();
-      const privacyBox = await page.locator("#privacyPolicyLink").boundingBox();
+      // Read peers in one layout snapshot: font loading and scroll anchoring
+      // can move the page between separate boundingBox round trips.
+      const [footerBox, privacyBox] = await page.evaluate(() =>
+        ["#footerGitHub", "#privacyPolicyLink"].map((selector) => {
+          const { x, y, width, height } = document.querySelector(selector)!.getBoundingClientRect();
+          return { x, y, width, height };
+        }),
+      );
       expect(footerBox && privacyBox && Math.abs(footerBox.y - privacyBox.y) < 8).toBe(true);
       const iconBox = await page.locator("#makerHeaderGitHub").boundingBox();
       const links = page.locator("#makerView .hero .lang-switch a");

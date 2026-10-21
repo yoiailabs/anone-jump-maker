@@ -1101,8 +1101,10 @@ html[lang="ja"] .ja-phrase {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.35rem;
+  gap: 0.55rem;
   width: 100%;
+  min-width: 0;
+  padding-top: 0.75rem;
 }
 
 .studio-options-heading {
@@ -1117,87 +1119,63 @@ html[lang="ja"] .ja-phrase {
 .studio-option-sheet {
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
   width: 100%;
+  min-width: 0;
 }
 
 .studio-option-tabs {
   display: flex;
-  align-items: flex-end;
-  gap: 0.2rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem;
   width: 100%;
-  border-bottom: 3px solid var(--ink);
+  min-width: 0;
 }
 
 .studio-option-tab {
-  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1 1 0;
+  gap: 0.2rem;
+  flex: 1 1 auto;
   min-width: 0;
-  height: 46px;
-  min-height: 46px;
+  max-width: 100%;
+  min-height: 44px;
   margin: 0;
-  padding: 0 0.12rem 0.45rem;
-  border: 0;
-  border-radius: 0.8rem 0.8rem 0 0;
-  background: transparent;
-  color: color-mix(in srgb, var(--mute) 88%, var(--ink));
+  padding: 0.5rem 0.7rem;
+  border: 3px solid var(--ink);
+  border-radius: 1rem;
+  background: var(--card);
+  color: var(--ink);
   font: inherit;
   font-size: 0.875rem;
   font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: 0.01em;
+  line-height: 1.3;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
 }
 
-.studio-option-tab-short {
-  display: none;
+.studio-option-tab span {
+  max-width: 100%;
+}
+
+.studio-option-tab-value {
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .studio-option-tab[aria-selected="true"] {
-  z-index: 1;
-  margin-bottom: -3px;
-  border-top: 3px solid var(--ink);
-  background: var(--card);
-  color: var(--ink);
-  box-shadow:
-    inset 3px 0 0 var(--ink),
-    inset -3px 0 0 var(--ink);
-}
-
-.studio-option-tab[aria-selected="true"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0.42rem;
-  width: 1.7rem;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--ink);
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-@media (max-width: 420px) {
-  .studio-option-tab {
-    font-size: 0.75rem;
-    letter-spacing: 0;
-  }
-
-  .studio-option-tab-full {
-    display: none;
-  }
-
-  .studio-option-tab-short {
-    display: inline;
-  }
+  background: var(--peach);
+  box-shadow: 2px 3px 0 var(--ink);
 }
 
 .studio-option-tab:hover {
-  color: var(--ink);
+  transform: translateY(-2px);
 }
 
 .studio-option-tab:focus-visible {
@@ -1206,9 +1184,9 @@ html[lang="ja"] .ja-phrase {
 }
 
 .studio-option-panels {
+  min-width: 0;
   border: 3px solid var(--ink);
-  border-top: 0;
-  border-radius: 0 0 1rem 1rem;
+  border-radius: 1rem;
   background: var(--card);
   padding: 0.75rem 0.6rem 0.8rem;
 }
@@ -1235,6 +1213,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 .aspect-field {
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
@@ -1256,35 +1235,37 @@ html[lang="ja"] .ja-phrase {
 
 .aspect-toggle {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));
   gap: 0.5rem;
-}
-
-.color-filter-toggle {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.aspect-toggle.cols-3 {
-  grid-template-columns: 1fr 1fr 1fr;
-}
-
-.aspect-toggle.cols-3 label {
-  padding: 0.35rem 0.25rem;
+  min-width: 0;
 }
 
 .aspect-toggle label {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.85rem;
-  padding: 0.35rem 0.45rem;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: max(44px, 2.85rem);
+  padding: 0.5rem 0.6rem;
   border: 3px solid var(--ink);
-  border-radius: 999px;
+  border-radius: 1rem;
   background: var(--card);
   cursor: pointer;
   text-align: center;
   font-weight: 700;
+  white-space: normal;
+  overflow-wrap: anywhere;
   transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.option-choice-check {
+  flex: 0 0 1em;
+  visibility: hidden;
+}
+
+.aspect-toggle label:has(input:checked) .option-choice-check {
+  visibility: visible;
 }
 
 .aspect-toggle label:hover {
@@ -1320,7 +1301,20 @@ html[lang="ja"] .ja-phrase {
 }
 
 .aspect-toggle span {
+  min-width: 0;
   line-height: 1.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-option-tab,
+  .aspect-toggle label {
+    transition: none;
+  }
+
+  .studio-option-tab:hover,
+  .aspect-toggle label:hover {
+    transform: none;
+  }
 }
 
 .file-btn,

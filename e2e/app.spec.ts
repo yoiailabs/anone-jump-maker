@@ -900,7 +900,7 @@ for (const locale of ["ja", "en"] as const) {
       expect(box && box.x >= 0 && box.x + box.width <= 375).toBe(true);
       expect(await tab.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     }
-    await expect(page.locator("#blurTab")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
+    await expect(page.locator("#blurTab .studio-option-tab-label")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
     await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
     await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
     const canvas = page.locator("canvas.stage-canvas");
