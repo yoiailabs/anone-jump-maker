@@ -935,21 +935,24 @@ for (const locale of ["ja", "en"] as const) {
     const pausedTime = await video.evaluate((el: HTMLVideoElement) => el.currentTime);
     const original = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
     await page.locator("#filterTab").click();
-    await expect(page.locator('#filterPanel input[type="radio"]')).toHaveCount(8);
-    await page.locator('label:has(input[name="color_filter"][value="sepia"])').click();
+    await expect(page.locator('#filterPanel input[type="radio"]')).toHaveCount(4);
+    expect(await page.locator('input[name="color_filter"]').evaluateAll((inputs) =>
+      inputs.map((input) => (input as HTMLInputElement).value),
+    )).toEqual(["none", "dynamic", "dramatic", "film"]);
+    await page.locator('label:has(input[name="color_filter"][value="film"])').click();
     await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(original);
-    const sepia = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+    const film = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
     await page.locator('label:has(input[name="color_filter"][value="none"])').click();
     await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(original);
-    await page.locator('label:has(input[name="color_filter"][value="sepia"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(sepia);
+    await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(film);
     await page.locator("#blurTab").click();
     await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(sepia);
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(film);
     await page.locator('label:has(input[name="filter"][value="none"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(sepia);
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(film);
     await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
-    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(sepia);
+    await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(film);
     expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
       .toEqual({ time: pausedTime, paused: true, seeking: false });
     await page.locator("#aspectTab").click();
@@ -958,7 +961,7 @@ for (const locale of ["ja", "en"] as const) {
     await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
     await expect(page.locator('input[name="filter"][value="blur-weak"]')).toBeChecked();
-    await expect(page.locator('input[name="color_filter"][value="sepia"]')).toBeChecked();
+    await expect(page.locator('input[name="color_filter"][value="film"]')).toBeChecked();
     await page.evaluate(() => Object.defineProperty(navigator, "canShare", { configurable: true, value: () => false }));
     await page.locator("#saveBtn").click();
     const outcome = await waitForExportOutcome(page, locale);
@@ -971,6 +974,6 @@ for (const locale of ["ja", "en"] as const) {
     await expect(page.locator("#exportPanel")).toHaveAttribute("data-export-phase", "done");
     const download = page.waitForEvent("download");
     await page.locator("#downloadExportBtn").click();
-    expect((await download).suggestedFilename()).toMatch(/^anone-zoom-16x9-blur-weak-sepia\.(mp4|webm)$/);
+    expect((await download).suggestedFilename()).toMatch(/^anone-zoom-16x9-blur-weak-film\.(mp4|webm)$/);
   });
 }

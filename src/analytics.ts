@@ -1,4 +1,4 @@
-import type { ColorFilter } from "./color-filter.ts";
+import { normalizeColorFilter, type ColorFilter } from "./color-filter.ts";
 import {
   TEMPLATE_DECODE_MESSAGE,
   TEMPLATE_FRAME_FROZEN_MESSAGE,
@@ -94,7 +94,7 @@ function hostGtag(): GtagFn | undefined {
 export function videoEventParams(
   aspect: AspectMode, effect: SwapStyle, filter: ImageFilter = "none", colorFilter: ColorFilter = "none",
 ): AnalyticsEventParams {
-  return { aspect, effect, swap: effect, filter, color_filter: colorFilter };
+  return { aspect, effect, swap: effect, filter, color_filter: normalizeColorFilter(colorFilter) };
 }
 
 /** 既知の書き出しエラーだけ短い reason にする。未知の文面はそのまま送らない。 */
@@ -126,6 +126,7 @@ export function trackEvent(
   }
   const gtag = hostGtag();
   if (!gtag) return;
-  if (params) gtag("event", name, params);
+  if (params) gtag("event", name, "color_filter" in params
+    ? { ...params, color_filter: normalizeColorFilter(params.color_filter) } : params);
   else gtag("event", name);
 }

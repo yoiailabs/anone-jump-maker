@@ -1,21 +1,21 @@
 import { t, type Locale, type MessageKey } from "./i18n.ts";
 
-export const COLOR_FILTERS = ["none", "dramatic", "dynamic", "sepia", "mono", "film", "cool", "warm"] as const;
+export const COLOR_FILTERS = ["none", "dynamic", "dramatic", "film"] as const;
 export type ColorFilter = (typeof COLOR_FILTERS)[number];
 
-export function isColorFilter(value: string): value is ColorFilter {
-  return (COLOR_FILTERS as readonly string[]).includes(value);
+export function isColorFilter(value: unknown): value is ColorFilter {
+  return typeof value === "string" && (COLOR_FILTERS as readonly string[]).includes(value);
+}
+
+export function normalizeColorFilter(value: unknown): ColorFilter {
+  return isColorFilter(value) ? value : "none";
 }
 
 const LABEL_KEYS: Record<ColorFilter, MessageKey> = {
   none: "makerFilterNone",
   dramatic: "makerFilterDramatic",
   dynamic: "makerFilterDynamic",
-  sepia: "makerFilterSepia",
-  mono: "makerFilterMono",
   film: "makerFilterFilm",
-  cool: "makerFilterCool",
-  warm: "makerFilterWarm",
 };
 
 export function colorFilterLabel(filter: ColorFilter, locale: Locale): string {
@@ -30,16 +30,12 @@ type Recipe = {
   gain: readonly [number, number, number];
 };
 
-/** sRGB のトーン調整。cool/warm は色温度の違いを明確にし、空や肌の色を保つ。 */
+/** sRGB のトーン調整。 */
 export const COLOR_FILTER_RECIPES: Record<ColorFilter, Recipe> = {
   none: { saturation: 1, contrast: 1, gamma: 1, lift: 0, gain: [1, 1, 1] },
   dramatic: { saturation: 0.82, contrast: 1.18, gamma: 1.06, lift: 0, gain: [1, 1, 1] },
   dynamic: { saturation: 1.18, contrast: 1.12, gamma: 1, lift: 0, gain: [1, 1, 1] },
-  sepia: { saturation: 0.12, contrast: 0.94, gamma: 1, lift: 4, gain: [1.08, 1, 0.84] },
-  mono: { saturation: 0, contrast: 1.06, gamma: 1, lift: 0, gain: [1, 1, 1] },
   film: { saturation: 0.78, contrast: 0.88, gamma: 1, lift: 10, gain: [1.03, 1, 0.96] },
-  cool: { saturation: 1, contrast: 1.05, gamma: 1, lift: 0, gain: [0.9, 0.98, 1.1] },
-  warm: { saturation: 0.95, contrast: 0.94, gamma: 1, lift: 6, gain: [1.12, 1.01, 0.9] },
 };
 
 const clamp = (v: number) => Math.max(0, Math.min(255, v));

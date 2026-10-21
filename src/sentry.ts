@@ -1,4 +1,4 @@
-import { COLOR_FILTERS } from "./color-filter.ts";
+import { COLOR_FILTERS, normalizeColorFilter } from "./color-filter.ts";
 import type { BrowserOptions } from "@sentry/browser";
 import {
   ASPECT_MODES,
@@ -306,6 +306,10 @@ export function pickTraceAttributes(input: Record<string, unknown> | undefined):
   const out: Record<string, TraceAttributeValue> = {};
   if (!input) return out;
   for (const [key, value] of Object.entries(input)) {
+    if (key === "color_filter") {
+      out[key] = normalizeColorFilter(value);
+      continue;
+    }
     if (TRACE_BOOLEAN_KEYS.has(key)) {
       if (typeof value === "boolean") out[key] = value;
       continue;

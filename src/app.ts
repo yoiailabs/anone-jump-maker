@@ -1,4 +1,4 @@
-import { isColorFilter, type ColorFilter } from "./color-filter.ts";
+import { normalizeColorFilter, type ColorFilter } from "./color-filter.ts";
 import {
   GENERATE_CANCEL_EVENT,
   GENERATE_FAIL_EVENT,
@@ -191,7 +191,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   const filterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="filter"]')];
   const colorFilterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="color_filter"]')];
   const colorFilterValue = checkedNamedValue(colorFilterInputs, "color_filter");
-  let colorFilter: ColorFilter = colorFilterValue && isColorFilter(colorFilterValue) ? colorFilterValue : "none";
+  let colorFilter: ColorFilter = normalizeColorFilter(colorFilterValue);
+  for (const input of colorFilterInputs) input.checked = input.value === colorFilter;
   const characterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="character"]')];
 
   const aspectValue = checkedNamedValue(aspectInputs, "aspect");
@@ -912,10 +913,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   };
 
   const applyColor = (next: ColorFilter) => {
+    for (const input of colorFilterInputs) input.checked = input.value === next;
     if (next === colorFilter) return;
     studioTrace.onPreviewStop("settings");
     colorFilter = next;
-    for (const input of colorFilterInputs) input.checked = input.value === next;
     paint();
   };
 
@@ -1017,8 +1018,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   for (const input of colorFilterInputs) {
     input.addEventListener("change", () => {
-      if (recording || !input.checked || !isColorFilter(input.value)) return;
-      applyColor(input.value);
+      if (recording || !input.checked) return;
+      applyColor(normalizeColorFilter(input.value));
     });
   }
 

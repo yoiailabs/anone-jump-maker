@@ -38,9 +38,9 @@ it("caches only the active source, invalidates on changes and frees its canvas",
   try {
     expect(cache.get(p.bitmap, "none")).toBe(p.bitmap);
     expect(read).not.toHaveBeenCalled();
-    const a = cache.get(p.bitmap, "sepia") as HTMLCanvasElement;
+    const a = cache.get(p.bitmap, "dynamic") as HTMLCanvasElement;
     expect(read).toHaveBeenCalledTimes(1);
-    expect(cache.get(p.bitmap, "sepia")).toBe(a);
+    expect(cache.get(p.bitmap, "dynamic")).toBe(a);
     expect(read).toHaveBeenCalledTimes(1);
     const b = cache.get(p.bitmap, "film") as HTMLCanvasElement;
     expect(a.width).toBe(0);
@@ -50,10 +50,10 @@ it("caches only the active source, invalidates on changes and frees its canvas",
     expect(read).toHaveBeenCalledTimes(3);
     expect(cache.get(undefined, "film")).toBeUndefined();
     expect(c.width).toBe(0);
-    const d = cache.get(p.bitmap, "warm") as HTMLCanvasElement;
+    const d = cache.get(p.bitmap, "dramatic") as HTMLCanvasElement;
     cache.get(p.bitmap, "none");
     expect(d.width).toBe(0);
-    const e = cache.get(p.bitmap, "cool") as HTMLCanvasElement;
+    const e = cache.get(p.bitmap, "dynamic") as HTMLCanvasElement;
     cache.clear();
     expect(e.width).toBe(0);
   } finally {

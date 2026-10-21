@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "./export.ts";
+import retiredColorFilters from "../tests/fixtures/retired-color-filters.json" with { type: "json" };
+import type { ColorFilter } from "./color-filter.ts";
 import {
   GENERATE_CANCEL_EVENT,
   GENERATE_FAIL_EVENT,
@@ -66,6 +68,15 @@ describe("trackEvent", () => {
     trackEvent(VIDEO_SAVE_EVENT, params);
     expect(gtag).toHaveBeenCalledTimes(1);
     expect(gtag).toHaveBeenCalledWith("event", "video_save", params);
+  });
+
+  it.each([...retiredColorFilters, "future-filter"])("normalizes a stale color %s passed directly to trackEvent", (color) => {
+    const gtag = vi.fn();
+    vi.stubGlobal("window", { gtag });
+    const params = { ...videoEventParams("landscape", "zoom", "blur-strong"), color_filter: color as ColorFilter };
+    trackEvent(VIDEO_SAVE_EVENT, params);
+    expect(gtag).toHaveBeenCalledWith("event", "video_save", { ...params, color_filter: "none" });
+    expect(params.color_filter).toBe(color);
   });
 
   it("forwards funnel events and drops a duplicate picker open", () => {
