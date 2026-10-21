@@ -15,7 +15,7 @@ type Rect = { x: number; y: number; w: number; h: number };
 const grids = new WeakMap<ImageBitmap, LuminanceGrid>();
 
 /**
- * 読み込み時に一度だけ縮小・読み戻し・3×3ガウスぼかし。bitmapの寿命で解放される。
+ * 読み込み時に一度だけ縮小・読み戻して輝度グリッドをキャッシュする。bitmapの寿命で解放される。
  * 解析に失敗しても写真の読み込みは止めない（光漏れは上中央のフォールバック位置になる）。
  */
 export function prepareLightLeakPhoto(bitmap: ImageBitmap): void {
@@ -45,48 +45,51 @@ function analyzeLightLeakPhoto(bitmap: ImageBitmap): void {
     const p = i * 4;
     raw[i] = (0.2126 * rgba[p]! + 0.7152 * rgba[p + 1]! + 0.0722 * rgba[p + 2]!) * rgba[p + 3]! / 255;
   }
-  const values = new Float32Array(raw.length);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      let sum = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const sx = Math.max(0, Math.min(width - 1, x + dx));
-          const sy = Math.max(0, Math.min(height - 1, y + dy));
-          sum += raw[sy * width + sx]! * (dx === 0 ? 2 : 1) * (dy === 0 ? 2 : 1);
-        }
-      }
-      values[y * width + x] = sum / 16;
-    }
-  }
-  grids.set(bitmap, { width, height, values });
+  // ぼかしは表示範囲が決まる描画時に、見えるセルだけで行う（クロップ外の明部を混ぜない）。
+  grids.set(bitmap, { width, height, values: raw });
   canvas.width = canvas.height = 0;
 }
 
-/** 描画中はキャッシュだけを走査。coverで見えるセルの中心をパネル座標へ写す。 */
+/**
+ * 描画中はキャッシュだけを走査。cover で見えるセルの範囲を求め、その範囲の中だけで 3×3 ガウスぼかしをかけて
+ * 最も明るいセルの中心をパネル座標へ写す。範囲外（クロップで見えない部分）の輝度は混ぜない。
+ */
 export function lightLeakSource(bitmap: ImageBitmap, dest: Rect, panelW: number, panelH: number) {
   const grid = grids.get(bitmap);
   if (!grid) return LIGHT_LEAK_FALLBACK;
+  const cellX = (x: number) => dest.x + (x + 0.5) / grid.width * dest.w;
+  const cellY = (y: number) => dest.y + (y + 0.5) / grid.height * dest.h;
+  // セル中心はインデックスに対して単調なので、見えるセルは連続した範囲になる。
+  let x0 = 0, x1 = grid.width - 1, y0 = 0, y1 = grid.height - 1;
+  while (x0 <= x1 && cellX(x0) < 0) x0++;
+  while (x1 >= x0 && cellX(x1) >= panelW) x1--;
+  while (y0 <= y1 && cellY(y0) < 0) y0++;
+  while (y1 >= y0 && cellY(y1) >= panelH) y1--;
+  if (x0 > x1 || y0 > y1) return LIGHT_LEAK_FALLBACK;
   let max = -Infinity, sum = 0, count = 0;
   let sourceX = 0, sourceY = 0;
-  for (let y = 0; y < grid.height; y++) {
-    const py = dest.y + (y + 0.5) / grid.height * dest.h;
-    if (py < 0 || py >= panelH) continue;
-    for (let x = 0; x < grid.width; x++) {
-      const px = dest.x + (x + 0.5) / grid.width * dest.w;
-      if (px < 0 || px >= panelW) continue;
-      const value = grid.values[y * grid.width + x]!;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      let blurred = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const sy = Math.max(y0, Math.min(y1, y + dy));
+        for (let dx = -1; dx <= 1; dx++) {
+          const sx = Math.max(x0, Math.min(x1, x + dx));
+          blurred += grid.values[sy * grid.width + sx]! * (dx === 0 ? 2 : 1) * (dy === 0 ? 2 : 1);
+        }
+      }
+      const value = blurred / 16;
       sum += value;
       count++;
       // 同点は先のインデックスを採用し、シークやcompositorによる揺れを防ぐ。
       if (value > max) {
         max = value;
-        sourceX = px / panelW;
-        sourceY = py / panelH;
+        sourceX = cellX(x) / panelW;
+        sourceY = cellY(y) / panelH;
       }
     }
   }
-  return count === 0 || max < LIGHT_LEAK_DARK_THRESHOLD || max - sum / count < LIGHT_LEAK_CONTRAST_THRESHOLD
+  return max < LIGHT_LEAK_DARK_THRESHOLD || max - sum / count < LIGHT_LEAK_CONTRAST_THRESHOLD
     ? LIGHT_LEAK_FALLBACK : { x: sourceX, y: sourceY };
 }
 

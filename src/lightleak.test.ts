@@ -90,3 +90,35 @@ describe("prepareLightLeakPhoto の失敗時", () => {
     }
   });
 });
+
+describe("cover のクロップ境界", () => {
+  it("見えない行の明部をぼかしで可視セルに混ぜず、平坦な可視部分はフォールバックする", () => {
+    // 32×32 の写真を 640×360 へ cover。可視は行 7〜24、直上の非表示行 6 だけ真っ白。
+    const data = new Uint8ClampedArray(32 * 32 * 4);
+    for (let y = 0; y < 32; y++) {
+      for (let x = 0; x < 32; x++) {
+        const v = y === 6 ? 255 : 64;
+        data.set([v, v, v, 255], (y * 32 + x) * 4);
+      }
+    }
+    const original = (globalThis as { document?: unknown }).document;
+    (globalThis as { document?: unknown }).document = {
+      createElement: () => ({
+        width: 0,
+        height: 0,
+        getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data }) }),
+      }),
+    };
+    try {
+      const bitmap = { width: 32, height: 32 } as ImageBitmap;
+      prepareLightLeakPhoto(bitmap);
+      const dest = { x: 0, y: -140, w: 640, h: 640 };
+      expect(lightLeakSource(bitmap, dest, 640, 360)).toEqual(LIGHT_LEAK_FALLBACK);
+      // 同じ写真でも、白い行が見える配置ならそこが光源になる。
+      const shown = lightLeakSource(bitmap, { x: 0, y: 0, w: 640, h: 640 }, 640, 640);
+      expect(shown.y).toBeCloseTo((6 + 0.5) / 32, 5);
+    } finally {
+      (globalThis as { document?: unknown }).document = original;
+    }
+  });
+});
