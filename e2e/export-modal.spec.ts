@@ -2,14 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
-const DIAG_LOGS = new WeakMap<Page, string[]>();
 async function prepareExport(page: Page) {
-  const logs: string[] = [];
-  DIAG_LOGS.set(page, logs);
-  const t0 = Date.now();
-  page.on("console", (m) => logs.push(`${Date.now() - t0}ms console.${m.type()}: ${m.text()}`));
-  page.on("pageerror", (e) => logs.push(`${Date.now() - t0}ms pageerror: ${e.message}`));
-  page.on("request", (r) => { if (r.url().includes("official-assets")) logs.push(`${Date.now() - t0}ms request ${r.resourceType()} ${r.url()}`); });
   await blockAnalytics(page);
   await stubShortTemplate(page);
   await page.goto("/make");
@@ -49,24 +42,6 @@ async function pauseExport(page: Page): Promise<(() => void) | null> {
     }
     return release;
   } catch (error) {
-    // DIAG (temporary): dump app state when export start is not observed.
-    const state = await page.evaluate(() => {
-      const btn = document.querySelector("#saveBtn") as HTMLButtonElement | null;
-      const r = btn?.getBoundingClientRect();
-      const hit = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
-      const dlg = document.querySelector("#exportPanel") as HTMLDialogElement | null;
-      return {
-        viewport: [innerWidth, innerHeight, scrollX, scrollY],
-        saveBtn: btn ? { disabled: btn.disabled, rect: r && [r.x, r.y, r.width, r.height], focused: document.activeElement === btn } : null,
-        hit: hit ? `${hit.tagName}#${hit.id}.${String(hit.className).slice(0, 80)}` : null,
-        hitIsBtn: !!(hit && btn && (hit === btn || btn.contains(hit))),
-        feedback: document.querySelector("#saveFeedback")?.textContent,
-        photoFeedback: document.querySelector("#photoFeedback")?.textContent,
-        dialog: dlg ? { open: dlg.open, phase: dlg.dataset.exportPhase, dataOpen: dlg.dataset.open, progress: document.querySelector("#exportProgressLabel")?.textContent } : null,
-        active: document.activeElement ? `${document.activeElement.tagName}#${document.activeElement.id}` : null,
-      };
-    }).catch((e) => ({ evalError: String(e) }));
-    console.log(`DIAG ${test.info().project.name} ${test.info().title}: ${JSON.stringify(state)}\n${(DIAG_LOGS.get(page) ?? []).join("\n")}`);
     release();
     throw error;
   }
