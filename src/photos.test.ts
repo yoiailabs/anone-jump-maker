@@ -579,7 +579,10 @@ describe("loadPhotos", () => {
         return {
           width: 0,
           height: 0,
-          getContext: () => ({ drawImage: () => {} }),
+          getContext: () => ({
+            drawImage: () => {},
+            getImageData: () => ({ data: new Uint8ClampedArray(32 * 32 * 4) }),
+          }),
           toBlob: (cb: (blob: Blob | null) => void) => cb(null),
         };
       },
@@ -665,7 +668,10 @@ function stubPhotoGlobals(
       return {
         width: 0,
         height: 0,
-        getContext: () => ({ drawImage: () => {} }),
+        getContext: () => ({
+          drawImage: () => {},
+          getImageData: () => ({ data: new Uint8ClampedArray(32 * 32 * 4) }),
+        }),
         toBlob: (cb: (blob: Blob | null) => void) => cb(new Blob(["x"], { type: "image/jpeg" })),
       };
     },

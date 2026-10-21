@@ -1,8 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import cuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 import { frameTimes, EXPORT_FPS } from "./export.ts";
 import { hasFrameFx, isSwapStyle, LIGHT_LEAK_AMOUNTS, SWAP_STYLE_LABELS, swapFx } from "./layout.ts";
-import { lightLeakPlan, LIGHT_LEAK_PALETTES } from "./lightleak.ts";
 import { slotForTime } from "./timeline.ts";
 
 const amounts = [0.15, 0.35, 0.65, 0.9, 1, 0.75, 0.45, 0.22, 0.08];
@@ -73,57 +72,4 @@ describe.each(["portrait", "landscape"] as const)("%s light leak timing", (mode)
       if (fx.lightleak) expect(n - Math.round(slots[fx.cutIndex]! * 30)).toBe(fx.lightleak.frame);
     }
   });
-});
-
-it("makes deterministic warm palettes, different edges and smooth travelling plans from integer inputs", () => {
-  const random = vi.spyOn(Math, "random").mockImplementation(() => { throw new Error("random"); });
-  const now = vi.spyOn(Date, "now").mockImplementation(() => { throw new Error("clock"); });
-  try {
-    const edges = new Set<number>();
-    const palettes = new Set<unknown>();
-    for (let cut = 1; cut <= 32; cut++) {
-      for (let frame = -4; frame <= 4; frame++) {
-        const plan = lightLeakPlan(cut, frame);
-        lightLeakPlan(93, 2);
-        expect(lightLeakPlan(cut, frame)).toEqual(plan);
-        expect(swapFx(0.5 + frame / 30, [0, 0.5], "lightleak", "portrait"))
-          .toEqual(swapFx(0.5 + frame / 30, [0, 0.5], "lightleak", "landscape"));
-        edges.add(plan.edge);
-        palettes.add(plan.palette);
-      }
-      const start = lightLeakPlan(cut, -4);
-      const peak = lightLeakPlan(cut, 0);
-      const end = lightLeakPlan(cut, 4);
-      const fromEntry = (plan: ReturnType<typeof lightLeakPlan>) => plan.edge >= 2
-        ? plan.y : plan.edge === 0 ? plan.x : 1 - plan.x;
-      expect(fromEntry(start)).toBeLessThan(0);
-      // v3のピーク実測13.12〜16.88%に約1ポイントの余裕を持たせる。
-      expect(fromEntry(peak)).toBeGreaterThanOrEqual(0.12);
-      expect(fromEntry(peak)).toBeLessThanOrEqual(0.18);
-      expect(fromEntry(end)).toBeGreaterThan(fromEntry(peak));
-      expect(fromEntry(end) - fromEntry(peak)).toBeLessThanOrEqual(0.1);
-      expect(fromEntry(end)).toBeLessThan(0.3);
-      for (let frame = -3; frame <= 4; frame++) {
-        const previous = lightLeakPlan(cut, frame - 1);
-        const plan = lightLeakPlan(cut, frame);
-        expect(fromEntry(plan)).toBeGreaterThan(fromEntry(previous));
-        expect(fromEntry(plan)).toBeLessThan(0.5);
-        // v3の実寸比は最小約1.372。入口に沿う長辺を残し、円いスポットを除く。
-        for (const [w, h] of [[1920, 1080], [1080, 1920]]) {
-          const along = plan.edge >= 2 ? plan.radiusX * w! : plan.radiusY * h!;
-          const across = plan.edge >= 2 ? plan.radiusY * h! : plan.radiusX * w!;
-          expect(along / across).toBeGreaterThan(1.3);
-        }
-      }
-      expect(end.radiusX).toBeGreaterThan(start.radiusX);
-    }
-    expect(edges.size).toBe(4);
-    expect(palettes.size).toBe(4);
-    for (const palette of LIGHT_LEAK_PALETTES) {
-      for (const color of palette) expect(parseInt(color.slice(1, 3), 16)).toBeGreaterThan(parseInt(color.slice(5, 7), 16));
-    }
-  } finally {
-    random.mockRestore();
-    now.mockRestore();
-  }
 });

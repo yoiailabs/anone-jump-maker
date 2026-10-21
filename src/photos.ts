@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { prepareLightLeakPhoto } from "./lightleak.ts";
 import { OUTPUTS } from "./layout.ts";
 import { reportError } from "./sentry.ts";
 
@@ -377,6 +378,7 @@ async function loadPhoto(file: File, convertHeic?: HeicConverter): Promise<Loade
     }
   }
   try {
+    prepareLightLeakPhoto(working);
     const thumbUrl = await makeThumbUrl(working);
     return {
       id: `${file.name}-${file.size}-${file.lastModified}-${newPhotoId()}`,

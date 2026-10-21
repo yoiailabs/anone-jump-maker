@@ -1,4 +1,7 @@
-import { blendLightLeak, paintLightLeak, LIGHT_LEAK_CHARACTER_GAIN, LIGHT_LEAK_PHOTO_GAIN } from "./lightleak.ts";
+import {
+  blendLightLeak, paintLightLeak, lightLeakSource, LIGHT_LEAK_CHARACTER_GAIN,
+  LIGHT_LEAK_PHOTO_GAIN, LIGHT_LEAK_FALLBACK,
+} from "./lightleak.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -383,7 +386,10 @@ function composeMain(
   }
 
   if (fx.lightleak) {
-    paintLightLeak(surfaces.lightLeak, surfaces.lightLeakCtx, mw, mh, fx.cutIndex, fx.lightleak);
+    const source = plate
+      ? lightLeakSource(plate.bitmap, plateDest(plate.bitmap.width, plate.bitmap.height, mw, mh, fx, style), mw, mh)
+      : LIGHT_LEAK_FALLBACK;
+    paintLightLeak(surfaces.lightLeak, surfaces.lightLeakCtx, mw, mh, source, fx.lightleak);
     blendLightLeak(mainCtx, surfaces.lightLeak, mw, mh, fx.lightleak.amount * LIGHT_LEAK_PHOTO_GAIN);
   }
 
