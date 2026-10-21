@@ -91,7 +91,7 @@ export const TEMPLATE_FPS = 30;
 /**
  * 切替エフェクトの系統。縦・横どちらでも選べる。
  * - jump: 参考 Short（o1ROhNU0UNw）。写真がカットへ向かって沈み、カットで白フラッシュ＋跳ね戻る。
- * - lightleak: カットで即時切替。写真の明るい領域から白い光が広がる。
+ * - lightleak: カットで即時切替。キャラから白い光が画面全体へ広がる。
  * - zoom: 参考投稿（hagikaze_sami）。出ていく写真が中心へ縮み、横ブラー＋RGB ずれで抜け、新写真が寄りから引く。
  */
 export type SwapStyle = "jump" | "zoom" | "lightleak";
@@ -629,7 +629,7 @@ export function zoomKeyAt(tau: number): ZoomKey {
  * 時刻 `time` の写真表示と切替 FX。プレビューと保存は同じこの値で描く。
  * - jump: 表示スロット＝現在スロット。カットから 1 サイクル（15 フレ）の沈み／跳ね戻り。フラッシュはカット前 3／後 4 フレ。
  *   縦の下ずれは jumpDropFrac（短辺比を高さ比に直した値）。横は実測の JUMP_DROP_FRAC。
- * - lightleak: S で即時切替。前4枚・カット・後4枚に白い局所グロー。
+ * - lightleak: S で即時切替。前4枚・カット・後4枚に白い放射グロー。
  * - zoom: S..S+1 は前のスロットの写真が縮んだまま残り、S+1 から新写真が寄りから引く。
  *   横は前後 2〜3 フレ。縦はカットからの時間を ZOOM_PORTRAIT_TIME_SCALE で割り、横と同じカーブを引く。
  *   全面に横ブラー・RGB ずれ・明度リフト／灰かぶり。

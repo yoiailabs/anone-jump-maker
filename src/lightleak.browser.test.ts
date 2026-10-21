@@ -1,344 +1,236 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createCompositor, plateDest } from "./compositor.ts";
+import { createCompositor } from "./compositor.ts";
 import {
-  blendLightLeak, lightLeakSource, paintLightLeak, prepareLightLeakPhoto, LIGHT_LEAK_CHARACTER_GAIN,
-  LIGHT_LEAK_PHOTO_GAIN, LIGHT_LEAK_SHORT_SIDE, LIGHT_LEAK_FALLBACK,
+  blendLightLeak, paintLightLeak, lightLeakCharacterPoint, lightLeakCharacterSource,
+  LIGHT_LEAK_CHARACTER_GAIN, LIGHT_LEAK_PHOTO_GAIN, LIGHT_LEAK_SHORT_SIDE,
 } from "./lightleak.ts";
-import { loadPhotos, revokePhotos, type LoadedPhoto } from "./photos.ts";
+import { characterDest, characterScale, characterShiftY, templateBandRect } from "./layout.ts";
+import { keyAlpha, sampleKeyColor } from "./keying.ts";
+import type { LoadedPhoto } from "./photos.ts";
+import cuts from "../public/official-assets/template/landscape-cuts.json";
 
-const timeline = { slots: [0, 0.5, 1] };
 const video = () => document.createElement("video");
 const pixels = (canvas: HTMLCanvasElement) => canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
-type Spot = { x: number; y: number; brightness?: number };
-
-async function photo({ width = 640, height = 360, background = 64, spots = [], prepare = true, pattern = false }: {
-  width?: number; height?: number; background?: number; spots?: Spot[]; prepare?: boolean; pattern?: boolean;
-} = {}): Promise<LoadedPhoto> {
-  const canvas = document.createElement("canvas");
-  canvas.width = width; canvas.height = height;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = `rgb(${background}, ${background}, ${background})`;
-  ctx.fillRect(0, 0, width, height);
-  if (pattern) {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#304560"); gradient.addColorStop(1, "#b9a57c");
-    ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height);
-  }
-  for (const spot of spots) {
-    const x = spot.x * width, y = spot.y * height;
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, Math.min(width, height) * 0.12);
-    const b = spot.brightness ?? 200;
-    gradient.addColorStop(0, `rgb(${b}, ${b}, ${b})`);
-    gradient.addColorStop(1, `rgba(${b}, ${b}, ${b}, 0)`);
-    ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height);
-  }
-  const bitmap = await createImageBitmap(canvas);
-  if (prepare) prepareLightLeakPhoto(bitmap);
-  return { id: "fixture", name: "fixture.png", bitmap, thumbUrl: "" };
+const pixel = (canvas: HTMLCanvasElement, x: number, y: number) => {
+  const px = Math.max(0, Math.min(canvas.width - 1, Math.floor(x)));
+  const py = Math.max(0, Math.min(canvas.height - 1, Math.floor(y)));
+  return Array.from(canvas.getContext("2d")!.getImageData(px, py, 1, 1).data);
+};
+async function photo(): Promise<LoadedPhoto> {
+  const canvas = document.createElement("canvas"); canvas.width = 640; canvas.height = 360;
+  const ctx = canvas.getContext("2d")!; ctx.fillStyle = "#404040"; ctx.fillRect(0, 0, 640, 360);
+  return { id: "fixture", name: "fixture.png", bitmap: await createImageBitmap(canvas), thumbUrl: "" };
 }
-
-function brightest(canvas: HTMLCanvasElement) {
-  const data = pixels(canvas);
-  let max = -1, index = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    const value = data[i]! + data[i + 1]! + data[i + 2]!;
-    if (value > max) { max = value; index = i / 4; }
-  }
-  return { x: (index % canvas.width + 0.5) / canvas.width, y: (Math.floor(index / canvas.width) + 0.5) / canvas.height };
+function syntheticCharacter(x: number, y: number) {
+  const source = document.createElement("canvas"); source.width = 320; source.height = 180;
+  const ctx = source.getContext("2d")!;
+  ctx.fillStyle = "#20d03a"; ctx.fillRect(0, 0, 320, 180);
+  ctx.fillStyle = "#202020"; ctx.fillRect(x * 320 - 18, y * 180 - 18, 36, 36);
+  ctx.fillStyle = "#b0b0b0"; ctx.fillRect(x * 320 - 12, y * 180 - 12, 24, 24);
+  // 顔の目・輪郭をピーク時にも測れるよう、中央を横切る暗い線を置く。
+  ctx.fillStyle = "#202020"; ctx.fillRect(x * 320 - 12, y * 180 - 2, 24, 4);
+  return { source, width: 320, height: 180 };
 }
-
 async function digest(data: Uint8ClampedArray) {
   const hash = await crypto.subtle.digest("SHA-256", data as Uint8ClampedArray<ArrayBuffer>);
   return Array.from(new Uint8Array(hash), (v) => v.toString(16).padStart(2, "0")).join("");
 }
-
 beforeEach(() => { vi.spyOn(CanvasRenderingContext2D.prototype, "fillText").mockImplementation(() => {}); });
 afterEach(() => { vi.restoreAllMocks(); });
 
-describe.each(["landscape", "portrait"] as const)("%s white light leak", (mode) => {
+describe.each(["landscape", "portrait"] as const)("%s character bloom", (mode) => {
   const [width, height] = mode === "landscape" ? [640, 360] : [360, 640];
-  const sourceFor = (bitmap: ImageBitmap) => lightLeakSource(bitmap,
-    plateDest(bitmap.width, bitmap.height, width, height, { scale: 1, dy: 0 }, "lightleak"), width, height);
+  const placed = characterDest(width, height, characterScale(mode), characterShiftY(height, mode), mode);
 
-  for (const resolutionScale of [1 / 3, 0.31, 1]) {
-    it(`has no dark lines or transparent pixels on all nine frames at scale ${resolutionScale}`, async () => {
-      const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
-      compositor.setAspect(mode);
-      const flat = await photo({ width, height });
-      try {
-        for (let frame = -4; frame <= 4; frame++) {
-          compositor.draw(video(), [flat], timeline, 0.5 + frame / 30, "lightleak");
-          const data = pixels(compositor.canvas);
-          let dark = 0, transparent = 0;
-          for (let i = 0; i < data.length; i += 4) {
-            if (data[i]! < 64 || data[i + 1]! < 64 || data[i + 2]! < 64) dark++;
-            if (data[i + 3] !== 255) transparent++;
-          }
-          expect(dark, `frame=${frame}`).toBe(0);
-          expect(transparent).toBe(0);
+  it.each([59, 102, 205])("cut %i: synthetic character lights from its body, with a fixed source throughout the window", async (cut) => {
+    const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+    compositor.setAspect(mode);
+    const fixture = await photo();
+    const point = lightLeakCharacterPoint(cut, mode)!;
+    const source = lightLeakCharacterSource(point, placed, width, height);
+    const character = syntheticCharacter(point.x, point.y);
+    const gradient = vi.spyOn(CanvasRenderingContext2D.prototype, "createRadialGradient");
+    try {
+      for (let frame = -4; frame <= 4; frame++) {
+        gradient.mockClear();
+        // プレビューと保存で供給ポーズが前後しても、光源はカット表の位置から動かない。
+        const supplied = frame === 0 ? character : syntheticCharacter(point.x + 0.04 * Math.sign(frame), point.y - 0.03);
+        compositor.draw(video(), [fixture], cuts, (cut + frame) / 30, "lightleak", "none", supplied);
+        const [x, y] = gradient.mock.calls[0]!;
+        const w = mode === "landscape" ? 240 : 135, h = mode === "landscape" ? 135 : 240;
+        expect(x / w).toBeCloseTo(source.x, 5); expect(y / h).toBeCloseTo(source.y, 5);
+        if (frame === 0) {
+          // 黒い目・輪郭は白飛びせず、顔の明部と十分なコントラストを保つ。
+          const line = pixel(compositor.canvas, source.x * width, source.y * height)[0]!;
+          const face = pixel(compositor.canvas, source.x * width, source.y * height - placed.h * 8 / 180)[0]!;
+          expect(line).toBeGreaterThan(60); expect(line).toBeLessThan(135);
+          expect(face - line).toBeGreaterThan(65);
         }
-      } finally { flat.bitmap.close(); compositor.destroy(); }
-    });
-  }
+      }
+    } finally { fixture.bitmap.close(); compositor.destroy(); }
+  });
 
-  it("is neutral white, broad, smoothly radial and local, with a clearly white center", () => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d")!;
-    const source = { x: 0.25, y: 0.25 };
-    paintLightLeak(canvas, ctx, width, height, source, { frame: 0, amount: 1 });
-    const data = pixels(canvas), w = canvas.width, h = canvas.height;
-    const composite = document.createElement("canvas"); composite.width = w; composite.height = h;
-    const compositeCtx = composite.getContext("2d")!;
-    compositeCtx.fillStyle = "#404040"; compositeCtx.fillRect(0, 0, w, h);
-    blendLightLeak(compositeCtx, canvas, w, h, LIGHT_LEAK_PHOTO_GAIN);
-    blendLightLeak(compositeCtx, canvas, w, h, LIGHT_LEAK_CHARACTER_GAIN);
-    const result = pixels(composite);
-    let broad = 0, near = 0, far = 0, white = 0, visible = 0, farCornerMax = 0;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
+  it("is white, Gaussian, smooth, grows visibly before the cut, and reaches every corner at peak", () => {
+    const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d")!;
+    const source = lightLeakCharacterSource(lightLeakCharacterPoint(59, mode), placed, width, height);
+    let previousArea = 0, previousRadius = 0;
+    for (let frame = -4; frame <= 4; frame++) {
+      const radial = vi.spyOn(ctx, "createRadialGradient");
+      paintLightLeak(canvas, ctx, width, height, source, { frame, amount: 1 });
+      const radius = radial.mock.calls.at(-1)![5]; radial.mockRestore();
+      const data = pixels(canvas), w = canvas.width, h = canvas.height;
+      let area = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3]! > 64) area++;
         if (data[i + 3]! > 8) {
           expect(Math.max(data[i]!, data[i + 1]!, data[i + 2]!) - Math.min(data[i]!, data[i + 1]!, data[i + 2]!)).toBeLessThanOrEqual(1);
         }
-        const alpha = data[i + 3]! / 255;
-        if (alpha > 0.1) broad++;
-        if (x < w / 2 && y < h / 2) near += alpha;
-        if (x > w / 2 && y > h / 2) far += alpha;
-        const composited = result[i]!;
-        if (x > w * 0.75 && y > h * 0.75) farCornerMax = Math.max(farCornerMax, composited - 64);
-        if (composited > 230) white++;
-        if (composited - 64 < 30) visible++;
+      }
+      if (frame <= 0) {
+        expect(radius).toBeGreaterThan(previousRadius); expect(area).toBeGreaterThan(previousArea);
+        previousArea = area; previousRadius = radius;
+      }
+      if (frame !== 0) continue;
+      const cx = source.x * w, cy = source.y * h;
+      const center = pixel(canvas, cx, cy)[3]!;
+      expect(center).toBeGreaterThan(250);
+      for (const [x, y] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]]) {
+        const corner = pixel(canvas, x!, y!)[3]!;
+        expect(corner).toBeGreaterThan(115); expect(center - corner).toBeGreaterThan(15);
+      }
+      // 中心から上へ: 段差を作らず連続的に減衰する。半径方向の1画素差は最大3階調。
+      let last = center;
+      for (let y = Math.floor(cy) - 1; y >= 0; y--) {
+        const alpha = pixel(canvas, cx, y)[3]!;
+        expect(alpha).toBeLessThanOrEqual(last + 1); expect(last - alpha).toBeLessThanOrEqual(3); last = alpha;
+      }
+      const composite = document.createElement("canvas"); composite.width = w; composite.height = h;
+      const c = composite.getContext("2d")!; c.fillStyle = "#404040"; c.fillRect(0, 0, w, h);
+      blendLightLeak(c, canvas, w, h, LIGHT_LEAK_PHOTO_GAIN);
+      const brightest = pixel(composite, cx, cy)[0]!;
+      for (const [x, y] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]]) {
+        const corner = pixel(composite, x!, y!)[0]!;
+        expect(corner - 64).toBeGreaterThan(80); expect(brightest - corner).toBeGreaterThan(10);
       }
     }
-    expect(broad / (w * h)).toBeGreaterThan(0.3);
-    expect(broad / (w * h)).toBeLessThan(0.65);
-    expect(near).toBeGreaterThan(far * 8);
-    expect(white / (w * h)).toBeLessThan(0.05);
-    expect(visible / (w * h)).toBeGreaterThan(0.5);
-    expect(farCornerMax).toBeLessThanOrEqual(2);
-    expect(Math.max(...result.filter((_, i) => i % 4 === 0))).toBeGreaterThan(245);
-    const alphaAt = (x: number, y: number) => data[(Math.round(y) * w + Math.round(x)) * 4 + 3]!;
-    const cx = Math.round(source.x * w), cy = Math.round(source.y * h);
-    expect(alphaAt(cx, cy)).toBeGreaterThan(250);
-    // 半径方向の階調差を制限し、帯・硬い芯・外周の段差を検出する。
-    let previous = alphaAt(cx, cy);
-    for (let dx = 1; cx + dx < w; dx++) {
-      const alpha = alphaAt(cx + dx, cy);
-      expect(alpha).toBeLessThanOrEqual(previous);
-      expect(previous - alpha).toBeLessThanOrEqual(5);
-      previous = alpha;
-    }
-    for (const distance of [10, 25, 40]) {
-      expect(Math.abs(alphaAt(cx + distance, cy) - alphaAt(cx, cy + distance))).toBeLessThanOrEqual(3);
-    }
   });
 
-  it.each([{ x: 0.22, y: 0.3 }, { x: 0.75, y: 0.55 }, { x: 0.5, y: 0.78 }])(
-    "tracks the synthetic photo spot at $x,$y in both the source and composited glow", async (spot) => {
-      const fixture = await photo({ width, height, spots: [spot] });
-      const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
-      compositor.setAspect(mode);
-      try {
-        const source = sourceFor(fixture.bitmap);
-        expect(Math.abs(source.x - spot.x)).toBeLessThan(0.04);
-        expect(Math.abs(source.y - spot.y)).toBeLessThan(0.04);
-        compositor.draw(video(), [fixture], timeline, 0.5, "lightleak");
-        const peak = brightest(compositor.canvas);
-        expect(Math.abs(peak.x - spot.x)).toBeLessThan(0.04);
-        expect(Math.abs(peak.y - spot.y)).toBeLessThan(0.04);
-        const data = pixels(compositor.canvas);
-        const x = Math.floor(spot.x * compositor.canvas.width), y = Math.floor(spot.y * compositor.canvas.height);
-        expect(data[(y * compositor.canvas.width + x) * 4]).toBeGreaterThan(245);
-      } finally { fixture.bitmap.close(); compositor.destroy(); }
-    },
-  );
-
-  it("ignores the brighter spot cropped out by cover", async () => {
-    const hidden = mode === "landscape" ? { x: 0.5, y: 0.05 } : { x: 0.05, y: 0.5 };
-    const visible = { x: 0.62, y: 0.62, brightness: 160 };
-    const fixture = await photo({ width: 640, height: 640, spots: [{ ...hidden, brightness: 255 }, visible] });
+  it("uses the character rectangle fallback when no character is available", async () => {
+    const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null }); compositor.setAspect(mode);
+    const fixture = await photo(); const gradient = vi.spyOn(CanvasRenderingContext2D.prototype, "createRadialGradient");
     try {
-      const dest = plateDest(640, 640, width, height, { scale: 1, dy: 0 }, "lightleak");
-      const source = sourceFor(fixture.bitmap);
-      expect(Math.abs(source.x - (dest.x + visible.x * dest.w) / width)).toBeLessThan(0.06);
-      expect(Math.abs(source.y - (dest.y + visible.y * dest.h) / height)).toBeLessThan(0.06);
-    } finally { fixture.bitmap.close(); }
+      compositor.draw(video(), [fixture], cuts, 59 / 30, "lightleak");
+      const [x, y] = gradient.mock.calls[0]!;
+      expect(x / (mode === "landscape" ? 240 : 135)).toBeCloseTo((placed.x + 0.5 * placed.w) / width);
+      expect(y / (mode === "landscape" ? 135 : 240)).toBeCloseTo((placed.y + 0.42 * placed.h) / height);
+    } finally { fixture.bitmap.close(); compositor.destroy(); }
   });
 
-  it("falls back for dark, flat, or visibly flat cropped photos", async () => {
-    for (const options of [
-      { background: 8, spots: [{ x: 0.8, y: 0.6, brightness: 40 }] },
-      { background: 180 },
-      { background: 180, spots: [{ x: 0.8, y: 0.6, brightness: 190 }] },
-    ]) {
-      const fixture = await photo({ width, height, ...options });
-      try { expect(sourceFor(fixture.bitmap)).toEqual(LIGHT_LEAK_FALLBACK); }
-      finally { fixture.bitmap.close(); }
-    }
-    const hidden = mode === "landscape" ? { x: 0.5, y: 0.05 } : { x: 0.05, y: 0.5 };
-    const cropped = await photo({ width: 640, height: 640, background: 64, spots: [{ ...hidden, brightness: 255 }] });
-    try { expect(sourceFor(cropped.bitmap)).toEqual(LIGHT_LEAK_FALLBACK); }
-    finally { cropped.bitmap.close(); }
-  });
-
-  it("uses the outgoing spot before the cut and the incoming spot on and after it", async () => {
-    const spots = [{ x: 0.24, y: 0.3 }, { x: 0.76, y: 0.7 }];
-    const fixtures = await Promise.all(spots.map((spot) => photo({ width, height, spots: [spot] })));
-    const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
-    compositor.setAspect(mode);
-    const paint = vi.spyOn(CanvasRenderingContext2D.prototype, "createRadialGradient");
-    try {
-      for (let frame = -4; frame <= 4; frame++) {
-        paint.mockClear();
-        compositor.draw(video(), fixtures, timeline, 0.5 + frame / 30, "lightleak");
-        const [x, y] = paint.mock.calls[0]!;
-        const short = LIGHT_LEAK_SHORT_SIDE;
-        const w = mode === "landscape" ? Math.round(short * 16 / 9) : short;
-        const h = mode === "landscape" ? short : Math.round(short * 16 / 9);
-        const spot = spots[frame < 0 ? 0 : 1]!;
-        expect(Math.abs(x / w - spot.x)).toBeLessThan(0.04);
-        expect(Math.abs(y / h - spot.y)).toBeLessThan(0.04);
-        const peak = brightest(compositor.canvas);
-        expect(Math.abs(peak.x - spot.x)).toBeLessThan(0.04);
-        expect(Math.abs(peak.y - spot.y)).toBeLessThan(0.04);
-      }
-    } finally { fixtures.forEach((f) => f.bitmap.close()); compositor.destroy(); }
-  });
-
-  it("matches every pixel after reseeking, aspect changes, and in a separate compositor", async () => {
-    const preview = createCompositor({ resolutionScale: 0.31, createKeyer: () => null });
-    const saved = createCompositor({ resolutionScale: 0.31, createKeyer: () => null });
-    preview.setAspect(mode); saved.setAspect(mode);
-    const fixtures = await Promise.all([
-      photo({ pattern: true, spots: [{ x: 0.3, y: 0.4 }] }),
-      photo({ pattern: true, spots: [{ x: 0.7, y: 0.6 }] }),
-    ]);
+  it("matches all pixels after reseeking and across compositors, irrespective of frame supply order", async () => {
+    const a = createCompositor({ resolutionScale: 0.31, createKeyer: () => null });
+    const b = createCompositor({ resolutionScale: 0.31, createKeyer: () => null });
+    a.setAspect(mode); b.setAspect(mode);
+    const fixture = await photo(); const point = lightLeakCharacterPoint(102, mode)!;
+    const character = syntheticCharacter(point.x, point.y);
     try {
       for (const frame of [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]) {
-        const time = 0.5 + frame / 30;
-        preview.draw(video(), fixtures, timeline, time, "lightleak");
-        const expected = await digest(pixels(preview.canvas));
-        preview.setAspect(mode === "portrait" ? "landscape" : "portrait");
-        preview.draw(video(), fixtures, timeline, 0.7, "lightleak");
-        preview.setAspect(mode);
-        preview.draw(video(), fixtures, timeline, time, "lightleak");
-        saved.draw(video(), fixtures, timeline, time, "lightleak");
-        expect(await digest(pixels(preview.canvas))).toBe(expected);
-        expect(await digest(pixels(saved.canvas))).toBe(expected);
+        const time = (102 + frame) / 30;
+        a.draw(video(), [fixture], cuts, time, "lightleak", "none", character);
+        const expected = await digest(pixels(a.canvas));
+        a.setAspect(mode === "portrait" ? "landscape" : "portrait");
+        a.draw(video(), [fixture], cuts, 205 / 30, "lightleak", "none", syntheticCharacter(0.3, 0.5));
+        a.setAspect(mode);
+        a.draw(video(), [fixture], cuts, time, "lightleak", "none", character);
+        b.draw(video(), [fixture], cuts, time, "lightleak", "none", character);
+        expect(await digest(pixels(a.canvas))).toBe(expected); expect(await digest(pixels(b.canvas))).toBe(expected);
       }
-    } finally { fixtures.forEach((f) => f.bitmap.close()); preview.destroy(); saved.destroy(); }
+    } finally { fixture.bitmap.close(); a.destroy(); b.destroy(); }
   });
 
-  it("does no frame readback or allocation, reuses the surface, and does no analysis or extra drawing outside the window", async () => {
-    const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
-    compositor.setAspect(mode);
-    const fixture = await photo();
-    const unprepared = await photo({ prepare: false });
-    const source = video();
+  it("does no light readback or allocation, keeps the surface, and draws nothing extra outside -4..+4", async () => {
+    const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null }); compositor.setAspect(mode);
+    const fixture = await photo(), source = video();
     const draw = vi.spyOn(CanvasRenderingContext2D.prototype, "drawImage");
     const gradient = vi.spyOn(CanvasRenderingContext2D.prototype, "createRadialGradient");
     const read = vi.spyOn(CanvasRenderingContext2D.prototype, "getImageData");
-    const create = vi.spyOn(document, "createElement");
-    const random = vi.spyOn(Math, "random");
+    const create = vi.spyOn(document, "createElement"), random = vi.spyOn(Math, "random");
     try {
       let surface: HTMLCanvasElement | undefined;
       for (const frame of [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, -5]) {
-        draw.mockClear(); gradient.mockClear();
-        const active = frame >= -4 && frame <= 4;
-        compositor.draw(source, [active ? fixture : unprepared], timeline, 0.5 + frame / 30, "lightleak");
-        expect(draw).toHaveBeenCalledTimes(active ? 4 : 2);
-        expect(gradient).toHaveBeenCalledTimes(active ? 1 : 0);
+        draw.mockClear(); gradient.mockClear(); const active = frame >= -4 && frame <= 4;
+        compositor.draw(source, [fixture], cuts, (59 + frame) / 30, "lightleak");
+        expect(draw).toHaveBeenCalledTimes(active ? 4 : 2); expect(gradient).toHaveBeenCalledTimes(active ? 1 : 0);
         if (active) {
           const [canvas, x, y, w, h] = draw.mock.calls[1]!;
           expect([x, y, w, h]).toEqual([0, 0, compositor.canvas.width, compositor.canvas.height]);
-          if (surface) expect(canvas).toBe(surface);
-          surface = canvas as HTMLCanvasElement;
+          if (surface) expect(canvas).toBe(surface); surface = canvas as HTMLCanvasElement;
           expect(Math.min(surface.width, surface.height)).toBe(LIGHT_LEAK_SHORT_SIDE);
-          expect(draw.mock.calls[2]![0]).toBe(surface);
         }
       }
       expect(read).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled(); expect(random).not.toHaveBeenCalled();
-    } finally { fixture.bitmap.close(); unprepared.bitmap.close(); compositor.destroy(); }
+    } finally { fixture.bitmap.close(); compositor.destroy(); }
   });
 
-  it("uses screen at 95% on the photo and only 12% after the character", async () => {
-    const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
-    compositor.setAspect(mode);
+  it.each([1 / 3, 0.31, 1])("has no dark seams or transparency at scale %f on all nine frames", async (resolutionScale) => {
+    const compositor = createCompositor({ resolutionScale, createKeyer: () => null }); compositor.setAspect(mode);
     const fixture = await photo();
-    const source = document.createElement("canvas"); source.width = 1920; source.height = 1080;
-    const ctx = source.getContext("2d")!;
-    ctx.fillStyle = "#20d03a"; ctx.fillRect(0, 0, 1920, 1080);
-    ctx.fillStyle = "#202020"; ctx.fillRect(200, 100, 1500, 800);
-    const operations: { alpha: number; op: string; smoothing: boolean }[] = [];
-    const original = CanvasRenderingContext2D.prototype.drawImage;
-    const draw = vi.spyOn(CanvasRenderingContext2D.prototype, "drawImage").mockImplementation(function (this: CanvasRenderingContext2D, ...args: Parameters<typeof original>) {
-      if ((args[0] as HTMLCanvasElement).width === (mode === "portrait" ? 135 : 240)) {
-        operations.push({ alpha: this.globalAlpha, op: this.globalCompositeOperation, smoothing: this.imageSmoothingEnabled });
-      }
-      return Reflect.apply(original, this, args);
-    });
     try {
-      compositor.draw(video(), [fixture], timeline, 0.5, "lightleak", "none", { source, width: 1920, height: 1080 });
-      expect(operations).toEqual([
-        { alpha: 0.95, op: "screen", smoothing: true },
-        { alpha: 0.12, op: "screen", smoothing: true },
-      ]);
-    } finally { draw.mockRestore(); fixture.bitmap.close(); compositor.destroy(); }
+      for (let frame = -4; frame <= 4; frame++) {
+        compositor.draw(video(), [fixture], cuts, (59 + frame) / 30, "lightleak");
+        const data = pixels(compositor.canvas); let dark = 0, transparent = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i]! < 64 || data[i + 1]! < 64 || data[i + 2]! < 64) dark++;
+          if (data[i + 3] !== 255) transparent++;
+        }
+        expect(dark).toBe(0); expect(transparent).toBe(0);
+      }
+    } finally { fixture.bitmap.close(); compositor.destroy(); }
   });
 });
 
-it("analyzes once per loaded bitmap, caches across preparations/compositors, and uses a long-edge 32 grid", async () => {
-  const canvas = document.createElement("canvas"); canvas.width = 640; canvas.height = 480;
+it("生成表の光源が実テンプレの異なる3ポーズのアルファ重心と一致する（縦横）", async () => {
+  const source = video(); source.muted = true; source.preload = "auto";
+  source.src = "/official-assets/template/landscape.mp4";
+  await new Promise<void>((resolve, reject) => { source.onloadeddata = () => resolve(); source.onerror = () => reject(new Error("テンプレ読み込み失敗")); });
+  const canvas = document.createElement("canvas"); canvas.width = 320; canvas.height = 180;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#404040"; ctx.fillRect(0, 0, 640, 480);
-  ctx.fillStyle = "#eee"; ctx.fillRect(400, 200, 50, 50);
-  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!), "image/png"));
-  const read = vi.spyOn(CanvasRenderingContext2D.prototype, "getImageData");
-  const loaded = await loadPhotos([new File([blob], "spot.png", { type: "image/png" })]);
-  const other = await photo({ width: 360, height: 640, prepare: false });
-  const a = createCompositor({ resolutionScale: 0.1, createKeyer: () => null });
-  const b = createCompositor({ resolutionScale: 0.1, createKeyer: () => null });
   try {
-    expect(read.mock.calls).toEqual([[0, 0, 32, 24]]);
-    prepareLightLeakPhoto(loaded[0]!.bitmap);
-    prepareLightLeakPhoto(other.bitmap);
-    prepareLightLeakPhoto(other.bitmap);
-    expect(read.mock.calls).toEqual([[0, 0, 32, 24], [0, 0, 18, 32]]);
-    read.mockClear();
-    for (const compositor of [a, b]) {
-      for (const mode of ["portrait", "landscape"] as const) {
-        compositor.setAspect(mode);
-        for (let frame = -5; frame <= 5; frame++) {
-          compositor.draw(video(), [loaded[0]!, other], timeline, 0.5 + frame / 30, "lightleak");
+    for (const frame of [59, 102, 205]) {
+      await new Promise<void>((resolve) => { source.onseeked = () => resolve(); source.currentTime = frame / 30 + 0.001; });
+      for (const mode of ["landscape", "portrait"] as const) {
+        const band = templateBandRect(source.videoWidth, source.videoHeight, mode);
+        ctx.drawImage(source, band.x, band.y, band.w, band.h, 0, 0, 320, 180);
+        const data = pixels(canvas), key = sampleKeyColor(data, 320, 180);
+        let mass = 0, sx = 0, sy = 0;
+        for (let y = 0; y < 180; y++) for (let x = 0; x < 320; x++) {
+          const i = (y * 320 + x) * 4;
+          const alpha = keyAlpha(data[i]!, data[i + 1]!, data[i + 2]!, ...key);
+          if (alpha < 0.5) continue;
+          mass += alpha; sx += (x + 0.5) * alpha; sy += (y + 0.5) * alpha;
         }
+        const point = lightLeakCharacterPoint(frame, mode)!;
+        expect(Math.abs(point.x - sx / mass / 320)).toBeLessThan(0.01);
+        expect(Math.abs(point.y - sy / mass / 180)).toBeLessThan(0.01);
       }
     }
-    expect(read).not.toHaveBeenCalled();
-  } finally { revokePhotos(loaded); other.bitmap.close(); a.destroy(); b.destroy(); }
+  } finally { source.removeAttribute("src"); source.load(); }
 });
 
-it("resolves tied maximum cells in index order deterministically", async () => {
-  const fixture = await photo({ width: 640, height: 640, spots: [
-    { x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 },
-  ] });
+it("写真よりキャラへのscreenが弱く、合成時にも係数を使う", async () => {
+  const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+  const fixture = await photo(); const ops: { alpha: number; op: string; smoothing: boolean }[] = [];
+  const original = CanvasRenderingContext2D.prototype.drawImage;
+  vi.spyOn(CanvasRenderingContext2D.prototype, "drawImage").mockImplementation(function (this: CanvasRenderingContext2D, ...args: Parameters<typeof original>) {
+    if ((args[0] as HTMLCanvasElement).width === 240) ops.push({ alpha: this.globalAlpha, op: this.globalCompositeOperation, smoothing: this.imageSmoothingEnabled });
+    return Reflect.apply(original, this, args);
+  });
   try {
-    for (let i = 0; i < 3; i++) {
-      const source = lightLeakSource(fixture.bitmap, { x: 0, y: 0, w: 640, h: 640 }, 640, 640);
-      expect(source.x).toBeLessThan(0.3); expect(source.y).toBeLessThan(0.3);
-    }
-  } finally { fixture.bitmap.close(); }
-});
-
-it("smooths an isolated hot cell so the larger bright region wins", async () => {
-  const canvas = document.createElement("canvas"); canvas.width = canvas.height = 32;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 32, 32);
-  ctx.fillStyle = "#fff"; ctx.fillRect(4, 4, 1, 1);
-  ctx.fillStyle = "rgb(100, 100, 100)"; ctx.fillRect(20, 20, 5, 5);
-  const bitmap = await createImageBitmap(canvas);
-  try {
-    prepareLightLeakPhoto(bitmap);
-    const source = lightLeakSource(bitmap, { x: 0, y: 0, w: 320, h: 320 }, 320, 320);
-    expect(source.x).toBeGreaterThan(0.6); expect(source.y).toBeGreaterThan(0.6);
-  } finally { bitmap.close(); }
+    compositor.draw(video(), [fixture], cuts, 59 / 30, "lightleak", "none", syntheticCharacter(0.4, 0.8));
+    expect(ops).toEqual([
+      { alpha: LIGHT_LEAK_PHOTO_GAIN, op: "screen", smoothing: true },
+      { alpha: LIGHT_LEAK_CHARACTER_GAIN, op: "screen", smoothing: true },
+    ]);
+    expect(LIGHT_LEAK_CHARACTER_GAIN).toBeGreaterThanOrEqual(0.3); expect(LIGHT_LEAK_CHARACTER_GAIN).toBeLessThanOrEqual(0.45);
+    expect(LIGHT_LEAK_CHARACTER_GAIN).toBeLessThan(LIGHT_LEAK_PHOTO_GAIN);
+  } finally { fixture.bitmap.close(); compositor.destroy(); }
 });

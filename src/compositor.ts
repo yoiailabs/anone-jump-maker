@@ -1,6 +1,6 @@
 import {
-  blendLightLeak, paintLightLeak, lightLeakSource, LIGHT_LEAK_CHARACTER_GAIN,
-  LIGHT_LEAK_PHOTO_GAIN, LIGHT_LEAK_FALLBACK,
+  blendLightLeak, paintLightLeak, lightLeakCharacterPoint, lightLeakCharacterSource, LIGHT_LEAK_CHARACTER_GAIN,
+  LIGHT_LEAK_PHOTO_GAIN,
 } from "./lightleak.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
@@ -32,6 +32,7 @@ import {
   plateCoverScale,
   plateRestShiftFrac,
   STAGE_MAX_REM,
+  TEMPLATE_FPS,
   swapFx,
   templateBandRect,
   type AspectMode,
@@ -257,6 +258,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
+      Math.round((slots[fx.cutIndex] ?? 0) * TEMPLATE_FPS),
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -366,6 +368,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
+  cutFrame: number,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -386,9 +389,9 @@ function composeMain(
   }
 
   if (fx.lightleak) {
-    const source = plate
-      ? lightLeakSource(plate.bitmap, plateDest(plate.bitmap.width, plate.bitmap.height, mw, mh, fx, style), mw, mh)
-      : LIGHT_LEAK_FALLBACK;
+    const dest = characterDest(mw, mh, characterScale(mode, characterSize), characterShiftY(mh, mode), mode);
+    const point = character ? lightLeakCharacterPoint(cutFrame, mode) : undefined;
+    const source = lightLeakCharacterSource(point, dest, mw, mh);
     paintLightLeak(surfaces.lightLeak, surfaces.lightLeakCtx, mw, mh, source, fx.lightleak);
     blendLightLeak(mainCtx, surfaces.lightLeak, mw, mh, fx.lightleak.amount * LIGHT_LEAK_PHOTO_GAIN);
   }

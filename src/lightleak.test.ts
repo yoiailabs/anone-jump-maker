@@ -1,9 +1,14 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { characterAlphaCenter } from "../scripts/lightleak-character-center.ts";
 import { describe, expect, it } from "vitest";
 import cuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 import { frameTimes, EXPORT_FPS } from "./export.ts";
 import { hasFrameFx, isSwapStyle, LIGHT_LEAK_AMOUNTS, SWAP_STYLE_LABELS, swapFx } from "./layout.ts";
 import { slotForTime } from "./timeline.ts";
-import { LIGHT_LEAK_FALLBACK, lightLeakSource, prepareLightLeakPhoto } from "./lightleak.ts";
+import { lightLeakCharacterPoint, lightLeakCharacterSource, LIGHT_LEAK_RADII } from "./lightleak.ts";
+import centers from "./generated/lightleak-character.json";
+import { characterDest, characterScale, characterShiftY } from "./layout.ts";
 
 const amounts = [0.15, 0.35, 0.65, 0.9, 1, 0.75, 0.45, 0.22, 0.08];
 
@@ -75,78 +80,53 @@ describe.each(["portrait", "landscape"] as const)("%s light leak timing", (mode)
   });
 });
 
-describe("prepareLightLeakPhoto の失敗時", () => {
-  it("Canvas2D が使えなくても例外を投げず、光源はフォールバックになる", () => {
-    const original = (globalThis as { document?: unknown }).document;
-    (globalThis as { document?: unknown }).document = {
-      createElement: () => ({ width: 0, height: 0, getContext: () => null }),
-    };
-    try {
-      const bitmap = { width: 64, height: 36 } as ImageBitmap;
-      expect(() => prepareLightLeakPhoto(bitmap)).not.toThrow();
-      expect(lightLeakSource(bitmap, { x: 0, y: 0, w: 64, h: 36 }, 64, 36)).toEqual(LIGHT_LEAK_FALLBACK);
-    } finally {
-      (globalThis as { document?: unknown }).document = original;
-    }
-  });
+it("カット前の光の半径が単調に育つ", () => {
+  for (let i = 1; i <= 4; i++) expect(LIGHT_LEAK_RADII[i]).toBeGreaterThan(LIGHT_LEAK_RADII[i - 1]!);
+  expect(LIGHT_LEAK_RADII[4]! / LIGHT_LEAK_RADII[0]!).toBeGreaterThan(10);
 });
 
-describe("cover のクロップ境界", () => {
-  it("見えない行の明部をぼかしで可視セルに混ぜず、平坦な可視部分はフォールバックする", () => {
-    // 32×32 の写真を 640×360 へ cover。可視は行 7〜24、直上の非表示行 6 だけ真っ白。
-    const data = new Uint8ClampedArray(32 * 32 * 4);
-    for (let y = 0; y < 32; y++) {
-      for (let x = 0; x < 32; x++) {
-        const v = y === 6 ? 255 : 64;
-        data.set([v, v, v, 255], (y * 32 + x) * 4);
-      }
+it("生成表は実カットと一致し、キャラ本体の位置はポーズで変わる", () => {
+  expect(centers.cuts.map((cut) => cut.frame)).toEqual(cuts.slotFrames);
+  expect(new Set(centers.cuts.map((cut) => JSON.stringify(cut.landscape))).size).toBeGreaterThan(20);
+  for (const mode of ["landscape", "portrait"] as const) {
+    for (const cut of cuts.slotFrames) {
+      const point = lightLeakCharacterPoint(cut, mode)!;
+      expect(point.x).toBeGreaterThan(0.2); expect(point.x).toBeLessThan(0.8);
+      expect(point.y).toBeGreaterThan(0.5); expect(point.y).toBeLessThan(1);
     }
-    const original = (globalThis as { document?: unknown }).document;
-    (globalThis as { document?: unknown }).document = {
-      createElement: () => ({
-        width: 0,
-        height: 0,
-        getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data }) }),
-      }),
-    };
-    try {
-      const bitmap = { width: 32, height: 32 } as ImageBitmap;
-      prepareLightLeakPhoto(bitmap);
-      const dest = { x: 0, y: -140, w: 640, h: 640 };
-      expect(lightLeakSource(bitmap, dest, 640, 360)).toEqual(LIGHT_LEAK_FALLBACK);
-      // 同じ写真でも、白い行が見える配置ならそこが光源になる。
-      const shown = lightLeakSource(bitmap, { x: 0, y: 0, w: 640, h: 640 }, 640, 640);
-      expect(shown.y).toBeCloseTo((6 + 0.5) / 32, 5);
-    } finally {
-      (globalThis as { document?: unknown }).document = original;
-    }
-  });
+    expect(lightLeakCharacterPoint(999, mode)).toBeUndefined();
+  }
 });
 
-describe("光源のキャッシュ", () => {
-  it("同じ写真・同じ表示配置では再計算せず同じ結果を返し、配置が変われば選び直す", () => {
-    const data = new Uint8ClampedArray(32 * 18 * 4);
-    for (let i = 0; i < 32 * 18; i++) data.set([40, 40, 40, 255], i * 4);
-    data.set([255, 255, 255, 255], (4 * 32 + 26) * 4);
-    const original = (globalThis as { document?: unknown }).document;
-    (globalThis as { document?: unknown }).document = {
-      createElement: () => ({
-        width: 0,
-        height: 0,
-        getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data }) }),
-      }),
-    };
-    try {
-      const bitmap = { width: 32, height: 18 } as ImageBitmap;
-      prepareLightLeakPhoto(bitmap);
-      const dest = { x: 0, y: 0, w: 640, h: 360 };
-      const first = lightLeakSource(bitmap, dest, 640, 360);
-      expect(first).not.toEqual(LIGHT_LEAK_FALLBACK);
-      expect(lightLeakSource(bitmap, dest, 640, 360)).toBe(first);
-      // 右端を切り落とす配置では、明るいセルが見えないのでフォールバックへ変わる。
-      expect(lightLeakSource(bitmap, { x: 0, y: 0, w: 640, h: 360 }, 480, 360)).toEqual(LIGHT_LEAK_FALLBACK);
-    } finally {
-      (globalThis as { document?: unknown }).document = original;
+it.each(["landscape", "portrait"] as const)("%s: 本体位置を実際の配置へ写し、透明・キャラなしは矩形中央やや上へ戻る", (mode) => {
+  const [w, h] = mode === "landscape" ? [1920, 1080] : [1080, 1920];
+  const dest = characterDest(w, h, characterScale(mode), characterShiftY(h, mode), mode);
+  for (const point of [{ x: 0.3, y: 0.6 }, { x: 0.5, y: 0.8 }, { x: 0.65, y: 0.7 }]) {
+    const source = lightLeakCharacterSource(point, dest, w, h);
+    expect(source.x).toBeCloseTo((dest.x + point.x * dest.w) / w);
+    expect(source.y).toBeCloseTo((dest.y + point.y * dest.h) / h);
+  }
+  for (const point of [null, undefined]) {
+    expect(lightLeakCharacterSource(point, dest, w, h)).toEqual({ x: (dest.x + dest.w * 0.5) / w, y: (dest.y + dest.h * 0.42) / h });
+  }
+});
+
+it("生成表は現在のテンプレ素材から作られている", () => {
+  const source = readFileSync(new URL("../" + centers.source, import.meta.url));
+  expect(createHash("sha256").update(source).digest("hex")).toBe(centers.sha256);
+});
+
+it("事前解析は異なる3位置の合成キャラを見つけ、透明／緑のみならフォールバック用のnullを返す", () => {
+  const width = 160, height = 90;
+  for (const [cx, cy] of [[40, 30], [80, 60], [120, 50]]) {
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) data.set([32, 208, 58, 255], i);
+    expect(characterAlphaCenter(data, width, height)).toBeNull();
+    for (let y = cy! - 10; y < cy! + 10; y++) for (let x = cx! - 10; x < cx! + 10; x++) {
+      data.set([32, 32, 32, 255], (y * width + x) * 4);
     }
-  });
+    expect(characterAlphaCenter(data, width, height)).toEqual({ x: cx! / width, y: +(cy! / height).toFixed(6) });
+    for (let i = 3; i < data.length; i += 4) data[i] = 0;
+    expect(characterAlphaCenter(data, width, height)).toBeNull();
+  }
 });
