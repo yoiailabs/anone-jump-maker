@@ -85,7 +85,8 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium webkit
-      - run: pnpm exec playwright test e2e/export-modal.spec.ts --project=webkit --repeat-each=20 --retries=0 --trace=retain-on-failure
+      - run: pnpm exec playwright test e2e/export-modal.spec.ts --project=webkit --grep 863x360 --repeat-each=100 --workers=4 --retries=0 --trace=retain-on-failure
+      - run: pnpm exec playwright test e2e/export-modal.spec.ts --project=webkit --project=ios-safari --repeat-each=10 --workers=4 --retries=0 --trace=retain-on-failure
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
