@@ -780,7 +780,7 @@ describe("image filter", () => {
   });
 
   it("calibrates both sigmas while keeping 強 at least twice 弱, without a preview pixel floor", () => {
-    expect(FILTER_BLUR_FRAC).toEqual({ none: 0, "blur-weak": 0.00255, "blur-strong": 0.0058 });
+    expect(FILTER_BLUR_FRAC).toEqual({ none: 0, "blur-weak": 0.0026, "blur-strong": 0.0058 });
     expect(FILTER_BLUR_FRAC["blur-weak"]).toBeLessThan(0.005);
     expect(FILTER_BLUR_FRAC["blur-strong"]).toBeLessThan(0.011);
     for (const long of [360, 640, 1080, 1920]) {
@@ -788,7 +788,7 @@ describe("image filter", () => {
       const strong = filterBlurPx("blur-strong", long);
       expect(filterBlurPx("none", long)).toBe(0);
       expect(weak).toBeGreaterThan(0);
-      expect(weak).toBeCloseTo(long * 0.00255, 8);
+      expect(weak).toBeCloseTo(long * 0.0026, 8);
       expect(strong).toBeCloseTo(long * 0.0058, 8);
       expect(strong).toBeGreaterThanOrEqual(weak * 2);
     }

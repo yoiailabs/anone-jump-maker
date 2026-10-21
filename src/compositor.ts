@@ -1,5 +1,5 @@
 import { createColorPhotoCache, type ColorFilter } from "./color-filter.ts";
-import { applySoftwareBlur } from "./blur.ts";
+import { applySoftwareBlur, releaseSoftwareBlurBuffers } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
   createGpuKeyer,
@@ -317,6 +317,7 @@ export function createCompositor(options?: {
       fxB.height = 0;
       fxPad.width = 0;
       fxPad.height = 0;
+      releaseSoftwareBlurBuffers(blur);
       blur.width = 0;
       blur.height = 0;
     },

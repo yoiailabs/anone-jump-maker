@@ -3,6 +3,7 @@ import {
   CANVAS_FILTER_BLUR,
   boxBlurRgba,
   softwareBlurDownscale,
+  softwareBlurPasses,
   softwareBlurRadius,
 } from "./blur.ts";
 import { filterBlurPx } from "./layout.ts";
@@ -34,7 +35,22 @@ describe("software blur", () => {
 
   it("downscales more for a stronger radius", () => {
     expect(softwareBlurDownscale(0)).toBe(1);
+    expect(softwareBlurDownscale(filterBlurPx("blur-weak", 640))).toBe(0.5);
     expect(softwareBlurDownscale(24)).toBeLessThan(softwareBlurDownscale(6));
+  });
+
+  it("avoids a resampling blur floor for small sigmas and matches variance across downscale thresholds", () => {
+    for (const px of [0.01, 0.5, Math.sqrt(0.75), 0.9, 0.9999, 1, 1.0001, 1.632, 1.9999, 2, 7.9999, 8]) {
+      const down = softwareBlurDownscale(px);
+      const resampleVariance = (1 / down ** 2 - 1) / 4;
+      expect(resampleVariance).toBeLessThanOrEqual(px ** 2);
+      const kernel = softwareBlurRadius(px);
+      const r = Math.floor(kernel);
+      const t = kernel - r;
+      const variance = (r * (r + 1) * (2 * r + 1) / 3 + 2 * t * (r + 1) ** 2) / (2 * r + 1 + 2 * t);
+      expect(variance * softwareBlurPasses(px) / down ** 2 + resampleVariance).toBeCloseTo(px ** 2, 8);
+    }
+    expect(softwareBlurDownscale(0.85)).toBe(1);
   });
 
   for (const filter of ["blur-weak", "blur-strong"] as const) {
@@ -48,7 +64,7 @@ describe("software blur", () => {
         expect(weight).toBeGreaterThanOrEqual(0);
         expect(weight).toBeLessThan(1);
         expect([1, 0.5, 0.25]).toContain(down);
-        const variance = 2 * (radius * (radius + 1) * (2 * radius + 1) / 3 + 2 * weight * (radius + 1) ** 2) / (2 * radius + 1 + 2 * weight);
+        const variance = softwareBlurPasses(px) * (radius * (radius + 1) * (2 * radius + 1) / 3 + 2 * weight * (radius + 1) ** 2) / (2 * radius + 1 + 2 * weight);
         const resampleVariance = (1 / down ** 2 - 1) / 4;
         // 実際のバッファ寸法の丸めも含めたフル解像度のσ。
         const effectiveSigma = Math.sqrt(variance * (long / Math.round(long * down)) ** 2 + resampleVariance);
