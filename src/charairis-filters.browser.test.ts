@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { charaIrisCenter, drawCharaIris } from "./charairis.ts";
 import { createCompositor } from "./compositor.ts";
+import { applyColorFilter, COLOR_FILTERS } from "./color-filter.ts";
 import { PHOTO_BASE_COLOR, swapFx, type ImageFilter } from "./layout.ts";
 import { withComposeDetail } from "./perf-trace.ts";
 import type { LoadedPhoto } from "./photos.ts";
@@ -55,9 +56,9 @@ for (const mode of ["landscape", "portrait"] as const) {
       const next = await transparentPhoto(mime);
       const video = document.createElement("video");
       try {
-        for (const filter of filters) {
+        for (const color of COLOR_FILTERS) for (const filter of filters) {
           const render = (time: number) => {
-            compositor.draw(video, [old, next], timeline, time, "charairis", filter);
+            compositor.draw(video, [old, next], timeline, time, "charairis", filter, undefined, "standard", color);
             return pixels(compositor.canvas);
           };
           const last = render(33 / 30);
@@ -67,7 +68,7 @@ for (const mode of ["landscape", "portrait"] as const) {
           const { width: w, height: h } = compositor.canvas;
           const short = Math.min(w, h);
           // 最後の整数revealフレームでは白縁・影まで画面外にある。
-          expect(equal(last, normal), filter).toBe(true);
+          expect(equal(last, normal), `${color}/${filter}: S+3 → S+4`).toBe(true);
           if (filter === "none") {
             const i = (Math.floor(h / 2) * w + Math.floor(w / 2 - short / 10)) * 4;
             expect([...last.slice(i, i + 3)]).toEqual([10, 8, 6]);
@@ -75,10 +76,63 @@ for (const mode of ["landscape", "portrait"] as const) {
           // 任意時刻の終端直前では白縁・影も画面外。全画素が通常描画へ連続する。
           const terminal = render(34 / 30 - 0.001);
           expect(swapFx(34 / 30 - 0.001, timeline.slots, "charairis", mode).reveal).toBeDefined();
-          expect(equal(terminal, normal), filter).toBe(true);
+          expect(equal(terminal, normal), `${color}/${filter}: terminal`).toBe(true);
         }
       } finally {
         old.bitmap.close(); next.bitmap.close(); compositor.destroy();
+      }
+    });
+  }
+
+  for (const color of ["dynamic", "dramatic", "film"] as const) for (const filter of filters) {
+    it(`${mode} ${color}/${filter}: reveal matches separately processed photos, normal drawing and independent seeks`, async () => {
+      const timeline = { slots: [0, 1.966667] }; // 実テンプレの丸めたcut 59も検査する。
+      const a = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+      const b = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+      const reference = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+      a.setAspect(mode); b.setAspect(mode); reference.setAspect(mode);
+      const photos = [await photo("#b87040"), await photo("#4080b0")];
+      const video = document.createElement("video");
+      try {
+        const normal = (p: LoadedPhoto) => {
+          reference.draw(video, [p], timeline, 0, "charairis", filter, undefined, "standard", color);
+          return snapshot(reference.canvas);
+        };
+        const old = normal(photos[0]!);
+        const next = normal(photos[1]!);
+        // ブラーなしは原寸写真を直接clipする経路。通常描画の縮小済み写真を
+        // 再描画するとclip境界の補間が異なるため、原寸で色加工した参照を使う。
+        const nextSource = document.createElement("canvas");
+        nextSource.width = nextSource.height = 256;
+        const sourceCtx = nextSource.getContext("2d")!;
+        sourceCtx.drawImage(photos[1]!.bitmap, 0, 0);
+        const image = sourceCtx.getImageData(0, 0, 256, 256);
+        applyColorFilter(image.data, color);
+        sourceCtx.putImageData(image, 0, 0);
+        const render = (comp: typeof a, frame: number) => {
+          comp.draw(video, photos, timeline, frame / 30, "charairis", filter, undefined, "standard", color);
+          return pixels(comp.canvas);
+        };
+        for (let frame = 56; frame <= 62; frame++) {
+          const expected = snapshot(old);
+          const { width: w, height: h } = expected;
+          drawCharaIris(expected.getContext("2d")!, filter === "none" ? nextSource : next, w, h,
+            swapFx(frame / 30, timeline.slots, "charairis", mode).reveal!.progress,
+            charaIrisCenter(frame / 30, w, h, mode));
+          // 両compositorの描画/readback回数を揃え、seek履歴のみ変える。
+          const first = render(a, frame);
+          render(a, 0);
+          const actual = render(a, frame);
+          render(b, frame); render(b, frame);
+          expect(equal(actual, first), `seek ${frame}`).toBe(true);
+          expect(equal(actual, render(b, frame)), `instance ${frame}`).toBe(true);
+          // クレジットは最終合成のため除外。穴内外と白フチを厳密比較する。
+          const end = Math.floor(h * 0.8) * w * 4;
+          expect(equal(actual.slice(0, end), pixels(expected).slice(0, end)), `interior ${frame}`).toBe(true);
+          if (frame === 62) expect(equal(actual, render(a, 63)), "S+3 → S+4 full frame").toBe(true);
+        }
+      } finally {
+        photos.forEach((p) => p.bitmap.close()); a.destroy(); b.destroy(); reference.destroy();
       }
     });
   }
@@ -163,3 +217,77 @@ it.each(["blur-weak", "blur-strong"] as const)("%s: does no extra copying, alloc
     vi.restoreAllMocks(); p.bitmap.close(); compositor.destroy();
   }
 });
+
+for (const color of ["dynamic", "dramatic", "film"] as const) for (const filter of filters) {
+  it(`${color}/${filter}: caches both photos throughout a window and releases both on invalidation`, async () => {
+    const comp = createCompositor({ resolutionScale: 0.1, createKeyer: () => null });
+    const photos = [await photo("#b87040"), await photo("#4080b0")];
+    const replacement = await photo("#507060");
+    const video = document.createElement("video");
+    const read = vi.spyOn(CanvasRenderingContext2D.prototype, "getImageData");
+    const allocate = vi.spyOn(document, "createElement");
+    const render = (frame: number, ps = photos, c = color as typeof COLOR_FILTERS[number], style = "charairis" as "charairis" | "zoom") =>
+      comp.draw(video, ps, timeline, frame / 30, style, filter, undefined, "standard", c);
+    // 写真の原寸読戻しだけを数える。ブラーの出力解像度での読戻しは別。
+    const colorReads = () => read.mock.calls.flatMap((args, i) => args[2] === 256 && args[3] === 256
+      ? [(read.mock.contexts[i] as CanvasRenderingContext2D).canvas] : []);
+    const released = (canvases: HTMLCanvasElement[]) => {
+      for (const canvas of canvases) expect([canvas.width, canvas.height]).toEqual([0, 0]);
+    };
+    try {
+      render(26);
+      expect(colorReads()).toHaveLength(1);
+      render(27);
+      const cached = colorReads();
+      expect(cached).toHaveLength(2);
+      expect(new Set(cached).size).toBe(2);
+      allocate.mockClear();
+      for (let frame = 28; frame <= 33; frame++) render(frame);
+      expect(colorReads()).toHaveLength(2);
+      expect(allocate).not.toHaveBeenCalled();
+      comp.setAspect("portrait"); comp.setResolutionScale(0.2); comp.resetCharacter();
+      render(32);
+      expect(colorReads()).toHaveLength(2);
+
+      render(32, photos, "none");
+      released(cached);
+      read.mockClear();
+      render(32);
+      const beforeChange = colorReads();
+      expect(beforeChange).toHaveLength(2);
+      const otherColor = color === "film" ? "dynamic" : "film";
+      render(32, photos, otherColor);
+      released(beforeChange);
+      expect(colorReads()).toHaveLength(4);
+      const afterChange = colorReads().slice(2);
+      render(32, []);
+      released(afterChange);
+
+      read.mockClear();
+      render(32);
+      const beforeReplace = colorReads();
+      render(32, [photos[0]!, replacement]);
+      expect(colorReads()).toHaveLength(3);
+      released([beforeReplace[1]!]);
+      expect(beforeReplace[0]!.width).toBe(256);
+      const next = colorReads()[2]!;
+      render(34);
+      released([next]);
+      read.mockClear();
+      render(32);
+      const beforeStyle = colorReads();
+      render(32, photos, color, "zoom");
+      released([beforeStyle[1]!]);
+
+      read.mockClear();
+      render(32);
+      const active = colorReads();
+      expect(active).toHaveLength(2);
+      comp.destroy();
+      released(active);
+    } finally {
+      vi.restoreAllMocks(); comp.destroy();
+      [...photos, replacement].forEach((p) => p.bitmap.close());
+    }
+  });
+}

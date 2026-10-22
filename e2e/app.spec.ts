@@ -29,10 +29,53 @@ for (const [locale, label] of [["ja", "キャラアイリス"], ["en", "Characte
     await expect(option).toContainText(label);
     await option.click();
     await expect(page.locator('#studioView input[name="swap"][value="charairis"]')).toBeChecked();
+    await page.locator("#filterTab").click();
+    await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+    await page.locator("#blurTab").click();
+    await page.locator('label:has(input[name="filter"][value="blur-strong"])').click();
     await page.locator("#aspectTab").click();
     await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
     await page.locator("#swapTab").click();
     await expect(page.locator('#studioView input[name="swap"][value="charairis"]')).toBeChecked();
+    await page.locator("#filterTab").click();
+    await expect(page.locator('input[name="color_filter"][value="film"]')).toBeChecked();
+    await page.locator("#blurTab").click();
+    await expect(page.locator('input[name="filter"][value="blur-strong"]')).toBeChecked();
+  });
+
+  test(`${locale}: restores charairis at boot and passes the selection to preview analytics`, async ({ page }) => {
+    await page.addInitScript(() => {
+      const query = Element.prototype.querySelectorAll;
+      Element.prototype.querySelectorAll = function (this: Element, selector: string) {
+        const inputs = query.call(this, selector);
+        if (this.id === "app" && selector === 'input[name="swap"]') {
+          for (const el of inputs) {
+            const input = el as HTMLInputElement;
+            input.checked = input.value === "charairis";
+          }
+          this.setAttribute("data-restored-swap", "charairis");
+          Element.prototype.querySelectorAll = query;
+        }
+        return inputs;
+      } as typeof query;
+    });
+    await page.goto(locale === "en" ? "/en/make" : "/make");
+    await waitForAppReady(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-restored-swap", "charairis");
+    await page.locator("#swapTab").click();
+    await expect(page.locator('input[name="swap"][value="charairis"]')).toBeChecked();
+    await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
+    await expect(page.locator("#thumbs .thumb")).toHaveCount(1);
+    await expect(page.locator("#saveBtn")).toBeEnabled();
+    await page.evaluate(() => {
+      window.gtag = (_command, name, params) => {
+        if (name === "video_preview") document.querySelector("#app")!.setAttribute("data-preview-params", JSON.stringify(params));
+      };
+    });
+    await page.locator("#previewToggle").click();
+    await expect(page.locator("#app")).toHaveAttribute("data-preview-params", /"effect":"charairis"/);
+    await expect(page.locator("#app")).toHaveAttribute("data-preview-params", /"swap":"charairis"/);
+    await expect(page.locator("#app")).toHaveAttribute("data-preview-params", /"color_filter":"none"/);
   });
 }
 

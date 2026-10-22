@@ -220,6 +220,8 @@ export function createCompositor(options?: {
   };
 
   const colorPhotos = createColorPhotoCache();
+  // 旧写真と次写真を同じ1枚キャッシュへ交互に入れると、窓内の毎フレームで色加工が走る。
+  const nextColorPhotos = createColorPhotoCache();
 
   const draw = (
     video: HTMLVideoElement,
@@ -242,6 +244,10 @@ export function createCompositor(options?: {
     const plate = photoForSlot(photos, fx.plateSlot);
     const bitmap = colorPhotos.get(plate?.bitmap, colorFilter);
     const coloredPlate = bitmap === plate?.bitmap ? plate : plate && bitmap ? { ...plate, bitmap } : undefined;
+    const nextPlate = fx.reveal ? photoForSlot(photos, fx.reveal.nextSlot) : undefined;
+    // 窓外・写真なし・色なしでは現在写真用と同じget経路でキャッシュを解放する。
+    const nextBitmap = nextColorPhotos.get(nextPlate?.bitmap, colorFilter);
+    const coloredNextPlate = nextBitmap === nextPlate?.bitmap ? nextPlate : nextPlate && nextBitmap ? { ...nextPlate, bitmap: nextBitmap } : undefined;
     const characterSource = resolveCharacterSource(video, character);
 
     composeMain(
@@ -256,7 +262,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
-      fx.reveal ? photoForSlot(photos, fx.reveal.nextSlot) : undefined,
+      coloredNextPlate,
       time,
     );
     if (composeDetailActive()) {
@@ -304,6 +310,7 @@ export function createCompositor(options?: {
     },
     destroy() {
       colorPhotos.clear();
+      nextColorPhotos.clear();
       dropGpuKeyer();
       canvas.width = 0;
       canvas.height = 0;
@@ -366,7 +373,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
-  nextPlate?: LoadedPhoto,
+  nextPlate?: PhotoPlate,
   // ネコアイリス（#165）と同じ nextPlate の位置に揃え、キャラアイリスの中心用の時刻は末尾に置く。
   time = 0,
 ): void {

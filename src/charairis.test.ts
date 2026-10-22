@@ -5,12 +5,13 @@ import { characterDest, characterScale, characterShiftY } from "./layout.ts";
 import { describe, expect, it } from "vitest";
 import cuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 import { charaIrisCenter, charaIrisPlateCenter, charaIrisRadius } from "./charairis.ts";
-import { DEFAULT_SWAP_STYLE, hasFrameFx, isSwapStyle, OUTPUTS, SWAP_STYLES, SWAP_STYLE_LABELS, swapFx } from "./layout.ts";
+import { DEFAULT_SWAP_STYLE, hasFrameFx, IMAGE_FILTERS, isSwapStyle, OUTPUTS, SWAP_STYLES, SWAP_STYLE_LABELS, swapFx } from "./layout.ts";
 import { t } from "./i18n.ts";
 import { videoEventParams } from "./analytics.ts";
 import { pickTraceAttributes } from "./sentry.ts";
 import { exportFileName } from "./modes.ts";
 import { slotForTime } from "./timeline.ts";
+import { COLOR_FILTERS } from "./color-filter.ts";
 
 it("appends charairis and preserves existing values and the default", () => {
   expect(SWAP_STYLES).toEqual(["zoom", "jump", "charairis"]);
@@ -24,9 +25,18 @@ it("appends charairis and preserves existing values and the default", () => {
 });
 
 it.each(["landscape", "portrait"] as const)("%s: passes analytics, Sentry tags and filenames", (mode) => {
-  expect(videoEventParams(mode, "charairis")).toEqual({ aspect: mode, effect: "charairis", swap: "charairis" });
+  expect(videoEventParams(mode, "charairis")).toEqual({ aspect: mode, effect: "charairis", swap: "charairis", filter: "none", color_filter: "none" });
   expect(pickTraceAttributes({ aspect: mode, effect: "charairis" })).toEqual({ aspect: mode, effect: "charairis" });
   expect(exportFileName(mode, "charairis", "mp4")).toBe(`anone-charairis-${mode === "landscape" ? "16x9" : "9x16"}.mp4`);
+  for (const filter of IMAGE_FILTERS) for (const color_filter of COLOR_FILTERS) {
+    const attrs = { aspect: mode, effect: "charairis", filter, color_filter };
+    expect(videoEventParams(mode, "charairis", filter, color_filter)).toEqual({ ...attrs, swap: "charairis" });
+    expect(pickTraceAttributes(attrs)).toEqual(attrs);
+    const tags = ["anone", "charairis", mode === "landscape" ? "16x9" : "9x16"];
+    if (filter !== "none") tags.push(filter);
+    if (color_filter !== "none") tags.push(color_filter);
+    for (const ext of ["mp4", "webm"]) expect(exportFileName(mode, "charairis", ext, filter, color_filter)).toBe(`${tags.join("-")}.${ext}`);
+  }
 });
 
 describe.each(["landscape", "portrait"] as const)("%s charairis", (mode) => {
