@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { t } from "../src/i18n.ts";
 import { colorFilterLabel } from "../src/color-filter.ts";
 import retiredColorFilters from "../tests/fixtures/retired-color-filters.json" with { type: "json" };
 import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
@@ -31,19 +30,16 @@ for (const invalid of [...retiredColorFilters, "future-filter"]) {
     await expect(page.locator("#app")).toHaveAttribute("data-injected-color", invalid);
     const none = page.locator('input[name="color_filter"][value="none"]');
     await expect(none).toBeChecked();
-    await expect(page.locator("#filterTab .studio-option-tab-value")).toHaveText(colorFilterLabel("none", "ja"));
+    await expect(page.locator('label:has(input[name="color_filter"]:checked) span')).toHaveText(colorFilterLabel("none", "ja"));
     await expect(page.locator('input[name="color_filter"]:checked')).toHaveCount(1);
     await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
-    // The lazy thumbnail row shifts tabs while mounting. Wait for that layout
-    // before clicking, as the export tests do, so pointer events hit the tab.
+    // Wait for the lazy thumbnail layout before operating the options.
     await expect(page.locator("#thumbs img")).toHaveCount(1);
     await expect(page.locator("#saveBtn")).toBeEnabled();
-    await page.locator("#filterTab").click();
-    await expect(page.locator("#filterPanel")).toBeVisible();
 
     // Exercise both changing an active color and an already-none state.
     await page.locator('label:has(input[name="color_filter"][value="film"])').click();
-    await expect(page.locator("#filterTab")).toHaveAccessibleName(`${t("ja", "studioTabFilter")} ${colorFilterLabel("film", "ja")}`);
+    await expect(page.locator('input[name="color_filter"][value="film"]')).toBeChecked();
     for (let attempt = 0; attempt < 2; attempt++) {
       await page.locator('input[data-stale-color="1"]').evaluate((el, value) => {
         const input = el as HTMLInputElement;
@@ -52,7 +48,7 @@ for (const invalid of [...retiredColorFilters, "future-filter"]) {
         input.dispatchEvent(new Event("change", { bubbles: true }));
       }, invalid);
       await expect(none).toBeChecked();
-      await expect(page.locator("#filterTab .studio-option-tab-value")).toHaveText(colorFilterLabel("none", "ja"));
+      await expect(page.locator('label:has(input[name="color_filter"]:checked) span')).toHaveText(colorFilterLabel("none", "ja"));
       await expect(page.locator('input[name="color_filter"]:checked')).toHaveCount(1);
     }
     // The preview event reads app state, independently of the checked radio.

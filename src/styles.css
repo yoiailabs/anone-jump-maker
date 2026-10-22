@@ -1117,90 +1117,159 @@ html[lang="ja"] .ja-phrase {
 }
 
 .studio-option-sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
   width: 100%;
   min-width: 0;
+  border: 3px solid var(--ink);
+  border-radius: 1rem;
+  background: var(--card);
+  padding: 0.25rem 0.7rem;
 }
 
-.studio-option-tabs {
+.studio-option-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
-  gap: 0.5rem;
-  width: 100%;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 0.15rem;
   min-width: 0;
+  padding: 0.25rem 0;
+  border-bottom: 2px dashed #d9cfbf;
 }
 
-.studio-option-tab {
+.studio-option-row:last-child {
+  border-bottom: 0;
+}
+
+.studio-option-label {
+  flex: 0 0 auto;
+  min-width: 5.2rem;
+  max-width: 100%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--mute);
+}
+
+.option-scroll-frame {
+  position: relative;
+  flex: 1 1 11rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.option-scroll-frame::before,
+.option-scroll-frame::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5rem;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.option-scroll-frame::before {
+  left: 0;
+  background: linear-gradient(to right, var(--card), transparent);
+}
+
+.option-scroll-frame::after {
+  right: 0;
+  background: linear-gradient(to left, var(--card), transparent);
+}
+
+.option-scroll-frame[data-fade-start="true"]::before,
+.option-scroll-frame[data-fade-end="true"]::after {
+  opacity: 1;
+}
+
+.option-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: 4px;
+  /* All reveals are immediate, including with prefers-reduced-motion. */
+  scroll-behavior: auto;
+}
+
+.option-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.option-segments {
   display: flex;
-  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.option-segments label {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  min-height: 44px;
-  margin: 0;
-  padding: 0.5rem 0.7rem;
-  border: 3px solid var(--ink);
-  border-radius: 1rem;
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 700;
-  line-height: 1.3;
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  min-height: max(32px, 2rem);
+  padding: 0.3rem 0.6rem;
+  border-left: 2px solid var(--ink);
   cursor: pointer;
-  transition: transform 0.16s ease, background 0.16s ease;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
-.studio-option-tab span {
-  max-width: 100%;
+.option-segments label:first-child {
+  border-left: 0;
+  border-radius: 999px 0 0 999px;
 }
 
-.studio-option-tab-value {
-  font-size: 0.75rem;
-  font-weight: 400;
+.option-segments label:last-child {
+  border-radius: 0 999px 999px 0;
 }
 
-.studio-option-tab[aria-selected="true"] {
-  background: var(--peach);
-  box-shadow: 2px 3px 0 var(--ink);
-}
-
-.studio-option-tab:hover {
-  transform: translateY(-2px);
-}
-
-.studio-option-tab:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 2px;
-}
-
-.studio-option-panels {
-  min-width: 0;
-  border: 3px solid var(--ink);
-  border-radius: 1rem;
-  background: var(--card);
-  padding: 0.75rem 0.6rem 0.8rem;
-}
-
-.studio-options .aspect-field legend {
+.option-segments input {
   position: absolute;
   width: 1px;
   height: 1px;
-  margin: -1px;
-  padding: 0;
+  margin: 0;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.option-segments label:has(input:checked) {
+  background: var(--peach);
+}
+
+.option-segments label:has(input:focus) {
+  outline: 3px solid var(--teal);
+  outline-offset: -4px;
+}
+
+.option-segments label:has(input:disabled) {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.option-segments-pills {
+  gap: 0.35rem;
   border: 0;
+  background: none;
+}
+
+.option-segments-pills label {
+  flex: 1 0 auto;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--card);
+}
+
+.option-segments-pills label:first-child,
+.option-segments-pills label:last-child {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
 }
 
 /* 内部ビットマップは向きごとのプレビュー倍率。表示は .stage の大きさへ拡大する。 */
@@ -1210,117 +1279,6 @@ html[lang="ja"] .ja-phrase {
   height: auto;
   aspect-ratio: var(--stage-ratio);
   pointer-events: auto;
-}
-
-.aspect-field {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.aspect-field[hidden] {
-  display: none;
-}
-
-.aspect-field legend {
-  padding: 0;
-  font-size: 0.74rem;
-  letter-spacing: 0.1em;
-  color: var(--mute);
-}
-
-.aspect-toggle {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr));
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.aspect-toggle label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-width: 0;
-  min-height: max(44px, 2.85rem);
-  padding: 0.5rem 0.6rem;
-  border: 3px solid var(--ink);
-  border-radius: 1rem;
-  background: var(--card);
-  cursor: pointer;
-  text-align: center;
-  font-weight: 700;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  transition: transform 0.16s ease, background 0.16s ease;
-}
-
-.option-choice-check {
-  flex: 0 0 1em;
-  visibility: hidden;
-}
-
-/* ✓ と同じ幅を右にも確保して、選択前後でラベルを中央に保つ。 */
-.aspect-toggle label::after {
-  content: "";
-  flex: 0 0 1em;
-}
-
-.aspect-toggle label:has(input:checked) .option-choice-check {
-  visibility: visible;
-}
-
-.aspect-toggle label:hover {
-  transform: translateY(-2px);
-}
-
-.aspect-toggle input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
-
-.aspect-toggle label:has(input:checked) {
-  background: var(--peach);
-  box-shadow: 3px 4px 0 var(--ink);
-}
-
-.studio-options .aspect-toggle label:has(input:focus-visible) {
-  outline: 3px solid var(--teal);
-  outline-offset: 2px;
-}
-
-.studio-options .aspect-toggle label:has(input:checked) {
-  box-shadow: 1px 2px 0 var(--ink);
-}
-
-.aspect-toggle label:has(input:disabled) {
-  opacity: 0.38;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.aspect-toggle span {
-  min-width: 0;
-  line-height: 1.25;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .studio-option-tab,
-  .aspect-toggle label {
-    transition: none;
-  }
-
-  .studio-option-tab:hover,
-  .aspect-toggle label:hover {
-    transform: none;
-  }
 }
 
 .file-btn,

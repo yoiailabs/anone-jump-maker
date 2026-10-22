@@ -53,7 +53,6 @@ test("binds controls and the picker before landscape-cuts.json returns", async (
   await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
 
   await openStudio(page);
-  await page.locator("#aspectTab").click();
   await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
 

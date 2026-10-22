@@ -1,36 +1,25 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Locator } from "@playwright/test";
 import { blockAnalytics, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { inspectOptions } from "./options-layout.js";
 
-// Check text ranges as well as boxes: overflow:hidden must not hide a regression.
-async function expectOptionsFit(page: Page) {
-  const issues = await page.locator(".studio-options").evaluate((section) => {
-    const problems: string[] = [];
-    const viewport = document.documentElement.clientWidth;
-    if (document.documentElement.scrollWidth > viewport) problems.push("page scrolls horizontally");
-    for (const element of section.querySelectorAll<HTMLElement>(".studio-option-tab, label")) {
-      if (!element.getClientRects().length) continue;
-      const box = element.getBoundingClientRect();
-      const text = element.textContent?.trim();
-      if (element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1) {
-        problems.push(`${text}: overflows its box`);
-      }
-      if (box.left < 0 || box.right > viewport + 0.5) problems.push(`${text}: outside viewport`);
-      if (box.height < 44) problems.push(`${text}: target below 44px`);
-      for (const span of element.querySelectorAll("span")) {
-        if (getComputedStyle(span).visibility === "hidden") continue;
-        const range = document.createRange();
-        range.selectNodeContents(span);
-        for (const rect of range.getClientRects()) {
-          if (rect.left < box.left - 0.5 || rect.right > box.right + 0.5 ||
-              rect.top < box.top - 0.5 || rect.bottom > box.bottom + 0.5) {
-            problems.push(`${text}: clipped text`);
-          }
-        }
-      }
-    }
-    return problems;
-  });
-  expect(issues).toEqual([]);
+const filmSelector = 'input[name="color_filter"][value="film"]';
+const filterFrame = '.studio-option-row:has(input[name="color_filter"]) .option-scroll-frame';
+
+async function expectRevealed(input: Locator) {
+  await expect.poll(() => input.evaluate((node) => {
+    const box = node.closest("label")!.getBoundingClientRect();
+    const viewport = node.closest(".option-scroll")!.getBoundingClientRect();
+    return box.left >= viewport.left - 0.5 && box.right <= viewport.right + 0.5;
+  })).toBe(true);
+}
+
+async function openEnlarged(page: Page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/make");
+  await waitForAppReady(page);
+  await page.addStyleTag({ content: "html { font-size: 130% !important; }" });
+  await page.evaluate(() => document.fonts.ready);
+  await expect.poll(() => page.locator(filterFrame).getAttribute("data-fade-end")).toBe("true");
 }
 
 test.beforeEach(async ({ page }) => {
@@ -38,20 +27,22 @@ test.beforeEach(async ({ page }) => {
   await stubShortTemplate(page);
 });
 
-for (const width of [320, 375]) {
+for (const width of [320, 360, 375, 390, 414, 1024, 1280]) {
   for (const locale of ["ja", "en", "ko", "zh"]) {
-    for (const fontSize of [100, 150]) {
-      test(`${locale}: options fit ${width}px with ${fontSize}% text`, async ({ page }) => {
-        await page.setViewportSize({ width, height: 812 });
+    for (const fontSize of [100, 130, 160]) {
+      test(`${locale}: all A1 rows fit ${width}px with ${fontSize}% text`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
         await page.goto(locale === "ja" ? "/make" : `/${locale}/make`);
         await waitForAppReady(page);
         await page.addStyleTag({ content: `html { font-size: ${fontSize}% !important; }` });
         await page.evaluate(() => document.fonts.ready);
-        for (const tab of await page.getByRole("tab").all()) {
-          await tab.click();
-          await expectOptionsFit(page);
+        await expect(page.getByRole("radiogroup")).toHaveCount(5);
+        await expect(page.getByRole("tab")).toHaveCount(0);
+        for (const row of await page.getByRole("radiogroup").all()) {
+          await expect(row).toBeVisible();
+          await expect(row).toHaveAccessibleName(await row.locator(".studio-option-label").innerText());
         }
-        // The stage's 8px shadow must end before the options heading starts.
+        await expect.poll(async () => (await page.evaluate(inspectOptions)).issues).toEqual([]);
         const gap = await page.evaluate(() =>
           document.querySelector("#studioOptionsTitle")!.getBoundingClientRect().top -
           document.querySelector("#stage")!.getBoundingClientRect().bottom,
@@ -62,102 +53,114 @@ for (const width of [320, 375]) {
   }
 }
 
-test("tabs automatically select with arrows, Home and End and keep one tab stop", async ({ page }) => {
-  await page.goto("/make");
-  await waitForAppReady(page);
-  const ids = ["aspect", "swap", "filter", "blur", "character"];
-  await page.locator("#aspectTab").focus();
-  for (const [key, id] of [
-    ["ArrowRight", "swap"], ["ArrowDown", "filter"], ["End", "character"],
-    ["ArrowRight", "aspect"], ["ArrowLeft", "character"], ["Home", "aspect"],
-    ["ArrowUp", "character"],
-  ]) {
-    await page.keyboard.press(key!);
-    for (const candidate of ids) {
-      const selected = candidate === id;
-      await expect(page.locator(`#${candidate}Tab`)).toHaveAttribute("tabindex", selected ? "0" : "-1");
-      await expect(page.locator(`#${candidate}Tab`)).toHaveAttribute("aria-selected", String(selected));
-      if (selected) {
-        await expect(page.locator(`#${candidate}Tab`)).toBeFocused();
-        await expect(page.locator(`#${candidate}Panel`)).toBeVisible();
-      } else {
-        await expect(page.locator(`#${candidate}Panel`)).toBeHidden();
-      }
-    }
+test("only overflowing rows scroll, show edge fades and reveal the selected film without moving the page", async ({ page }) => {
+  await openEnlarged(page);
+  const frame = page.locator(filterFrame);
+  const scroller = frame.locator(".option-scroll");
+  const layout = await page.evaluate(inspectOptions);
+  for (const row of layout.rows.filter((row) => row.name !== "color_filter")) {
+    expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
   }
-  await page.keyboard.press("Tab");
-  await expect(page.locator('input[name="character"]:checked')).toBeFocused();
-});
-
-test("each summary follows the checked radio and tab changes preserve inputs", async ({ page }) => {
-  await page.goto("/en/make");
-  await waitForAppReady(page);
-  const inputs = await page.locator('.studio-options input').elementHandles();
-  for (const id of ["aspect", "swap", "filter", "blur", "character"]) {
-    const tab = page.locator(`#${id}Tab`);
-    await tab.click();
-    for (const label of await page.locator(`#${id}Panel label`).all()) {
-      await label.click();
-      await expect(label.locator("input")).toBeChecked();
-      const text = (await label.locator("span:not([aria-hidden])").textContent())!;
-      await expect(tab.locator(".studio-option-tab-value")).toHaveText(text);
-      const category = await tab.locator(".studio-option-tab-label").textContent();
-      await expect(tab).toHaveAccessibleName(`${category} ${text}`);
-      await expect(label.locator(".option-choice-check")).toHaveCSS("visibility", "visible");
-    }
-  }
-  for (const input of inputs) expect(await input.evaluate((node) => node.isConnected)).toBe(true);
-  await expect(page.locator('.studio-options input')).toHaveCount(inputs.length);
-});
-
-test("ten effects fit narrow enlarged text and reduced motion disables movement", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 812 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/en/make");
-  await waitForAppReady(page);
-  await page.addStyleTag({ content: "html { font-size: 160% !important; }" });
-  await page.locator("#swapTab").click();
-  // Temporary future options exercise the existing layout without shipping new effects.
-  await page.locator("#swapPanel .aspect-toggle").evaluate((group) => {
-    for (let i = 2; i < 10; i++) {
-      const label = group.firstElementChild!.cloneNode(true) as HTMLElement;
-      const input = label.querySelector("input")!;
-      input.value = `future-${i}`;
-      input.defaultChecked = false;
-      input.checked = false;
-      label.querySelector("span:last-child")!.textContent = `Future dramatic effect ${i}`;
-      group.append(label);
-    }
+  expect(layout.rows.find((row) => row.name === "color_filter")!.scrollWidth)
+    .toBeGreaterThan(layout.rows.find((row) => row.name === "color_filter")!.clientWidth);
+  // A subsequent choice is partially visible, so the fade accompanies a hint of its label.
+  expect(await scroller.evaluate((element) => [...element.querySelectorAll("label")].some((label) => {
+    const a = label.getBoundingClientRect(), b = element.getBoundingClientRect();
+    return a.left > b.left && a.left < b.right && a.right > b.right;
+  }))).toBe(true);
+  await expect(frame).toHaveAttribute("data-fade-start", "false");
+  await expect(frame).toHaveAttribute("data-fade-end", "true");
+  expect(await frame.evaluate((el) => getComputedStyle(el, "::after").opacity)).toBe("1");
+  await scroller.evaluate((el) => { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; });
+  await expect(frame).toHaveAttribute("data-fade-start", "true");
+  await expect(frame).toHaveAttribute("data-fade-end", "true");
+  await scroller.evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  await expect(frame).toHaveAttribute("data-fade-end", "false");
+  await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+  await expect(page.locator(filmSelector)).toBeChecked();
+  await expectRevealed(page.locator(filmSelector));
+  const pageY = await page.evaluate(() => window.scrollY);
+  // Programmatic setting uses the same change contract as app integrations.
+  await page.locator('input[name="color_filter"][value="none"]').evaluate((input: HTMLInputElement) => {
+    input.checked = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await expect(page.locator("#swapPanel label")).toHaveCount(10);
-  await expectOptionsFit(page);
-  for (const selector of ["#swapTab", "#swapPanel label:first-child"]) {
-    const target = page.locator(selector);
-    await target.hover();
-    await expect(target).toHaveCSS("transform", "none");
-    await expect(target).toHaveCSS("transition-duration", "0s");
-  }
+  await expect(frame).toHaveAttribute("data-fade-start", "false");
+  await expect(frame).toHaveAttribute("data-fade-end", "true");
+  await page.locator(filmSelector).evaluate((input: HTMLInputElement) => {
+    input.checked = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expectRevealed(page.locator(filmSelector));
+  await expect(frame).toHaveAttribute("data-fade-start", "true");
+  await expect(frame).toHaveAttribute("data-fade-end", "false");
+  expect(await page.evaluate(() => window.scrollY)).toBe(pageY);
+  expect(await frame.evaluate((el) => getComputedStyle(el, "::before").opacity)).toBe("1");
+  expect(await frame.evaluate((el) => getComputedStyle(el, "::after").opacity)).toBe("0");
 });
 
-test("summaries match radios the browser restores on back navigation", async ({ page }) => {
+test("native arrow keys move checked focus into view with an unclipped ring and reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openEnlarged(page);
+  const inputs = page.locator('input[name="color_filter"]');
+  await inputs.first().focus();
+  for (let i = 1; i < 4; i++) {
+    await page.keyboard.press("ArrowRight");
+    await expect(inputs.nth(i)).toBeChecked();
+    await expect(inputs.nth(i)).toBeFocused();
+    await expectRevealed(inputs.nth(i));
+    expect(await inputs.nth(i).evaluate((input) => {
+      const style = getComputedStyle(input.closest("label")!);
+      return style.outlineStyle !== "none" && style.outlineWidth === "3px" && parseFloat(style.outlineOffset) < 0;
+    })).toBe(true);
+  }
+  // WebKit stops at the group's end; use native leftward movement rather than
+  // imposing Chromium's wraparound behavior on every browser.
+  for (let i = 2; i >= 0; i--) {
+    await page.keyboard.press("ArrowLeft");
+    await expect(inputs.nth(i)).toBeChecked();
+    await expect(inputs.nth(i)).toBeFocused();
+    await expectRevealed(inputs.nth(i));
+  }
+  await expect(page.locator(`${filterFrame} .option-scroll`)).toHaveCSS("scroll-behavior", "auto");
+});
+
+test("initial programmatic selection before boot reveals film", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    const query = Element.prototype.querySelectorAll;
+    Element.prototype.querySelectorAll = function (selector: string) {
+      const result = query.call(this, selector);
+      if (this.id === "app" && selector === 'input[name="color_filter"]') {
+        (Array.from(result).find((node) => (node as HTMLInputElement).value === "film") as HTMLInputElement).checked = true;
+        Element.prototype.querySelectorAll = query;
+      }
+      return result;
+    } as typeof query;
+  });
   await page.goto("/make");
   await waitForAppReady(page);
+  await expect(page.locator(filmSelector)).toBeChecked();
+  await expectRevealed(page.locator(filmSelector));
+  // Resizing/reflow must keep the selection visible too.
+  await page.addStyleTag({ content: "html { font-size: 130% !important; }" });
+  await expectRevealed(page.locator(filmSelector));
+});
+
+test("back navigation restores portrait, jump and film and reveals the restored choice", async ({ page }) => {
+  await openEnlarged(page);
   await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
-  await page.locator("#swapTab").click();
   await page.locator('label:has(input[name="swap"][value="jump"])').click();
+  await page.locator(`${filterFrame} .option-scroll`).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  await page.locator('label:has(input[name="color_filter"][value="film"])').click();
   await page.goto("/privacy");
   await page.goBack();
   await waitForAppReady(page);
-  // Prove the browser actually restored the non-default choices first;
-  // otherwise a reset to defaults would also pass the agreement checks below.
+  await page.addStyleTag({ content: "html { font-size: 130% !important; }" });
   await expect(page.locator('input[name="aspect"][value="portrait"]')).toBeChecked();
   await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
-  // Restored radios, app state and the tab summaries must agree.
-  for (const [name, tab, panel] of [["aspect", "#aspectTab", "#aspectPanel"], ["swap", "#swapTab", "#swapPanel"]] as const) {
-    const checked = page.locator(`input[name="${name}"]:checked`);
-    await expect(checked).toHaveCount(1);
-    const label = await page.locator(`${panel} label:has(input:checked) span:not([aria-hidden])`).textContent();
-    await expect(page.locator(`${tab} .studio-option-tab-value`)).toHaveText(label!);
-  }
-  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", await page.locator('input[name="aspect"]:checked').inputValue());
+  await expect(page.locator(filmSelector)).toBeChecked();
+  await expectRevealed(page.locator(filmSelector));
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+  await expect.poll(async () => (await page.evaluate(inspectOptions)).issues).toEqual([]);
 });

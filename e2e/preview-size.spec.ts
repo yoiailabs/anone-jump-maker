@@ -27,7 +27,6 @@ for (const locale of ["ja", "en", "ko", "zh"]) {
       await expect(page.locator("#previewSeek")).toBeEnabled();
 
       for (const aspect of ["landscape", "portrait", "landscape"] as const) {
-        await page.locator("#aspectTab").click();
         await page.locator(`label:has(input[name="aspect"][value="${aspect}"])`).click();
         await expect(page.locator("#stage")).toHaveAttribute("data-aspect", aspect);
         await expect(canvas).toHaveAttribute("width", aspect === "landscape" ? "640" : "360");

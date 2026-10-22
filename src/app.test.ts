@@ -63,13 +63,13 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="previewTime"');
     expect(makerSrc).toContain('className="studio-options"');
     expect(makerSrc).toContain('id="studioOptionsTitle"');
-    expect(makerSrc).toContain('className="studio-option-panels"');
-    expect(makerSrc).toContain('role="tab"');
-    expect(makerSrc).toContain('id={`${id}Tab`}');
+    expect(makerSrc).toContain('className="studio-option-row"');
+    expect(makerSrc).toContain('role="radiogroup"');
+    expect(makerSrc).not.toContain('role="tab"');
     expect(makerSrc).not.toContain("popoverTarget");
     expect(makerSrc.indexOf('id="onDeviceNote"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
     expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf('id="stage"'));
-    expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('name="aspect"'));
+    expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf("{OPTION_ROWS.map"));
     expect(appSrc).toContain("formatPreviewClock");
     expect(makerSrc).not.toContain('id="restartBtn"');
     expect(makerSrc).toContain('id="previewToggle"');
@@ -113,14 +113,13 @@ describe("preview save CTA", () => {
     expect(makerSrc).toContain('id="previewSaveHint"');
     expect(makerSrc).toContain('id="studioHome"');
     expect(makerSrc).not.toContain("anone-logo-stacked");
-    expect(makerSrc).toContain('useState<OptionTab>("aspect")');
     expect(makerSrc.indexOf('value: "zoom"')).toBeLessThan(makerSrc.indexOf('value: "jump"'));
     expect(makerSrc).toContain('defaultChecked: DEFAULT_SWAP_STYLE === "zoom"');
     expect(appSrc).toContain("? swapValue : DEFAULT_SWAP_STYLE");
-    expect(makerSrc.indexOf('["aspect", "studioTabAspect"')).toBeLessThan(makerSrc.indexOf('["swap", "studioTabEffect"'));
-    expect(makerSrc.indexOf('["swap", "studioTabEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioTabFilter"'));
-    expect(makerSrc.indexOf('["filter", "studioTabFilter"')).toBeLessThan(
-      makerSrc.indexOf('["character", "studioTabCharacter"'),
+    expect(makerSrc.indexOf('["aspect", "studioOptionAspect"')).toBeLessThan(makerSrc.indexOf('["swap", "studioOptionEffect"'));
+    expect(makerSrc.indexOf('["swap", "studioOptionEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioOptionFilter"'));
+    expect(makerSrc.indexOf('["filter", "studioOptionFilter"')).toBeLessThan(
+      makerSrc.indexOf('["character", "studioOptionCharacter"'),
     );
     expect(appSrc).not.toContain('msg("statusPaused")');
     expect(appSrc).not.toContain('msg("statusPreviewing")');
