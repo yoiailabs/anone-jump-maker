@@ -27,11 +27,11 @@ test.beforeEach(async ({ page }) => {
   await stubShortTemplate(page);
 });
 
-for (const width of [320, 360, 375, 390, 414, 1024, 1280]) {
+for (const width of [320, 360, 375, 390, 414, 768, 1024, 1280, 1440]) {
   for (const locale of ["ja", "en", "ko", "zh"]) {
     for (const fontSize of [100, 130, 160]) {
       test(`${locale}: all A1 rows fit ${width}px with ${fontSize}% text`, async ({ page }) => {
-        await page.setViewportSize({ width, height: 844 });
+        await page.setViewportSize({ width, height: width >= 768 ? 800 : 844 });
         await page.goto(locale === "ja" ? "/make" : `/${locale}/make`);
         await waitForAppReady(page);
         await page.addStyleTag({ content: `html { font-size: ${fontSize}% !important; }` });
@@ -43,6 +43,23 @@ for (const width of [320, 360, 375, 390, 414, 1024, 1280]) {
           await expect(row).toHaveAccessibleName(await row.locator(".studio-option-label").innerText());
         }
         await expect.poll(async () => (await page.evaluate(inspectOptions)).issues).toEqual([]);
+        if (width >= 768 && fontSize === 100) {
+          await expect.poll(async () => (await page.evaluate(inspectOptions)).rows
+            .filter((row) => row.scrollWidth > row.clientWidth)).toEqual([]);
+          for (const frame of await page.locator(".option-scroll-frame").all()) {
+            await expect(frame).toHaveAttribute("data-fade-start", "false");
+            await expect(frame).toHaveAttribute("data-fade-end", "false");
+          }
+          const geometry = await page.evaluate(() => {
+            const sheet = document.querySelector(".studio-options")!.getBoundingClientRect();
+            const preview = document.querySelector("#stage")!.getBoundingClientRect();
+            return { width: sheet.width, previewWidth: preview.width,
+              center: (sheet.left + sheet.right) / 2 };
+          });
+          expect(geometry.width).toBeLessThanOrEqual(38 * 16);
+          expect(geometry.width).toBeLessThanOrEqual(geometry.previewWidth);
+          expect(geometry.center).toBeCloseTo(width / 2, 0);
+        }
         const gap = await page.evaluate(() =>
           document.querySelector("#studioOptionsTitle")!.getBoundingClientRect().top -
           document.querySelector("#stage")!.getBoundingClientRect().bottom,

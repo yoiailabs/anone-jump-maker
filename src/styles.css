@@ -1107,6 +1107,13 @@ html[lang="ja"] .ja-phrase {
   padding-top: 0.75rem;
 }
 
+@media (min-width: 768px) {
+  .studio-options {
+    /* Widen only the sheet, within the preview's viewport budget. */
+    width: min(38rem, calc(100vw - 2 * var(--page-pad-x) - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  }
+}
+
 .studio-options-heading {
   margin: 0.1rem 0 0;
   font-size: 0.78rem;
