@@ -40,22 +40,7 @@ export async function stubShortTemplate(page: Page): Promise<void> {
   });
 
   await page.route("**/official-assets/template/landscape-cuts.json", (route) => route.fulfill({ json: SHORT_CUTS }));
-  await page.route("**/official-assets/template/landscape.mp4", (route) => {
-    const response = serveClip();
-    const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers().range ?? "");
-    const headers = { ...response.headers, "Accept-Ranges": "bytes" };
-    if (!range) return route.fulfill({ ...response, headers });
-    // Media requests need a real byte-range response. Returning the whole body
-    // with 200 leaves Chromium's short WebM seekable range at [0, 0].
-    const start = Number(range[1]);
-    const end = Math.min(range[2] ? Number(range[2]) : webm.length - 1, webm.length - 1);
-    if (start > end) return route.fulfill({ status: 416, headers: {
-      ...headers, "Content-Range": `bytes */${webm.length}`,
-    } });
-    return route.fulfill({ ...response, status: 206, body: webm.subarray(start, end + 1), headers: {
-      ...headers, "Content-Range": `bytes ${start}-${end}/${webm.length}`,
-    } });
-  });
+  await page.route("**/official-assets/template/landscape.mp4", (route) => route.fulfill(serveClip()));
 }
 
 export async function blockAnalytics(page: Page): Promise<void> {
