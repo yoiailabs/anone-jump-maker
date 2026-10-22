@@ -161,19 +161,31 @@ export function isCharacterSize(value: string): value is CharacterSize {
 }
 
 /**
- * 本編パネル長辺に対するブラー半径。弱はうっすらベール、強はその一段上。
+ * 本編パネル長辺に対する目標ガウスσ（箱ぼかし半径ではない）。
+ * 旧実装の実画素10–90%エッジ幅を基準に、1920pxで弱50–60%、強55–65%へ較正。
+ * 係数の旧比ではなく、縮小・補間を含む実効幅で検証する。
+ * 実測幅px（Chromium/WebKit・両軸の範囲。旧=76452cb、旧係数0.005/0.011）：
+ * 長辺  設定  旧幅          新幅          旧比
+ * 640   弱    11.10–11.19   4.41–4.53     39.7–40.5%
+ * 640   強    19.83–20.17   9.92–10.00    49.4–50.0%
+ * 1920  弱    24.48–24.50   13.38–13.56   54.6–55.4%
+ * 1920  強    50.50–51.00   30.00–30.25   59.3–59.7%
+ * 旧プレビューには整数半径の量子化による過剰なボケがあったため、旧比が小さくなる。
+ * 新方式の長辺比でのプレビュー/保存差は両軸とも約2%以内。強は弱の約2.2–2.3倍。
+ * 弱の小さいσは1パスへ分散を集め、縮小後の高周波を抑えるため0.00255から約2%再較正。
  * プレビューと保存で同じ関数を使う。iOS では画素ぼかしで再現する。
  */
 export const FILTER_BLUR_FRAC: Record<ImageFilter, number> = {
   none: 0,
-  "blur-weak": 0.005,
-  "blur-strong": 0.011,
+  "blur-weak": 0.0026,
+  "blur-strong": 0.0058,
 };
 
-export function filterBlurPx(filter: ImageFilter, shortSide: number): number {
+export function filterBlurPx(filter: ImageFilter, panelLongSide: number): number {
   const frac = FILTER_BLUR_FRAC[filter];
   if (frac <= 0) return 0;
-  return Math.max(2, Math.round(shortSide * frac));
+  // 固定pxの床と丸めは、小さい縦プレビューだけ相対的に強くなるため避ける。
+  return panelLongSide * frac;
 }
 
 export function hasImageFilter(filter: ImageFilter): boolean {
