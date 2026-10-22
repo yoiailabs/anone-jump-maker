@@ -2,12 +2,18 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
 import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
+// 同一ファイルの1080p合成・エンコードを重ねると、並列ブラウザ間でメモリが競合する。
+// 各テストは独立のまま、このファイル内だけ順に実行する（ファイル間の並列数は設定どおり）。
+test.describe.configure({ mode: "default" });
+
 async function prepareExport(page: Page) {
   await blockAnalytics(page);
   await stubShortTemplate(page);
   await page.goto("/make");
   await waitForAppReady(page);
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
+  // サムネイル列の描画でレイアウトが変わるため、保存ボタンへスクロールする前に待つ。
+  await expect(page.locator("#thumbs img")).toHaveCount(1);
   await expect(page.locator("#saveBtn")).toBeEnabled();
 
   return pauseExport(page);

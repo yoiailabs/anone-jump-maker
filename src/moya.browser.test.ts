@@ -3,6 +3,7 @@ import { createCompositor } from "./compositor.ts";
 import { createMoyaMask, maskMoyaPhoto } from "./moya.ts";
 import { swapFx, type AspectMode } from "./layout.ts";
 import { applySoftwareBlur } from "./blur.ts";
+import { applyColorFilter, COLOR_FILTERS } from "./color-filter.ts";
 import type { LoadedPhoto } from "./photos.ts";
 
 vi.mock("./layout.ts", { spy: true });
@@ -122,6 +123,101 @@ describe.each(["landscape", "portrait"] as const)("%s moya rendering", (mode: As
       expect(reds.size).toBeGreaterThan(30);
       flat.forEach((p) => p.bitmap.close());
     } finally {
+      photos.forEach((p) => p.bitmap.close());
+      compositor.destroy();
+    }
+  });
+
+  it("colors both dissolving photos before blending and applies blur once to the blend", async () => {
+    const compositor = createCompositor({ resolutionScale: 0.2, createKeyer: () => null });
+    const reference = createCompositor({ resolutionScale: 0.2, createKeyer: () => null });
+    compositor.setAspect(mode);
+    reference.setAspect(mode);
+    const photos = [await photo("#d04040", true), await photo("#4060d0", true)];
+    const video = document.createElement("video");
+    const blur = vi.mocked(applySoftwareBlur);
+    try {
+      for (const color of COLOR_FILTERS.filter((value) => value !== "none")) {
+        // 独立した参照: 元写真を先に色変換した bitmap として渡し、描画側の色指定は none。
+        const colored = await Promise.all(photos.map(async (p) => {
+          const source = document.createElement("canvas");
+          source.width = p.bitmap.width; source.height = p.bitmap.height;
+          const ctx = source.getContext("2d")!;
+          ctx.drawImage(p.bitmap, 0, 0);
+          const image = ctx.getImageData(0, 0, source.width, source.height);
+          applyColorFilter(image.data, color);
+          ctx.putImageData(image, 0, 0);
+          return { ...p, bitmap: await createImageBitmap(source) };
+        }));
+        try {
+          for (const filter of ["none", "blur-weak", "blur-strong"] as const) {
+            for (const frame of activeFrames) {
+              blur.mockClear();
+              const time = 0.5 + frame * F;
+              compositor.draw(video, photos, timeline, time, "moya", filter, undefined, "standard", color);
+              expect(blur).toHaveBeenCalledTimes(filter === "none" ? 0 : 1);
+              const actual = await digest(compositor.canvas);
+              reference.draw(video, colored, timeline, time, "moya", filter);
+              expect(await digest(reference.canvas), `${color}, ${filter}, frame ${frame}`).toBe(actual);
+            }
+          }
+        } finally {
+          colored.forEach((p) => p.bitmap.close());
+        }
+      }
+    } finally {
+      photos.forEach((p) => p.bitmap.close());
+      compositor.destroy(); reference.destroy();
+    }
+  });
+
+  it("reuses both color results throughout a window and releases the old photo at its end", async () => {
+    const compositor = createCompositor({ resolutionScale: 0.2, createKeyer: () => null });
+    compositor.setAspect(mode);
+    const photos = [await photo("#d04040", true), await photo("#4060d0", true)];
+    const video = document.createElement("video");
+    const read = vi.spyOn(CanvasRenderingContext2D.prototype, "getImageData");
+    const write = vi.spyOn(CanvasRenderingContext2D.prototype, "putImageData");
+    const draws = vi.spyOn(CanvasRenderingContext2D.prototype, "drawImage");
+    const colorCanvases = () => write.mock.contexts.filter((_, index) => write.mock.calls[index]![0].width === 303)
+      .map((ctx) => (ctx as CanvasRenderingContext2D).canvas);
+    const draw = (time: number, color: "dynamic" | "film" | "none" = "dynamic") =>
+      compositor.draw(video, photos, timeline, time, "moya", "none", undefined, "standard", color);
+    try {
+      draw(0.2);
+      expect(read).toHaveBeenCalledTimes(1);
+      const oldCanvas = colorCanvases()[0]!;
+      for (const frame of activeFrames) {
+        draw(0.5 + frame * F);
+        expect(read, `frame ${frame}`).toHaveBeenCalledTimes(frame > -4 ? 2 : 1);
+      }
+      const newCanvas = colorCanvases()[1]!;
+      expect(oldCanvas.width).toBe(0);
+      expect(newCanvas.width).toBe(photos[1]!.bitmap.width);
+      draws.mockClear();
+      draw(0.7);
+      expect(read).toHaveBeenCalledTimes(2);
+      expect(draws).toHaveBeenCalledTimes(2);
+      // 直接窓内へシークしても初回の2枚だけを計算し、以降は再利用する。
+      draw(0.5);
+      const readsAfterSeek = read.mock.calls.length;
+      expect(readsAfterSeek).toBe(3);
+      for (const frame of [-2, -1, 0, 1, 2]) draw(0.5 + frame * F);
+      expect(read).toHaveBeenCalledTimes(readsAfterSeek);
+      draw(0.5, "film");
+      expect(read).toHaveBeenCalledTimes(readsAfterSeek + 2);
+      expect(newCanvas.width).toBe(0);
+      draw(0.5, "film");
+      expect(read).toHaveBeenCalledTimes(readsAfterSeek + 2);
+      draw(0.5, "none");
+      expect(read).toHaveBeenCalledTimes(readsAfterSeek + 2);
+      expect(colorCanvases().every((canvas) => canvas.width === 0)).toBe(true);
+      draw(0.5);
+      expect(read).toHaveBeenCalledTimes(readsAfterSeek + 4);
+      compositor.destroy();
+      expect(colorCanvases().every((canvas) => canvas.width === 0)).toBe(true);
+    } finally {
+      read.mockRestore(); write.mockRestore(); draws.mockRestore();
       photos.forEach((p) => p.bitmap.close());
       compositor.destroy();
     }

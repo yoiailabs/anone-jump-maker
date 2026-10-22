@@ -1,4 +1,5 @@
 import { createMoyaMask, maskMoyaPhoto, warpMoyaPhoto, type MoyaMask } from "./moya.ts";
+import { createColorPhotoCache, type ColorFilter } from "./color-filter.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -113,6 +114,7 @@ export type Compositor = {
     imageFilter?: ImageFilter,
     character?: CharacterFrame,
     characterSize?: CharacterSize,
+    colorFilter?: ColorFilter,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   setResolutionScale: (scale: number) => void;
@@ -219,6 +221,8 @@ export function createCompositor(options?: {
     dropGpuKeyer,
   };
 
+  const colorPhotos = createColorPhotoCache();
+
   const draw = (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
@@ -228,6 +232,7 @@ export function createCompositor(options?: {
     imageFilter: ImageFilter = "none",
     character?: CharacterFrame,
     characterSize: CharacterSize = DEFAULT_CHARACTER_SIZE,
+    colorFilter: ColorFilter = "none",
   ) => {
     const { slots } = timeline;
     const slot = slotForTime(time, slots);
@@ -241,13 +246,21 @@ export function createCompositor(options?: {
       : fx.plateSlot);
     const nextPlate = fx.moya && fx.moya.mix > 0 && fx.moya.mix < 1
       ? photoForSlot(photos, fx.cutIndex) : undefined;
+    // ディゾルブ中だけ2枚を保持し、旧・新を交互に取得しても再計算しない。
+    colorPhotos.setCapacity(nextPlate ? 2 : 1);
+    const colorPlate = (photo: LoadedPhoto | undefined): PhotoPlate | undefined => {
+      const bitmap = colorPhotos.get(photo?.bitmap, colorFilter);
+      return bitmap === photo?.bitmap ? photo : photo && bitmap ? { ...photo, bitmap } : undefined;
+    };
+    const coloredPlate = colorPlate(plate);
+    const coloredNextPlate = nextPlate ? colorPlate(nextPlate) : undefined;
     const characterSource = resolveCharacterSource(video, character);
 
     composeMain(
       main,
       mainCtx,
       surfaces,
-      plate,
+      coloredPlate,
       characterSource,
       fx,
       swapStyle,
@@ -255,7 +268,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
-      nextPlate,
+      coloredNextPlate,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -301,6 +314,7 @@ export function createCompositor(options?: {
       keyingDebug = describeKeying(keying, gpuKeyer?.debug);
     },
     destroy() {
+      colorPhotos.clear();
       dropGpuKeyer();
       canvas.width = 0;
       canvas.height = 0;
@@ -324,6 +338,8 @@ export function createCompositor(options?: {
     },
   };
 }
+
+type PhotoPlate = Omit<LoadedPhoto, "bitmap"> & { bitmap: ImageBitmap | HTMLCanvasElement };
 
 type FxSurfaces = {
   moyaMask: MoyaMask;
@@ -355,7 +371,7 @@ function composeMain(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
-  plate: LoadedPhoto | undefined,
+  plate: PhotoPlate | undefined,
   character: CharacterFrame | null,
   fx: SwapFx,
   style: SwapStyle,
@@ -363,7 +379,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
-  nextPlate?: LoadedPhoto,
+  nextPlate?: PhotoPlate,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -460,7 +476,7 @@ export function plateDest(
 function drawPhotoPlate(
   ctx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
-  photo: LoadedPhoto,
+  photo: PhotoPlate,
   fx: SwapFx,
   style: SwapStyle,
   mw: number,
