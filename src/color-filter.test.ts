@@ -89,7 +89,7 @@ it("names every aspect × effect × blur × color × container combination", () 
       seen.add(name);
     }
   }
-  expect(seen.size).toBe(96);
+  expect(seen.size).toBe(144);
 });
 
 it("keeps filter as blur and admits color_filter separately in Sentry and analytics", () => {

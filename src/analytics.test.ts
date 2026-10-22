@@ -77,6 +77,18 @@ describe("trackEvent", () => {
     expect(gtag).toHaveBeenCalledWith("event", "video_save", params);
   });
 
+  it.each(["blur-weak", "blur-strong"] as const)("keeps whip, %s and color together in preview/save events", (blur) => {
+    const gtag = vi.fn();
+    vi.stubGlobal("window", { gtag });
+    const params = videoEventParams("portrait", "whip", blur, "film");
+    for (const event of [VIDEO_PREVIEW_EVENT, VIDEO_SAVE_EVENT] as const) {
+      trackEvent(event, params);
+      expect(gtag).toHaveBeenCalledWith("event", event, {
+        aspect: "portrait", effect: "whip", swap: "whip", filter: blur, color_filter: "film",
+      });
+    }
+  });
+
   it.each([...retiredColorFilters, "future-filter"])("normalizes a stale color %s passed directly to trackEvent", (color) => {
     const gtag = vi.fn();
     vi.stubGlobal("window", { gtag });

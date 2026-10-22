@@ -225,15 +225,21 @@ for (const aspect of ["landscape", "portrait"] as const) {
     await page.locator("#swapTab").click();
     await page.locator('#studioView label:has(input[name="swap"][value="whip"])').click();
     await expect(page.locator('#studioView input[name="swap"][value="whip"]')).toBeChecked();
+    await page.locator("#filterTab").click();
+    await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+    await page.locator("#blurTab").click();
+    const blur = aspect === "landscape" ? "blur-weak" : "blur-strong";
+    await page.locator(`label:has(input[name="filter"][value="${blur}"])`).click();
     await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
     await page.locator("#saveBtn").click();
     const outcome = await waitForExportOutcome(page);
     test.skip(outcome !== "ready", "This browser has no supported encoder plan");
+    await expect(page.locator("#exportPanel")).toHaveAttribute("data-export-phase", "done");
     const pending = page.waitForEvent("download");
     await page.locator("#downloadExportBtn").click();
     const download = await pending;
     const ratio = aspect === "landscape" ? "16x9" : "9x16";
-    expect(download.suggestedFilename()).toMatch(new RegExp(`^anone-whip-${ratio}\\.(mp4|webm)$`));
+    expect(download.suggestedFilename()).toMatch(new RegExp(`^anone-whip-${ratio}-${blur}-film\\.(mp4|webm)$`));
     await download.saveAs(testInfo.outputPath(download.suggestedFilename()));
   });
 }

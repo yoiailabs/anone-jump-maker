@@ -218,6 +218,9 @@ export function createCompositor(options?: {
   };
 
   const colorPhotos = createColorPhotoCache();
+  // ホイップ中は2枚が同時に必要。1件キャッシュを共有すると毎フレーム作り直しになる。
+  // 入ってくる写真だけ別に保持し、パン終了・none・destroy で解放する。
+  const incomingColorPhotos = createColorPhotoCache();
 
   const draw = (
     video: HTMLVideoElement,
@@ -240,6 +243,9 @@ export function createCompositor(options?: {
     const plate = photoForSlot(photos, fx.plateSlot);
     const bitmap = colorPhotos.get(plate?.bitmap, colorFilter);
     const coloredPlate = bitmap === plate?.bitmap ? plate : plate && bitmap ? { ...plate, bitmap } : undefined;
+    const nextPlate = fx.pan ? photoForSlot(photos, fx.pan.nextSlot) : undefined;
+    const nextBitmap = incomingColorPhotos.get(nextPlate?.bitmap, colorFilter);
+    const coloredNextPlate = nextBitmap === nextPlate?.bitmap ? nextPlate : nextPlate && nextBitmap ? { ...nextPlate, bitmap: nextBitmap } : undefined;
     const characterSource = resolveCharacterSource(video, character);
 
     composeMain(
@@ -254,7 +260,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
-      fx.pan ? photoForSlot(photos, fx.pan.nextSlot) : undefined,
+      coloredNextPlate,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -301,6 +307,7 @@ export function createCompositor(options?: {
     },
     destroy() {
       colorPhotos.clear();
+      incomingColorPhotos.clear();
       dropGpuKeyer();
       canvas.width = 0;
       canvas.height = 0;
@@ -363,7 +370,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
-  nextPlate?: LoadedPhoto,
+  nextPlate?: PhotoPlate,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -433,8 +440,8 @@ function resetCtx(ctx: CanvasRenderingContext2D): void {
  */
 function drawWhipPlates(
   ctx: CanvasRenderingContext2D,
-  outgoing: LoadedPhoto,
-  incoming: LoadedPhoto,
+  outgoing: PhotoPlate,
+  incoming: PhotoPlate,
   progress: number,
   w: number,
   h: number,

@@ -98,8 +98,10 @@ describe("detail frames", () => {
 describe("studio transactions", () => {
   it("carries whip through export trace attributes", () => {
     const records = installFakeTracing();
-    studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "whip" });
-    expect(records.find((span) => span.name === "export.generate")?.attributes.effect).toBe("whip");
+    studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "whip", filter: "blur-strong", color_filter: "film" });
+    expect(records.find((span) => span.name === "export.generate")?.attributes).toMatchObject({
+      effect: "whip", filter: "blur-strong", color_filter: "film",
+    });
   });
   it("does not invent a fast span when Sentry is not ready yet", () => {
     studioTrace.beginPreviewOpen({ entry: "initial", has_photos: false });

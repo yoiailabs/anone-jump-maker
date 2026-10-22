@@ -222,8 +222,9 @@ describe("trace sampling", () => {
 });
 
 describe("trace attribute allowlist", () => {
-  it("keeps whip in effect tags", () => {
-    expect(pickTraceAttributes({ effect: "whip" })).toEqual({ effect: "whip" });
+  it.each(["blur-weak", "blur-strong"])("keeps whip, %s and color in effect tags", (filter) => {
+    const attributes = { effect: "whip", filter, color_filter: "film" };
+    expect(pickTraceAttributes(attributes)).toEqual(attributes);
   });
   it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
     expect(
