@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "./export.ts";
+import retiredColorFilters from "../tests/fixtures/retired-color-filters.json" with { type: "json" };
+import type { ColorFilter } from "./color-filter.ts";
 import {
   GENERATE_CANCEL_EVENT,
   GENERATE_FAIL_EVENT,
@@ -22,20 +24,24 @@ afterEach(() => {
 
 describe("videoEventParams", () => {
   it.each(["portrait", "landscape"] as const)("accepts mist for %s", (aspect) => {
-    expect(videoEventParams(aspect, "mist")).toEqual({ aspect, effect: "mist", swap: "mist" });
+    expect(videoEventParams(aspect, "mist")).toEqual({ aspect, effect: "mist", swap: "mist", filter: "none", color_filter: "none" });
   });
-  it("sends only aspect and effect/swap, never identifying extras", () => {
+  it("sends only settings, never identifying extras", () => {
     expect(videoEventParams("portrait", "jump")).toEqual({
       aspect: "portrait",
       effect: "jump",
       swap: "jump",
+      filter: "none",
+      color_filter: "none",
     });
     expect(videoEventParams("landscape", "zoom")).toEqual({
       aspect: "landscape",
       effect: "zoom",
       swap: "zoom",
+      filter: "none",
+      color_filter: "none",
     });
-    expect(Object.keys(videoEventParams("portrait", "jump")).sort()).toEqual(["aspect", "effect", "swap"]);
+    expect(Object.keys(videoEventParams("portrait", "jump")).sort()).toEqual(["aspect", "color_filter", "effect", "filter", "swap"]);
   });
 });
 
@@ -65,6 +71,15 @@ describe("trackEvent", () => {
     trackEvent(VIDEO_SAVE_EVENT, params);
     expect(gtag).toHaveBeenCalledTimes(1);
     expect(gtag).toHaveBeenCalledWith("event", "video_save", params);
+  });
+
+  it.each([...retiredColorFilters, "future-filter"])("normalizes a stale color %s passed directly to trackEvent", (color) => {
+    const gtag = vi.fn();
+    vi.stubGlobal("window", { gtag });
+    const params = { ...videoEventParams("landscape", "zoom", "blur-strong"), color_filter: color as ColorFilter };
+    trackEvent(VIDEO_SAVE_EVENT, params);
+    expect(gtag).toHaveBeenCalledWith("event", "video_save", { ...params, color_filter: "none" });
+    expect(params.color_filter).toBe(color);
   });
 
   it("forwards funnel events and drops a duplicate picker open", () => {
