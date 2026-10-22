@@ -1,4 +1,5 @@
 import { charaIrisCenter, drawCharaIris } from "./charairis.ts";
+import { createColorPhotoCache, type ColorFilter } from "./color-filter.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
 import {
@@ -114,6 +115,7 @@ export type Compositor = {
     imageFilter?: ImageFilter,
     character?: CharacterFrame,
     characterSize?: CharacterSize,
+    colorFilter?: ColorFilter,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   setResolutionScale: (scale: number) => void;
@@ -217,6 +219,8 @@ export function createCompositor(options?: {
     dropGpuKeyer,
   };
 
+  const colorPhotos = createColorPhotoCache();
+
   const draw = (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
@@ -226,6 +230,7 @@ export function createCompositor(options?: {
     imageFilter: ImageFilter = "none",
     character?: CharacterFrame,
     characterSize: CharacterSize = DEFAULT_CHARACTER_SIZE,
+    colorFilter: ColorFilter = "none",
   ) => {
     const { slots } = timeline;
     const slot = slotForTime(time, slots);
@@ -235,13 +240,15 @@ export function createCompositor(options?: {
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle, mode);
     const plate = photoForSlot(photos, fx.plateSlot);
+    const bitmap = colorPhotos.get(plate?.bitmap, colorFilter);
+    const coloredPlate = bitmap === plate?.bitmap ? plate : plate && bitmap ? { ...plate, bitmap } : undefined;
     const characterSource = resolveCharacterSource(video, character);
 
     composeMain(
       main,
       mainCtx,
       surfaces,
-      plate,
+      coloredPlate,
       characterSource,
       fx,
       swapStyle,
@@ -296,6 +303,7 @@ export function createCompositor(options?: {
       keyingDebug = describeKeying(keying, gpuKeyer?.debug);
     },
     destroy() {
+      colorPhotos.clear();
       dropGpuKeyer();
       canvas.width = 0;
       canvas.height = 0;
@@ -318,6 +326,8 @@ export function createCompositor(options?: {
     },
   };
 }
+
+type PhotoPlate = Omit<LoadedPhoto, "bitmap"> & { bitmap: ImageBitmap | HTMLCanvasElement };
 
 type FxSurfaces = {
   photoTiles: HTMLCanvasElement;
@@ -348,7 +358,7 @@ function composeMain(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
-  plate: LoadedPhoto | undefined,
+  plate: PhotoPlate | undefined,
   character: CharacterFrame | null,
   fx: SwapFx,
   style: SwapStyle,
@@ -458,7 +468,7 @@ export function plateDest(
 function drawPhotoPlate(
   ctx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
-  photo: LoadedPhoto,
+  photo: PhotoPlate,
   fx: SwapFx,
   style: SwapStyle,
   mw: number,

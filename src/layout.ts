@@ -120,7 +120,8 @@ export function isSwapStyle(value: string): value is SwapStyle {
 export const PHOTO_BASE_COLOR = "#0a0806";
 
 /**
- * 写真層フィルター。向き・切替と独立に選べる。線画キャラには掛けない。
+ * 写真層のブラー。旧 ImageFilter 名と値は復元・計測の互換のため保持する。
+ * 向き・切替・色フィルターと独立に選べる。線画キャラには掛けない。
  * - none: 加工なし
  * - blur-strong / blur-weak: 差し込み写真だけにボケ感
  */

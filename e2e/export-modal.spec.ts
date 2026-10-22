@@ -8,6 +8,8 @@ async function prepareExport(page: Page) {
   await page.goto("/make");
   await waitForAppReady(page);
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
+  // サムネイル列の描画でレイアウトが変わるため、保存ボタンへスクロールする前に待つ。
+  await expect(page.locator("#thumbs img")).toHaveCount(1);
   await expect(page.locator("#saveBtn")).toBeEnabled();
 
   return pauseExport(page);
