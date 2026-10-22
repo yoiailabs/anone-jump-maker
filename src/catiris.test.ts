@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import cuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
+import { COLOR_FILTERS } from "./color-filter.ts";
 import { catIrisRadius, easeOutBack } from "./catiris.ts";
 import { DEFAULT_SWAP_STYLE, hasFrameFx, isSwapStyle, OUTPUTS, SWAP_STYLES, SWAP_STYLE_LABELS, swapFx } from "./layout.ts";
 import { t } from "./i18n.ts";
@@ -20,7 +21,12 @@ it("appends catiris and preserves existing values and the default", () => {
 });
 
 it.each(["landscape", "portrait"] as const)("%s: passes analytics, Sentry tags and filenames", (mode) => {
-  expect(videoEventParams(mode, "catiris")).toEqual({ aspect: mode, effect: "catiris", swap: "catiris" });
+  expect(videoEventParams(mode, "catiris")).toEqual({ aspect: mode, effect: "catiris", swap: "catiris", filter: "none", color_filter: "none" });
+  for (const color of COLOR_FILTERS) for (const blur of ["none", "blur-weak", "blur-strong"] as const) {
+    const settings = { aspect: mode, effect: "catiris", filter: blur, color_filter: color };
+    expect(videoEventParams(mode, "catiris", blur, color)).toEqual({ ...settings, swap: "catiris" });
+    expect(pickTraceAttributes(settings)).toEqual(settings);
+  }
   expect(pickTraceAttributes({ aspect: mode, effect: "catiris" })).toEqual({ aspect: mode, effect: "catiris" });
   expect(exportFileName(mode, "catiris", "mp4")).toBe(`anone-catiris-${mode === "landscape" ? "16x9" : "9x16"}.mp4`);
 });

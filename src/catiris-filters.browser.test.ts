@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { COLOR_FILTERS } from "./color-filter.ts";
 import { drawCatIris } from "./catiris.ts";
 import { createCompositor } from "./compositor.ts";
 import { PHOTO_BASE_COLOR, swapFx, type ImageFilter } from "./layout.ts";
@@ -56,9 +57,9 @@ for (const mode of ["landscape", "portrait"] as const) {
       const next = await transparentPhoto(mime);
       const video = document.createElement("video");
       try {
-        for (const filter of filters) {
+        for (const color of COLOR_FILTERS) for (const filter of filters) {
           const render = (time: number) => {
-            compositor.draw(video, [old, next], timeline, time, "catiris", filter);
+            compositor.draw(video, [old, next], timeline, time, "catiris", filter, undefined, "standard", color);
             return pixels(compositor.canvas);
           };
           const last = render(33 / 30);
@@ -71,16 +72,16 @@ for (const mode of ["landscape", "portrait"] as const) {
           for (let y = Math.floor(h / 2 - short / 5); y < h / 2 + short / 5; y++) {
             const from = (y * w + Math.floor(w / 2 - short / 5)) * 4;
             const to = (y * w + Math.floor(w / 2 + short / 5)) * 4;
-            expect(equal(last.slice(from, to), normal.slice(from, to)), `${filter}, row ${y}`).toBe(true);
+            expect(equal(last.slice(from, to), normal.slice(from, to)), `${color}/${filter}, row ${y}`).toBe(true);
           }
-          if (filter === "none") {
+          if (filter === "none" && color === "none") {
             const i = (Math.floor(h / 2) * w + Math.floor(w / 2 - short / 10)) * 4;
             expect([...last.slice(i, i + 3)]).toEqual([10, 8, 6]);
           }
           // 任意時刻の終端直前では白縁・影も画面外。全画素が通常描画へ連続する。
           const terminal = render(34 / 30 - 0.001);
           expect(swapFx(34 / 30 - 0.001, timeline.slots, "catiris", mode).reveal).toBeDefined();
-          expect(equal(terminal, normal), filter).toBe(true);
+          expect(equal(terminal, normal), `${color}/${filter}`).toBe(true);
         }
       } finally {
         old.bitmap.close(); next.bitmap.close(); compositor.destroy();
@@ -89,7 +90,7 @@ for (const mode of ["landscape", "portrait"] as const) {
   }
 
   for (const filter of ["blur-weak", "blur-strong"] as const) {
-    it(`${mode} ${filter}: filters each photo before masking and keeps the white outline and shadow sharp`, async () => {
+    it.each(["none", "film"] as const)(`${mode} ${filter} %s: filters each photo before masking and keeps the white outline and shadow sharp`, async (color) => {
       const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
       compositor.setAspect(mode);
       const photos = [await photo("#e00000"), await photo("#0000e0")];
@@ -97,7 +98,7 @@ for (const mode of ["landscape", "portrait"] as const) {
       const parent = { startChild: () => null } as unknown as Parameters<typeof withComposeDetail>[0];
       try {
         const normal = (p: LoadedPhoto, f: ImageFilter) => {
-          compositor.draw(video, [p], timeline, 0, "catiris", f);
+          compositor.draw(video, [p], timeline, 0, "catiris", f, undefined, "standard", color);
           return snapshot(compositor.canvas);
         };
         const old = normal(photos[0]!, filter);
@@ -111,7 +112,7 @@ for (const mode of ["landscape", "portrait"] as const) {
           drawCatIris(expected.getContext("2d")!, next, w, h, progress);
           const reference = pixels(expected);
           for (const traced of [false, true]) {
-            const render = () => compositor.draw(video, photos, timeline, frame / 30, "catiris", filter);
+            const render = () => compositor.draw(video, photos, timeline, frame / 30, "catiris", filter, undefined, "standard", color);
             if (traced) withComposeDetail(parent, render);
             else render();
             const actual = pixels(compositor.canvas);
@@ -126,13 +127,13 @@ for (const mode of ["landscape", "portrait"] as const) {
                   white++;
                 }
                 // 赤い旧写真の純色領域へ青い次写真が漏れていないことを直接検査する。
-                if (reference[i]! > 20 && reference[i + 1] === 0 && reference[i + 2] === 0) {
+                if (color === "none" && reference[i]! > 20 && reference[i + 1] === 0 && reference[i + 2] === 0) {
                   expect(actual[i + 2]).toBe(0);
                   outside++;
                 }
               }
               expect(white).toBeGreaterThan(Math.min(w, h));
-              expect(outside).toBeGreaterThan(w * h / 4);
+              if (color === "none") expect(outside).toBeGreaterThan(w * h / 4);
             }
           }
         }
@@ -166,5 +167,47 @@ it.each(["blur-weak", "blur-strong"] as const)("%s: does no extra copying, alloc
     expect(allocate).not.toHaveBeenCalled();
   } finally {
     vi.restoreAllMocks(); p.bitmap.close(); compositor.destroy();
+  }
+});
+
+it("color caches process two distinct photos once per window and add no work outside it", async () => {
+  const compositor = createCompositor({ resolutionScale: 0.1, createKeyer: () => null });
+  const photos = [await photo("#b06030"), await photo("#3060b0")];
+  const video = document.createElement("video");
+  const draw = vi.spyOn(CanvasRenderingContext2D.prototype, "drawImage");
+  const read = vi.spyOn(CanvasRenderingContext2D.prototype, "getImageData");
+  const write = vi.spyOn(CanvasRenderingContext2D.prototype, "putImageData");
+  const allocate = vi.spyOn(document, "createElement");
+  const colorSurfaces = new Set<HTMLCanvasElement>();
+  const render = (time: number, color: "film" | "dynamic" | "none", computations: number) => {
+    draw.mockClear(); read.mockClear(); write.mockClear(); allocate.mockClear();
+    compositor.draw(video, photos, timeline, time, "catiris", "none", undefined, "standard", color);
+    for (const context of write.mock.contexts) colorSurfaces.add((context as CanvasRenderingContext2D).canvas);
+    const active = swapFx(time, timeline.slots, "catiris").reveal !== undefined;
+    expect(read, `readback at ${time}, ${color}`).toHaveBeenCalledTimes(computations);
+    expect(write, `color transforms at ${time}, ${color}`).toHaveBeenCalledTimes(computations);
+    expect(allocate).toHaveBeenCalledTimes(computations);
+    expect(draw).toHaveBeenCalledTimes((active ? 3 : 2) + computations);
+  };
+  try {
+    render(0, "film", 1); // main と同じ、現在の写真だけを加工する。
+    render(0.5, "film", 0);
+    render(27 / 30, "film", 1); // 窓の先頭だけ次写真を加工する。
+    for (const frame of [28, 29, 30, 31, 32, 33]) render(frame / 30, "film", 0);
+    render(31 / 30, "dynamic", 2); // 設定変更時は両方を更新する。
+    render(32 / 30, "dynamic", 0);
+    render(34 / 30, "dynamic", 1); // main と同じ、通常写真が替わる時だけ。
+    render(1.5, "dynamic", 0);
+    render(29 / 30, "dynamic", 1); // 再シークしても次写真キャッシュは再利用する。
+    render(30 / 30, "dynamic", 0);
+    render(31 / 30, "none", 0);
+    render(1.5, "none", 0);
+    render(30 / 30, "film", 2);
+    compositor.destroy();
+    // 色キャッシュの写真面も destroy で解放する。
+    expect(colorSurfaces.size).toBe(8);
+    for (const surface of colorSurfaces) expect([surface.width, surface.height]).toEqual([0, 0]);
+  } finally {
+    vi.restoreAllMocks(); photos.forEach((p) => p.bitmap.close()); compositor.destroy();
   }
 });
