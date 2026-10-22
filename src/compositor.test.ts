@@ -269,7 +269,7 @@ describe("character size draw path", () => {
   });
 
   it("exposes maker and preview radios that feed the shared compositor draw", () => {
-    expect(makerSrc).toContain('name="character"');
+    expect(makerSrc).toContain('["character", "studioOptionCharacter", "character"]');
     expect(makerSrc).not.toContain('name="preview-character"');
     expect(makerSrc).toContain('value: "standard"');
     expect(makerSrc).toContain('value: "1.2"');

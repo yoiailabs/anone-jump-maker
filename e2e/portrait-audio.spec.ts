@@ -57,7 +57,6 @@ async function uploadPhoto(page: Page): Promise<void> {
 }
 
 async function switchAspect(page: Page, value: "portrait" | "landscape"): Promise<void> {
-  await page.locator("#aspectTab").click();
   await page.locator(`#studioView label:has(input[name="aspect"][value="${value}"])`).click();
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", value);
 }

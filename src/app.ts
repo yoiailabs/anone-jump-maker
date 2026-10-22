@@ -1,3 +1,4 @@
+import { syncOptions } from "./options-store.ts";
 import { normalizeColorFilter, type ColorFilter } from "./color-filter.ts";
 import {
   GENERATE_CANCEL_EVENT,
@@ -195,6 +196,8 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   for (const input of colorFilterInputs) input.checked = input.value === colorFilter;
   const characterInputs = [...root.querySelectorAll<HTMLInputElement>('input[name="character"]')];
 
+  syncOptions(root);
+
   const aspectValue = checkedNamedValue(aspectInputs, "aspect");
   const swapValue = checkedNamedValue(swapInputs, "swap");
   const filterValue = checkedNamedValue(filterInputs, "filter");
@@ -279,24 +282,28 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     for (const input of aspectInputs) {
       input.checked = input.value === value;
     }
+    syncOptions(root);
   };
 
   const syncSwapRadios = (value: SwapStyle) => {
     for (const input of swapInputs) {
       input.checked = input.value === value;
     }
+    syncOptions(root);
   };
 
   const syncFilterRadios = (value: ImageFilter) => {
     for (const input of filterInputs) {
       input.checked = input.value === value;
     }
+    syncOptions(root);
   };
 
   const syncCharacterRadios = (value: CharacterSize) => {
     for (const input of characterInputs) {
       input.checked = input.value === value;
     }
+    syncOptions(root);
   };
 
   const photosLocked = () => recording || photosBusy;
@@ -914,6 +921,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const applyColor = (next: ColorFilter) => {
     for (const input of colorFilterInputs) input.checked = input.value === next;
+    syncOptions(root);
     if (next === colorFilter) return;
     studioTrace.onPreviewStop("settings");
     colorFilter = next;

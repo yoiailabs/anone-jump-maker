@@ -127,10 +127,10 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator(".preview-status-icon-play")).toBeHidden();
   await expect(page.locator("#previewStatusLabel")).toHaveCount(0);
   await expect(page.locator("#restartBtn")).toHaveCount(0);
-  await expect(page.locator("#aspectTab")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
   await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeVisible();
   await expect(page.locator('#studioView input[name="swap"][value="zoom"]')).toBeChecked();
-  await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeHidden();
+  await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeVisible();
   await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
     await page.evaluate(() =>
@@ -181,10 +181,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await mute.click();
   await expect(mute).toContainText(/音声オフ|音声オン/);
 
-  await page.locator("#aspectTab").click();
   await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
-  await page.locator("#swapTab").click();
+
   const zoomOption = page.locator('#studioView label:has(input[name="swap"][value="zoom"])');
   const jumpOption = page.locator('#studioView label:has(input[name="swap"][value="jump"])');
   await expect(zoomOption).toBeVisible();
@@ -194,9 +193,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   );
   await jumpOption.click();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
-  await page.locator("#blurTab").click();
+
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
-  await page.locator("#characterTab").click();
+
   await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
   await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
   await expect(page.locator("#stage")).toBeVisible();
@@ -892,15 +891,8 @@ for (const locale of ["ja", "en"] as const) {
     });
     await uploadPhoto(page, { name: "striped-photo.png", mimeType: "image/png", buffer: Buffer.from(photo, "base64") });
     await expect(page.locator("#saveBtn")).toBeEnabled();
-    await expect(page.locator(".studio-option-tab")).toHaveCount(5);
-    const tabs = page.locator(".studio-option-tabs");
-    expect(await tabs.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    for (const tab of await page.locator(".studio-option-tab").all()) {
-      const box = await tab.boundingBox();
-      expect(box && box.x >= 0 && box.x + box.width <= 375).toBe(true);
-      expect(await tab.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    }
-    await expect(page.locator("#blurTab")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
+    await expect(page.getByRole("radiogroup")).toHaveCount(5);
+    await expect(page.locator("#filterLabel")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
     await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
     await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
     const canvas = page.locator("canvas.stage-canvas");
@@ -942,8 +934,8 @@ for (const locale of ["ja", "en"] as const) {
     await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.paused && !el.seeking)).toBe(true);
     const pausedTime = await video.evaluate((el: HTMLVideoElement) => el.currentTime);
     const original = await photoPixels();
-    await page.locator("#filterTab").click();
-    await expect(page.locator('#filterPanel input[type="radio"]')).toHaveCount(4);
+
+    await expect(page.locator('.studio-options input[name="color_filter"]')).toHaveCount(4);
     expect(await page.locator('input[name="color_filter"]').evaluateAll((inputs) =>
       inputs.map((input) => (input as HTMLInputElement).value),
     )).toEqual(["none", "dynamic", "dramatic", "film"]);
@@ -954,7 +946,7 @@ for (const locale of ["ja", "en"] as const) {
     await expect.poll(photoPixels).toEqual(original);
     await page.locator('label:has(input[name="color_filter"][value="film"])').click();
     await expect.poll(photoPixels).toEqual(film);
-    await page.locator("#blurTab").click();
+
     await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
     await expect.poll(photoPixels).not.toEqual(film);
     await page.locator('label:has(input[name="filter"][value="none"])').click();
@@ -963,7 +955,7 @@ for (const locale of ["ja", "en"] as const) {
     await expect.poll(photoPixels).not.toEqual(film);
     expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
       .toEqual({ time: pausedTime, paused: true, seeking: false });
-    await page.locator("#aspectTab").click();
+
     await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
     await page.locator('label:has(input[name="aspect"][value="landscape"])').click();

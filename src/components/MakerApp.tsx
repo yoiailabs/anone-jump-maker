@@ -14,6 +14,7 @@ import { reactionEmbedHtml } from "../reactions.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../share.ts";
 import { muteButtonHtml, playPauseButtonHtml, PREVIEW_MUTED_DEFAULT } from "../preview.ts";
 import { getPreviewChrome, subscribePreviewChrome } from "../preview-chrome-store.ts";
+import { getOptions, getInitialOptions, subscribeOptions } from "../options-store.ts";
 import { getPhotoThumbsState, subscribePhotoThumbs } from "../photo-thumbs-store.ts";
 import { getFeedback, subscribeFeedback, type FeedbackPlace } from "../feedback-store.ts";
 import { makerLogoStackedSize, makerLogoStackedSrc } from "../brand.ts";
@@ -85,21 +86,42 @@ type MakerAppProps = {
   locale: Locale;
 };
 
-const OPTION_TABS = [
-  ["aspect", "studioTabAspect", "makerAspectLegend"],
-  ["swap", "studioTabEffect", "makerEffectLegend"],
-  ["filter", "studioTabFilter", "makerFilterLegend"],
-  ["blur", "studioTabBlur", "makerBlurLegend"],
-  ["character", "studioTabCharacter", "makerCharacterLegend"],
+const OPTION_ROWS = [
+  ["aspect", "studioOptionAspect", "aspect"],
+  ["swap", "studioOptionEffect", "swap"],
+  ["filter", "studioOptionFilter", "color_filter"],
+  ["blur", "studioOptionBlur", "filter"],
+  ["character", "studioOptionCharacter", "character"],
 ] as const;
-
-type OptionTab = (typeof OPTION_TABS)[number][0];
 
 export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const started = useRef(false);
   const exportActions = useRef<ExportActions | null>(null);
   const landingLogoRef = useRef<HTMLImageElement>(null);
-  const [optionTab, setOptionTab] = useState<OptionTab>("aspect");
+  const options = useSyncExternalStore(subscribeOptions, getOptions, getInitialOptions);
+  const optionChoices = {
+    aspect: [
+      { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
+      { value: "portrait", label: t(locale, "makerPortrait") },
+    ],
+    swap: [
+      { value: "zoom", label: t(locale, "makerZoom"), defaultChecked: DEFAULT_SWAP_STYLE === "zoom" },
+      { value: "jump", label: t(locale, "makerJump"), defaultChecked: DEFAULT_SWAP_STYLE === "jump" },
+    ],
+    filter: COLOR_FILTERS.map((value) => ({
+      value, label: colorFilterLabel(value, locale), defaultChecked: value === "none",
+    })),
+    blur: [
+      { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
+      { value: "blur-weak", label: t(locale, "makerBlurWeak") },
+      { value: "blur-strong", label: t(locale, "makerBlurStrong") },
+    ],
+    character: [
+      { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
+      { value: "1.2", label: t(locale, "makerCharacter12") },
+      { value: "1.4", label: t(locale, "makerCharacter14") },
+    ],
+  };
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
@@ -312,121 +334,15 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                 {t(locale, "studioOptions")}
               </h2>
               <div className="studio-option-sheet">
-                <div className="studio-option-tabs" role="tablist" aria-labelledby="studioOptionsTitle">
-                  {OPTION_TABS.map(([id, labelKey, legendKey]) => (
-                    <button
-                      key={id}
-                      type="button"
-                      className="studio-option-tab"
-                      id={`${id}Tab`}
-                      role="tab"
-                      aria-selected={optionTab === id}
-                      aria-controls={`${id}Panel`}
-                      aria-label={t(locale, legendKey)}
-                      onClick={() => setOptionTab(id)}
-                    >
-                      {id === "character" ? (
-                        <>
-                          <span className="studio-option-tab-full">{t(locale, labelKey)}</span>
-                          <span className="studio-option-tab-short">{t(locale, "studioTabCharacterShort")}</span>
-                        </>
-                      ) : (
-                        t(locale, labelKey)
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <div className="studio-option-panels">
-                  <fieldset
-                    className="aspect-field"
-                    id="aspectPanel"
-                    role="tabpanel"
-                    aria-labelledby="aspectTab"
-                    hidden={optionTab !== "aspect"}
-                  >
-                    <legend>{t(locale, "makerAspectLegend")}</legend>
-                    <RadioPills
-                      name="aspect"
-                      ariaLabel={t(locale, "makerAspectLegend")}
-                      options={[
-                        { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-                        { value: "portrait", label: t(locale, "makerPortrait") },
-                      ]}
-                    />
-                  </fieldset>
-                  <fieldset
-                    className="aspect-field"
-                    id="swapPanel"
-                    role="tabpanel"
-                    aria-labelledby="swapTab"
-                    hidden={optionTab !== "swap"}
-                  >
-                    <legend>{t(locale, "makerEffectLegend")}</legend>
-                    <RadioPills
-                      name="swap"
-                      ariaLabel={t(locale, "makerEffectLegend")}
-                      options={[
-                        { value: "zoom", label: t(locale, "makerZoom"), defaultChecked: DEFAULT_SWAP_STYLE === "zoom" },
-                        { value: "jump", label: t(locale, "makerJump"), defaultChecked: DEFAULT_SWAP_STYLE === "jump" },
-                      ]}
-                    />
-                  </fieldset>
-                  <fieldset
-                    className="aspect-field"
-                    id="filterPanel"
-                    role="tabpanel"
-                    aria-labelledby="filterTab"
-                    hidden={optionTab !== "filter"}
-                  >
-                    <legend>{t(locale, "makerFilterLegend")}</legend>
-                    <RadioPills
-                      name="color_filter"
-                      className="aspect-toggle color-filter-toggle"
-                      ariaLabel={t(locale, "makerFilterLegend")}
-                      options={COLOR_FILTERS.map((value) => ({
-                        value, label: colorFilterLabel(value, locale), defaultChecked: value === "none",
-                      }))}
-                    />
-                  </fieldset>
-                  <fieldset
-                    className="aspect-field"
-                    id="blurPanel"
-                    role="tabpanel"
-                    aria-labelledby="blurTab"
-                    hidden={optionTab !== "blur"}
-                  >
-                    <legend>{t(locale, "makerBlurLegend")}</legend>
-                    <RadioPills
-                      name="filter"
-                      className="aspect-toggle cols-3"
-                      ariaLabel={t(locale, "makerBlurLegend")}
-                      options={[
-                        { value: "none", label: t(locale, "makerFilterNone"), defaultChecked: true },
-                        { value: "blur-weak", label: t(locale, "makerBlurWeak") },
-                        { value: "blur-strong", label: t(locale, "makerBlurStrong") },
-                      ]}
-                    />
-                  </fieldset>
-                  <fieldset
-                    className="aspect-field"
-                    id="characterPanel"
-                    role="tabpanel"
-                    aria-labelledby="characterTab"
-                    hidden={optionTab !== "character"}
-                  >
-                    <legend>{t(locale, "makerCharacterLegend")}</legend>
-                    <RadioPills
-                      name="character"
-                      className="aspect-toggle cols-3"
-                      ariaLabel={t(locale, "makerCharacterLegend")}
-                      options={[
-                        { value: "standard", label: t(locale, "makerCharacterStandard"), defaultChecked: true },
-                        { value: "1.2", label: t(locale, "makerCharacter12") },
-                        { value: "1.4", label: t(locale, "makerCharacter14") },
-                      ]}
-                    />
-                  </fieldset>
-                </div>
+                {OPTION_ROWS.map(([id, labelKey, name]) => (
+                  <OptionRow
+                    key={id}
+                    name={name}
+                    label={t(locale, labelKey)}
+                    selected={options[name]}
+                    options={optionChoices[id]}
+                  />
+                ))}
               </div>
             </section>
           </section>
@@ -563,25 +479,75 @@ function LiveFeedback({ id, place }: { id: string; place: FeedbackPlace }) {
   );
 }
 
-function RadioPills({
-  name,
-  ariaLabel,
-  options,
-  className = "aspect-toggle",
-}: {
+// Radios stay uncontrolled: boot reads/restores them and owns export disabled state.
+// The store also reports programmatic changes, which must reveal the checked choice.
+function OptionRow({ name, label, selected, options }: {
   name: string;
-  ariaLabel: string;
-  className?: string;
+  label: string;
+  selected: string;
   options: readonly { value: string; label: string; defaultChecked?: boolean }[];
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  const updateEdges = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const start = scroller.scrollLeft > 1;
+    const end = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft > 1;
+    setEdges((previous) => previous.start === start && previous.end === end ? previous : { start, end });
+  };
+
+  const reveal = (input: HTMLInputElement) => {
+    const scroller = scrollerRef.current;
+    const choice = input.closest("label");
+    if (!scroller || !choice) return;
+    const viewport = scroller.getBoundingClientRect();
+    const box = choice.getBoundingClientRect();
+    // Leave room for the edge hint; clamping at either end removes that fade.
+    const fadeWidth = parseFloat(getComputedStyle(scroller.parentElement!, "::before").width);
+    const inset = Math.min(fadeWidth + 4, Math.max(4, (scroller.clientWidth - box.width) / 2));
+    if (box.left < viewport.left + inset) scroller.scrollLeft += box.left - viewport.left - inset;
+    else if (box.right > viewport.right - inset) scroller.scrollLeft += box.right - viewport.right + inset;
+    updateEdges();
+  };
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const refresh = () => {
+      const checked = scroller.querySelector<HTMLInputElement>("input:checked");
+      if (checked) reveal(checked);
+      updateEdges();
+    };
+    refresh();
+    const observer = new ResizeObserver(refresh);
+    observer.observe(scroller);
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+    return () => observer.disconnect();
+  }, [selected]);
+
   return (
-    <div className={className} role="radiogroup" aria-label={ariaLabel}>
-      {options.map((option) => (
-        <label key={`${name}-${option.value}`}>
-          <input type="radio" name={name} value={option.value} defaultChecked={option.defaultChecked} />
-          <span>{option.label}</span>
-        </label>
-      ))}
+    <div className="studio-option-row" role="radiogroup" aria-labelledby={`${name}Label`}>
+      <span className="studio-option-label" id={`${name}Label`}>{label}</span>
+      <div className="option-scroll-frame" data-fade-start={edges.start} data-fade-end={edges.end}>
+        <div
+          className="option-scroll"
+          ref={scrollerRef}
+          onScroll={updateEdges}
+          onFocus={(event) => reveal(event.target as HTMLInputElement)}
+          onChange={(event) => reveal(event.target as HTMLInputElement)}
+        >
+          <div className={`option-segments${name === "color_filter" ? " option-segments-pills" : ""}`}>
+            {options.map((option) => (
+              <label key={`${name}-${option.value}`}>
+                <input type="radio" name={name} value={option.value} defaultChecked={option.defaultChecked} />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -77,14 +77,15 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
       await page.keyboard.press(key);
       await expectModalFocus(dialog);
     }
-    await page.locator("#filterTab").evaluate((el) => el.focus());
+    await page.locator("#studioHome").evaluate((el) => el.focus());
     await expectModalFocus(dialog);
     await page.mouse.click(1, 1);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveAttribute("data-export-phase", "busy");
     await expect(page.locator("#exportPanel:modal")).toHaveCount(1);
     await expect(page.locator("#saveBtn")).toBeDisabled();
-    await expect(page.locator("#aspectTab")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(".studio-options input:enabled")).toHaveCount(0);
+    await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
     await page.setViewportSize({ width: 412, height: 200 });
     await expectWithinViewport(dialog, page);
     expect(await dialog.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -93,8 +94,9 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
     await expect(dialog).not.toHaveAttribute("data-open");
     await expect(page.locator("#saveBtn")).toBeEnabled();
     await expect(page.locator("#saveBtn")).toBeFocused();
-    await page.locator("#filterTab").click();
-    await expect(page.locator("#filterTab")).toHaveAttribute("aria-selected", "true");
+
+    await page.locator('label:has(input[name="swap"][value="jump"])').click();
+    await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
   } finally {
     release();
   }
@@ -264,6 +266,7 @@ test("export errors close the modal and leave the feedback and page accessible",
   await expect(page.locator("#exportPanel")).toBeHidden();
   await expect(page.locator("#exportPanel")).not.toHaveAttribute("data-open");
   await expect(page.locator("#saveBtn")).toBeFocused();
-  await page.locator("#filterTab").click();
-  await expect(page.locator("#filterTab")).toHaveAttribute("aria-selected", "true");
+
+  await page.locator('label:has(input[name="swap"][value="jump"])').click();
+  await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
 });
