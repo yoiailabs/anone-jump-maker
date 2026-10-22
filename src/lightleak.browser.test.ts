@@ -4,7 +4,8 @@ import {
   blendLightLeak, paintLightLeak, lightLeakCharacterPoint, lightLeakCharacterSource,
   LIGHT_LEAK_CHARACTER_GAIN, LIGHT_LEAK_PHOTO_GAIN, LIGHT_LEAK_SHORT_SIDE,
 } from "./lightleak.ts";
-import { characterDest, characterScale, characterShiftY } from "./layout.ts";
+import { characterDest, characterScale, characterShiftY, IMAGE_FILTERS, LIGHT_LEAK_AMOUNTS } from "./layout.ts";
+import { COLOR_FILTERS } from "./color-filter.ts";
 import type { LoadedPhoto } from "./photos.ts";
 import cuts from "../public/official-assets/template/landscape-cuts.json";
 
@@ -123,6 +124,66 @@ describe.each(["landscape", "portrait"] as const)("%s character bloom", (mode) =
       expect(x / (mode === "landscape" ? 240 : 135)).toBeCloseTo((placed.x + 0.5 * placed.w) / width);
       expect(y / (mode === "landscape" ? 135 : 240)).toBeCloseTo((placed.y + 0.42 * placed.h) / height);
     } finally { fixture.bitmap.close(); compositor.destroy(); }
+  });
+
+  it.each(COLOR_FILTERS)("%s × all blurs: processes only photos before bloom, then lights the character weakly", async (color) => {
+    const reference = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+    const actual = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+    reference.setAspect(mode); actual.setAspect(mode);
+    const striped = document.createElement("canvas"); striped.width = 640; striped.height = 360;
+    const stripeCtx = striped.getContext("2d")!;
+    stripeCtx.fillStyle = "#cc5431"; stripeCtx.fillRect(0, 0, 640, 360);
+    stripeCtx.fillStyle = "#f0dca0";
+    for (let x = 0; x < 640; x += 32) stripeCtx.fillRect(x, 0, 16, 360);
+    const fixture = { id: "stripes", name: "stripes.png", bitmap: await createImageBitmap(striped), thumbUrl: "" };
+    const character = syntheticCharacter(0.4, 0.8), media = video();
+    const expected = document.createElement("canvas"); expected.width = width; expected.height = height;
+    const expectedCtx = expected.getContext("2d")!;
+    const light = document.createElement("canvas"), lightCtx = light.getContext("2d")!;
+    try {
+      for (const blur of IMAGE_FILTERS) {
+        // 時刻0は光の窓外。同じ写真・配置で、色とブラーを処理済みの基準画像を得る。
+        reference.draw(media, [fixture], cuts, 0, "lightleak", blur, undefined, "standard", color);
+        const photoOnly = pixels(reference.canvas);
+        reference.draw(media, [fixture], cuts, 0, "lightleak", blur, character, "standard", color);
+        const withCharacter = pixels(reference.canvas);
+        const photoIndices: number[] = [], characterIndices: number[] = [];
+        for (let i = 0; i < photoOnly.length; i += 4) {
+          if (withCharacter[i] === photoOnly[i] && withCharacter[i + 1] === photoOnly[i + 1] && withCharacter[i + 2] === photoOnly[i + 2]) photoIndices.push(i);
+          // キーや輪郭の半透明な縁を除いた、キャラ内部と白い輪郭を検査する。
+          const value = withCharacter[i];
+          if ([32, 176, 255].includes(value!) && withCharacter[i + 1] === value && withCharacter[i + 2] === value) characterIndices.push(i);
+        }
+        expect(photoIndices.length).toBeGreaterThan(10_000);
+        expect(characterIndices.length).toBeGreaterThan(100);
+        for (const supplied of [undefined, character]) {
+          const source = lightLeakCharacterSource(supplied ? lightLeakCharacterPoint(59, mode) : undefined, placed, width, height);
+          for (let frame = -5; frame <= 5; frame++) {
+            const label = `${color}/${blur}/${supplied ? "character" : "photo"}/${frame}`;
+            const active = frame >= -4 && frame <= 4;
+            const amount = active ? LIGHT_LEAK_AMOUNTS[frame + 4]! : 0;
+            expectedCtx.putImageData(new ImageData(photoOnly.slice(), width, height), 0, 0);
+            if (active) {
+              paintLightLeak(light, lightCtx, width, height, source, { frame, amount });
+              blendLightLeak(expectedCtx, light, width, height, amount * LIGHT_LEAK_PHOTO_GAIN);
+            }
+            // 不透明なキャラは写真への強い光を隠し、その後に弱い光だけを受ける。
+            if (supplied) {
+              const image = expectedCtx.getImageData(0, 0, width, height);
+              for (const i of characterIndices) image.data.set(withCharacter.subarray(i, i + 4), i);
+              expectedCtx.putImageData(image, 0, 0);
+            }
+            if (active) blendLightLeak(expectedCtx, light, width, height, amount * LIGHT_LEAK_CHARACTER_GAIN);
+            actual.draw(media, [fixture], cuts, (59 + frame) / 30, "lightleak", blur, supplied, "standard", color);
+            const want = pixels(expected), got = pixels(actual.canvas);
+            let error = 0;
+            const indices = supplied ? [...photoIndices, ...characterIndices] : photoIndices;
+            for (const i of indices) for (let c = 0; c < 4; c++) error = Math.max(error, Math.abs(got[i + c]! - want[i + c]!));
+            expect(error, label).toBe(0);
+          }
+        }
+      }
+    } finally { fixture.bitmap.close(); reference.destroy(); actual.destroy(); }
   });
 
   it("matches all pixels after reseeking and across compositors, irrespective of frame supply order", async () => {
