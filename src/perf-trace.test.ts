@@ -57,10 +57,11 @@ function installFakeTracing(recording: (name: string) => boolean = () => true): 
 
 it("keeps papertear on the actual preview and export performance spans", () => {
   const records = installFakeTracing();
-  studioTrace.beginPreviewStart({ trigger: "resume", aspect: "landscape", effect: "papertear" });
-  studioTrace.beginExport({ export_path: "offline", aspect: "portrait", effect: "papertear" });
-  expect(records.find((span) => span.name === "preview.start")?.attributes.effect).toBe("papertear");
-  expect(records.find((span) => span.name === "export.generate")?.attributes.effect).toBe("papertear");
+  const settings = { effect: "papertear", filter: "blur-weak", color_filter: "film" };
+  studioTrace.beginPreviewStart({ trigger: "resume", aspect: "landscape", ...settings });
+  studioTrace.beginExport({ export_path: "offline", aspect: "portrait", ...settings });
+  expect(records.find((span) => span.name === "preview.start")?.attributes).toMatchObject(settings);
+  expect(records.find((span) => span.name === "export.generate")?.attributes).toMatchObject(settings);
 });
 
 const readyPaint = {

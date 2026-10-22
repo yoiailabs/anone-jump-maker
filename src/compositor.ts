@@ -1,3 +1,4 @@
+import { createColorPhotoCache, type ColorFilter } from "./color-filter.ts";
 import { drawPaperTear } from "./papertear.ts";
 import { applySoftwareBlur } from "./blur.ts";
 import { ensureCanvasSize, scaleCanvasSize } from "./canvas-size.ts";
@@ -113,6 +114,7 @@ export type Compositor = {
     imageFilter?: ImageFilter,
     character?: CharacterFrame,
     characterSize?: CharacterSize,
+    colorFilter?: ColorFilter,
   ) => number;
   setAspect: (mode: AspectMode) => void;
   setResolutionScale: (scale: number) => void;
@@ -216,6 +218,12 @@ export function createCompositor(options?: {
     dropGpuKeyer,
   };
 
+  const colorPhotos = createColorPhotoCache(2);
+  const colorPlate = (plate: LoadedPhoto | undefined, filter: ColorFilter): PhotoPlate | undefined => {
+    const bitmap = colorPhotos.get(plate?.bitmap, filter);
+    return bitmap === plate?.bitmap ? plate : plate && bitmap ? { ...plate, bitmap } : undefined;
+  };
+
   const draw = (
     video: HTMLVideoElement,
     photos: readonly LoadedPhoto[],
@@ -225,6 +233,7 @@ export function createCompositor(options?: {
     imageFilter: ImageFilter = "none",
     character?: CharacterFrame,
     characterSize: CharacterSize = DEFAULT_CHARACTER_SIZE,
+    colorFilter: ColorFilter = "none",
   ) => {
     const { slots } = timeline;
     const slot = slotForTime(time, slots);
@@ -234,13 +243,15 @@ export function createCompositor(options?: {
     const panel = mainPanelRect(w, h, mode);
     const fx = swapFx(time, slots, swapStyle, mode);
     const plate = photoForSlot(photos, fx.plateSlot);
+    const coloredPlate = colorPlate(plate, colorFilter);
+    const nextPlate = fx.reveal ? colorPlate(photoForSlot(photos, fx.reveal.nextSlot), colorFilter) : undefined;
     const characterSource = resolveCharacterSource(video, character);
 
     composeMain(
       main,
       mainCtx,
       surfaces,
-      plate,
+      coloredPlate,
       characterSource,
       fx,
       swapStyle,
@@ -248,7 +259,7 @@ export function createCompositor(options?: {
       mode,
       imageFilter,
       characterSize,
-      fx.reveal ? photoForSlot(photos, fx.reveal.nextSlot) : undefined,
+      nextPlate,
     );
     if (composeDetailActive()) {
       traceCompose("compose.output", () => {
@@ -294,6 +305,7 @@ export function createCompositor(options?: {
       keyingDebug = describeKeying(keying, gpuKeyer?.debug);
     },
     destroy() {
+      colorPhotos.clear();
       dropGpuKeyer();
       canvas.width = 0;
       canvas.height = 0;
@@ -316,6 +328,8 @@ export function createCompositor(options?: {
     },
   };
 }
+
+type PhotoPlate = Omit<LoadedPhoto, "bitmap"> & { bitmap: ImageBitmap | HTMLCanvasElement };
 
 type FxSurfaces = {
   photoTiles: HTMLCanvasElement;
@@ -346,7 +360,7 @@ function composeMain(
   main: HTMLCanvasElement,
   mainCtx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
-  plate: LoadedPhoto | undefined,
+  plate: PhotoPlate | undefined,
   character: CharacterFrame | null,
   fx: SwapFx,
   style: SwapStyle,
@@ -354,7 +368,7 @@ function composeMain(
   mode: AspectMode,
   imageFilter: ImageFilter,
   characterSize: CharacterSize,
-  nextPlate?: LoadedPhoto,
+  nextPlate?: PhotoPlate,
 ): void {
   main.width = Math.max(1, Math.round(panel.w));
   main.height = Math.max(1, Math.round(panel.h));
@@ -369,7 +383,7 @@ function composeMain(
     const drawPlate = () => {
       if (tearing) {
         // 下地と写真を先に不透明な1枚にする。AAクリップ内で別々に描くと下地が縁に混ざる。
-        const prepare = (photo: LoadedPhoto, target: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+        const prepare = (photo: PhotoPlate, target: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
           ensureCanvasSize(target, mw, mh);
           resetCtx(ctx);
           ctx.fillStyle = "#0a0806";
@@ -455,7 +469,7 @@ export function plateDest(
 function drawPhotoPlate(
   ctx: CanvasRenderingContext2D,
   surfaces: FxSurfaces,
-  photo: LoadedPhoto,
+  photo: PhotoPlate,
   fx: SwapFx,
   style: SwapStyle,
   mw: number,

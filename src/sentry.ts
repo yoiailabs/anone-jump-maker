@@ -1,3 +1,4 @@
+import { COLOR_FILTERS, normalizeColorFilter } from "./color-filter.ts";
 import type { BrowserOptions } from "@sentry/browser";
 import {
   ASPECT_MODES,
@@ -207,6 +208,7 @@ const TRACE_STRING_ENUMS: Record<string, ReadonlySet<string>> = {
   aspect: new Set(ASPECT_MODES),
   effect: new Set(SWAP_STYLES),
   filter: new Set(IMAGE_FILTERS),
+  color_filter: new Set(COLOR_FILTERS),
   character_size: new Set(CHARACTER_SIZES),
   character_path: new Set(["rgba-copyTo", "html-video-seek"]),
   probe_outcome: new Set(["rgba-copyTo", "html-video-seek"]),
@@ -304,6 +306,10 @@ export function pickTraceAttributes(input: Record<string, unknown> | undefined):
   const out: Record<string, TraceAttributeValue> = {};
   if (!input) return out;
   for (const [key, value] of Object.entries(input)) {
+    if (key === "color_filter") {
+      out[key] = normalizeColorFilter(value);
+      continue;
+    }
     if (TRACE_BOOLEAN_KEYS.has(key)) {
       if (typeof value === "boolean") out[key] = value;
       continue;

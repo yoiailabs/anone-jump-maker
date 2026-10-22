@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
-import { t } from "../src/i18n.ts";
+import { t, type Locale } from "../src/i18n.ts";
 import { PHOTO_MAX_COUNT } from "../src/photo-list.ts";
 import { playbackPositions } from "../src/timeline.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
@@ -13,10 +13,10 @@ test.beforeEach(async ({ page }) => {
   await waitForAppReady(page);
 });
 
-for (const [locale, label] of [["ja", "紙ちぎり"], ["en", "Paper tear"]] as const) {
+for (const [locale, label] of [["ja", "紙ちぎり"], ["en", "Paper tear"], ["ko", "종이 찢기"], ["zh", "撕纸"]] as const) {
   test(`${locale}: selects papertear after zoom and jump`, async ({ page }) => {
-    if (locale === "en") {
-      await page.goto("/en/make");
+    if (locale !== "ja") {
+      await page.goto(`/${locale}/make`);
       await waitForAppReady(page);
     } else {
       await openStudio(page);
@@ -29,10 +29,16 @@ for (const [locale, label] of [["ja", "紙ちぎり"], ["en", "Paper tear"]] as 
     await expect(option).toContainText(label);
     await option.click();
     await expect(page.locator('#studioView input[name="swap"][value="papertear"]')).toBeChecked();
+    await page.locator("#filterTab").click();
+    await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+    await page.locator("#blurTab").click();
+    await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
     await page.locator("#aspectTab").click();
     await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
     await page.locator("#swapTab").click();
     await expect(page.locator('#studioView input[name="swap"][value="papertear"]')).toBeChecked();
+    await expect(page.locator('input[name="color_filter"][value="film"]')).toBeChecked();
+    await expect(page.locator('input[name="filter"][value="blur-weak"]')).toBeChecked();
   });
 }
 
@@ -217,7 +223,7 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   );
   await jumpOption.click();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
-  await page.locator("#filterTab").click();
+  await page.locator("#blurTab").click();
   await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
   await page.locator("#characterTab").click();
   await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
@@ -844,9 +850,9 @@ async function headerAlign(page: Page, header: string, lockupSel: string, titleS
   return metrics!;
 }
 
-async function uploadPhoto(page: Page): Promise<void> {
+async function uploadPhoto(page: Page, file: string | Awaited<ReturnType<typeof jpegInput>> = PHOTO_FILE.path): Promise<void> {
   await openStudio(page);
-  await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
+  await page.locator("#picker").setInputFiles(file);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
   await expect(page.locator("#previewSeek")).toBeEnabled({ timeout: 20_000 });
   await expect(page.locator("#previewTransport")).toBeVisible();
@@ -869,7 +875,7 @@ async function settlePreviewPlayback(page: Page): Promise<void> {
   await expect(page.locator("#stage canvas.stage-canvas")).toBeVisible();
 }
 
-async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"> {
+async function waitForExportOutcome(page: Page, locale: Locale = "ja"): Promise<"ready" | "unsupported"> {
   let outcome: "ready" | "unsupported" | "" = "";
   await expect
     .poll(
@@ -878,8 +884,8 @@ async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"
           outcome = "ready";
           return outcome;
         }
-        const feedback = ((await page.locator("#saveFeedback").textContent()) ?? "").trim();
-        if (feedback.includes(UNSUPPORTED_EXPORT_MESSAGE)) {
+        const feedback = stripZwsp((await page.locator("#saveFeedback").textContent()) ?? "").trim();
+        if (feedback.includes(t(locale, "errorUnsupportedExport"))) {
           outcome = "unsupported";
           return outcome;
         }
@@ -890,4 +896,171 @@ async function waitForExportOutcome(page: Page): Promise<"ready" | "unsupported"
     .not.toBe("");
   if (outcome === "") throw new Error("export outcome was empty");
   return outcome;
+}
+
+test("restores papertear at boot and carries independent blur/color through preview, export and download", async ({ page }) => {
+  await page.addInitScript(() => {
+    const query = Element.prototype.querySelectorAll;
+    Element.prototype.querySelectorAll = function (this: Element, selector: string) {
+      const result = query.call(this, selector);
+      if (this.id === "app" && selector === 'input[name="swap"]') {
+        // Same initial-value boundary as a browser-restored form selection.
+        const input = Array.from(result).find((el) => (el as HTMLInputElement).value === "papertear") as HTMLInputElement;
+        input.checked = true;
+        Element.prototype.querySelectorAll = query;
+      }
+      return result;
+    } as typeof query;
+  });
+  await page.route("**/official-assets/template/landscape-cuts.json", (route) => route.fulfill({
+    json: { duration: 0.5, fps: 30, slots: [0, 0.2] },
+  }));
+  await page.goto("/make");
+  await waitForAppReady(page);
+  await page.locator("#picker").setInputFiles([await jpegInput("old.jpg"), await jpegInput("new.jpg")]);
+  await expect(page.locator("#saveBtn")).toBeEnabled();
+  await expect(page.locator('input[name="swap"][value="papertear"]')).toBeChecked();
+  await page.locator("#filterTab").click();
+  await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+  await page.locator("#blurTab").click();
+  await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => false });
+    window.gtag = (_command, name, params) => {
+      if (name === "video_preview" || name === "video_save") {
+        document.querySelector("#app")!.setAttribute(`data-${name}`, JSON.stringify(params));
+      }
+    };
+  });
+  await page.locator("#previewToggle").click();
+  const settings = { aspect: "landscape", effect: "papertear", swap: "papertear", filter: "blur-weak", color_filter: "film" };
+  await expect(page.locator("#app")).toHaveAttribute("data-video_preview", JSON.stringify(settings));
+  await page.locator("#saveBtn").click();
+  const outcome = await waitForExportOutcome(page, "ja");
+  if (outcome === "unsupported") {
+    await expectVisibleText(page.locator("#saveFeedback"), t("ja", "errorUnsupportedExport"));
+    return;
+  }
+  await expect(page.locator("#exportPanel")).toHaveAttribute("data-export-phase", "done");
+  const download = page.waitForEvent("download");
+  await page.locator("#downloadExportBtn").click();
+  expect((await download).suggestedFilename()).toMatch(/^anone-papertear-16x9-blur-weak-film\.(mp4|webm)$/);
+  await expect(page.locator("#app")).toHaveAttribute("data-video_save", JSON.stringify(settings));
+});
+
+for (const locale of ["ja", "en"] as const) {
+  test(`${locale}: combines color filters and blur at 375px and names the saved clip`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    // A single cut keeps transition effects out of the photo/filter comparison.
+    await page.route("**/official-assets/template/landscape-cuts.json", (route) => route.fulfill({
+      json: { duration: 0.5, fps: 30, slots: [0] },
+    }));
+    await page.goto(locale === "ja" ? "/make" : "/en/make");
+    await waitForAppReady(page);
+    // Stripes make both the photo layer and changes in blur observable.
+    const photo = await page.evaluate(() => {
+      const image = document.createElement("canvas");
+      image.width = 96;
+      image.height = 64;
+      const ctx = image.getContext("2d")!;
+      ctx.fillStyle = "rgb(204, 84, 49)";
+      ctx.fillRect(0, 0, image.width, image.height);
+      ctx.fillStyle = "#f0dca0";
+      for (let x = 0; x < image.width; x += 16) ctx.fillRect(x, 0, 8, image.height);
+      return image.toDataURL("image/png").split(",")[1]!;
+    });
+    await uploadPhoto(page, { name: "striped-photo.png", mimeType: "image/png", buffer: Buffer.from(photo, "base64") });
+    await expect(page.locator("#saveBtn")).toBeEnabled();
+    await expect(page.locator(".studio-option-tab")).toHaveCount(5);
+    const tabs = page.locator(".studio-option-tabs");
+    expect(await tabs.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    for (const tab of await page.locator(".studio-option-tab").all()) {
+      const box = await tab.boundingBox();
+      expect(box && box.x >= 0 && box.x + box.width <= 375).toBe(true);
+      expect(await tab.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    }
+    await expect(page.locator("#blurTab")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
+    await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
+    await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
+    const canvas = page.locator("canvas.stage-canvas");
+    // Sample photo detail through the fixture's static green bar. Its moving
+    // horizontal band lies outside this rectangle: pausing the media clock does
+    // not guarantee the decoder's last frame was already copied to the canvas.
+    // Whole-canvas PNG equality can therefore fail on a later filter repaint.
+    const photoPixels = () => canvas.evaluate((el: HTMLCanvasElement) => Array.from(
+      el.getContext("2d")!.getImageData(
+        Math.floor(el.width * 0.65), Math.floor(el.height * 0.25), Math.floor(el.width * 0.07), 1,
+      ).data,
+    ));
+    // The initial WebKit canvas can still be black. Wait for photo detail.
+    await page.locator("#previewToggle").click();
+    await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
+    const expectPhotoDrawn = async () => {
+      await expect.poll(() => canvas.evaluate((el: HTMLCanvasElement) => {
+        // This rectangle is inside the fixture video's solid green bar. Only
+        // the striped photo underneath can add horizontal contrast here, even
+        // with the character keyer's partial alpha.
+        const { data } = el.getContext("2d")!.getImageData(
+          Math.floor(el.width * 0.65), Math.floor(el.height * 0.25), Math.floor(el.width * 0.07), 1,
+        );
+        let min = 255;
+        let max = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          min = Math.min(min, data[i]!);
+          max = Math.max(max, data[i]!);
+        }
+        return max - min;
+      })).toBeGreaterThan(5);
+    };
+    await expectPhotoDrawn();
+    await showPreviewChrome(page);
+    await page.locator("#previewToggle").click();
+    await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "false");
+    await expectPhotoDrawn();
+    const video = page.locator("video.offscreen-video");
+    await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.paused && !el.seeking)).toBe(true);
+    const pausedTime = await video.evaluate((el: HTMLVideoElement) => el.currentTime);
+    const original = await photoPixels();
+    await page.locator("#filterTab").click();
+    await expect(page.locator('#filterPanel input[type="radio"]')).toHaveCount(4);
+    expect(await page.locator('input[name="color_filter"]').evaluateAll((inputs) =>
+      inputs.map((input) => (input as HTMLInputElement).value),
+    )).toEqual(["none", "dynamic", "dramatic", "film"]);
+    await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+    await expect.poll(photoPixels).not.toEqual(original);
+    const film = await photoPixels();
+    await page.locator('label:has(input[name="color_filter"][value="none"])').click();
+    await expect.poll(photoPixels).toEqual(original);
+    await page.locator('label:has(input[name="color_filter"][value="film"])').click();
+    await expect.poll(photoPixels).toEqual(film);
+    await page.locator("#blurTab").click();
+    await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
+    await expect.poll(photoPixels).not.toEqual(film);
+    await page.locator('label:has(input[name="filter"][value="none"])').click();
+    await expect.poll(photoPixels).toEqual(film);
+    await page.locator('label:has(input[name="filter"][value="blur-weak"])').click();
+    await expect.poll(photoPixels).not.toEqual(film);
+    expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
+      .toEqual({ time: pausedTime, paused: true, seeking: false });
+    await page.locator("#aspectTab").click();
+    await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+    await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
+    await expect(page.locator('input[name="filter"][value="blur-weak"]')).toBeChecked();
+    await expect(page.locator('input[name="color_filter"][value="film"]')).toBeChecked();
+    await page.evaluate(() => Object.defineProperty(navigator, "canShare", { configurable: true, value: () => false }));
+    await page.locator("#saveBtn").click();
+    const outcome = await waitForExportOutcome(page, locale);
+    if (outcome === "unsupported") {
+      await expect(page.locator("#exportPanel")).toBeHidden();
+      await expect(page.locator("#saveFeedback")).toBeVisible();
+      await expectVisibleText(page.locator("#saveFeedback"), t(locale, "errorUnsupportedExport"));
+      return;
+    }
+    await expect(page.locator("#exportPanel")).toHaveAttribute("data-export-phase", "done");
+    const download = page.waitForEvent("download");
+    await page.locator("#downloadExportBtn").click();
+    expect((await download).suggestedFilename()).toMatch(/^anone-zoom-16x9-blur-weak-film\.(mp4|webm)$/);
+  });
 }

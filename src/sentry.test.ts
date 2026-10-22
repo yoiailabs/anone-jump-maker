@@ -223,7 +223,8 @@ describe("trace sampling", () => {
 
 describe("trace attribute allowlist", () => {
   it("retains papertear for Sentry and performance spans", () => {
-    expect(pickTraceAttributes({ effect: "papertear" })).toEqual({ effect: "papertear" });
+    const attrs = { effect: "papertear", filter: "blur-weak", color_filter: "film" };
+    expect(pickTraceAttributes(attrs)).toEqual(attrs);
   });
   it("keeps low-cardinality fields and drops photos, blobs, fingerprints, and freeform text", () => {
     expect(
