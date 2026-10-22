@@ -89,7 +89,8 @@ it("names every aspect × effect × blur × color × container combination", () 
       seen.add(name);
     }
   }
-  expect(seen.size).toBe(96);
+  const extensions = 2;
+  expect(seen.size).toBe(ASPECT_MODES.length * SWAP_STYLES.length * IMAGE_FILTERS.length * COLOR_FILTERS.length * extensions);
 });
 
 it("keeps filter as blur and admits color_filter separately in Sentry and analytics", () => {
