@@ -6,10 +6,6 @@ import { playbackPositions } from "../src/timeline.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
 import { blockAnalytics, expectVisibleText, fileChooserFor, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
-// 同一ファイルの1080p合成・エンコードを重ねると、並列ブラウザ間でメモリが競合する。
-// 各テストは独立のまま、このファイル内だけ順に実行する（ファイル間の並列数は設定どおり）。
-test.describe.configure({ mode: "default" });
-
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
   await stubShortTemplate(page);
