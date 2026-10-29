@@ -48,7 +48,7 @@
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
     "overrides": {
-      "linkedom": "0.18.13"
+      "linkedom@0.18.14": "0.18.13"
     },
     "onlyBuiltDependencies": [
       "esbuild",

@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  linkedom: 0.18.13
+  linkedom@0.18.14: 0.18.13
 
 importers:
 
