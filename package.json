@@ -43,10 +43,13 @@
     "wrangler": "^4.152.0"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=22.23.4"
   },
   "packageManager": "pnpm@10.15.1",
   "pnpm": {
+    "overrides": {
+      "linkedom": "0.18.13"
+    },
     "onlyBuiltDependencies": [
       "esbuild",
       "workerd"
