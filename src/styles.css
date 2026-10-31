@@ -108,9 +108,17 @@ body {
   box-sizing: border-box;
 }
 
+@media (max-width: 22rem) {
+  .hero .lang-switch {
+    padding-inline: 1.6rem;
+  }
+}
+
 .lang-switch a {
   color: var(--mute);
-  text-decoration: underline 2px var(--sky);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--sky);
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
@@ -120,7 +128,9 @@ body {
 
 .lang-switch a[aria-current="page"] {
   color: var(--ink);
-  text-decoration: underline 2px var(--sky);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--sky);
   text-underline-offset: 0.2em;
 }
 
@@ -246,7 +256,7 @@ html[lang="ja"] .ja-phrase {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.45rem;
+  gap: 0.8rem;
 }
 
 #makerView .hero + .maker-story {
@@ -279,7 +289,7 @@ html[lang="ja"] .ja-phrase {
   box-sizing: border-box;
   color: var(--ink);
   font-weight: 700;
-  text-decoration: none;
+  text-decoration-line: none;
 }
 
 .page-link {
@@ -677,7 +687,7 @@ html[lang="ja"] .ja-phrase {
   align-items: center;
   max-width: 100%;
   line-height: 0;
-  text-decoration: none;
+  text-decoration-line: none;
 }
 
 .header-lockup:focus-visible {
@@ -723,7 +733,7 @@ html[lang="ja"] .ja-phrase {
   height: 1.15rem;
   color: var(--ink);
   line-height: 0;
-  text-decoration: none;
+  text-decoration-line: none;
 }
 
 .header-github:focus-visible {
@@ -1189,6 +1199,9 @@ html[lang="ja"] .ja-phrase {
 
 .option-segments label:has(input:disabled) {
   cursor: not-allowed;
+}
+
+.option-segments label:has(input:disabled:not(:checked)) {
   background: var(--card);
   color: var(--mute);
 }
@@ -1259,7 +1272,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 a.btn {
-  text-decoration: none;
+  text-decoration-line: none;
 }
 
 a.btn:focus-visible {
@@ -1569,7 +1582,7 @@ a.btn:focus-visible {
   color: var(--ink);
   font-size: 0.86rem;
   font-weight: 700;
-  text-decoration: none;
+  text-decoration-line: none;
   background: none;
   border: 0;
   border-radius: 0;
@@ -1713,7 +1726,9 @@ a.btn:focus-visible {
 .site-footer a {
   color: var(--ink);
   font-weight: 700;
-  text-decoration: underline 2px var(--sky);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--sky);
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
@@ -1722,7 +1737,9 @@ a.btn:focus-visible {
 
 .site-footer a[aria-current="page"] {
   color: var(--ink);
-  text-decoration: underline 2px var(--sky);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--sky);
   text-underline-offset: 0.2em;
 }
 
@@ -1885,7 +1902,9 @@ a.btn:focus-visible {
 .reactions-embed .twitter-tweet a {
   color: var(--ink);
   font-weight: 700;
-  text-decoration: underline 2px var(--sky);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--sky);
   text-underline-offset: 0.2em;
 }
 
