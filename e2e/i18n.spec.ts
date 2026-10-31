@@ -353,6 +353,21 @@ test.describe("source repository link", () => {
         expect(Math.abs(link.y - links[0].y)).toBeLessThan(1);
         expect(boxesOverlap(github, link)).toBe(false);
       }
+      for (const selector of ["#toStudio", "#toCommunity"]) {
+        const textLayout = await page.locator(selector).evaluate((button) => {
+          const range = document.createRange();
+          range.selectNodeContents(button);
+          const lines = [...range.getClientRects()];
+          const style = getComputedStyle(button);
+          return {
+            lineCount: new Set(lines.map((line) => Math.round(line.y))).size,
+            textWidth: range.getBoundingClientRect().width,
+            availableWidth: button.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+          };
+        });
+        expect(textLayout.lineCount, `${path} ${selector}`).toBe(1);
+        expect(textLayout.textWidth).toBeLessThanOrEqual(textLayout.availableWidth + 1);
+      }
       await expect(page.locator("#toStudio")).toBeInViewport({ ratio: 1 });
     }
   });

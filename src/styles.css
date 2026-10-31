@@ -1283,6 +1283,7 @@ a.btn:focus-visible {
 .btn.ghost {
   background: var(--card);
   color: var(--ink);
+  font-size: 1rem;
   border: 2px solid var(--ink);
   box-shadow: none;
   min-height: 2.95rem;
