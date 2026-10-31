@@ -11,7 +11,8 @@ describe("PWA manifest", () => {
     const raw = await readFile(path.join(root, "public/manifest.webmanifest"), "utf8");
     const manifest = JSON.parse(raw) as Record<string, unknown>;
     expect(installabilityIssues(manifest)).toEqual([]);
-    expect(manifest.theme_color).toBe("#F6EFE2");
+    expect(manifest.theme_color).toBe("#E8F4F9");
+    expect(manifest.background_color).toBe("#E8F4F9");
     expect(manifest.start_url).toBe("/");
     expect(manifest.scope).toBe("/");
   });

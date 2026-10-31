@@ -86,6 +86,14 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
     await expect(page.locator("#saveBtn")).toBeDisabled();
     await expect(page.locator(".studio-options input:enabled")).toHaveCount(0);
     await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
+    // 生成中も選択色を残し、設定が解除されたように見せない。
+    const selectedLabels = page.locator(".option-segments label:has(input:checked)");
+    await expect(selectedLabels).toHaveCount(5);
+    for (const label of await selectedLabels.all()) {
+      await expect(label.locator("input")).toBeDisabled();
+      await expect(label).toHaveCSS("background-color", "rgb(72, 181, 216)");
+      await expect(label).toHaveCSS("color", "rgb(30, 58, 70)");
+    }
     await page.setViewportSize({ width: 412, height: 200 });
     await expectWithinViewport(dialog, page);
     expect(await dialog.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -94,6 +102,11 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
     await expect(dialog).not.toHaveAttribute("data-open");
     await expect(page.locator("#saveBtn")).toBeEnabled();
     await expect(page.locator("#saveBtn")).toBeFocused();
+    await expect(selectedLabels).toHaveCount(5);
+    for (const label of await selectedLabels.all()) {
+      await expect(label.locator("input")).toBeEnabled();
+      await expect(label).toHaveCSS("background-color", "rgb(72, 181, 216)");
+    }
 
     await page.locator('label:has(input[name="swap"][value="jump"])').click();
     await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();

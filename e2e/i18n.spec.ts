@@ -326,6 +326,52 @@ test.describe("source repository link", () => {
     await stubShortTemplate(page);
   });
 
+  test("keeps the language links on one row clear of the GitHub target at 320px", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    for (const path of ["/", "/en", "/ko", "/zh"]) {
+      await page.goto(path);
+      await waitForAppReady(page);
+      await page.evaluate(() => document.fonts.ready);
+      const { links, github } = await page.evaluate(() => {
+        const mark = document.querySelector("#makerHeaderGitHub")!;
+        const box = mark.getBoundingClientRect();
+        const target = getComputedStyle(mark, "::before");
+        const left = parseFloat(target.left);
+        const top = parseFloat(target.top);
+        return {
+          links: [...document.querySelectorAll("#makerView .hero .lang-switch a")].map((link) => {
+            const { x, y, width, height } = link.getBoundingClientRect();
+            return { x, y, width, height };
+          }),
+          github: { x: box.x + left, y: box.y + top,
+            width: box.width - left - parseFloat(target.right),
+            height: box.height - top - parseFloat(target.bottom) },
+        };
+      });
+      expect(links).toHaveLength(4);
+      for (const link of links) {
+        expect(Math.abs(link.y - links[0].y)).toBeLessThan(1);
+        expect(boxesOverlap(github, link)).toBe(false);
+      }
+      for (const selector of ["#toStudio", "#toCommunity"]) {
+        const textLayout = await page.locator(selector).evaluate((button) => {
+          const range = document.createRange();
+          range.selectNodeContents(button);
+          const lines = [...range.getClientRects()];
+          const style = getComputedStyle(button);
+          return {
+            lineCount: new Set(lines.map((line) => Math.round(line.y))).size,
+            textWidth: range.getBoundingClientRect().width,
+            availableWidth: button.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+          };
+        });
+        expect(textLayout.lineCount, `${path} ${selector}`).toBe(1);
+        expect(textLayout.textWidth).toBeLessThanOrEqual(textLayout.availableWidth + 1);
+      }
+      await expect(page.locator("#toStudio")).toBeInViewport({ ratio: 1 });
+    }
+  });
+
   test("shows the header mark on top pages and the footer link on top and make", async ({ page }) => {
     for (const [path, locale] of [
       ["/", "ja"],
