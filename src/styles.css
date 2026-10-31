@@ -1192,7 +1192,8 @@ html[lang="ja"] .ja-phrase {
   background: var(--sky);
 }
 
-.option-segments label:has(input:focus-visible) {
+/* WebKit のネイティブ radio は矢印移動後に :focus-visible が成立しないことがある。 */
+.option-segments label:has(input:focus) {
   outline: 3px solid var(--ink);
   outline-offset: -4px;
 }
