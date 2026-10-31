@@ -1,0 +1,582 @@
+[
+  {
+    "aspect": "landscape",
+    "style": "jump",
+    "label": "cut-2f",
+    "time": 0.43333333333333335,
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.03333333333333336,
+      "flashScreen": 0.022222222222222244,
+      "flashGlobal": 0.006666666666666672,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.9701875,
+      "dy": 0.09843749999999998,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -269.4215999999999,
+      "y": -351.3536999999999,
+      "w": 2458.8432,
+      "h": 1844.1323999999997
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "jump",
+    "label": "cut",
+    "time": 0.5,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.947,
+      "dy": 0.175,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -240.03840000000014,
+      "y": -246.62880000000007,
+      "w": 2400.0768000000003,
+      "h": 1800.0576
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "jump",
+    "label": "cut+1f",
+    "time": 0.5333333333333333,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.16874999999999998,
+      "flashScreen": 0.1125,
+      "flashGlobal": 0.03375,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9610612244897959,
+      "dy": 0.12276100425079305,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -257.8567836734694,
+      "y": -316.41070316424566,
+      "w": 2435.713567346939,
+      "h": 1826.7851755102042
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "jump",
+    "label": "cut+3f",
+    "time": 0.6,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.018750000000000034,
+      "flashScreen": 0.012500000000000023,
+      "flashGlobal": 0.0037500000000000064,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9826938775510204,
+      "dy": 0.048311501648175506,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -285.26968163265315,
+      "y": -417.37583944446027,
+      "w": 2490.5393632653063,
+      "h": 1867.9045224489796
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "jump",
+    "label": "tail",
+    "time": 1.4666666666666666,
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 2,
+      "scale": 0.9594218750000001,
+      "dy": 0.13398437499999985,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": -255.77940000000012,
+      "y": -302.7314250000002,
+      "w": 2431.5588000000002,
+      "h": 1823.6691
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "zoom",
+    "label": "cut-2f",
+    "time": 0.43333333333333335,
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "blur": 3.552713678800501e-18,
+      "rgb": 8.881784197001253e-19,
+      "lift": 2.2204460492503132e-17,
+      "haze": 0,
+      "wave": 6.661338147750939e-19,
+      "plateSlot": 0,
+      "scale": 0.9886868909025207,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": 10.860584733580026,
+      "y": -171.85456144981492,
+      "w": 1898.27883053284,
+      "h": 1423.7091228996298
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "zoom",
+    "label": "cut",
+    "time": 0.5,
+    "slot": 1,
+    "photo": "a",
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": 128.6400000000001,
+      "y": -83.51999999999998,
+      "w": 1662.7199999999998,
+      "h": 1247.04
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "zoom",
+    "label": "cut+1f",
+    "time": 0.5333333333333333,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "blur": 0.014000000000000004,
+      "rgb": 0.004,
+      "lift": 5.551115123125783e-17,
+      "haze": 0.24999999999999994,
+      "wave": 0.0015000000000000005,
+      "plateSlot": 1,
+      "scale": 1.115,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -110.39999999999986,
+      "y": -262.79999999999995,
+      "w": 2140.7999999999997,
+      "h": 1605.6
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "zoom",
+    "label": "cut+3f",
+    "time": 0.6,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "blur": 1.734723475976807e-18,
+      "rgb": 4.336808689942018e-19,
+      "lift": 0,
+      "haze": 6.938893903907228e-17,
+      "wave": 0,
+      "plateSlot": 1,
+      "scale": 1.0046,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -4.41599999999994,
+      "y": -183.3119999999999,
+      "w": 1928.8319999999999,
+      "h": 1446.6239999999998
+    }
+  },
+  {
+    "aspect": "landscape",
+    "style": "zoom",
+    "label": "tail",
+    "time": 1.4666666666666666,
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "plateSlot": 2,
+      "scale": 1,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": 0,
+      "y": -180,
+      "w": 1920,
+      "h": 1440
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "jump",
+    "label": "cut-2f",
+    "time": 0.43333333333333335,
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.03333333333333336,
+      "flashScreen": 0.022222222222222244,
+      "flashGlobal": 0.006666666666666672,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.9701875,
+      "dy": 0.055371093749999996,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -1099.2288,
+      "y": -297.50910000000016,
+      "w": 3278.4576,
+      "h": 2458.8432000000003
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "jump",
+    "label": "cut",
+    "time": 0.5,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.947,
+      "dy": 0.0984375,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -1060.0512,
+      "y": -185.43840000000017,
+      "w": 3200.1024,
+      "h": 2400.0768000000003
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "jump",
+    "label": "cut+1f",
+    "time": 0.5333333333333333,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.16874999999999998,
+      "flashScreen": 0.1125,
+      "flashGlobal": 0.03375,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9610612244897959,
+      "dy": 0.06905306489107109,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -1083.8090448979594,
+      "y": -259.67489908261314,
+      "w": 3247.618089795919,
+      "h": 2435.7135673469393
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "jump",
+    "label": "cut+3f",
+    "time": 0.6,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.018750000000000034,
+      "flashScreen": 0.012500000000000023,
+      "flashGlobal": 0.0037500000000000064,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9826938775510204,
+      "dy": 0.027175219677098725,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -1120.3595755102044,
+      "y": -367.49325985262385,
+      "w": 3320.719151020409,
+      "h": 2490.5393632653067
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "jump",
+    "label": "tail",
+    "time": 1.4666666666666666,
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 2,
+      "scale": 0.9594218750000001,
+      "dy": 0.07536621093749991,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": -1081.0392000000002,
+      "y": -245.4762750000003,
+      "w": 3242.0784000000003,
+      "h": 2431.5588000000002
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "zoom",
+    "label": "cut-2f",
+    "time": 0.43333333333333335,
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "blur": 0.004571428571428573,
+      "rgb": 0.0011428571428571432,
+      "lift": 0.02857142857142858,
+      "haze": 0,
+      "wave": 0.0008571428571428574,
+      "plateSlot": 0,
+      "scale": 0.9687215713678701,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -699.9636113508739,
+      "y": 30.02729148684466,
+      "w": 2479.9272227017477,
+      "h": 1859.9454170263107
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "zoom",
+    "label": "cut",
+    "time": 0.5,
+    "slot": 1,
+    "photo": "a",
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "zoom",
+    "label": "cut+1f",
+    "time": 0.5333333333333333,
+    "slot": 1,
+    "photo": "a",
+    "fx": {
+      "blur": 0.017714285714285717,
+      "rgb": 0.004714285714285714,
+      "lift": 0.10000000000000003,
+      "haze": 0.17857142857142855,
+      "wave": 0.0022142857142857146,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "zoom",
+    "label": "cut+3f",
+    "time": 0.6,
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "blur": 0.0017142857142857153,
+      "rgb": 0.0004285714285714288,
+      "lift": 0,
+      "haze": 0.06857142857142862,
+      "wave": 0,
+      "plateSlot": 1,
+      "scale": 1.0182757403081426,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -763.3929475944226,
+      "y": -17.544710695817002,
+      "w": 2606.785895188845,
+      "h": 1955.089421391634
+    }
+  },
+  {
+    "aspect": "portrait",
+    "style": "zoom",
+    "label": "tail",
+    "time": 1.4666666666666666,
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "plateSlot": 2,
+      "scale": 1,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": -740,
+      "y": 0,
+      "w": 2560,
+      "h": 1920
+    }
+  }
+]

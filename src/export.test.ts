@@ -688,3 +688,22 @@ describe("iOS export timing", () => {
     expect(later).toBe(1);
   });
 });
+
+// 本番の連番デコードで使う、半フレーム境界・先読み1枚・末尾保持の安全網。
+describe("held frame boundary safety table", () => {
+  const d = 1 / 30;
+  const tolerance = 3 / EXPORT_FPS + 1e-3;
+  it.each([
+    { name: "half frame inclusive", frames: [d / 2], times: [0], expected: [d / 2] },
+    { name: "first PTS after half frame", frames: [0.04, 0.04 + d], times: [0, d, 2 * d], expected: [0.04, 0.04, 0.04 + d] },
+    { name: "first PTS just inside probe", frames: [tolerance - 1e-8], times: [0], expected: [tolerance - 1e-8] },
+    { name: "first PTS at probe limit", frames: [tolerance], times: [0], expected: [null] },
+    { name: "tail hold expires", frames: [0], times: [0, 3 * d, tolerance], expected: [0, 0, null] },
+    { name: "missing PTS holds then advances", frames: [0, 4 * d], times: [0, d, 2 * d, 3 * d, 4 * d], expected: [0, 0, 0, 0, 4 * d] },
+    { name: "gap uses one upcoming frame", frames: [0, 0.2, 0.21], times: [0, 0.12, 0.2], expected: [0, 0.2, 0.21] },
+    { name: "gap beyond probe", frames: [0, 0.3], times: [0, 0.15, 0.3], expected: [0, null, 0.3] },
+    { name: "no PTS", frames: [], times: [0, d], expected: [null, null] },
+  ])("$name", ({ frames, times, expected }) => {
+    expect(assignFramesToTimes(frames, times, d)).toEqual(expected);
+  });
+});

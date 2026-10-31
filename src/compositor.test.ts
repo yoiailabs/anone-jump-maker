@@ -37,6 +37,10 @@ import {
   usesBlurBackdrop,
 } from "./layout.ts";
 
+import boundaries from "./fixtures/frame-boundaries.json";
+import { photoForSlot, slotForTime } from "./timeline.ts";
+import type { AspectMode, SwapStyle } from "./layout.ts";
+
 const F = 1 / TEMPLATE_FPS;
 
 describe("photo orientation", () => {
@@ -282,5 +286,17 @@ describe("character size draw path", () => {
     expect(appSrc).toContain('input[name="character"]');
     expect(appSrc).toContain("characterSize");
     expect(appSrc).toContain("applyCharacterSize");
+  });
+});
+
+// 段0で現行の公開関数から採録。小数もそのまま固定して配置と効果の回帰を検出する。
+describe("frame boundary safety table", () => {
+  it.each(boundaries)("$aspect $style $label", (row) => {
+    const fx = swapFx(row.time, [0, 0.5, 1], row.style as SwapStyle, row.aspect as AspectMode);
+    const { width, height } = OUTPUTS[row.aspect as AspectMode];
+    expect(slotForTime(row.time, [0, 0.5, 1])).toBe(row.slot);
+    expect(photoForSlot(["a", "b"], fx.plateSlot)).toBe(row.photo);
+    expect(fx).toEqual(row.fx);
+    expect(plateDest(1600, 1200, width, height, fx, row.style as SwapStyle)).toEqual(row.dest);
   });
 });
