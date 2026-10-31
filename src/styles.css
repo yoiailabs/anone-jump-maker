@@ -1,14 +1,13 @@
 :root {
   color-scheme: light;
-  --paper: #f6efe2;
-  --ink: #1a1a1a;
-  --mute: #5c564f;
-  --teal: #44c0c4;
-  --lime: #d4f06a;
-  --coral: #ff7d74;
-  --peach: #f4c49a;
-  --card: #fff8ee;
-  --line: #1a1a1a;
+  --paper: #E8F4F9;
+  --card: #FFFFFF;
+  --ink: #1E3A46;
+  --mute: #55666E;
+  --sky: #48B5D8;
+  --shade: #969DA3;
+  --error: #A8322E;
+  --rule: color-mix(in srgb, var(--shade) 35%, var(--card));
   font-family: "Zen Maru Gothic", "Noto Sans KR", "Noto Sans SC",
     "Hiragino Maru Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo",
     "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -17,11 +16,16 @@
   --page-pad-bottom: 3.8rem;
   --section-gap: 2.35rem;
   --thumb-size: 6rem;
-  --thumb-radius: 0.9rem;
+  --thumb-radius: 0.7rem;
 }
 
 * {
   box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
 }
 
 html,
@@ -66,75 +70,6 @@ body {
   display: none;
 }
 
-.sky {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-/* 装飾の円は文字の後ろに沈む「背景」として扱う：輪郭なし・淡い色・大きめ */
-.blob {
-  position: absolute;
-  border-radius: 999px;
-  pointer-events: none;
-  opacity: 0.6;
-  filter: blur(6px);
-}
-
-.blob-lime {
-  width: 17rem;
-  height: 17rem;
-  background: color-mix(in srgb, var(--lime) 55%, white);
-  top: -6rem;
-  left: -5rem;
-}
-
-.blob-teal {
-  width: 14rem;
-  height: 14rem;
-  background: color-mix(in srgb, var(--teal) 45%, white);
-  top: 18%;
-  right: -6rem;
-}
-
-.blob-coral {
-  width: 15rem;
-  height: 15rem;
-  background: color-mix(in srgb, var(--coral) 45%, white);
-  bottom: -6rem;
-  right: -5rem;
-}
-
-/* スマホ幅では本文と重なるため、さらに広く・薄くして文字の可読性を優先する */
-@media (max-width: 40rem) {
-  .blob {
-    opacity: 0.42;
-    filter: blur(10px);
-  }
-
-  .blob-lime {
-    width: 20rem;
-    height: 20rem;
-    top: -8rem;
-    left: -7rem;
-  }
-
-  .blob-teal {
-    width: 17rem;
-    height: 17rem;
-    right: -8rem;
-  }
-
-  .blob-coral {
-    width: 18rem;
-    height: 18rem;
-    bottom: -8rem;
-    right: -7rem;
-  }
-}
-
 .hero,
 .stage-wrap,
 .notes,
@@ -159,7 +94,7 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.35rem 0.85rem;
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.25rem;
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -169,23 +104,28 @@ body {
 }
 
 .hero .lang-switch {
-  padding-inline: 1.6rem;
+  padding-inline: 2.75rem;
   box-sizing: border-box;
 }
 
 .lang-switch a {
-  color: #2a7f82;
-  text-decoration: none;
+  color: var(--mute);
+  text-decoration: underline 2px var(--sky);
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding-inline: 0.3rem;
+  text-underline-offset: 0.2em;
 }
 
 .lang-switch a[aria-current="page"] {
   color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
+  text-decoration: underline 2px var(--sky);
+  text-underline-offset: 0.2em;
 }
 
 .lang-switch a:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -195,9 +135,9 @@ body {
   font-family: "Zen Maru Gothic", "Noto Sans KR", "Noto Sans SC",
     "Hiragino Maru Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo",
     "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  font-size: 1.58rem;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0;
   line-height: 1.45;
   color: var(--ink);
 }
@@ -209,7 +149,7 @@ body {
 }
 
 .hero-logo-link:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -337,25 +277,24 @@ html[lang="ja"] .ja-phrase {
   display: flex;
   width: 100%;
   box-sizing: border-box;
-  background: var(--lime);
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
 }
 
 .page-link {
-  color: #2a7f82;
+  color: var(--ink);
   font-weight: 700;
 }
 
 .page-link:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
 /* 参考 MV のジャンプ部分を切り出した APNG ループ。クリックで PV（YouTube）を別タブで開く。 */
 .loop-wrap {
-  --loop-shadow-y: 8px;
+  --loop-shadow-y: 14px;
   display: flex;
   justify-content: center;
   position: relative;
@@ -365,27 +304,28 @@ html[lang="ja"] .ja-phrase {
 .loop-link {
   display: block;
   width: min(100%, 26rem);
-  border-radius: 1.5rem;
+  border-radius: 1.25rem;
   cursor: pointer;
-  transition: transform 0.16s ease;
+  transform: rotate(-2deg);
 }
 
-.loop-link:hover {
-  transform: translateY(-2px);
+.loop-link:hover,
+.loop-link:focus-visible {
+  transform: translateY(-2px) rotate(0deg);
 }
 
 .loop-link:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 4px;
+  outline: 3px solid var(--ink);
+  outline-offset: 8px;
 }
 
 .loop-frame {
   display: block;
   position: relative;
-  border-radius: 1.5rem;
+  border-radius: 1.25rem;
   background: var(--card);
-  border: 3.5px solid var(--ink);
-  box-shadow: 7px var(--loop-shadow-y, 8px) 0 var(--ink);
+  border: 0;
+  box-shadow: 0 0 0 6px var(--card), 5px 8px 0 6px var(--shade);
   overflow: hidden;
 }
 
@@ -405,7 +345,6 @@ html[lang="ja"] .ja-phrase {
   height: 100%;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
 }
 
 .loop-video.is-ready {
@@ -422,14 +361,15 @@ html[lang="ja"] .ja-phrase {
   margin: auto;
   inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   max-width: min(26rem, calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
-  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100vh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100svh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow-y: auto;
   overscroll-behavior: contain;
   color: var(--ink);
 }
 
 .export-panel::backdrop {
-  background: rgb(0 0 0 / 55%);
+  background: rgb(20 38 46 / 55%);
 }
 
 .export-panel:focus {
@@ -437,7 +377,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 .export-panel:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -451,10 +391,10 @@ html[lang="ja"] .ja-phrase {
 
 .export-panel.export-sheet {
   display: none;
-  border: 3px solid var(--ink);
-  border-radius: 1.1rem;
+  border: 0;
+  border-radius: 1.25rem;
   background: var(--card);
-  box-shadow: 4px 5px 0 var(--ink);
+  box-shadow: none;
 }
 
 .export-panel.export-sheet[open] {
@@ -479,7 +419,7 @@ html[lang="ja"] .ja-phrase {
   flex: 1 1 auto;
   width: 100%;
   height: 0.9rem;
-  border: 2.5px solid var(--ink);
+  border: 2px solid var(--ink);
   border-radius: 999px;
   overflow: hidden;
   background: var(--paper);
@@ -492,12 +432,12 @@ html[lang="ja"] .ja-phrase {
 }
 
 .export-progress-bar::-webkit-progress-value {
-  background: var(--teal);
+  background: var(--sky);
   border-radius: 999px;
 }
 
 .export-progress-bar::-moz-progress-bar {
-  background: var(--teal);
+  background: var(--sky);
   border-radius: 999px;
 }
 
@@ -550,7 +490,7 @@ html[lang="ja"] .ja-phrase {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .preview-options {
@@ -589,9 +529,9 @@ html[lang="ja"] .ja-phrase {
   justify-content: center;
   width: 2.4rem;
   height: 2.4rem;
-  border: 3px solid var(--ink);
+  border: 2px solid var(--ink);
   border-radius: 999px;
-  background: var(--lime);
+  background: var(--card);
   color: var(--ink);
   font: inherit;
   font-size: 1.2rem;
@@ -599,7 +539,6 @@ html[lang="ja"] .ja-phrase {
   line-height: 1;
   cursor: pointer;
   flex: 0 0 auto;
-  transition: transform 0.16s ease;
 }
 
 .preview-close:hover {
@@ -610,17 +549,13 @@ html[lang="ja"] .ja-phrase {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.28rem;
+  gap: 0.8rem;
   width: 100%;
   flex: 0 0 auto;
 }
 
 .btn.preview-save-btn {
   width: 100%;
-  min-height: 3.15rem;
-  background: #e6fb3c;
-  box-shadow: 4px 5px 0 var(--ink);
-  font-size: 1.02rem;
 }
 
 .preview-save-hint {
@@ -714,15 +649,15 @@ html[lang="ja"] .ja-phrase {
   appearance: none;
   -webkit-appearance: none;
   cursor: default;
-  border-radius: 1.5rem;
+  border-radius: 1.25rem;
   overflow: hidden;
-  background: var(--teal);
-  border: 3.5px solid var(--ink);
-  box-shadow: 7px 8px 0 var(--ink);
+  background: var(--sky);
+  border: 3.5px solid var(--card);
+  box-shadow: 5px 7px 0 var(--shade);
 }
 
 .stage:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 4px;
 }
 
@@ -746,7 +681,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 .header-lockup:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -768,7 +703,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 #studioHome:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -786,13 +721,13 @@ html[lang="ja"] .ja-phrase {
   justify-content: center;
   width: 1.15rem;
   height: 1.15rem;
-  color: #2a7f82;
+  color: var(--ink);
   line-height: 0;
   text-decoration: none;
 }
 
 .header-github:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -825,7 +760,7 @@ html[lang="ja"] .ja-phrase {
   font: inherit;
   font-size: 1.2rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-align: center;
   cursor: pointer;
   appearance: none;
@@ -833,7 +768,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 .studio-empty:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: -6px;
 }
 
@@ -850,7 +785,7 @@ html[lang="ja"] .ja-phrase {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: rgba(20, 16, 12, 0.45);
+  background: rgb(20 38 46 / 0.45);
   pointer-events: none;
 }
 
@@ -863,8 +798,8 @@ html[lang="ja"] .ja-phrase {
   height: 4.25rem;
   min-width: 4.25rem;
   margin: 0;
-  border-width: 3px;
-  box-shadow: 3px 3px 0 var(--ink);
+  border-width: 2px;
+  box-shadow: none;
   transform: translate(-50%, -50%);
 }
 
@@ -886,7 +821,7 @@ html[lang="ja"] .ja-phrase {
 }
 
 .preview-toggle:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid #fff;
   outline-offset: 3px;
 }
 
@@ -914,8 +849,8 @@ html[lang="ja"] .ja-phrase {
   width: 100%;
   margin: 0;
   padding: 1.35rem 0.35rem 0.35rem;
-  background: linear-gradient(to top, rgba(28, 22, 16, 0.82) 0%, rgba(28, 22, 16, 0.42) 58%, rgba(28, 22, 16, 0) 100%);
-  color: #fff8ee;
+  background: linear-gradient(to top, rgb(20 38 46 / 0.82) 0%, rgb(20 38 46 / 0.42) 58%, rgb(20 38 46 / 0) 100%);
+  color: #fff;
 }
 
 .stage[data-chrome="open"] .preview-transport {
@@ -941,9 +876,9 @@ html[lang="ja"] .ja-phrase {
   min-width: 2.75rem;
   min-height: 2.75rem;
   padding: 0;
-  border-width: 2.5px;
+  border-width: 2px;
   gap: 0;
-  box-shadow: 2px 2px 0 var(--ink);
+  box-shadow: none;
 }
 
 .preview-transport .preview-actions .btn svg {
@@ -977,7 +912,7 @@ html[lang="ja"] .ja-phrase {
   min-width: 2.5rem;
   height: 2.75rem;
   margin: 0;
-  accent-color: #fff8ee;
+  accent-color: #fff;
   background: transparent;
   touch-action: pan-x;
   -webkit-appearance: none;
@@ -987,7 +922,7 @@ html[lang="ja"] .ja-phrase {
 .preview-transport .preview-seek::-webkit-slider-runnable-track {
   height: 0.5rem;
   border-radius: 999px;
-  background: rgba(255, 248, 238, 0.72);
+  background: rgb(255 255 255 / 72%);
 }
 
 .preview-transport .preview-seek::-webkit-slider-thumb {
@@ -997,23 +932,22 @@ html[lang="ja"] .ja-phrase {
   height: 1.25rem;
   margin-top: -0.375rem;
   border-radius: 999px;
-  background: #fff8ee;
+  background: var(--card);
   border: 2.5px solid var(--ink);
-  box-shadow: 1px 1px 0 var(--ink);
 }
 
 .preview-transport .preview-seek::-moz-range-track {
   height: 0.5rem;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 248, 238, 0.72);
+  background: rgb(255 255 255 / 72%);
 }
 
 .preview-transport .preview-seek::-moz-range-thumb {
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 999px;
-  background: #fff8ee;
+  background: var(--card);
   border: 2.5px solid var(--ink);
 }
 
@@ -1024,8 +958,7 @@ html[lang="ja"] .ja-phrase {
   justify-content: center;
   width: 1.35rem;
   height: 2.75rem;
-  color: #fff8ee;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+  color: #fff;
 }
 
 .preview-status-icon {
@@ -1047,8 +980,7 @@ html[lang="ja"] .ja-phrase {
   letter-spacing: 0.01em;
   line-height: 1.2;
   white-space: nowrap;
-  color: #fff8ee;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  color: #fff;
 }
 
 @container (max-width: 12rem) {
@@ -1063,7 +995,7 @@ html[lang="ja"] .ja-phrase {
   width: min(100%, 22rem);
   height: 2.75rem;
   margin: 0;
-  accent-color: var(--teal);
+  accent-color: var(--sky);
   touch-action: pan-x;
 }
 
@@ -1116,17 +1048,17 @@ html[lang="ja"] .ja-phrase {
 
 .studio-options-heading {
   margin: 0.1rem 0 0;
-  font-size: 0.78rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  line-height: 1.2;
-  color: var(--mute);
+  letter-spacing: 0;
+  line-height: 1.5;
+  color: var(--ink);
 }
 
 .studio-option-sheet {
   width: 100%;
   min-width: 0;
-  border: 3px solid var(--ink);
+  border: 0;
   border-radius: 1rem;
   background: var(--card);
   padding: 0.25rem 0.7rem;
@@ -1140,7 +1072,7 @@ html[lang="ja"] .ja-phrase {
   row-gap: 0.15rem;
   min-width: 0;
   padding: 0.25rem 0;
-  border-bottom: 2px dashed #d9cfbf;
+  border-bottom: 1px solid var(--rule);
 }
 
 .studio-option-row:last-child {
@@ -1153,7 +1085,7 @@ html[lang="ja"] .ja-phrase {
   max-width: 100%;
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--mute);
+  color: var(--ink);
 }
 
 .option-scroll-frame {
@@ -1209,7 +1141,7 @@ html[lang="ja"] .ja-phrase {
   min-width: 100%;
   border: 2px solid var(--ink);
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
 }
 
 .option-segments label {
@@ -1218,7 +1150,7 @@ html[lang="ja"] .ja-phrase {
   flex: 1 0 auto;
   align-items: center;
   justify-content: center;
-  min-height: max(32px, 2rem);
+  min-height: 2.75rem;
   padding: 0.3rem 0.6rem;
   border-left: 2px solid var(--ink);
   cursor: pointer;
@@ -1247,17 +1179,18 @@ html[lang="ja"] .ja-phrase {
 }
 
 .option-segments label:has(input:checked) {
-  background: var(--peach);
+  background: var(--sky);
 }
 
-.option-segments label:has(input:focus) {
-  outline: 3px solid var(--teal);
+.option-segments label:has(input:focus-visible) {
+  outline: 3px solid var(--ink);
   outline-offset: -4px;
 }
 
 .option-segments label:has(input:disabled) {
-  opacity: 0.38;
   cursor: not-allowed;
+  background: var(--card);
+  color: var(--mute);
 }
 
 .option-segments-pills {
@@ -1293,24 +1226,22 @@ html[lang="ja"] .ja-phrase {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.95rem;
+  min-height: 3.25rem;
   padding: 0.7rem 1rem;
   border-radius: 999px;
-  border: 3px solid var(--ink);
+  border: 0;
   font: inherit;
   cursor: pointer;
-  transition: transform 0.16s ease;
+  font-size: 1.05rem;
+  font-weight: 700;
+  background: var(--sky);
+  color: var(--ink);
+  box-shadow: 0 0 0 4px var(--card), 3px 5px 0 4px var(--shade);
 }
 
 .file-btn:hover,
 .btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.file-btn {
-  background: var(--teal);
-  color: var(--ink);
-  font-weight: 700;
+  transform: translateY(-1px);
 }
 
 .file-btn input {
@@ -1327,24 +1258,21 @@ html[lang="ja"] .ja-phrase {
   gap: 0.55rem;
 }
 
-.btn {
-  background: var(--lime);
-  color: var(--ink);
-  font-weight: 700;
-}
-
 a.btn {
   text-decoration: none;
 }
 
 a.btn:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
+  outline: 3px solid var(--ink);
+  outline-offset: 6px;
 }
 
 .btn.ghost {
   background: var(--card);
   color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: none;
+  min-height: 2.95rem;
 }
 
 .preview-toggle.btn {
@@ -1352,7 +1280,7 @@ a.btn:focus-visible {
   min-height: 4.25rem;
   padding: 0;
   border-radius: 999px;
-  background: #fff8ee;
+  background: var(--card);
   color: var(--ink);
 }
 
@@ -1366,14 +1294,17 @@ a.btn:focus-visible {
 
 .btn:disabled,
 .file-btn:has(input:disabled) {
-  opacity: 0.38;
   cursor: not-allowed;
   transform: none;
+  background: var(--card);
+  color: var(--mute);
+  border: 2px dashed var(--shade);
+  box-shadow: none;
 }
 
 .thumbs {
   --thumb-size: 6rem;
-  --thumb-radius: 0.9rem;
+  --thumb-radius: 0.7rem;
   display: flex;
   flex-wrap: nowrap;
   gap: 0.7rem;
@@ -1402,16 +1333,18 @@ a.btn:focus-visible {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  border-radius: var(--thumb-radius);
+  box-shadow: 2px 3px 0 var(--shade);
 }
 
 .thumb:focus-visible,
 .thumb-remove:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
 
 .thumb-add:focus-visible {
-  outline: 3px solid var(--lime);
+  outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -1424,14 +1357,13 @@ a.btn:focus-visible {
   justify-content: center;
   padding: 0;
   border-radius: var(--thumb-radius);
-  border: 3px solid var(--ink);
-  background: var(--teal);
+  border: 2px dashed var(--ink);
+  background: var(--card);
   color: var(--ink);
-  box-shadow: 4px 5px 0 var(--ink);
+  box-shadow: none;
   font: inherit;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform 0.16s ease;
 }
 
 .thumb-add svg {
@@ -1444,14 +1376,16 @@ a.btn:focus-visible {
 }
 
 .thumb-add:disabled:not(.is-cap) {
-  opacity: 0.38;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  background: var(--card);
+  color: var(--mute);
+  border-color: var(--shade);
 }
 
 .thumb-add.is-cap {
-  background: var(--card);
+  background: var(--paper);
   color: var(--mute);
   box-shadow: none;
   cursor: default;
@@ -1466,6 +1400,7 @@ a.btn:focus-visible {
 
 .thumb.is-placeholder {
   opacity: 1;
+  box-shadow: none;
 }
 
 .thumb.is-placeholder > * {
@@ -1485,7 +1420,7 @@ a.btn:focus-visible {
   overflow: visible;
   border-radius: var(--thumb-radius);
   /* img の box-shadow は角丸とずれることがあるので、測った枠と同じ箱に付ける */
-  box-shadow: 5px 6px 0 var(--ink);
+  box-shadow: 5px 6px 0 var(--shade);
 }
 
 .thumb img,
@@ -1494,9 +1429,9 @@ a.btn:focus-visible {
   height: var(--thumb-size);
   object-fit: cover;
   border-radius: var(--thumb-radius);
-  border: 3px solid var(--ink);
+  border: 3px solid var(--card);
   flex: 0 0 auto;
-  background: var(--peach);
+  background: var(--paper);
   pointer-events: none;
   -webkit-user-drag: none;
 }
@@ -1521,8 +1456,8 @@ a.btn:focus-visible {
   padding: 0 0.28rem;
   border-radius: 0.4rem;
   border: 2px solid var(--ink);
-  background: var(--lime);
-  color: var(--ink);
+  background: var(--ink);
+  color: #fff;
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.15rem;
@@ -1541,7 +1476,7 @@ a.btn:focus-visible {
   padding: 0;
   border-radius: 0.45rem;
   border: 2px solid var(--ink);
-  background: var(--coral);
+  background: var(--card);
   color: var(--ink);
   font: inherit;
   font-size: 0.88rem;
@@ -1551,8 +1486,9 @@ a.btn:focus-visible {
 }
 
 .thumb-remove:disabled {
-  opacity: 0.38;
   cursor: not-allowed;
+  color: var(--mute);
+  border-color: var(--shade);
 }
 
 .thumbs-hint {
@@ -1565,12 +1501,12 @@ a.btn:focus-visible {
 
 .status[data-kind="busy"],
 .status.feedback[data-kind="busy"] {
-  color: #2a7f82;
+  color: var(--ink);
 }
 
 .status[data-kind="error"],
 .status.feedback[data-kind="error"] {
-  color: #c44b45;
+  color: var(--error);
 }
 
 .make-note {
@@ -1603,73 +1539,50 @@ a.btn:focus-visible {
 .notes .official-mv-title,
 .notes .reactions-title {
   margin: 0;
-  color: var(--mute);
+  color: var(--ink);
   font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  line-height: 1.75;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.5;
 }
 
 .link-banners {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  background: var(--card);
+  border-radius: 1rem;
+  overflow: hidden;
 }
 
 .link-banner {
-  --accent: var(--teal);
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.4rem;
   min-height: 2.85rem;
-  padding: 0.4rem 0.6rem;
+  padding: 0.4rem 0.9rem;
   color: var(--ink);
   font-size: 0.86rem;
   font-weight: 700;
   text-decoration: none;
-  background: color-mix(in srgb, var(--accent) 22%, var(--card));
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  box-shadow: 3px 4px 0 var(--ink);
-  transition: transform 0.16s ease;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .link-banner:hover {
-  transform: translateY(-2px);
+  background: var(--paper);
 }
 
 .link-banner:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
-}
-
-.link-banner[data-service="x"] {
-  --accent: var(--teal);
-}
-
-.link-banner[data-service="instagram"] {
-  --accent: var(--peach);
-}
-
-.link-banner[data-service="youtube"] {
-  --accent: var(--coral);
-}
-
-.link-banner[data-service="tiktok"] {
-  --accent: var(--teal);
-}
-
-.link-banner[data-service="spotify"] {
-  --accent: var(--lime);
-}
-
-.link-banner[data-service="apple-music"] {
-  --accent: var(--peach);
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
 }
 
 .link-icon {
@@ -1695,10 +1608,10 @@ a.btn:focus-visible {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 1.4rem;
+  border-radius: 0.75rem;
   background: var(--card);
-  border: 3.5px solid var(--ink);
-  box-shadow: 7px 8px 0 var(--ink);
+  border: 0;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -1728,18 +1641,19 @@ a.btn:focus-visible {
 .reactions-embed .twitter-tweet {
   width: 100%;
   margin: 0;
-  padding: 0.9rem 1rem;
-  background: var(--card);
-  border: 3px solid var(--ink);
-  border-radius: 1.4rem;
-  box-shadow: 5px 6px 0 var(--teal);
+  padding: 0.2rem 0 0.2rem 1rem;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   color: var(--ink);
   font-size: 0.92rem;
   line-height: 1.7;
+  border-left: 3px solid var(--sky);
 }
 
 .reactions-embed .twitter-tweet a {
-  color: #2a7f82;
+  color: var(--ink);
 }
 
 .reactions-embed .twitter-tweet-rendered,
@@ -1768,10 +1682,11 @@ a.btn:focus-visible {
   align-items: center;
   gap: 0.55rem;
   margin: 0;
-  padding-top: 0.15rem;
+  padding-top: 1.5rem;
   color: var(--mute);
   font-size: 0.78rem;
   line-height: 1.6;
+  border-top: 1px solid var(--rule);
 }
 
 .site-footer-notice {
@@ -1796,19 +1711,23 @@ a.btn:focus-visible {
 }
 
 .site-footer a {
-  color: #2a7f82;
+  color: var(--ink);
   font-weight: 700;
-  text-decoration: none;
+  text-decoration: underline 2px var(--sky);
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  text-underline-offset: 0.2em;
 }
 
 .site-footer a[aria-current="page"] {
   color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
+  text-decoration: underline 2px var(--sky);
+  text-underline-offset: 0.2em;
 }
 
 .site-footer a:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -1836,7 +1755,7 @@ a.btn:focus-visible {
   margin: 0;
   font-size: 0.98rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .privacy p,
@@ -1870,7 +1789,7 @@ a.btn:focus-visible {
 
 .privacy-table-wrap {
   overflow-x: auto;
-  border: 2px solid var(--line);
+  border: 2px solid var(--ink);
   border-radius: 0.7rem;
   background: var(--card);
 }
@@ -1885,14 +1804,14 @@ a.btn:focus-visible {
 .privacy th,
 .privacy td {
   padding: 0.45rem 0.55rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--ink);
   text-align: start;
   vertical-align: top;
   line-height: 1.55;
 }
 
 .privacy th {
-  background: color-mix(in srgb, var(--lime) 72%, white);
+  background: var(--paper);
   color: var(--ink);
   font-weight: 700;
 }
@@ -1906,13 +1825,13 @@ a.btn:focus-visible {
 }
 
 .privacy a {
-  color: #2a7f82;
+  color: var(--ink);
   font-weight: 700;
 }
 
 .privacy a:focus-visible,
 .privacy-back a:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -1921,3 +1840,94 @@ a.btn:focus-visible {
   text-align: center;
 }
 
+/* ステッカーの白フチの外に、キーボード操作の輪郭を出す。 */
+.btn:focus-visible,
+.file-btn:has(input:focus-visible) {
+  outline: 3px solid var(--ink);
+  outline-offset: 6px;
+}
+
+.btn.ghost:focus-visible {
+  outline-offset: 3px;
+}
+
+.preview-transport :focus-visible,
+.preview-toggle.btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.btn:not(.ghost):active:not(:disabled),
+.file-btn:active:not(:has(input:disabled)) {
+  transform: translate(3px, 5px);
+  box-shadow: 0 0 0 4px var(--card);
+}
+
+/* 写真が入ったら、次の主操作は保存。追加は副ボタンにする。 */
+.studio-photos:has(.thumb[data-photo-id]) .file-btn {
+  min-height: 2.95rem;
+  border: 2px solid var(--ink);
+  background: var(--card);
+  box-shadow: none;
+}
+
+.studio-photos:has(.thumb[data-photo-id]) .file-btn:active {
+  transform: none;
+}
+
+.studio-photos:has(.thumb[data-photo-id]) .file-btn:has(input:disabled) {
+  border: 2px dashed var(--shade);
+  color: var(--mute);
+}
+
+.page-link,
+.privacy a,
+.reactions-embed .twitter-tweet a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: underline 2px var(--sky);
+  text-underline-offset: 0.2em;
+}
+
+.header-github::before {
+  content: "";
+  position: absolute;
+  inset: -0.8rem;
+}
+
+.link-banners li {
+  border-bottom: 1px solid var(--rule);
+}
+
+.link-banners li:nth-child(odd) {
+  border-right: 1px solid var(--rule);
+}
+
+.link-banners li:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn,
+  .file-btn,
+  .loop-link,
+  .preview-close,
+  .thumb-add {
+    transition: transform 0.16s ease;
+  }
+
+  .link-banner {
+    transition: background-color 0.16s ease;
+  }
+
+  .loop-video {
+    transition: opacity 0.25s ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* dnd-kit がインラインで指定する並べ替えの移動も即時にする。 */
+  .thumb {
+    transition: none !important;
+  }
+}

@@ -105,11 +105,6 @@ export default function PrivacyArticle({ locale }: { locale: Locale }) {
 
   return (
     <>
-      <div className="sky" aria-hidden="true">
-        <span className="blob blob-lime" />
-        <span className="blob blob-teal" />
-        <span className="blob blob-coral" />
-      </div>
       <div className="app privacy-app">
         <header className="hero">
           <LegalHeroLogo />
