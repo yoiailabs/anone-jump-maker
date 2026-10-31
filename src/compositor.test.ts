@@ -297,6 +297,9 @@ describe("frame boundary safety table", () => {
   const slots = [0, 0.5, 1];
   const roundedCut = templateCuts.slots[4]!;
   // 丸めた slot と実フレーム時刻の両方を通し、slot の許容を外す回帰も検出する。
+  // 実フレーム時刻の行は現行のずれもそのまま固定している。丸めで切り上がった slot では
+  // zoom の入れ替わりが1フレーム遅れ、jump のカット時に写真が縮まない（FRAME_EPS と jumpCycle の k < 0）。
+  // 時刻の出し方を変えてこの行が落ちたら、回帰か仕様の修正かをここで判断する。
   const frameCut = templateCuts.slotFrames[4]! / templateCuts.fps;
   const inputs = [
     { label: "start", slots, cut: 0, n: 0 },
@@ -365,7 +368,7 @@ describe("frame boundary safety table", () => {
     expect({ plateSlot, cutIndex, backdrop }).toEqual({
       plateSlot: expectedPlate, cutIndex: expectedCut, backdrop: expectedBackdrop,
     });
-    expect(Object.keys(continuousFx)).toEqual(Object.keys(expectedFx));
+    expect(Object.keys(continuousFx).sort()).toEqual(Object.keys(expectedFx).sort());
     for (const key of Object.keys(continuousFx) as (keyof typeof continuousFx)[]) {
       expect(continuousFx[key], key).toBeCloseTo(expectedFx[key], 9);
     }
