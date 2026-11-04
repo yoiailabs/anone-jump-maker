@@ -13,9 +13,9 @@ import { inspectOptions } from "./options-layout.js";
 const filmSelector = 'input[name="color_filter"][value="film"]';
 const filterFrame = '.studio-option-row:has(input[name="color_filter"]) .option-scroll-frame';
 
-// 編集シートのタブごとの radio 行。5 行がどれかのタブに必ず入る。
+// 編集シートのタブごとの radio 行。向き（aspect）はシートの外、プレビュー下の切り替えにある。
 const TAB_ROWS: Record<EditorTab, string[]> = {
-  photos: ["aspect"],
+  photos: [],
   motion: ["swap", "character"],
   look: ["color_filter", "filter"],
 };
@@ -65,13 +65,15 @@ for (const width of [320, 360, 375, 390, 414, 768, 1024, 1280, 1440]) {
         await expect(page.getByRole("tab")).toHaveCount(0);
         await openEditor(page);
         await expect(page.getByRole("tab")).toHaveCount(3);
+        const sheet = page.locator(".studio-sheet");
         for (const [tab, names] of Object.entries(TAB_ROWS) as [EditorTab, string[]][]) {
           await openEditorTab(page, tab);
-          await expect(page.getByRole("radiogroup")).toHaveCount(names.length);
-          for (const row of await page.getByRole("radiogroup").all()) {
+          await expect(sheet.getByRole("radiogroup")).toHaveCount(names.length);
+          for (const row of await sheet.getByRole("radiogroup").all()) {
             await expect(row).toBeVisible();
             await expect(row).toHaveAccessibleName(await row.locator(".studio-option-label").innerText());
           }
+          if (names.length === 0) continue;
           await expect.poll(async () => (await page.evaluate(inspectOptions)).issues).toEqual([]);
           expect((await page.evaluate(inspectOptions)).rows.map((row) => row.name)).toEqual(names);
           if (width >= 768 && fontSize === 100) {
@@ -227,7 +229,7 @@ test("back navigation restores portrait, jump and film and reveals the restored 
   if ((await page.locator("#studioView").getAttribute("data-phase")) === "pick") await openEditor(page);
   await openEditorTab(page, "look");
   await expectRevealed(page.locator(filmSelector));
-  for (const tab of ["photos", "motion", "look"] as const) {
+  for (const tab of ["motion", "look"] as const) {
     await openEditorTab(page, tab);
     await expect.poll(async () => (await page.evaluate(inspectOptions)).issues).toEqual([]);
   }

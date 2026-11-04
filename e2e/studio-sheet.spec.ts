@@ -54,6 +54,7 @@ test("after photos, preview and sheet share one phone screen", async ({ page }) 
   await openEditor(page);
   await expect(page.locator(".studio-back")).toBeVisible();
   await expect(page.locator(".studio-back")).toHaveAttribute("href", "/");
+  await expect(page.locator(".studio-back")).toHaveAccessibleName(t("ja", "studioBack"));
   await expect(page.locator("#saveBtn")).toBeVisible();
   await expect(page.locator(".studio-status-pill")).toHaveText(
     t("ja", "studioStatus", { n: 2, state: t("ja", "previewStopped") }),
@@ -86,7 +87,8 @@ test("tabs switch panels by click and by arrow, Home and End keys", async ({ pag
   await expect(page.getByRole("tabpanel")).toHaveCount(1);
   await expect(page.getByRole("tabpanel")).toHaveAccessibleName(t("ja", "studioTabPhotos"));
   await expect(page.locator(".thumb-add")).toBeVisible();
-  await expect(page.locator('label:has(input[name="aspect"][value="portrait"])')).toBeVisible();
+  // The aspect switch lives under the preview, not in any tab.
+  await expect(page.locator('.sheet-panels input[name="aspect"]')).toHaveCount(0);
   await expect(page.locator('label:has(input[name="swap"][value="jump"])')).toBeHidden();
 
   await look.click();
@@ -298,7 +300,10 @@ test("localized tabs and sheet copy", async ({ page }) => {
   await expect(page.locator("#sheetHandle")).toHaveAccessibleName(
     `${t("en", "studioSheetHintOpen")}${t("en", "studioSheetLabelSep")}${t("en", "studioSheetCollapse")}`,
   );
-  await expect(page.locator(".studio-back")).toHaveText(t("en", "studioBack"));
+  await expect(page.locator(".studio-back")).toHaveAccessibleName(t("en", "studioBack"));
+  await expect(page.getByRole("radiogroup", { name: t("en", "studioOptionAspect") }).getByRole("radio"))
+    .toHaveCount(2);
+  await expect(page.getByRole("radio", { name: t("en", "makerPortrait") })).toBeAttached();
   await expect(page.locator(".studio-back")).toHaveAttribute("href", "/en");
 
   const stopped = t("en", "previewStopped");

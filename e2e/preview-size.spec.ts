@@ -32,6 +32,7 @@ function measure(page: Page) {
       availableHeight: wrap.height - borderY,
       borderY,
       scrollWidth: document.documentElement.scrollWidth,
+      scrollHeight: document.documentElement.scrollHeight,
       stage: box("#stage"),
       sheet: box(".studio-sheet"),
       view: box("#studioView"),
@@ -44,6 +45,8 @@ function measure(page: Page) {
 
 for (const locale of ["ja", "en", "ko", "zh"]) {
   for (const viewport of viewports) {
+    // 横向きの低い画面はプレビューを左、シートを右に並べる（STUDIO_SIDE_QUERY）。
+    const side = viewport.width > viewport.height && viewport.height <= 34 * 16;
     test(`${locale}: preview fits available width and player height at ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await blockAnalytics(page);
@@ -74,14 +77,14 @@ for (const locale of ["ja", "en", "ko", "zh"]) {
         expect(size.width).toBeGreaterThan(100);
         // The frame must wrap the canvas exactly, without a border-sized gap.
         expect(Math.abs(size.frameHeight - size.height - size.borderY)).toBeLessThan(1);
-        // The editor sheet never covers the preview.
-        expect(size.stage.y + size.stage.height).toBeLessThanOrEqual(size.sheet.y + 0.5);
-        if (viewport.height >= 600) {
-          // Tall screens show preview and sheet together in one screen.
-          expect(size.view.y).toBeGreaterThanOrEqual(-0.5);
-          expect(size.view.y + size.view.height).toBeLessThanOrEqual(viewport.height + 1);
-        }
-        if (aspect === "landscape" && viewport.width < 600) {
+        // The editor sheet never covers the preview: below it, or beside it on low landscape screens.
+        if (side) expect(size.stage.x + size.stage.width).toBeLessThanOrEqual(size.sheet.x + 0.5);
+        else expect(size.stage.y + size.stage.height).toBeLessThanOrEqual(size.sheet.y + 0.5);
+        // Every screen shows preview and sheet together in one screen, without page scroll.
+        expect(size.view.y).toBeGreaterThanOrEqual(-0.5);
+        expect(size.view.y + size.view.height).toBeLessThanOrEqual(viewport.height + 1);
+        expect(size.scrollHeight).toBeLessThanOrEqual(viewport.height);
+        if (aspect === "landscape" && viewport.width < 600 && viewport.height >= 600) {
           // Phones: the landscape preview spans the column (minus its 20px padding).
           expect(size.width).toBeGreaterThanOrEqual(viewport.width - 41);
         }
@@ -106,6 +109,14 @@ for (const locale of ["ja", "en", "ko", "zh"]) {
         // (measured: 375x812 → 157x278, 1280x900 → 166x296, 768x1024 → 234x416).
         expect(open.width).toBeGreaterThan(140);
         expect(open.height).toBeGreaterThan(viewport.height * 0.3);
+      }
+      if (side) {
+        // Side by side, the sheet takes no height from the preview, so it does not fold.
+        await expect(page.locator("#sheetHandle")).toBeHidden();
+        await expect(page.locator("#studioSheetBody")).not.toHaveAttribute("inert");
+        await expect(page.getByRole("tablist")).toBeVisible();
+        expect(open.height).toBeGreaterThan(viewport.height * 0.5);
+        return;
       }
       await page.locator("#sheetHandle").click();
       await expect(page.locator("#sheetHandle")).toHaveAttribute("aria-expanded", "false");

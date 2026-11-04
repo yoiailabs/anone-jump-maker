@@ -84,9 +84,8 @@ export async function fileChooserFor(page: Page, action: () => Promise<unknown>)
 
 export type EditorTab = "photos" | "motion" | "look";
 
-/** 写真を選んだあとの編集シートで、radio の name が入っているタブ。 */
-export const EDITOR_TAB_FOR_OPTION: Record<string, EditorTab> = {
-  aspect: "photos",
+/** 写真を選んだあとの編集シートで、radio の name が入っているタブ。向き（aspect）はシートの外、プレビューの下。 */
+export const EDITOR_TAB_FOR_OPTION: Record<string, EditorTab | undefined> = {
   swap: "motion",
   character: "motion",
   color_filter: "look",
@@ -101,9 +100,10 @@ export async function openEditorTab(page: Page, tab: EditorTab): Promise<void> {
   await expect(page.locator(`#studioPanel-${tab}`)).toBeVisible();
 }
 
-/** 編集シートで radio を選ぶ。入っているタブへ先に切り替える。 */
+/** 編集画面で radio を選ぶ。シートの中の行なら、入っているタブへ先に切り替える。 */
 export async function chooseOption(page: Page, name: string, value: string): Promise<void> {
-  await openEditorTab(page, EDITOR_TAB_FOR_OPTION[name]!);
+  const tab = EDITOR_TAB_FOR_OPTION[name];
+  if (tab) await openEditorTab(page, tab);
   await page.locator(`#studioView label:has(input[name="${name}"][value="${value}"])`).click();
 }
 

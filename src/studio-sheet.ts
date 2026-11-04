@@ -1,6 +1,12 @@
 export const STUDIO_TABS = ["photos", "motion", "look"] as const;
 export type StudioTab = (typeof STUDIO_TABS)[number];
 
+/**
+ * 横向きの低い画面（スマホの横持ち、低いウインドウ）。プレビューを左、編集シートを右に並べ、
+ * シートはたたまない。studio.css の同じ media query と揃える。
+ */
+export const STUDIO_SIDE_QUERY = "(orientation: landscape) and (max-height: 34rem)";
+
 /** これより長く縦に引いたら開閉する。短い揺れはタップ扱い。 */
 export const SHEET_DRAG_THRESHOLD = 40;
 /** ドラッグ中に指へ追従させる上限。閉じた状態から上へ引くときだけ使う。 */

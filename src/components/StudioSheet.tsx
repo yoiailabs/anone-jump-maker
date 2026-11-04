@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent, type ReactNode } from "react";
 import { getFeedback, subscribeFeedback } from "../feedback-store.ts";
 import { t, type Locale, type MessageKey } from "../i18n.ts";
-import { STUDIO_TABS, sheetDragOffset, sheetOpenAfterDrag, tabForKey, type StudioTab } from "../studio-sheet.ts";
+import { STUDIO_SIDE_QUERY, STUDIO_TABS, sheetDragOffset, sheetOpenAfterDrag, tabForKey, type StudioTab } from "../studio-sheet.ts";
 
 const TAB_LABELS: Record<StudioTab, MessageKey> = {
   photos: "studioTabPhotos",
@@ -11,6 +11,15 @@ const TAB_LABELS: Record<StudioTab, MessageKey> = {
 
 /** ドラッグで開閉したあとに来る click を、もう一度の開閉として数えない時間。 */
 const DRAG_CLICK_GRACE_MS = 400;
+
+function subscribeSideLayout(listener: () => void): () => void {
+  const query = window.matchMedia(STUDIO_SIDE_QUERY);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
+
+const isSideLayout = () => window.matchMedia(STUDIO_SIDE_QUERY).matches;
+const notSideLayout = () => false;
 
 /**
  * 写真を選んだあとの編集シート。ハンドルで開閉し、ピル型タブでパネルを切り替える。
@@ -56,7 +65,11 @@ export function StudioSheet({
     setTab("photos");
   }, [photoFeedback]);
 
-  const collapsed = editing && !open;
+  // 横に並べるときはプレビューの高さを奪わないので、たたまずハンドルも出さない。
+  // たたんだ状態は覚えておき、縦に戻したらそのまま戻す。
+  const side = useSyncExternalStore(subscribeSideLayout, isSideLayout, notSideLayout);
+  const shown = open || side;
+  const collapsed = editing && !shown;
   const hint = t(locale, open ? "studioSheetHintOpen" : "studioSheetHintClosed");
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
@@ -88,7 +101,7 @@ export function StudioSheet({
     <section
       className="studio-sheet studio-options"
       aria-labelledby={editing ? "studioOptionsTitle" : undefined}
-      data-open={open ? "true" : "false"}
+      data-open={shown ? "true" : "false"}
       data-dragging={offset !== 0 ? "true" : undefined}
       style={offset !== 0 ? { transform: `translateY(${offset}px)` } : undefined}
     >
@@ -100,7 +113,7 @@ export function StudioSheet({
         type="button"
         className="sheet-handle"
         id="sheetHandle"
-        hidden={!editing}
+        hidden={!editing || side}
         aria-expanded={open}
         aria-controls="studioSheetBody"
         aria-label={`${hint}${t(locale, "studioSheetLabelSep")}${t(locale, open ? "studioSheetCollapse" : "studioSheetExpand")}`}

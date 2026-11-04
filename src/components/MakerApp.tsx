@@ -89,14 +89,14 @@ type MakerAppProps = {
 };
 
 type OptionRowSpec = readonly [
-  id: "aspect" | "swap" | "filter" | "blur" | "character",
+  id: "swap" | "filter" | "blur" | "character",
   labelKey: MessageKey,
-  name: "aspect" | "swap" | "color_filter" | "filter" | "character",
+  name: "swap" | "color_filter" | "filter" | "character",
 ];
 
 // 編集シートのタブごとの並び。radio の name/value は boot が読むので変えない。
+// 向き（aspect）はシートの外、プレビューの真下の AspectSwitch に置く。
 const PANEL_ROWS = {
-  photos: [["aspect", "studioOptionAspect", "aspect"]],
   motion: [
     ["swap", "studioOptionEffect", "swap"],
     ["character", "studioOptionCharacter", "character"],
@@ -105,7 +105,7 @@ const PANEL_ROWS = {
     ["filter", "studioOptionFilter", "color_filter"],
     ["blur", "studioOptionBlur", "filter"],
   ],
-} as const satisfies Record<StudioTab, readonly OptionRowSpec[]>;
+} as const satisfies Record<Exclude<StudioTab, "photos">, readonly OptionRowSpec[]>;
 
 const hasPhotos = () => getPhotoThumbsState().photos.length > 0;
 const noPhotos = () => false;
@@ -121,6 +121,63 @@ function StudioStatusPill({ locale }: { locale: Locale }) {
         state: t(locale, playing ? "previewPlaying" : "previewStopped"),
       })}
     </p>
+  );
+}
+
+function BackMark() {
+  return (
+    <svg className="studio-back-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M14.5 6 8.5 12l6 6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** 横＝横長、縦＝縦長の枠。文字が読めなくても向きが分かるように添える。 */
+function AspectMark({ value }: { value: string }) {
+  const landscape = value === "landscape";
+  return (
+    <svg className="aspect-switch-mark" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <rect
+        x={landscape ? 2 : 5.5}
+        y={landscape ? 5.5 : 2}
+        width={landscape ? 16 : 9}
+        height={landscape ? 9 : 16}
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+/**
+ * プレビュー直下の向き切り替え。シートのタブやたたみ具合に関係なく、いつでも触れる。
+ * radio は boot が起動時に掴むので、pick 中も CSS で隠すだけでマウントしたままにする。
+ */
+function AspectSwitch({ label, options }: {
+  label: string;
+  options: readonly { value: string; label: string; defaultChecked?: boolean }[];
+}) {
+  // WebKit は矢印キーで移ったラジオを :focus-visible にしない。キーで動かしている間は :focus でもリングを出す。
+  const [keyboard, setKeyboard] = useState(false);
+  return (
+    <div
+      className="aspect-switch"
+      role="radiogroup"
+      aria-label={label}
+      data-keyboard={keyboard ? "true" : undefined}
+      onKeyDown={() => setKeyboard(true)}
+      onPointerDown={() => setKeyboard(false)}
+    >
+      {options.map((option) => (
+        <label key={option.value}>
+          <input type="radio" name="aspect" value={option.value} defaultChecked={option.defaultChecked} />
+          <AspectMark value={option.value} />
+          <span>{option.label}</span>
+        </label>
+      ))}
+    </div>
   );
 }
 
@@ -219,6 +276,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const makerHidden = initialView !== "maker";
   const studioHidden = initialView !== "studio";
   const logoSize = makerLogoStackedSize(locale);
+  const backLabel = t(locale, "studioBack");
 
   return (
     <>
@@ -328,8 +386,14 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           </header>
           <section className="studio-stage studio-player" aria-label={t(locale, "previewTitle")}>
             <div className="studio-player-bar">
-              <a className="studio-back" href={pathForApp(locale, "maker")}>
-                {t(locale, "studioBack")}
+              {/* 主役の保存と取り違えないよう、反対の端に小さなアイコンで置く。 */}
+              <a
+                className="studio-back"
+                href={pathForApp(locale, "maker")}
+                aria-label={backLabel}
+                title={backLabel}
+              >
+                <BackMark />
               </a>
               <Button
                 variant="site"
@@ -391,7 +455,10 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                 </div>
               </div>
             </div>
-            <StudioStatusPill locale={locale} />
+            <div className="studio-player-foot">
+              <AspectSwitch label={t(locale, "studioOptionAspect")} options={optionChoices.aspect} />
+              <StudioStatusPill locale={locale} />
+            </div>
             <LiveFeedback id="previewFeedback" place="preview" />
             <LiveFeedback id="saveFeedback" place="save" />
           </section>
@@ -420,7 +487,6 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                     <LiveFeedback id="photoFeedback" place="photo" />
                   </div>
                   <PhotoThumbsSlot locale={locale} />
-                  {optionRows(PANEL_ROWS.photos)}
                 </div>
               ),
               motion: optionRows(PANEL_ROWS.motion),

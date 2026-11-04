@@ -19,7 +19,8 @@
   --studio-radius-player: 28px;
   --studio-motion-press: 120ms;
   --studio-motion-slow: 360ms;
-  --studio-sheet-h: clamp(14rem, 44dvh, 25rem);
+  /* シートの中身の高さ。ホームバーの帯は別に足すので、その分だけ差し引いてプレビューに回す。 */
+  --studio-sheet-h: clamp(13rem, 40dvh - env(safe-area-inset-bottom, 0px), 23rem);
   /* viewport-fit=cover なので、ノッチとホームバーの帯は自分で避ける。帯がない端末では 0 で、見た目は変わらない。 */
   --studio-safe-top: env(safe-area-inset-top, 0px);
   --studio-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -64,8 +65,7 @@
 }
 
 #studioView[data-phase="pick"] .studio-player-bar,
-#studioView[data-phase="pick"] .studio-status-pill,
-#studioView[data-phase="pick"] .studio-photos .studio-option-row {
+#studioView[data-phase="pick"] .studio-player-foot {
   display: none;
 }
 
@@ -129,13 +129,29 @@
 }
 
 /* ---- edit: 上プレビュー＋下編集シート ---- */
+/*
+ * 編集中はページを 1 画面ちょうどにする。下にフッターや余白があるとページごとスクロールでき、
+ * プレビューの上でホイールやスワイプをするとプレイヤーが上へ流れてしまう。
+ * フッター（規約の案内・リンク）は写真を選ぶ前の画面とトップに出ている。
+ */
+html:has(#studioView[data-phase="edit"]:not([hidden])) {
+  /* 引っぱって再読み込みすると選んだ写真が消えるので、端での引っぱりも止める。 */
+  overscroll-behavior: none;
+}
+
+/* boot が body の末尾に足す見えない動画。置かれた位置のままだと 1 画面の下に 1px はみ出す。 */
+html:has(#studioView[data-phase="edit"]:not([hidden])) .offscreen-video {
+  top: 0;
+  left: 0;
+}
+
 .app:has(> #studioView[data-phase="edit"]:not([hidden])) {
   width: min(34rem, 100%);
-  padding: 0 0 var(--page-pad-bottom);
+  padding: 0;
 }
 
 .app:has(> #studioView[data-phase="edit"]:not([hidden])) > .site-footer {
-  padding-inline: var(--page-pad-x);
+  display: none;
 }
 
 #studioView[data-phase="edit"] {
@@ -184,30 +200,10 @@
   padding: calc(0.75rem + var(--studio-safe-top)) var(--studio-pad-right) calc(var(--studio-radius-player) + 0.6rem)
     var(--studio-pad-left);
   color: var(--studio-on-player);
-}
-
-/* 横向きのスマホなど低い画面では 1 画面に収めず、プレビューで画面を埋めてシートは下へ続ける。 */
-@media (max-height: 34rem) {
-  #studioView[data-phase="edit"] {
-    height: auto;
-    min-height: 0;
-  }
-
-  /* 高さはプレビューに回す。要約のピルは飾りなので省き、シートも重ねない。 */
-  #studioView[data-phase="edit"] .studio-player {
-    flex: 0 0 auto;
-    height: max(16rem, 100svh);
-    padding-bottom: 0.6rem;
-  }
-
-  #studioView[data-phase="edit"] .studio-status-pill {
-    display: none;
-  }
-
-  /* 後ろのシート指定（重ね）より強くする。 */
-  #studioView[data-phase="edit"] .studio-sheet.studio-options {
-    margin-top: 0;
-  }
+  /* プレイヤーの上では指で画面を動かさない。シークバーは自分でドラッグを扱うので影響しない。
+     拡大だけは残す（pinch-zoom を知らないブラウザでは none になる）。 */
+  touch-action: none;
+  touch-action: pinch-zoom;
 }
 
 .studio-player-bar {
@@ -218,22 +214,31 @@
   flex: 0 0 auto;
 }
 
+/* 戻るは控えめな丸いアイコン。押せる大きさ（44px）は保ち、見た目は保存より軽くする。 */
 .studio-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 3rem;
-  padding: 0 1.1rem;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 999px;
-  background: rgb(255 255 255 / 12%);
+  background: rgb(255 255 255 / 10%);
   color: var(--studio-on-player);
-  font-size: 0.92rem;
-  font-weight: 700;
   text-decoration: none;
-  transition: background-color var(--studio-motion-press) ease;
+  transition: background-color var(--studio-motion-press) ease, transform var(--studio-motion-press) ease;
 }
 
 .studio-back:hover {
-  background: rgb(255 255 255 / 20%);
+  background: rgb(255 255 255 / 18%);
+}
+
+.studio-back:active {
+  transform: scale(0.94);
+}
+
+.studio-back-mark {
+  width: 1.4rem;
+  height: 1.4rem;
 }
 
 #studioView .btn.preview-save-btn {
@@ -245,7 +250,7 @@
   color: #fff;
   font-size: 1rem;
   letter-spacing: 0.04em;
-  box-shadow: none;
+  box-shadow: 0 6px 20px rgb(10 111 168 / 38%);
   transition: transform var(--studio-motion-press) ease;
 }
 
@@ -279,8 +284,29 @@
   box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
 }
 
+/*
+ * プレビューの真下。右（親指の届く側）に向きの切り替え、左に要約のピル。
+ * ピルは飾りなので、切り替えと並ばない幅（英語の狭い画面など）では次の行へ送って見せない。
+ * 1 行ぶんの高さで切り、切り替えのフォーカスリングの分だけ外へ余白を取る。
+ */
+.studio-player-foot {
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 0.75rem;
+  flex: 0 0 auto;
+  min-width: 0;
+  height: calc(2.75rem + 6px + 12px);
+  margin: -6px;
+  padding: 6px;
+  overflow: hidden;
+}
+
 .studio-status-pill {
-  align-self: center;
+  flex: none;
+  white-space: nowrap;
   margin: 0;
   padding: 0.3rem 0.9rem;
   border-radius: 999px;
@@ -291,6 +317,76 @@
   letter-spacing: 0.02em;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
+}
+
+/* 向き。紺の上で白い選択ピルがいちばん目に入るようにする。 */
+.aspect-switch {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 16%);
+}
+
+.aspect-switch label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0 0.95rem 0 0.8rem;
+  border-radius: 999px;
+  color: var(--studio-on-player);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--studio-motion-press) ease, color var(--studio-motion-press) ease,
+    transform var(--studio-motion-press) ease;
+}
+
+.aspect-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.aspect-switch-mark {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.aspect-switch label:hover:not(:has(input:checked, input:disabled)) {
+  background: rgb(255 255 255 / 12%);
+}
+
+.aspect-switch label:active:not(:has(input:disabled)) {
+  transform: scale(0.96);
+}
+
+.aspect-switch label:has(input:checked) {
+  background: #fff;
+  color: var(--studio-accent);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 28%);
+}
+
+.aspect-switch label:has(input:focus-visible),
+.aspect-switch[data-keyboard="true"] label:has(input:focus) {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.aspect-switch label:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 #studioView[data-phase="edit"] .studio-player .status.feedback {
@@ -318,6 +414,27 @@
 #studioView .preview-transport {
   background: linear-gradient(to top, rgb(14 34 56 / 86%) 0%, rgb(14 34 56 / 40%) 58%, rgb(14 34 56 / 0%) 100%);
   color: #fff;
+}
+
+/* 細い縦プレビュー（低い画面やノッチのある縦持ち）では、シークと音声ボタンを 1 行に残すため状態アイコンを省く。
+   再生中かどうかは再生ボタンの名前と形で分かる。 */
+@container (max-width: 8.5rem) {
+  #studioView .preview-transport .preview-status {
+    display: none;
+  }
+
+  /* 中央の再生ボタンも一回り小さくして、下の操作部と重ねない（押せる大きさは 44px のまま）。 */
+  #studioView .preview-toggle.btn {
+    top: 42%;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  #studioView .preview-toggle.btn svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
 }
 
 #studioView .preview-transport .preview-actions .btn {
@@ -409,10 +526,18 @@
 
 .sheet-grip {
   width: 40px;
-  height: 4px;
-  border-radius: 4px;
+  height: 5px;
+  border-radius: 5px;
   background: var(--studio-mute);
-  opacity: 0.55;
+  opacity: 0.5;
+  transition: opacity var(--studio-motion-press) ease, width var(--studio-motion-press) ease;
+}
+
+/* つかめる場所だと分かるよう、触れたらグリップを濃く長くする。 */
+.sheet-handle:hover .sheet-grip,
+.sheet-handle:active .sheet-grip {
+  width: 48px;
+  opacity: 0.8;
 }
 
 .sheet-body {
@@ -463,16 +588,23 @@
   font-weight: 700;
   line-height: 1.2;
   cursor: pointer;
-  transition: background-color var(--studio-motion-press) ease, color var(--studio-motion-press) ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--studio-motion-press) ease, color var(--studio-motion-press) ease,
+    transform var(--studio-motion-press) ease;
 }
 
 .sheet-tab:hover:not([aria-selected="true"]) {
   background: var(--studio-accent-soft);
 }
 
+.sheet-tab:active {
+  transform: scale(0.97);
+}
+
 .sheet-tab[aria-selected="true"] {
   background: var(--studio-accent);
   color: #fff;
+  box-shadow: 0 4px 12px rgb(10 111 168 / 26%);
 }
 
 .sheet-tab:focus-visible {
@@ -627,7 +759,17 @@
   background: var(--studio-surface);
   color: var(--studio-ink);
   font-size: 0.9rem;
-  transition: background-color var(--studio-motion-press) ease, border-color var(--studio-motion-press) ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--studio-motion-press) ease, border-color var(--studio-motion-press) ease,
+    transform var(--studio-motion-press) ease;
+}
+
+#studioView .option-segments label:hover:not(:has(input:checked, input:disabled)) {
+  border-color: color-mix(in srgb, var(--studio-accent) 45%, var(--studio-border));
+}
+
+#studioView .option-segments label:active:not(:has(input:disabled)) {
+  transform: scale(0.97);
 }
 
 #studioView .option-segments label:has(input:checked) {
@@ -646,6 +788,141 @@
   outline-offset: -1px;
 }
 
+/* ---- 低い画面（横持ちのスマホ、分割表示、低いウインドウ） ---- */
+/* 高さが足りないので、向きの切り替えは上の段（戻ると保存の間）に上げ、要約のピルは省く。 */
+@media (max-height: 34rem) {
+  #studioView[data-phase="edit"] .studio-player {
+    container: studio-player / inline-size;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-auto-rows: auto;
+    column-gap: 0.75rem;
+  }
+
+  #studioView[data-phase="edit"] .studio-player-bar,
+  #studioView[data-phase="edit"] .studio-player-foot {
+    display: contents;
+  }
+
+  #studioView[data-phase="edit"] .studio-back {
+    grid-area: 1 / 1;
+    align-self: center;
+  }
+
+  #studioView[data-phase="edit"] .aspect-switch {
+    grid-area: 1 / 2;
+    place-self: center;
+  }
+
+  #studioView[data-phase="edit"] #saveBtn {
+    grid-area: 1 / 3;
+  }
+
+  #studioView[data-phase="edit"] .stage-wrap {
+    grid-area: 2 / 1 / 3 / 4;
+  }
+
+  #studioView[data-phase="edit"] .studio-player > .status {
+    grid-column: 1 / -1;
+  }
+
+  #studioView[data-phase="edit"] .studio-status-pill {
+    display: none;
+  }
+
+  /* 狭いときは枠のアイコンだけにする。文字は読み上げ用に残す。 */
+  @container studio-player (max-width: 28.5rem) {
+    .aspect-switch label {
+      padding-inline: 0.85rem;
+    }
+
+    .aspect-switch label span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+}
+
+/* 縦向きで低い画面は、シートも低くしてプレビューに高さを回す。中身はシート内でスクロールする。 */
+@media (orientation: portrait) and (max-height: 34rem) {
+  #studioView {
+    --studio-sheet-h: clamp(8.5rem, 30dvh, 23rem);
+  }
+}
+
+/* 横向きで低い画面は、左にプレビュー、右に編集シート。 */
+/* studio-sheet.ts の STUDIO_SIDE_QUERY と同じ条件。ここではシートをたたまない（ハンドルも出さない）。 */
+@media (orientation: landscape) and (max-height: 34rem) {
+  .app:has(> #studioView[data-phase="edit"]:not([hidden])) {
+    width: 100%;
+    padding: 0;
+  }
+
+  #studioView[data-phase="edit"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(17rem, 40%, 24rem);
+    grid-template-rows: minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* ノッチは左右どちらにも来うる。プレイヤーは左端、シートは右端の帯だけを避ける（内側で二重にしない）。 */
+  #studioView[data-phase="edit"] .studio-player {
+    --studio-pad-right: var(--studio-pad);
+    grid-area: 1 / 1;
+    padding-bottom: calc(0.75rem + var(--studio-safe-bottom));
+  }
+
+  #studioView[data-phase="edit"] .studio-sheet.studio-options {
+    --studio-pad-left: var(--studio-pad);
+    grid-area: 1 / 2;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 0;
+    padding-top: calc(1rem + var(--studio-safe-top));
+    border-radius: var(--studio-radius-player) 0 0 var(--studio-radius-player);
+    box-shadow: -6px 0 32px rgb(14 34 56 / 22%);
+  }
+
+  #studioView[data-phase="edit"] .sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  #studioView[data-phase="edit"] .sheet-body-inner {
+    height: 100%;
+  }
+}
+
+/* 写真を選んだ直後、プレイヤーとシートをふわっと出す。位置は動かさない（測る側がずれない）。 */
+@keyframes studio-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+#studioView[data-phase="edit"] .studio-player > *,
+#studioView[data-phase="edit"] .studio-sheet {
+  animation: studio-fade-in var(--studio-motion-slow) ease both;
+}
+
+#studioView[data-phase="edit"] .stage-wrap {
+  animation-delay: 60ms;
+}
+
+#studioView[data-phase="edit"] .studio-player-foot {
+  animation-delay: 120ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* 画面ごとの指定より優先して、開閉もボタンも動かさない。 */
   #studioView .studio-sheet,
@@ -655,9 +932,23 @@
   #studioView .file-btn,
   #studioView .btn.preview-save-btn,
   #studioView .option-segments label,
+  .sheet-grip,
+  .aspect-switch label,
   .studio-back,
   .studio-empty-mark {
     transition: none !important;
+  }
+
+  #studioView[data-phase="edit"] .studio-player > *,
+  #studioView[data-phase="edit"] .studio-sheet {
+    animation: none;
+  }
+
+  .sheet-tab:active,
+  .studio-back:active,
+  .aspect-switch label:active:not(:has(input:disabled)),
+  #studioView .option-segments label:active:not(:has(input:disabled)) {
+    transform: none;
   }
 
   #studioView .file-btn:hover,

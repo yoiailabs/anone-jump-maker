@@ -128,8 +128,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#previewStatusLabel")).toHaveCount(0);
   await expect(page.locator("#restartBtn")).toHaveCount(0);
   await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
-  // 編集シートは「写真」タブから。エフェクトは「うごき」タブ。
+  // 向きはプレビューの下でいつでも選べる。編集シートは「写真」タブから、エフェクトは「うごき」タブ。
   await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeVisible();
+  await expect(page.locator('.studio-sheet input[name="aspect"]')).toHaveCount(0);
   await expect(page.locator('#studioView input[name="swap"][value="zoom"]')).toBeChecked();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeHidden();
   await openEditorTab(page, "motion");
@@ -896,8 +897,9 @@ for (const locale of ["ja", "en"] as const) {
     });
     await uploadPhoto(page, { name: "striped-photo.png", mimeType: "image/png", buffer: Buffer.from(photo, "base64") });
     await expect(page.locator("#saveBtn")).toBeEnabled();
-    // 5 行の設定はタブに分かれていても、全部マウントされている。
-    await expect(page.locator(".studio-option-row")).toHaveCount(5);
+    // 4 行の設定はタブに分かれていても、全部マウントされている。向きはプレビュー下の切り替え。
+    await expect(page.locator(".studio-option-row")).toHaveCount(4);
+    await expect(page.locator(".aspect-switch")).toHaveCount(1);
     await expect(page.locator("#filterLabel")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
     await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
     await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
