@@ -17,6 +17,11 @@ export function tabForKey(key: string, current: StudioTab): StudioTab | null {
   return null;
 }
 
+/** プレイヤー下の「N枚 · 停止中」の文言キー。英語は 1 枚のとき単数形にする。 */
+export function studioStatusKey(count: number): "studioStatus" | "studioStatusOne" {
+  return count === 1 ? "studioStatusOne" : "studioStatus";
+}
+
 /** 開いたシートは下へだけ、閉じたシートは上へだけ指に付いていく。 */
 export function sheetDragOffset(open: boolean, dy: number): number {
   return open ? Math.max(0, dy) : Math.max(-SHEET_DRAG_PULL_LIMIT, Math.min(0, dy));

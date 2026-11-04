@@ -101,6 +101,12 @@ for (const locale of ["ja", "en", "ko", "zh"]) {
       // Portrait is height-limited on phones; folding the sheet gives it the room.
       await chooseOption(page, "aspect", "portrait");
       const open = await measure(page);
+      if (viewport.height >= 800) {
+        // Even with the sheet open, tall screens keep a usable portrait preview
+        // (measured: 375x812 → 157x278, 1280x900 → 166x296, 768x1024 → 234x416).
+        expect(open.width).toBeGreaterThan(140);
+        expect(open.height).toBeGreaterThan(viewport.height * 0.3);
+      }
       await page.locator("#sheetHandle").click();
       await expect(page.locator("#sheetHandle")).toHaveAttribute("aria-expanded", "false");
       await expect.poll(async () => (await measure(page)).sheet.height).toBeLessThan(open.sheet.height / 2);

@@ -20,6 +20,11 @@
   --studio-motion-press: 120ms;
   --studio-motion-slow: 360ms;
   --studio-sheet-h: clamp(14rem, 44dvh, 25rem);
+  /* viewport-fit=cover なので、ノッチとホームバーの帯は自分で避ける。帯がない端末では 0 で、見た目は変わらない。 */
+  --studio-safe-top: env(safe-area-inset-top, 0px);
+  --studio-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --studio-pad-left: max(var(--studio-pad), env(safe-area-inset-left, 0px));
+  --studio-pad-right: max(var(--studio-pad), env(safe-area-inset-right, 0px));
 }
 
 .studio-visually-hidden,
@@ -176,7 +181,8 @@
   min-height: 0;
   align-items: stretch;
   gap: 0.6rem;
-  padding: 0.75rem var(--studio-pad) calc(var(--studio-radius-player) + 0.6rem);
+  padding: calc(0.75rem + var(--studio-safe-top)) var(--studio-pad-right) calc(var(--studio-radius-player) + 0.6rem)
+    var(--studio-pad-left);
   color: var(--studio-on-player);
 }
 
@@ -351,6 +357,8 @@
   z-index: 2;
   flex: 0 0 auto;
   margin-top: calc(-1 * var(--studio-radius-player));
+  /* ハンドル（閉じたとき）もパネルの最後の行も、ホームバーの帯より上に置く。 */
+  padding-bottom: var(--studio-safe-bottom);
   border-radius: var(--studio-radius-player) var(--studio-radius-player) 0 0;
   background: var(--studio-sheet);
   box-shadow: 0 -6px 32px rgb(14 34 56 / 22%);
@@ -438,7 +446,7 @@
   display: flex;
   gap: 0.5rem;
   flex: 0 0 auto;
-  padding: 0.1rem var(--studio-pad) 0.85rem;
+  padding: 0.1rem var(--studio-pad-right) 0.85rem var(--studio-pad-left);
 }
 
 .sheet-tab {
@@ -477,7 +485,7 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 0.15rem var(--studio-pad) 1.5rem;
+  padding: 0.15rem var(--studio-pad-right) 1.5rem var(--studio-pad-left);
 }
 
 #studioView[data-phase="edit"] .sheet-panel,

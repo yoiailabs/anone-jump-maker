@@ -66,16 +66,18 @@ export function StudioSheet({
   };
 
   return (
+    // 写真を選ぶ前は写真ピッカーだけなので、「オプション」の名前付き領域にしない。
     <section
       className="studio-sheet studio-options"
-      aria-labelledby="studioOptionsTitle"
+      aria-labelledby={editing ? "studioOptionsTitle" : undefined}
       data-open={open ? "true" : "false"}
       data-dragging={offset !== 0 ? "true" : undefined}
       style={offset !== 0 ? { transform: `translateY(${offset}px)` } : undefined}
     >
-      <h2 id="studioOptionsTitle" className="studio-visually-hidden">
+      <h2 id="studioOptionsTitle" className="studio-visually-hidden" hidden={!editing}>
         {t(locale, "studioOptions")}
       </h2>
+      {/* 読み上げ名は見えているヒントから始め、操作の説明を後ろに足す（WCAG 2.5.3）。 */}
       <button
         type="button"
         className="sheet-handle"
@@ -83,7 +85,7 @@ export function StudioSheet({
         hidden={!editing}
         aria-expanded={open}
         aria-controls="studioSheetBody"
-        aria-label={t(locale, open ? "studioSheetCollapse" : "studioSheetExpand")}
+        aria-labelledby="sheetHandleHint sheetHandleAction"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={(event) => endDrag(event, true)}
@@ -94,8 +96,12 @@ export function StudioSheet({
         }}
       >
         <span className="sheet-grip" aria-hidden="true" />
-        <span className="sheet-hint" aria-hidden="true">
-          {t(locale, open ? "studioSheetHintOpen" : "studioSheetHintClosed")}
+        <span className="sheet-hint">
+          <span id="sheetHandleHint">{t(locale, open ? "studioSheetHintOpen" : "studioSheetHintClosed")}</span>
+          <span aria-hidden="true">{open ? " ↓" : " ↑"}</span>
+        </span>
+        <span id="sheetHandleAction" className="studio-visually-hidden">
+          {t(locale, open ? "studioSheetCollapse" : "studioSheetExpand")}
         </span>
       </button>
       <div className="sheet-body" id="studioSheetBody" inert={collapsed}>

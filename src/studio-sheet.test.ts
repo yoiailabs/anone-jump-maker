@@ -5,8 +5,10 @@ import {
   STUDIO_TABS,
   sheetDragOffset,
   sheetOpenAfterDrag,
+  studioStatusKey,
   tabForKey,
 } from "./studio-sheet.ts";
+import { LOCALES, t, type Locale } from "./i18n.ts";
 
 describe("studio editor tabs", () => {
   it("orders photos, motion and look", () => {
@@ -44,5 +46,23 @@ describe("studio editor sheet drag", () => {
     expect(sheetOpenAfterDrag(false, -(SHEET_DRAG_THRESHOLD + 1))).toBe(true);
     expect(sheetOpenAfterDrag(false, -SHEET_DRAG_THRESHOLD)).toBe(false);
     expect(sheetOpenAfterDrag(false, 200)).toBe(false);
+  });
+});
+
+describe("studio status pill", () => {
+  const status = (locale: Locale, n: number) => t(locale, studioStatusKey(n), { n, state: "Stopped" });
+
+  it("uses the singular for one photo in English", () => {
+    expect(status("en", 1)).toBe("1 photo · Stopped");
+    expect(status("en", 2)).toBe("2 photos · Stopped");
+    expect(status("en", 0)).toBe("0 photos · Stopped");
+  });
+
+  it("keeps the count words of the other locales", () => {
+    for (const locale of LOCALES) {
+      if (locale === "en") continue;
+      expect(status(locale, 1)).toBe(t(locale, "studioStatus", { n: 1, state: "Stopped" }));
+    }
+    expect(status("ja", 1)).toBe("1枚 · Stopped");
   });
 });

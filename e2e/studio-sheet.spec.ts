@@ -37,6 +37,9 @@ test("before photos, the picker leads and the editor sheet stays out of the way"
   await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "pick");
   await expect(page.locator("#sheetHandle")).toBeHidden();
   await expect(page.getByRole("tablist")).toHaveCount(0);
+  // Only the photo picker is here, so it is not announced as the "Options" region.
+  await expect(page.getByRole("region", { name: t("ja", "studioOptions") })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: t("ja", "studioOptions") })).toHaveCount(0);
   await expect(page.locator(".studio-back")).toBeHidden();
   const [label, stage] = await page.evaluate(() =>
     [".file-btn", "#stage"].map((selector) => document.querySelector(selector)!.getBoundingClientRect().toJSON()),
@@ -55,6 +58,12 @@ test("after photos, preview and sheet share one phone screen", async ({ page }) 
   await expect(page.locator(".studio-status-pill")).toHaveText(
     t("ja", "studioStatus", { n: 2, state: t("ja", "previewStopped") }),
   );
+  await expect(page.getByRole("region", { name: t("ja", "studioOptions") })).toHaveCount(1);
+  // Without notch or home indicator the safe-area padding adds nothing.
+  await expect(page.locator(".studio-sheet")).toHaveCSS("padding-bottom", "0px");
+  await expect(page.locator(".studio-player")).toHaveCSS("padding-top", "12px");
+  await expect(page.locator(".studio-player")).toHaveCSS("padding-left", "20px");
+  await expect(page.locator(".sheet-panels")).toHaveCSS("padding-right", "20px");
   const box = await rects(page);
   expect(box.view.top).toBeGreaterThanOrEqual(0);
   expect(box.view.bottom).toBeLessThanOrEqual(844 + 1);
@@ -122,13 +131,15 @@ test("the handle collapses and reopens the sheet by click and keyboard, growing 
   await openEditor(page);
   const handle = page.locator("#sheetHandle");
   await expect(handle).toHaveAttribute("aria-expanded", "true");
-  await expect(handle).toHaveAccessibleName(t("ja", "studioSheetCollapse"));
+  // The name starts with the visible hint so voice control users can say what they see.
+  await expect(handle).toHaveAccessibleName(`${t("ja", "studioSheetHintOpen")} ${t("ja", "studioSheetCollapse")}`);
   await expect(handle).toContainText(t("ja", "studioSheetHintOpen"));
+  await expect(page.getByRole("button", { name: t("ja", "studioSheetHintOpen") })).toHaveAttribute("id", "sheetHandle");
   const open = await rects(page);
 
   await handle.click();
   await expect(handle).toHaveAttribute("aria-expanded", "false");
-  await expect(handle).toHaveAccessibleName(t("ja", "studioSheetExpand"));
+  await expect(handle).toHaveAccessibleName(`${t("ja", "studioSheetHintClosed")} ${t("ja", "studioSheetExpand")}`);
   await expect(handle).toContainText(t("ja", "studioSheetHintClosed"));
   await expect(page.locator("#studioSheetBody")).toHaveAttribute("inert", "");
   await expect(page.getByRole("tab", { name: t("ja", "studioTabPhotos") })).toBeHidden();
@@ -220,4 +231,60 @@ test("localized tabs and sheet copy", async ({ page }) => {
   await expect(page.locator("#sheetHandle")).toContainText(t("en", "studioSheetHintOpen"));
   await expect(page.locator(".studio-back")).toHaveText(t("en", "studioBack"));
   await expect(page.locator(".studio-back")).toHaveAttribute("href", "/en");
+
+  const stopped = t("en", "previewStopped");
+  await expect(page.locator(".studio-status-pill")).toHaveText(`2 photos · ${stopped}`);
+  await page.locator(".thumb-remove").first().click();
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
+  await expect(page.locator(".studio-status-pill")).toHaveText(`1 photo · ${stopped}`);
+});
+
+test("on a notched phone the player and sheet keep clear of the safe-area insets", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "Safe-area insets are emulated over the Chrome DevTools Protocol.");
+  await openEditor(page);
+  const inset = { top: 47, bottom: 34, left: 44, right: 44 };
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: inset });
+  await expect(page.locator(".studio-sheet")).toHaveCSS("padding-bottom", `${inset.bottom}px`);
+
+  const measure = () =>
+    page.evaluate(() => {
+      const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().toJSON() as DOMRect;
+      return {
+        view: box("#studioView"),
+        save: box("#saveBtn"),
+        stage: box("#stage"),
+        sheet: box(".studio-sheet"),
+        handle: box("#sheetHandle"),
+        panels: box(".sheet-panels"),
+        tabs: [...document.querySelectorAll('[role="tab"]')].map((tab) => tab.getBoundingClientRect().toJSON() as DOMRect),
+        panelPad: parseFloat(getComputedStyle(document.querySelector(".sheet-panels")!).paddingBottom),
+      };
+    });
+
+  const open = await measure();
+  expect(open.save.top).toBeGreaterThanOrEqual(open.view.top + inset.top);
+  expect(open.stage.left).toBeGreaterThanOrEqual(open.view.left + inset.left - 0.5);
+  expect(open.stage.right).toBeLessThanOrEqual(open.view.right - inset.right + 0.5);
+  expect(open.stage.bottom).toBeLessThanOrEqual(open.sheet.top);
+  expect(open.tabs[0]!.left).toBeGreaterThanOrEqual(open.view.left + inset.left - 0.5);
+  expect(open.tabs.at(-1)!.right).toBeLessThanOrEqual(open.view.right - inset.right + 0.5);
+  // The panels' own bottom padding stays above the home indicator band.
+  expect(open.sheet.bottom).toBeCloseTo(open.view.bottom, 0);
+  expect(open.panels.bottom).toBeLessThanOrEqual(open.sheet.bottom - inset.bottom + 0.5);
+  expect(open.panelPad).toBeGreaterThan(0);
+
+  const handle = page.locator("#sheetHandle");
+  await handle.click();
+  await expect(handle).toHaveAttribute("aria-expanded", "false");
+  // Once folded, the handle sits right above the home indicator, not inside its swipe band.
+  await expect
+    .poll(async () => {
+      const { view, handle: grip } = await measure();
+      return view.bottom - grip.bottom;
+    })
+    .toBeCloseTo(inset.bottom, 0);
+  const closed = await measure();
+  expect(closed.sheet.bottom).toBeCloseTo(closed.view.bottom, 0);
+  expect(closed.handle.height).toBeGreaterThanOrEqual(48);
 });

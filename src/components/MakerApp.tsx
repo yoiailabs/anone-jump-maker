@@ -8,7 +8,7 @@ import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type AppView, type Locale, type MessageKey } from "../i18n.ts";
-import type { StudioTab } from "../studio-sheet.ts";
+import { studioStatusKey, type StudioTab } from "../studio-sheet.ts";
 import { StudioSheet } from "@/components/StudioSheet.tsx";
 import { DEFAULT_ASPECT, DEFAULT_SWAP_STYLE } from "../layout.ts";
 import { JUMP_LOOP_WATCH_HREF, linkBannersHtml } from "../links.ts";
@@ -116,7 +116,7 @@ function StudioStatusPill({ locale }: { locale: Locale }) {
   // 再生状態は #previewStatus が読み上げる。ここは見た目の要約だけ。
   return (
     <p className="studio-status-pill" aria-hidden="true">
-      {t(locale, "studioStatus", {
+      {t(locale, studioStatusKey(photos.length), {
         n: photos.length,
         state: t(locale, playing ? "previewPlaying" : "previewStopped"),
       })}
