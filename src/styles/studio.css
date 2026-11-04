@@ -1,0 +1,662 @@
+/*
+ * 動画をつくる画面。写真を選ぶ前（pick）は選ぶ導線が主役、
+ * 選んだあと（edit）は上にプレビュー、下に編集シートの 1 画面。
+ * 色はこの画面だけの水色トークン。トップ・規約ページの見た目は変えない。
+ */
+#studioView {
+  --studio-accent: #0a6fa8;
+  --studio-accent-soft: #ddf1fc;
+  --studio-sheet: #f2faff;
+  --studio-tab: #e0f0fa;
+  --studio-surface: #fff;
+  --studio-border: #cbe3f2;
+  --studio-ink: #14304a;
+  --studio-mute: #4a6275;
+  --studio-player: #0e2238;
+  --studio-on-player: #eaf6ff;
+  --studio-pad: 1.25rem;
+  --studio-radius-card: 20px;
+  --studio-radius-player: 28px;
+  --studio-motion-press: 120ms;
+  --studio-motion-slow: 360ms;
+  --studio-sheet-h: clamp(14rem, 44dvh, 25rem);
+}
+
+.studio-visually-hidden,
+#studioView .preview-save-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ダイアログだけの入れ物。並びの隙間を作らない。 */
+#studioView .studio-tools {
+  display: contents;
+}
+
+#studioView .studio-top .make-note {
+  margin-top: -0.2rem;
+}
+
+/* ---- pick: 見出し → 写真を選ぶ → 空のプレビュー → 言語 ---- */
+#studioView[data-phase="pick"] .studio-sheet {
+  order: 1;
+  margin-top: calc(0.4rem - var(--section-gap));
+}
+
+#studioView[data-phase="pick"] .studio-player {
+  order: 2;
+}
+
+#studioView[data-phase="pick"] .lang-switch {
+  order: 3;
+}
+
+#studioView[data-phase="pick"] .studio-player-bar,
+#studioView[data-phase="pick"] .studio-status-pill,
+#studioView[data-phase="pick"] .studio-photos .studio-option-row {
+  display: none;
+}
+
+#studioView .file-btn {
+  position: relative;
+  min-height: 3.5rem;
+  padding: 0.8rem 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--studio-accent);
+  color: #fff;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 18px rgb(10 111 168 / 24%);
+  transition: transform var(--studio-motion-press) ease, background-color var(--studio-motion-press) ease;
+}
+
+#studioView .file-btn:hover {
+  transform: translateY(-1px);
+}
+
+#studioView .file-btn:active {
+  transform: scale(0.98);
+}
+
+#studioView .file-btn:has(input:focus-visible) {
+  outline: 3px solid var(--studio-ink);
+  outline-offset: 3px;
+}
+
+#studioView .file-btn:has(input:disabled) {
+  transform: none;
+}
+
+#studioView[data-phase="pick"] .stage {
+  border: 2px dashed color-mix(in srgb, var(--studio-accent) 45%, white);
+  border-radius: var(--studio-radius-player);
+  background: var(--studio-accent-soft);
+  box-shadow: none;
+}
+
+/* 先に描かれるテンプレートの 1 コマを隠し、「ここに写真が入る」枠に見せる。 */
+#studioView .studio-empty {
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent);
+}
+
+/* 選ぶ前はシートの枠を持たない。ボタンの影とフォーカスリングを切らない。 */
+#studioView[data-phase="pick"] .sheet-body-clip {
+  overflow: visible;
+}
+
+.studio-empty-mark {
+  width: 3rem;
+  height: 3rem;
+  transition: transform var(--studio-motion-press, 120ms) ease;
+}
+
+#studioView .studio-empty:hover:not(:disabled) .studio-empty-mark {
+  transform: scale(1.06);
+}
+
+/* ---- edit: 上プレビュー＋下編集シート ---- */
+.app:has(> #studioView[data-phase="edit"]:not([hidden])) {
+  width: min(34rem, 100%);
+  padding: 0 0 var(--page-pad-bottom);
+}
+
+.app:has(> #studioView[data-phase="edit"]:not([hidden])) > .site-footer {
+  padding-inline: var(--page-pad-x);
+}
+
+#studioView[data-phase="edit"] {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 30rem;
+  gap: 0;
+  overflow: hidden;
+  background: var(--studio-player);
+  color: var(--studio-ink);
+}
+
+@media (min-width: 40rem) {
+  .app:has(> #studioView[data-phase="edit"]:not([hidden])) {
+    padding-top: 1rem;
+  }
+
+  #studioView[data-phase="edit"] {
+    height: calc(100dvh - 2rem);
+    border-radius: var(--studio-radius-player);
+    box-shadow: 0 18px 48px rgb(14 34 56 / 22%);
+  }
+}
+
+/* 見出しは読み上げとフォーカス移動のために残し、画面からは外す。 */
+#studioView[data-phase="edit"] .studio-top {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+#studioView[data-phase="edit"] #studioHome,
+#studioView[data-phase="edit"] .lang-switch {
+  display: none;
+}
+
+#studioView[data-phase="edit"] .studio-player {
+  flex: 1 1 0;
+  min-height: 0;
+  align-items: stretch;
+  gap: 0.6rem;
+  padding: 0.75rem var(--studio-pad) calc(var(--studio-radius-player) + 0.6rem);
+  color: var(--studio-on-player);
+}
+
+/* 横向きのスマホなど低い画面では 1 画面に収めず、プレビューで画面を埋めてシートは下へ続ける。 */
+@media (max-height: 34rem) {
+  #studioView[data-phase="edit"] {
+    height: auto;
+    min-height: 0;
+  }
+
+  /* 高さはプレビューに回す。要約のピルは飾りなので省き、シートも重ねない。 */
+  #studioView[data-phase="edit"] .studio-player {
+    flex: 0 0 auto;
+    height: max(16rem, 100svh);
+    padding-bottom: 0.6rem;
+  }
+
+  #studioView[data-phase="edit"] .studio-status-pill {
+    display: none;
+  }
+
+  /* 後ろのシート指定（重ね）より強くする。 */
+  #studioView[data-phase="edit"] .studio-sheet.studio-options {
+    margin-top: 0;
+  }
+}
+
+.studio-player-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.studio-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  color: var(--studio-on-player);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color var(--studio-motion-press) ease;
+}
+
+.studio-back:hover {
+  background: rgb(255 255 255 / 20%);
+}
+
+#studioView .btn.preview-save-btn {
+  min-height: 3.5rem;
+  padding: 0 1.6rem;
+  border: 2px solid rgb(255 255 255 / 22%);
+  border-radius: 999px;
+  background: var(--studio-accent);
+  color: #fff;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  box-shadow: none;
+  transition: transform var(--studio-motion-press) ease;
+}
+
+#studioView .btn.preview-save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+#studioView .btn.preview-save-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.studio-back:focus-visible,
+#studioView .btn.preview-save-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+#studioView[data-phase="edit"] .stage-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  container-type: size;
+}
+
+/* プレイヤー枠いっぱいに、比率を保って収める。 */
+#studioView[data-phase="edit"] .stage {
+  width: min(100cqw, 100cqh * var(--stage-ratio));
+  border: 0;
+  border-radius: var(--studio-radius-card);
+  background: #000;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
+}
+
+.studio-status-pill {
+  align-self: center;
+  margin: 0;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  color: var(--studio-on-player);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+#studioView[data-phase="edit"] .studio-player .status.feedback {
+  color: var(--studio-on-player);
+}
+
+#studioView[data-phase="edit"] .studio-player .status.feedback[data-kind="error"] {
+  color: #ffc2bd;
+}
+
+/* プレビュー上の操作は紺の上に白。トップの太枠スタイルはこの画面では使わない。 */
+#studioView .preview-toggle.btn {
+  border: 0;
+  background: rgb(14 34 56 / 78%);
+  color: #fff;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 30%);
+}
+
+#studioView .preview-toggle.btn:focus-visible,
+#studioView .preview-transport .preview-actions .btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+#studioView .preview-transport {
+  background: linear-gradient(to top, rgb(14 34 56 / 86%) 0%, rgb(14 34 56 / 40%) 58%, rgb(14 34 56 / 0%) 100%);
+  color: #fff;
+}
+
+#studioView .preview-transport .preview-actions .btn {
+  border: 0;
+  background: rgb(255 255 255 / 18%);
+  color: #fff;
+  box-shadow: none;
+}
+
+#studioView .preview-transport .preview-seek::-webkit-slider-runnable-track {
+  background: rgb(255 255 255 / 45%);
+}
+
+#studioView .preview-transport .preview-seek::-webkit-slider-thumb {
+  border: 0;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+}
+
+#studioView .preview-transport .preview-seek::-moz-range-track {
+  background: rgb(255 255 255 / 45%);
+}
+
+#studioView .preview-transport .preview-seek::-moz-range-thumb {
+  border: 0;
+  background: #fff;
+}
+
+#studioView .preview-transport .preview-seek:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 0;
+  border-radius: 999px;
+}
+
+#studioView[data-phase="edit"] .studio-sheet {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  margin-top: calc(-1 * var(--studio-radius-player));
+  border-radius: var(--studio-radius-player) var(--studio-radius-player) 0 0;
+  background: var(--studio-sheet);
+  box-shadow: 0 -6px 32px rgb(14 34 56 / 22%);
+  transition: transform var(--studio-motion-slow) cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#studioView .studio-sheet[data-dragging="true"] {
+  transition: none;
+}
+
+.sheet-handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 3.25rem;
+  margin: 0;
+  padding: 0.55rem 1rem 0.4rem;
+  border: 0;
+  border-radius: var(--studio-radius-player) var(--studio-radius-player) 0 0;
+  background: none;
+  color: var(--studio-mute);
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sheet-handle[hidden],
+.sheet-tabs[hidden],
+.sheet-panel[hidden] {
+  display: none;
+}
+
+.sheet-handle:active {
+  cursor: grabbing;
+}
+
+.sheet-handle:focus-visible {
+  outline: 3px solid var(--studio-accent);
+  outline-offset: -4px;
+}
+
+.sheet-grip {
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--studio-mute);
+  opacity: 0.55;
+}
+
+.sheet-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--studio-motion-slow) cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.studio-sheet[data-open="false"] .sheet-body {
+  grid-template-rows: 0fr;
+}
+
+.sheet-body-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* たたみ終わったら中身を描かない。開くときはすぐ見せる。 */
+.studio-sheet[data-open="false"] .sheet-body-clip {
+  visibility: hidden;
+  transition: visibility 0s linear var(--studio-motion-slow);
+}
+
+#studioView[data-phase="edit"] .sheet-body-inner {
+  display: flex;
+  flex-direction: column;
+  height: var(--studio-sheet-h);
+}
+
+.sheet-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  padding: 0.1rem var(--studio-pad) 0.85rem;
+}
+
+.sheet-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--studio-tab);
+  color: var(--studio-ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color var(--studio-motion-press) ease, color var(--studio-motion-press) ease;
+}
+
+.sheet-tab:hover:not([aria-selected="true"]) {
+  background: var(--studio-accent-soft);
+}
+
+.sheet-tab[aria-selected="true"] {
+  background: var(--studio-accent);
+  color: #fff;
+}
+
+.sheet-tab:focus-visible {
+  outline: 3px solid var(--studio-ink);
+  outline-offset: 2px;
+}
+
+#studioView[data-phase="edit"] .sheet-panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.15rem var(--studio-pad) 1.5rem;
+}
+
+#studioView[data-phase="edit"] .sheet-panel,
+#studioView[data-phase="edit"] .studio-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+#studioView[data-phase="edit"] .sheet-panel[hidden] {
+  display: none;
+}
+
+#studioView[data-phase="edit"] .studio-photos .make-cta {
+  gap: 0.35rem;
+}
+
+/* 2 枚目からの追加は控えめな枠線ボタン。 */
+#studioView[data-phase="edit"] .file-btn {
+  min-height: 3rem;
+  border: 2px solid var(--studio-border);
+  background: var(--studio-surface);
+  color: var(--studio-accent);
+  font-size: 0.95rem;
+  box-shadow: none;
+}
+
+#studioView[data-phase="edit"] .file-btn::before {
+  content: "＋";
+  margin-right: 0.3em;
+}
+
+#studioView .make-note,
+#studioView .thumbs-hint {
+  color: var(--studio-mute);
+}
+
+#studioView .thumbs {
+  --thumb-size: 5.25rem;
+  --thumb-radius: 12px;
+  gap: 0.6rem;
+  padding: 0.25rem 0.25rem 0.4rem;
+}
+
+#studioView .thumbs-hint {
+  margin: -0.6rem 0 0;
+}
+
+#studioView .thumb img,
+#studioView .thumbs img {
+  border: 0;
+  background: var(--studio-accent-soft);
+}
+
+#studioView .thumb:focus-visible,
+#studioView .thumb-remove:focus-visible,
+#studioView .thumb-add:focus-visible {
+  outline: 3px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+
+#studioView .thumb-add {
+  border: 2px dashed color-mix(in srgb, var(--studio-accent) 50%, white);
+  background: var(--studio-surface);
+  color: var(--studio-accent);
+  box-shadow: none;
+}
+
+#studioView .thumb-add.is-cap {
+  border-style: solid;
+  border-color: var(--studio-border);
+  color: var(--studio-mute);
+}
+
+#studioView .thumb-index {
+  border: 0;
+  border-radius: 6px;
+  background: var(--studio-accent);
+  color: #fff;
+}
+
+#studioView .thumb-remove {
+  border: 0;
+  border-radius: 999px;
+  background: rgb(14 34 56 / 72%);
+  color: #fff;
+}
+
+/* ドラッグ中のサムネは body 直下の DragOverlay に出る。 */
+.thumb.thumb-float {
+  box-shadow: 0 10px 24px rgb(14 34 56 / 28%);
+}
+
+.thumb-float img {
+  border: 0;
+}
+
+#studioView .studio-option-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+}
+
+#studioView .studio-option-label {
+  min-width: 0;
+  color: var(--studio-ink);
+  font-size: 0.9rem;
+}
+
+#studioView .option-scroll-frame {
+  flex: 0 0 auto;
+}
+
+#studioView .option-scroll-frame::before {
+  background: linear-gradient(to right, var(--studio-sheet), transparent);
+}
+
+#studioView .option-scroll-frame::after {
+  background: linear-gradient(to left, var(--studio-sheet), transparent);
+}
+
+#studioView .option-segments,
+#studioView .option-segments-pills {
+  gap: 0.5rem;
+  border: 0;
+  background: none;
+}
+
+#studioView .option-segments label,
+#studioView .option-segments label:first-child,
+#studioView .option-segments label:last-child {
+  min-height: 3rem;
+  padding: 0.45rem 1rem;
+  border: 2px solid var(--studio-border);
+  border-radius: 999px;
+  background: var(--studio-surface);
+  color: var(--studio-ink);
+  font-size: 0.9rem;
+  transition: background-color var(--studio-motion-press) ease, border-color var(--studio-motion-press) ease;
+}
+
+#studioView .option-segments label:has(input:checked) {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+}
+
+#studioView .option-segments label:has(input:checked) span::before {
+  content: "✓";
+  margin-right: 0.3em;
+  color: var(--studio-accent);
+}
+
+#studioView .option-segments label:has(input:focus-visible) {
+  outline: 3px solid var(--studio-ink);
+  outline-offset: -1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 画面ごとの指定より優先して、開閉もボタンも動かさない。 */
+  #studioView .studio-sheet,
+  #studioView .sheet-body,
+  #studioView .sheet-body-clip,
+  #studioView .sheet-tab,
+  #studioView .file-btn,
+  #studioView .btn.preview-save-btn,
+  #studioView .option-segments label,
+  .studio-back,
+  .studio-empty-mark {
+    transition: none !important;
+  }
+
+  #studioView .file-btn:hover,
+  #studioView .file-btn:active,
+  #studioView .btn.preview-save-btn:hover:not(:disabled),
+  #studioView .btn.preview-save-btn:active:not(:disabled),
+  #studioView .studio-empty:hover:not(:disabled) .studio-empty-mark {
+    transform: none;
+  }
+}

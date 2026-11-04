@@ -4,7 +4,7 @@ import { t, type Locale } from "../src/i18n.ts";
 import { PHOTO_MAX_COUNT } from "../src/photo-list.ts";
 import { playbackPositions } from "../src/timeline.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, expectVisibleText, fileChooserFor, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, chooseOption, expectVisibleText, fileChooserFor, jpegInput, openEditorTab, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -128,9 +128,13 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#previewStatusLabel")).toHaveCount(0);
   await expect(page.locator("#restartBtn")).toHaveCount(0);
   await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
+  // 編集シートは「写真」タブから。エフェクトは「うごき」タブ。
   await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeVisible();
   await expect(page.locator('#studioView input[name="swap"][value="zoom"]')).toBeChecked();
+  await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeHidden();
+  await openEditorTab(page, "motion");
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeVisible();
+  await openEditorTab(page, "photos");
   await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
     await page.evaluate(() =>
@@ -181,9 +185,10 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await mute.click();
   await expect(mute).toContainText(/音声オフ|音声オン/);
 
-  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+  await chooseOption(page, "aspect", "portrait");
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
 
+  await openEditorTab(page, "motion");
   const zoomOption = page.locator('#studioView label:has(input[name="swap"][value="zoom"])');
   const jumpOption = page.locator('#studioView label:has(input[name="swap"][value="jump"])');
   await expect(zoomOption).toBeVisible();
@@ -194,9 +199,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await jumpOption.click();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
 
-  await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
+  await chooseOption(page, "filter", "blur-weak");
 
-  await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
+  await chooseOption(page, "character", "1.2");
   await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
   await expect(page.locator("#stage")).toBeVisible();
   await expect(page.locator("#saveBtn")).toBeEnabled();
@@ -891,7 +896,8 @@ for (const locale of ["ja", "en"] as const) {
     });
     await uploadPhoto(page, { name: "striped-photo.png", mimeType: "image/png", buffer: Buffer.from(photo, "base64") });
     await expect(page.locator("#saveBtn")).toBeEnabled();
-    await expect(page.getByRole("radiogroup")).toHaveCount(5);
+    // 5 行の設定はタブに分かれていても、全部マウントされている。
+    await expect(page.locator(".studio-option-row")).toHaveCount(5);
     await expect(page.locator("#filterLabel")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
     await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
     await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
@@ -939,6 +945,7 @@ for (const locale of ["ja", "en"] as const) {
     expect(await page.locator('input[name="color_filter"]').evaluateAll((inputs) =>
       inputs.map((input) => (input as HTMLInputElement).value),
     )).toEqual(["none", "dynamic", "dramatic", "film"]);
+    await openEditorTab(page, "look");
     await page.locator('label:has(input[name="color_filter"][value="film"])').click();
     await expect.poll(photoPixels).not.toEqual(original);
     const film = await photoPixels();
@@ -956,7 +963,7 @@ for (const locale of ["ja", "en"] as const) {
     expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
       .toEqual({ time: pausedTime, paused: true, seeking: false });
 
-    await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
+    await chooseOption(page, "aspect", "portrait");
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
     await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");

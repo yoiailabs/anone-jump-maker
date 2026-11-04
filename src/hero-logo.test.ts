@@ -74,8 +74,9 @@ describe("stacked maker hero logo", () => {
     expect(landing.indexOf('id="toStudio"')).toBeLessThan(landing.indexOf('id="toCommunity"'));
     expect(landing).not.toContain('id="picker"');
     expect(studio.indexOf('id="onDeviceNote"')).toBeLessThan(studio.indexOf('id="picker"'));
-    expect(studio.indexOf('id="picker"')).toBeLessThan(studio.indexOf('id="stage"'));
+    // 写真を選ぶ導線は編集シートの中。選ぶ前は CSS の order でプレビューより上に出す。
     expect(studio.indexOf('id="stage"')).toBeLessThan(studio.indexOf('id="previewSeek"'));
+    expect(studio.indexOf('id="previewSeek"')).toBeLessThan(studio.indexOf('id="picker"'));
     expect(studio).toContain('id="studioEmpty"');
     expect(studio).toContain('id="studioHome"');
     expect(studio).toContain('className="hero-logo"');
@@ -83,7 +84,8 @@ describe("stacked maker hero logo", () => {
     expect(studio).not.toContain("<HeaderLockup");
     expect(studio).not.toContain("anone-logo-horizontal");
     expect(studio).not.toContain('id="toLanding"');
-    expect(studio).not.toContain("studioBack");
+    // 戻る導線はプレビュー上部の 1 つだけ（旧 #toLanding は使わない）。
+    expect(studio.match(/"studioBack"/g)).toHaveLength(1);
     expect(studio.indexOf('id="studioTitle"')).toBeLessThan(studio.indexOf("<LanguageNav"));
     expect(makerSrc).not.toContain("samplePhotosBtn");
     expect(makerSrc).not.toContain("makerTrySamples");

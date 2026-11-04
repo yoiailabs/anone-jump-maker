@@ -7,7 +7,9 @@ import { JumpLoop } from "@/components/JumpLoop.tsx";
 import { JaPhrase } from "@/components/JaPhrase.tsx";
 import { OfficialMvEmbed } from "@/components/OfficialMvEmbed.tsx";
 import { SiteFooter } from "@/components/SiteFooter.tsx";
-import { pathForApp, t, type AppView, type Locale } from "../i18n.ts";
+import { pathForApp, t, type AppView, type Locale, type MessageKey } from "../i18n.ts";
+import type { StudioTab } from "../studio-sheet.ts";
+import { StudioSheet } from "@/components/StudioSheet.tsx";
 import { DEFAULT_ASPECT, DEFAULT_SWAP_STYLE } from "../layout.ts";
 import { JUMP_LOOP_WATCH_HREF, linkBannersHtml } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
@@ -86,13 +88,49 @@ type MakerAppProps = {
   locale: Locale;
 };
 
-const OPTION_ROWS = [
-  ["aspect", "studioOptionAspect", "aspect"],
-  ["swap", "studioOptionEffect", "swap"],
-  ["filter", "studioOptionFilter", "color_filter"],
-  ["blur", "studioOptionBlur", "filter"],
-  ["character", "studioOptionCharacter", "character"],
-] as const;
+type OptionRowSpec = readonly [
+  id: "aspect" | "swap" | "filter" | "blur" | "character",
+  labelKey: MessageKey,
+  name: "aspect" | "swap" | "color_filter" | "filter" | "character",
+];
+
+// 編集シートのタブごとの並び。radio の name/value は boot が読むので変えない。
+const PANEL_ROWS = {
+  photos: [["aspect", "studioOptionAspect", "aspect"]],
+  motion: [
+    ["swap", "studioOptionEffect", "swap"],
+    ["character", "studioOptionCharacter", "character"],
+  ],
+  look: [
+    ["filter", "studioOptionFilter", "color_filter"],
+    ["blur", "studioOptionBlur", "filter"],
+  ],
+} as const satisfies Record<StudioTab, readonly OptionRowSpec[]>;
+
+const hasPhotos = () => getPhotoThumbsState().photos.length > 0;
+const noPhotos = () => false;
+
+function StudioStatusPill({ locale }: { locale: Locale }) {
+  const { photos } = useSyncExternalStore(subscribePhotoThumbs, getPhotoThumbsState, getPhotoThumbsState);
+  const { playing } = useSyncExternalStore(subscribePreviewChrome, getPreviewChrome, getPreviewChrome);
+  // 再生状態は #previewStatus が読み上げる。ここは見た目の要約だけ。
+  return (
+    <p className="studio-status-pill" aria-hidden="true">
+      {t(locale, "studioStatus", {
+        n: photos.length,
+        state: t(locale, playing ? "previewPlaying" : "previewStopped"),
+      })}
+    </p>
+  );
+}
+
+function PlusMark() {
+  return (
+    <svg className="studio-empty-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const started = useRef(false);
@@ -122,6 +160,17 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
       { value: "1.4", label: t(locale, "makerCharacter14") },
     ],
   };
+  const optionRows = (rows: readonly OptionRowSpec[]) =>
+    rows.map(([id, labelKey, name]) => (
+      <OptionRow
+        key={id}
+        name={name}
+        label={t(locale, labelKey)}
+        selected={options[name]}
+        options={optionChoices[id]}
+      />
+    ));
+  const editing = useSyncExternalStore(subscribePhotoThumbs, hasPhotos, noPhotos);
   const linksHtml = linkBannersHtml(undefined, locale);
   const reactionsHtml = reactionEmbedHtml();
 
@@ -161,6 +210,11 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
     if (!logo) return;
     return scheduleHeroLogoHop(logo);
   }, [initialView]);
+
+  // 編集画面は 1 画面に収める。写真を選んだ時点のスクロール位置から上端へ戻す。
+  useEffect(() => {
+    if (editing) window.scrollTo(0, 0);
+  }, [editing]);
 
   const makerHidden = initialView !== "maker";
   const studioHidden = initialView !== "studio";
@@ -250,7 +304,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
             <LanguageNav locale={locale} view="maker" />
           </footer>
         </div>
-        <div className="app-view" id="studioView" hidden={studioHidden}>
+        <div className="app-view" id="studioView" hidden={studioHidden} data-phase={editing ? "edit" : "pick"}>
           <header className="studio-top">
             <a id="studioHome" href={pathForApp(locale, "maker")}>
               <img
@@ -265,38 +319,47 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
             <h1 id="studioTitle" className="studio-title">
               {t(locale, "studioTitle")}
             </h1>
+            <JaPhrase
+              id="onDeviceNote"
+              className="make-note"
+              locale={locale}
+              text={t(locale, "makerOnDevice")}
+            />
           </header>
-          <div className="studio-photos">
-            <div className="make-cta">
+          <section className="studio-stage studio-player" aria-label={t(locale, "previewTitle")}>
+            <div className="studio-player-bar">
+              <a className="studio-back" href={pathForApp(locale, "maker")}>
+                {t(locale, "studioBack")}
+              </a>
+              <Button
+                variant="site"
+                type="button"
+                id="saveBtn"
+                className="btn preview-save-btn"
+                disabled
+                aria-describedby="previewSaveHint"
+              >
+                {t(locale, "makerSave")}
+              </Button>
               <JaPhrase
-                id="onDeviceNote"
-                className="make-note"
+                id="previewSaveHint"
+                className="preview-save-hint"
                 locale={locale}
-                text={t(locale, "makerOnDevice")}
+                text={t(locale, "previewSaveHint")}
               />
-              <div className="pick-row">
-                <Label className="file-btn">
-                  <input
-                    id="picker"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif,image/*"
-                    multiple
-                    aria-describedby="pickHint"
-                  />
-                  <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
-                </Label>
-                <p id="pickHint" className="make-note">
-                  {t(locale, "makerPhotoCountHint")}
-                </p>
-              </div>
-              <LiveFeedback id="photoFeedback" place="photo" />
             </div>
-            <PhotoThumbsSlot locale={locale} />
-          </div>
-          <section className="studio-stage" aria-label={t(locale, "previewTitle")}>
             <div className="stage-wrap">
               <div className="stage" id="stage" data-aspect={DEFAULT_ASPECT} aria-pressed="false">
-                <button type="button" className="studio-empty" id="studioEmpty" aria-label={t(locale, "studioEmpty")} />
+                {/* 写真を選ぶボタンと同じ働き。タップの的として残し、Tab では写真を選ぶボタンに任せる。 */}
+                <button
+                  type="button"
+                  className="studio-empty"
+                  id="studioEmpty"
+                  tabIndex={-1}
+                  aria-label={t(locale, "studioEmpty")}
+                >
+                  <PlusMark />
+                </button>
                 <PreviewChrome locale={locale} />
                 <div className="preview-transport" id="previewTransport">
                   <PreviewStatus locale={locale} />
@@ -328,43 +391,43 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                 </div>
               </div>
             </div>
+            <StudioStatusPill locale={locale} />
             <LiveFeedback id="previewFeedback" place="preview" />
-            <section className="studio-options" aria-labelledby="studioOptionsTitle">
-              <h2 id="studioOptionsTitle" className="studio-options-heading">
-                {t(locale, "studioOptions")}
-              </h2>
-              <div className="studio-option-sheet">
-                {OPTION_ROWS.map(([id, labelKey, name]) => (
-                  <OptionRow
-                    key={id}
-                    name={name}
-                    label={t(locale, labelKey)}
-                    selected={options[name]}
-                    options={optionChoices[id]}
-                  />
-                ))}
-              </div>
-            </section>
+            <LiveFeedback id="saveFeedback" place="save" />
           </section>
+          <StudioSheet
+            locale={locale}
+            editing={editing}
+            panels={{
+              photos: (
+                <div className="studio-photos">
+                  <div className="make-cta">
+                    <div className="pick-row">
+                      <Label className="file-btn">
+                        <input
+                          id="picker"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+                          multiple
+                          aria-describedby="pickHint"
+                        />
+                        <span id="pickerLabel">{t(locale, "makerPickPhotos")}</span>
+                      </Label>
+                      <p id="pickHint" className="make-note">
+                        {t(locale, "makerPhotoCountHint")}
+                      </p>
+                    </div>
+                    <LiveFeedback id="photoFeedback" place="photo" />
+                  </div>
+                  <PhotoThumbsSlot locale={locale} />
+                  {optionRows(PANEL_ROWS.photos)}
+                </div>
+              ),
+              motion: optionRows(PANEL_ROWS.motion),
+              look: optionRows(PANEL_ROWS.look),
+            }}
+          />
           <section className="studio-tools">
-            <div className="preview-save">
-              <Button
-                variant="site"
-                type="button"
-                id="saveBtn"
-                className="btn preview-save-btn"
-                disabled
-                aria-describedby="previewSaveHint"
-              >
-                {t(locale, "makerSave")}
-              </Button>
-              <JaPhrase
-                id="previewSaveHint"
-                className="preview-save-hint"
-                locale={locale}
-                text={t(locale, "previewSaveHint")}
-              />
-            </div>
             <dialog
               className="export-panel export-sheet"
               id="exportPanel"
@@ -449,7 +512,6 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
                 {t(locale, "exportClose")}
               </Button>
             </dialog>
-            <LiveFeedback id="saveFeedback" place="save" />
           </section>
           <LanguageNav locale={locale} view="studio" />
         </div>

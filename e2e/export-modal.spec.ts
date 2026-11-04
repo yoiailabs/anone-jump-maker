@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
-import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, chooseOption, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 async function prepareExport(page: Page) {
   await blockAnalytics(page);
@@ -95,7 +95,7 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
     await expect(page.locator("#saveBtn")).toBeEnabled();
     await expect(page.locator("#saveBtn")).toBeFocused();
 
-    await page.locator('label:has(input[name="swap"][value="jump"])').click();
+    await chooseOption(page, "swap", "jump");
     await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
   } finally {
     release();
@@ -267,6 +267,6 @@ test("export errors close the modal and leave the feedback and page accessible",
   await expect(page.locator("#exportPanel")).not.toHaveAttribute("data-open");
   await expect(page.locator("#saveBtn")).toBeFocused();
 
-  await page.locator('label:has(input[name="swap"][value="jump"])').click();
+  await chooseOption(page, "swap", "jump");
   await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
 });

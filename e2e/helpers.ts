@@ -82,6 +82,31 @@ export async function fileChooserFor(page: Page, action: () => Promise<unknown>)
   return chooser;
 }
 
+export type EditorTab = "photos" | "motion" | "look";
+
+/** 写真を選んだあとの編集シートで、radio の name が入っているタブ。 */
+export const EDITOR_TAB_FOR_OPTION: Record<string, EditorTab> = {
+  aspect: "photos",
+  swap: "motion",
+  character: "motion",
+  color_filter: "look",
+  filter: "look",
+};
+
+/** 編集シートを開いたまま、指定のタブへ切り替える。 */
+export async function openEditorTab(page: Page, tab: EditorTab): Promise<void> {
+  const handle = page.locator("#sheetHandle");
+  if ((await handle.getAttribute("aria-expanded")) === "false") await handle.click();
+  await page.locator(`#studioTab-${tab}`).click();
+  await expect(page.locator(`#studioPanel-${tab}`)).toBeVisible();
+}
+
+/** 編集シートで radio を選ぶ。入っているタブへ先に切り替える。 */
+export async function chooseOption(page: Page, name: string, value: string): Promise<void> {
+  await openEditorTab(page, EDITOR_TAB_FOR_OPTION[name]!);
+  await page.locator(`#studioView label:has(input[name="${name}"][value="${value}"])`).click();
+}
+
 export async function openStudio(page: Page): Promise<void> {
   const studio = page.locator("#studioView");
   if (await studio.isVisible()) return;

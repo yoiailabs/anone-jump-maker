@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { UNSUPPORTED_EXPORT_MESSAGE } from "../src/export.ts";
-import { blockAnalytics, openStudio, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, chooseOption, openStudio, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -57,7 +57,7 @@ async function uploadPhoto(page: Page): Promise<void> {
 }
 
 async function switchAspect(page: Page, value: "portrait" | "landscape"): Promise<void> {
-  await page.locator(`#studioView label:has(input[name="aspect"][value="${value}"])`).click();
+  await chooseOption(page, "aspect", value);
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", value);
 }
 

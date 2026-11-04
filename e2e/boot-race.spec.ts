@@ -53,8 +53,9 @@ test("binds controls and the picker before landscape-cuts.json returns", async (
   await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
 
   await openStudio(page);
-  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+  // 向きは写真を選んだあとの編集シートにある。cuts が返る前でも選べる。
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
+  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
 
   releaseCuts();
   await waitForAppReady(page);
