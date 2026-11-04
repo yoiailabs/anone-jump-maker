@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent, type ReactNode } from "react";
+import { getFeedback, subscribeFeedback } from "../feedback-store.ts";
 import { t, type Locale, type MessageKey } from "../i18n.ts";
 import { STUDIO_TABS, sheetDragOffset, sheetOpenAfterDrag, tabForKey, type StudioTab } from "../studio-sheet.ts";
 
@@ -39,7 +40,24 @@ export function StudioSheet({
     setTab("photos");
   }, [editing]);
 
+  // 写真の読み込みエラーは「写真」パネルの #photoFeedback に出る。読み込み中にタブを替えたり
+  // シートをたたんだりしていても見えて読み上げられるよう、エラーが来たら開いて「写真」へ戻す。
+  const photoFeedback = useSyncExternalStore(
+    subscribeFeedback,
+    () => getFeedback("photo"),
+    () => getFeedback("photo"),
+  );
+  useEffect(() => {
+    if (photoFeedback.kind !== "error") return;
+    // 隠れるパネルにフォーカスがあると body へ落ちるので、「写真」タブへ移す。
+    const panel = document.activeElement?.closest<HTMLElement>(".sheet-panel");
+    if (panel && panel.dataset.panel !== "photos") tabRefs.current.photos?.focus();
+    setOpen(true);
+    setTab("photos");
+  }, [photoFeedback]);
+
   const collapsed = editing && !open;
+  const hint = t(locale, open ? "studioSheetHintOpen" : "studioSheetHintClosed");
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
@@ -77,7 +95,7 @@ export function StudioSheet({
       <h2 id="studioOptionsTitle" className="studio-visually-hidden" hidden={!editing}>
         {t(locale, "studioOptions")}
       </h2>
-      {/* 読み上げ名は見えているヒントから始め、操作の説明を後ろに足す（WCAG 2.5.3）。 */}
+      {/* 読み上げ名は見えているヒントから始め、区切りのあとに操作の説明を足す（WCAG 2.5.3）。 */}
       <button
         type="button"
         className="sheet-handle"
@@ -85,7 +103,7 @@ export function StudioSheet({
         hidden={!editing}
         aria-expanded={open}
         aria-controls="studioSheetBody"
-        aria-labelledby="sheetHandleHint sheetHandleAction"
+        aria-label={`${hint}${t(locale, "studioSheetLabelSep")}${t(locale, open ? "studioSheetCollapse" : "studioSheetExpand")}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={(event) => endDrag(event, true)}
@@ -97,11 +115,8 @@ export function StudioSheet({
       >
         <span className="sheet-grip" aria-hidden="true" />
         <span className="sheet-hint">
-          <span id="sheetHandleHint">{t(locale, open ? "studioSheetHintOpen" : "studioSheetHintClosed")}</span>
+          {hint}
           <span aria-hidden="true">{open ? " ↓" : " ↑"}</span>
-        </span>
-        <span id="sheetHandleAction" className="studio-visually-hidden">
-          {t(locale, open ? "studioSheetCollapse" : "studioSheetExpand")}
         </span>
       </button>
       <div className="sheet-body" id="studioSheetBody" inert={collapsed}>

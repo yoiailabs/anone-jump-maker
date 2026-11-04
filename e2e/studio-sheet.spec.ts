@@ -131,15 +131,17 @@ test("the handle collapses and reopens the sheet by click and keyboard, growing 
   await openEditor(page);
   const handle = page.locator("#sheetHandle");
   await expect(handle).toHaveAttribute("aria-expanded", "true");
-  // The name starts with the visible hint so voice control users can say what they see.
-  await expect(handle).toHaveAccessibleName(`${t("ja", "studioSheetHintOpen")} ${t("ja", "studioSheetCollapse")}`);
+  // The name starts with the visible hint so voice control users can say what they see,
+  // then a separator (from messages) so the hint and the action are read as two phrases.
+  const sep = t("ja", "studioSheetLabelSep");
+  await expect(handle).toHaveAccessibleName(`${t("ja", "studioSheetHintOpen")}${sep}${t("ja", "studioSheetCollapse")}`);
   await expect(handle).toContainText(t("ja", "studioSheetHintOpen"));
   await expect(page.getByRole("button", { name: t("ja", "studioSheetHintOpen") })).toHaveAttribute("id", "sheetHandle");
   const open = await rects(page);
 
   await handle.click();
   await expect(handle).toHaveAttribute("aria-expanded", "false");
-  await expect(handle).toHaveAccessibleName(`${t("ja", "studioSheetHintClosed")} ${t("ja", "studioSheetExpand")}`);
+  await expect(handle).toHaveAccessibleName(`${t("ja", "studioSheetHintClosed")}${sep}${t("ja", "studioSheetExpand")}`);
   await expect(handle).toContainText(t("ja", "studioSheetHintClosed"));
   await expect(page.locator("#studioSheetBody")).toHaveAttribute("inert", "");
   await expect(page.getByRole("tab", { name: t("ja", "studioTabPhotos") })).toBeHidden();
@@ -225,10 +227,77 @@ test("removing every photo returns to the picker", async ({ page }) => {
   await expect(page.locator("#sheetHandle")).toBeHidden();
 });
 
+/** 次に読み込む写真のデコードを止め、壊れたファイルを選ぶ。戻り値を呼ぶとデコードが進んで失敗する。 */
+async function pickBrokenPhotoAndHold(page: Page): Promise<() => Promise<void>> {
+  await page.evaluate(() => {
+    const original = window.createImageBitmap.bind(window);
+    const gate = new Promise<void>((resolve) => {
+      (window as unknown as { releasePhotoDecode: () => void }).releasePhotoDecode = resolve;
+    });
+    window.createImageBitmap = (async (...args: Parameters<typeof createImageBitmap>) => {
+      await gate;
+      return original(...args);
+    }) as typeof createImageBitmap;
+  });
+  await page.locator("#picker").setInputFiles({
+    name: "broken.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.from("this is not a jpeg"),
+  });
+  await expect(page.locator("#photoFeedback")).toHaveAttribute("data-kind", "busy");
+  return () => page.evaluate(() => (window as unknown as { releasePhotoDecode: () => void }).releasePhotoDecode());
+}
+
+async function expectPhotoErrorShown(page: Page) {
+  const feedback = page.locator("#photoFeedback");
+  await expect(feedback).toHaveAttribute("data-kind", "error");
+  await expect(feedback).not.toHaveText("");
+  await expect(feedback).toBeVisible();
+  await expect(feedback).toBeInViewport();
+  // Readable by assistive tech: not inside an inert or hidden subtree.
+  await expect(page.locator("#sheetHandle")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#studioSheetBody")).not.toHaveAttribute("inert");
+  await expect(page.getByRole("tab", { name: t("ja", "studioTabPhotos") })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#studioPanel-photos")).toBeVisible();
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(2);
+}
+
+test("a photo load error that lands on another tab brings back the photos tab", async ({ page }) => {
+  await openEditor(page);
+  const release = await pickBrokenPhotoAndHold(page);
+  await page.getByRole("tab", { name: t("ja", "studioTabMotion") }).click();
+  const radio = page.locator('#studioPanel-motion input[name="swap"]').first();
+  await radio.focus();
+  await expect(page.locator("#photoFeedback")).toBeHidden();
+
+  await release();
+  await expectPhotoErrorShown(page);
+  // Focus was in the panel that just hid, so it moves to the photos tab instead of falling to the page.
+  await expect(page.getByRole("tab", { name: t("ja", "studioTabPhotos") })).toBeFocused();
+});
+
+test("a photo load error that lands while the sheet is collapsed reopens it", async ({ page }) => {
+  await openEditor(page);
+  const release = await pickBrokenPhotoAndHold(page);
+  await page.getByRole("tab", { name: t("ja", "studioTabLook") }).click();
+  const handle = page.locator("#sheetHandle");
+  await handle.click();
+  await expect(handle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#photoFeedback")).toBeHidden();
+
+  await release();
+  await expectPhotoErrorShown(page);
+  // Focus stays on the handle the user last pressed.
+  await expect(handle).toBeFocused();
+});
+
 test("localized tabs and sheet copy", async ({ page }) => {
   await openEditor(page, "/en/make");
   await expect(page.getByRole("tab")).toHaveText([t("en", "studioTabPhotos"), t("en", "studioTabMotion"), t("en", "studioTabLook")]);
   await expect(page.locator("#sheetHandle")).toContainText(t("en", "studioSheetHintOpen"));
+  await expect(page.locator("#sheetHandle")).toHaveAccessibleName(
+    `${t("en", "studioSheetHintOpen")}${t("en", "studioSheetLabelSep")}${t("en", "studioSheetCollapse")}`,
+  );
   await expect(page.locator(".studio-back")).toHaveText(t("en", "studioBack"));
   await expect(page.locator(".studio-back")).toHaveAttribute("href", "/en");
 
