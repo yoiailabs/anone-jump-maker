@@ -93,6 +93,14 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
       await expect(label.locator("input")).toBeDisabled();
       await expect(label).toHaveCSS("background-color", "rgb(72, 181, 216)");
       await expect(label).toHaveCSS("color", "rgb(30, 58, 70)");
+      await expect(label).toHaveCSS("opacity", "1");
+    }
+    // 操作できない未選択のチップは薄くする。
+    const unselectedLabels = page.locator(".option-segments label:has(input:not(:checked))");
+    expect(await unselectedLabels.count()).toBeGreaterThan(0);
+    for (const label of await unselectedLabels.all()) {
+      await expect(label.locator("input")).toBeDisabled();
+      await expect(label).toHaveCSS("opacity", "0.38");
     }
     await page.setViewportSize({ width: 412, height: 200 });
     await expectWithinViewport(dialog, page);

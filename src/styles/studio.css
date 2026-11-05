@@ -903,6 +903,16 @@ html:has(#studioLeave[open]) {
   outline-offset: -1px;
 }
 
+/* styles.css の無効表示（塗り替え）は #studioView の色指定に負けるので、この画面では薄くして示す。
+   選択中のチップは生成中も選択色のまま残すので対象外。 */
+#studioView .btn.preview-save-btn:disabled,
+#studioView .file-btn:has(input:disabled),
+#studioView .preview-toggle.btn:disabled,
+#studioView .option-segments label:has(input:disabled:not(:checked)) {
+  opacity: 0.38;
+  box-shadow: none;
+}
+
 /* ---- 低い画面（横持ちのスマホ、分割表示、低いウインドウ） ---- */
 /* 高さが足りないので、向きの切り替えは上の段（戻ると保存の間）に上げ、要約のピルは省く。 */
 @media (max-height: 34rem) {
