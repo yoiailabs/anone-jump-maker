@@ -311,26 +311,26 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
 
   const photosLocked = () => recording || photosBusy;
 
-  const syncPickerLabel = () => {
-    if (photos.length === 0) {
+  const syncPickerLabel = (count: number) => {
+    if (count === 0) {
       pickerLabel.textContent = msg("makerPickPhotos");
       return;
     }
     pickerLabel.textContent =
-      photos.length >= PHOTO_MAX_COUNT
-        ? msg("makerPhotosFull", { n: PHOTO_MAX_COUNT })
-        : msg("makerAddPhotos");
+      count >= PHOTO_MAX_COUNT ? msg("makerPhotosFull", { n: PHOTO_MAX_COUNT }) : msg("makerAddPhotos");
   };
 
   const renderThumbs = () => {
+    // 書き出し中にトップへ戻ったら、本リセットを待たずに画面だけ選ぶ前に戻す。
+    const shown = resetAfterExport ? [] : photos;
     setPhotoThumbsState({
-      photos: photos.map((photo) => ({ id: photo.id, name: photo.name, thumbUrl: photo.thumbUrl })),
+      photos: shown.map((photo) => ({ id: photo.id, name: photo.name, thumbUrl: photo.thumbUrl })),
       locked: photosLocked(),
     });
-    studioEmpty.hidden = photos.length > 0;
+    studioEmpty.hidden = shown.length > 0;
     studioEmpty.disabled = picker.disabled;
-    syncPickerLabel();
-    if (photos.length === 0) {
+    syncPickerLabel(shown.length);
+    if (shown.length === 0) {
       chromeOpen = false;
       window.clearTimeout(chromeTimer);
       chromeTimer = 0;
@@ -947,9 +947,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     // 書き出しはキャンセル済み。描いている途中の写真は閉じず、終わってから捨てる。
     if (recording) {
       resetAfterExport = true;
+      renderThumbs();
       return;
     }
     photoSession += 1;
+    photosBusy = false;
     aspectResume = null;
     const dropped = photos;
     photos = [];
@@ -1127,8 +1129,11 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       rejectPhotos(error instanceof Error && error.message === HEIC_UNSUPPORTED_MESSAGE ? "heic" : "decode");
       setErrorFeedback("photo", error, "statusLoadFailed");
     } finally {
-      photosBusy = false;
-      refreshButtons();
+      // 古い読み込みは、選び直し中の新しいセッションの busy を下ろさない。
+      if (session === photoSession) {
+        photosBusy = false;
+        refreshButtons();
+      }
     }
   };
 

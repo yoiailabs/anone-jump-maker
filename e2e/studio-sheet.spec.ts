@@ -296,6 +296,48 @@ test("a photo load error that lands while the sheet is collapsed reopens it", as
   await expect(handle).toBeFocused();
 });
 
+test("leaving while photos load starts the next visit from an empty, usable pick", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/make");
+  await waitForAppReady(page);
+  await page.evaluate(() => {
+    const original = window.createImageBitmap.bind(window);
+    const gate = new Promise<void>((resolve) => {
+      (window as unknown as { releasePhotoDecode: () => void }).releasePhotoDecode = resolve;
+    });
+    window.createImageBitmap = (async (...args: Parameters<typeof createImageBitmap>) => {
+      await gate;
+      return original(...args);
+    }) as typeof createImageBitmap;
+  });
+  const files = await Promise.all([jpegInput("a.jpg"), jpegInput("b.jpg")]);
+  await page.locator("#picker").setInputFiles(files);
+  await expect(page.locator("#photoFeedback")).toHaveAttribute("data-kind", "busy");
+  await expect(page.locator("#picker")).toBeDisabled();
+
+  // No thumbnails yet, so the pick screen's logo leads back to the top without asking.
+  await page.locator("#studioHome").click();
+  await expect(page.locator("#makerView")).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/");
+  await page.locator("#toStudio").click();
+  expect(new URL(page.url()).pathname).toBe("/make");
+  // Same document as before: the held decode is still waiting, not wiped by a reload.
+  expect(await page.evaluate(() => "releasePhotoDecode" in window)).toBe(true);
+  const expectEmptyPick = async () => {
+    await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "pick");
+    await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(0);
+    await expect(page.locator("#picker")).toBeEnabled();
+    await expect(page.locator("#studioEmpty")).toBeEnabled();
+    await expect(page.locator("#photoFeedback")).not.toHaveAttribute("data-kind", "busy");
+  };
+  await expectEmptyPick();
+
+  // The old load finishes later; its photos are dropped, not added to the new visit.
+  await page.evaluate(() => (window as unknown as { releasePhotoDecode: () => void }).releasePhotoDecode());
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 500)));
+  await expectEmptyPick();
+});
+
 test("localized tabs and sheet copy", async ({ page }) => {
   await openEditor(page, "/en/make");
   await expect(page.getByRole("tab")).toHaveText([t("en", "studioTabPhotos"), t("en", "studioTabMotion"), t("en", "studioTabLook")]);

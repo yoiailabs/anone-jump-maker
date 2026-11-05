@@ -141,6 +141,19 @@ test("leaving the studio while busy closes the modal without reopening it", asyn
     await expect(page.locator("#makerView")).toBeVisible();
     await expect(dialog).toBeHidden();
     await expect(dialog).not.toHaveAttribute("data-open");
+
+    // The cancelled export is still winding down, but the next visit already shows an empty pick.
+    const expectEmptyPick = async () => {
+      await expect(page.locator("#studioView")).toBeVisible();
+      await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "pick");
+      await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(0);
+    };
+    await page.locator("#toStudio").click();
+    await expectEmptyPick();
+    release();
+    await expect(page.locator("#picker")).toBeEnabled();
+    await expectEmptyPick();
+    await expect(dialog).toBeHidden();
   } finally {
     release();
   }
