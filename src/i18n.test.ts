@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_LOCALE,
   isDocumentCrawler,
+  LOCALES,
   localeFromAcceptLanguage,
   localeRedirectLocation,
   parseAppPath,
@@ -11,6 +12,7 @@ import {
   songCreditLine,
   t,
 } from "./i18n.ts";
+import { MESSAGES } from "./messages.ts";
 
 describe("parseAppPath", () => {
   it("treats unprefixed paths as Japanese", () => {
@@ -234,6 +236,31 @@ describe("messages", () => {
     expect(songCreditLine("ko")).toBe(songCreditLine("en"));
     expect(t("zh", "songTitle")).toBe("Connect the World");
     expect(songCreditLine("zh")).toBe(songCreditLine("en"));
+  });
+
+  it("has every key, non-empty, in every locale", () => {
+    const keys = Object.keys(MESSAGES.ja).sort();
+    for (const locale of LOCALES) {
+      expect(Object.keys(MESSAGES[locale]).sort()).toEqual(keys);
+      for (const key of keys) expect(MESSAGES[locale][key as keyof typeof MESSAGES.ja].trim()).not.toBe("");
+    }
+  });
+
+  it("asks before leaving the editor, and says the photos and settings are cleared", () => {
+    expect(t("ja", "studioLeaveTitle")).toBe("トップに戻りますか？");
+    expect(t("ja", "studioLeaveBody")).toBe("選んだ写真と設定は消えます。");
+    expect(t("ja", "studioLeaveStay")).toBe("編集を続ける");
+    expect(t("ja", "studioLeaveConfirm")).toBe("トップに戻る");
+    expect(t("en", "studioLeaveBody")).toBe("Your photos and settings will be cleared.");
+    expect(t("en", "studioLeaveStay")).toBe("Keep editing");
+    for (const locale of LOCALES) {
+      for (const key of ["studioLeaveTitle", "studioLeaveBody", "studioLeaveStay", "studioLeaveConfirm"] as const) {
+        expect(MESSAGES[locale][key]).toBeTruthy();
+      }
+      // Leaving starts over, so the body no longer points back to “make a video”.
+      expect(MESSAGES[locale].studioLeaveBody).not.toMatch(/[{}]/);
+      expect(t(locale, "studioLeaveStay")).not.toBe(t(locale, "studioLeaveConfirm"));
+    }
   });
 });
 

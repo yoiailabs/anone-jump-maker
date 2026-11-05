@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { colorFilterLabel } from "../src/color-filter.ts";
 import retiredColorFilters from "../tests/fixtures/retired-color-filters.json" with { type: "json" };
-import { blockAnalytics, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, openEditorTab, PHOTO_FILE, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 for (const invalid of [...retiredColorFilters, "future-filter"]) {
   test(`falls back to none for stale initial and changed color ${invalid}`, async ({ page }) => {
@@ -38,6 +38,7 @@ for (const invalid of [...retiredColorFilters, "future-filter"]) {
     await expect(page.locator("#saveBtn")).toBeEnabled();
 
     // Exercise both changing an active color and an already-none state.
+    await openEditorTab(page, "look");
     await page.locator('label:has(input[name="color_filter"][value="film"])').click();
     await expect(page.locator('input[name="color_filter"][value="film"]')).toBeChecked();
     for (let attempt = 0; attempt < 2; attempt++) {

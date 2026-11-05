@@ -606,33 +606,6 @@ html[lang="ja"] .ja-phrase {
   transform: translateY(-2px);
 }
 
-.preview-save {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.28rem;
-  width: 100%;
-  flex: 0 0 auto;
-}
-
-.btn.preview-save-btn {
-  width: 100%;
-  min-height: 3.15rem;
-  background: #e6fb3c;
-  box-shadow: 4px 5px 0 var(--ink);
-  font-size: 1.02rem;
-}
-
-.preview-save-hint {
-  margin: 0;
-  text-align: center;
-  color: var(--mute);
-  font-size: 0.72rem;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-}
-
 .preview-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1084,52 +1057,6 @@ html[lang="ja"] .ja-phrase {
   gap: 0.55rem;
   width: 100%;
   min-width: 0;
-}
-
-/* 見出しの margin はそのまま。セクション間隔だけ生成案内の上で詰める。 */
-#studioView .studio-photos {
-  margin-top: calc(0.2rem - var(--section-gap));
-}
-
-.studio-tools {
-  display: flex;
-  flex-direction: column;
-  gap: 0.95rem;
-}
-
-.studio-options {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.55rem;
-  width: 100%;
-  min-width: 0;
-  padding-top: 0.75rem;
-}
-
-@media (min-width: 768px) {
-  .studio-options {
-    /* Widen only the sheet, within the preview's viewport budget. */
-    width: min(38rem, calc(100vw - 2 * var(--page-pad-x) - env(safe-area-inset-left) - env(safe-area-inset-right)));
-  }
-}
-
-.studio-options-heading {
-  margin: 0.1rem 0 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  line-height: 1.2;
-  color: var(--mute);
-}
-
-.studio-option-sheet {
-  width: 100%;
-  min-width: 0;
-  border: 3px solid var(--ink);
-  border-radius: 1rem;
-  background: var(--card);
-  padding: 0.25rem 0.7rem;
 }
 
 .studio-option-row {
