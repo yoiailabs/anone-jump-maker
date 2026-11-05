@@ -15,7 +15,10 @@ for (const path of ["/terms", "/privacy"]) {
         gap: parseFloat(style.gap),
       };
     });
-    expect(spacing).toEqual({ paddingTop: 29.6, paddingBottom: 60.8, gap: 37.6 });
+    // WebKit はレイアウト単位（1/64px）で丸めるので、小数第1位まで比べる。
+    expect(spacing.paddingTop).toBeCloseTo(29.6, 1);
+    expect(spacing.paddingBottom).toBeCloseTo(60.8, 1);
+    expect(spacing.gap).toBeCloseTo(37.6, 1);
   });
 }
 
