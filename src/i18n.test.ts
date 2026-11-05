@@ -246,18 +246,19 @@ describe("messages", () => {
     }
   });
 
-  it("asks before leaving the editor, and says the photos stay", () => {
+  it("asks before leaving the editor, and says the photos and settings are cleared", () => {
     expect(t("ja", "studioLeaveTitle")).toBe("トップに戻りますか？");
+    expect(t("ja", "studioLeaveBody")).toBe("選んだ写真と設定は消えます。");
     expect(t("ja", "studioLeaveStay")).toBe("編集を続ける");
     expect(t("ja", "studioLeaveConfirm")).toBe("トップに戻る");
+    expect(t("en", "studioLeaveBody")).toBe("Your photos and settings will be cleared.");
     expect(t("en", "studioLeaveStay")).toBe("Keep editing");
     for (const locale of LOCALES) {
       for (const key of ["studioLeaveTitle", "studioLeaveBody", "studioLeaveStay", "studioLeaveConfirm"] as const) {
         expect(MESSAGES[locale][key]).toBeTruthy();
       }
-      // The body points back to the real entry button by its own label.
-      expect(MESSAGES[locale].studioLeaveBody).toContain("{make}");
-      expect(t(locale, "studioLeaveBody", { make: t(locale, "makerMakeVideo") })).toContain(t(locale, "makerMakeVideo"));
+      // Leaving starts over, so the body no longer points back to “make a video”.
+      expect(MESSAGES[locale].studioLeaveBody).not.toMatch(/[{}]/);
       expect(t(locale, "studioLeaveStay")).not.toBe(t(locale, "studioLeaveConfirm"));
     }
   });

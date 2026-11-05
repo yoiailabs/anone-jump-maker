@@ -308,11 +308,15 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#thumbsHint")).toBeHidden();
 
   await uploadPhoto(page);
+  // The thumbnails' ＋ is the only way to add more; the big button stays in the DOM for boot, out of sight.
   await expect(page.locator("#pickerLabel")).toHaveText("写真を追加");
-  await expect(page.locator("#pickHint")).toHaveText(t("ja", "makerPhotoCountHint"));
+  await expect(page.locator(".file-btn")).toBeHidden();
+  await expect(page.locator("#pickHint")).toBeHidden();
+  await expect(page.locator("#picker")).toBeAttached();
   await expectVisibleText(page.locator("#thumbsHint"), "長押しして画像の順序を変更できます。");
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
   await expect(page.locator(".thumb-add")).toBeVisible();
+  await expect(page.locator(".thumb-add")).toHaveAccessibleName("写真を追加");
 
   const extra = await jpegInput("extra.jpg");
   const chooser = await fileChooserFor(page, () => page.locator(".thumb-add").click());
@@ -344,6 +348,8 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#thumbs")).toBeHidden();
   await expect(page.locator(".thumb-add")).toBeHidden();
   await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
+  await expect(page.locator(".file-btn")).toBeVisible();
+  await expect(page.locator("#pickHint")).toBeVisible();
   await expect(page.locator("#previewTransport")).toBeHidden();
 });
 
@@ -355,6 +361,7 @@ test("keeps at most 32 photos and disables adding at the cap", async ({ page }) 
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "p0.jpg");
   await expect(page.locator("#thumbs img").nth(PHOTO_MAX_COUNT - 1)).toHaveAttribute("alt", `p${PHOTO_MAX_COUNT - 1}.jpg`);
   await expect(page.locator(".thumb-add")).toBeDisabled();
+  await expect(page.locator("#picker")).toBeDisabled();
   await expect(page.locator("#pickerLabel")).toHaveText(t("ja", "makerPhotosFull", { n: PHOTO_MAX_COUNT }));
   await expect
     .poll(async () => stripZwsp((await page.locator("#thumbsHint").textContent()) ?? ""))

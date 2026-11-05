@@ -752,23 +752,14 @@ html:has(#studioLeave[open]) {
   display: none;
 }
 
-#studioView[data-phase="edit"] .studio-photos .make-cta {
-  gap: 0.35rem;
+/* 2 枚目からの追加はサムネ一覧の「＋」だけ。#picker と #pickerLabel は boot が掴むので DOM には残す。 */
+#studioView[data-phase="edit"] .studio-photos .pick-row {
+  display: none;
 }
 
-/* 2 枚目からの追加は控えめな枠線ボタン。 */
-#studioView[data-phase="edit"] .file-btn {
-  min-height: 3rem;
-  border: 2px solid var(--studio-border);
-  background: var(--studio-surface);
-  color: var(--studio-accent);
-  font-size: 0.95rem;
-  box-shadow: none;
-}
-
-#studioView[data-phase="edit"] .file-btn::before {
-  content: "＋";
-  margin-right: 0.3em;
+/* 写真のお知らせが無いときは、空の枠でサムネ一覧を押し下げない。 */
+#studioView[data-phase="edit"] .studio-photos .make-cta:has(> #photoFeedback[hidden]) {
+  display: none;
 }
 
 #studioView .make-note,

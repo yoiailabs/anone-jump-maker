@@ -153,28 +153,39 @@ for (const viewport of [PHONE, DESKTOP, PHONE_LANDSCAPE]) {
     expect(Math.abs(portraitBox.y - landscapeBox.y)).toBeLessThan(2);
   });
 
-  test(`${size}: back asks first while editing; staying keeps the work, leaving goes to the top`, async ({ page }) => {
+  test(`${size}: back asks first while editing; staying keeps the work, leaving starts over`, async ({ page }) => {
     await openEditor(page, viewport);
-    // A choice away from the defaults, to see that nothing is reset.
+    // Choices away from the defaults, to see what stays and what is reset.
     await chooseOption(page, "swap", "jump");
+    await chooseOption(page, "character", "1.4");
+    await chooseOption(page, "color_filter", "film");
+    await chooseOption(page, "filter", "blur-weak");
+    await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
     const back = page.locator(".studio-back");
     const dialog = page.getByRole("alertdialog", { name: t("ja", "studioLeaveTitle") });
     const stay = dialog.getByRole("button", { name: t("ja", "studioLeaveStay") });
     const leave = dialog.getByRole("button", { name: t("ja", "studioLeaveConfirm") });
     await expect(back).toHaveAttribute("aria-haspopup", "dialog");
+    const expectChecked = async (choices: Record<string, string>) => {
+      for (const [name, value] of Object.entries(choices)) {
+        await expect(page.locator(`input[name="${name}"][value="${value}"]`)).toBeChecked();
+      }
+    };
     const expectStillEditing = async () => {
       expect(new URL(page.url()).pathname).toBe("/make");
       await expect(page.locator("#studioView")).toBeVisible();
       await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "edit");
       await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(2);
-      await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
+      await expectChecked({ swap: "jump", character: "1.4", color_filter: "film", filter: "blur-weak", aspect: "landscape" });
+      await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
     };
 
     await back.click();
     await expect(dialog).toBeVisible();
     await expect(page.locator("#studioLeave:modal")).toHaveCount(1);
     await expect(dialog).toHaveAttribute("aria-describedby", "studioLeaveBody");
-    await expectVisibleText(page.locator("#studioLeaveBody"), t("ja", "studioLeaveBody", { make: t("ja", "makerMakeVideo") }));
+    await expectVisibleText(page.locator("#studioLeaveBody"), t("ja", "studioLeaveBody"));
     await expect(dialog).toBeInViewport({ ratio: 1 });
     // Opens on the safe choice, which is the filled button; leaving is the outlined one.
     await expect(stay).toBeFocused();
@@ -214,9 +225,18 @@ for (const viewport of [PHONE, DESKTOP, PHONE_LANDSCAPE]) {
     await expect(page.locator("#makerTitle")).toBeFocused();
     await expect(page.locator("#studioLeave:modal")).toHaveCount(0);
 
-    // As the dialog says, the photos and settings are still there from 動画をつくる.
+    // As the dialog says, the photos and settings are gone: 動画をつくる starts an empty pick.
     await page.locator("#toStudio").click();
-    await expectStillEditing();
+    expect(new URL(page.url()).pathname).toBe("/make");
+    await expect(page.locator("#studioView")).toBeVisible();
+    await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "pick");
+    await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(0);
+    await expect(page.locator("#pickerLabel")).toHaveText(t("ja", "makerPickPhotos"));
+    await expect(page.locator(".file-btn")).toBeVisible();
+    await expect(page.locator("#studioEmpty")).toBeVisible();
+    await expectChecked({ swap: "zoom", character: "standard", color_filter: "none", filter: "none", aspect: "portrait" });
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+    await expect(page.locator("#saveBtn")).toBeDisabled();
   });
 
   test(`${size}: wheel and scroll over the preview move neither the page nor the player`, async ({ page, browserName, isMobile }) => {
@@ -318,6 +338,32 @@ test("before any photo, the way back goes straight to the top", async ({ page })
   await expect(page.locator("#makerView")).toBeVisible();
   expect(new URL(page.url()).pathname).toBe("/");
   await expect(page.locator("#studioLeave:modal")).toHaveCount(0);
+});
+
+test("the browser's back also starts over, and new photos come in on their own", async ({ page }) => {
+  // Enter studio via the top page so history has a maker entry for the browser's Back.
+  await page.setViewportSize(PHONE);
+  await page.goto("/");
+  await waitForAppReady(page);
+  await page.locator("#toStudio").click();
+  await expect(page.locator("#studioView")).toBeVisible();
+  const files = await Promise.all([jpegInput("a.jpg"), jpegInput("b.jpg")]);
+  await page.locator("#picker").setInputFiles(files);
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(2, { timeout: 20_000 });
+  await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "edit");
+  await chooseOption(page, "swap", "jump");
+  await page.goBack();
+  await expect(page.locator("#makerView")).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/");
+  await page.goForward();
+  await expect(page.locator("#studioView")).toBeVisible();
+  await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "pick");
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(0);
+  await expect(page.locator('input[name="swap"][value="zoom"]')).toBeChecked();
+  await page.locator("#picker").setInputFiles(await jpegInput("c.jpg"));
+  await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "edit");
+  await expect(page.locator("#previewSeek")).toBeEnabled();
 });
 
 test("back never stacks a second dialog over the export panel", async ({ page }) => {

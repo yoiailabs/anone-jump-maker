@@ -15,6 +15,7 @@ function BackMark() {
  * 戻る処理そのものは boot の #app のクリック処理（pathForApp → history.pushState → applyView）に任せる。
  * React のリスナーは #app より内側の島にあるので、ここで preventDefault すれば boot はクリックを素通りする。
  * 「トップに戻る」を選んだら、同じリンクをもう一度クリックして既存の経路に乗せる。
+ * 写真と設定は applyView が studio を離れるときに捨てる。ここでは消さない。
  */
 export function StudioBack({ locale, editing }: { locale: Locale; editing: boolean }) {
   const linkRef = useRef<HTMLAnchorElement>(null);
@@ -108,7 +109,7 @@ export function StudioBack({ locale, editing }: { locale: Locale; editing: boole
           id="studioLeaveBody"
           className="studio-leave-body"
           locale={locale}
-          text={t(locale, "studioLeaveBody", { make: t(locale, "makerMakeVideo") })}
+          text={t(locale, "studioLeaveBody")}
         />
         <div className="studio-leave-actions">
           <button

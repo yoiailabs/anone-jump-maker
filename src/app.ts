@@ -159,6 +159,9 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
   let suppressPlayUntil = 0;
   let stopLoop: (() => void) | null = null;
   let aspectResume: { play: boolean; time: number; tracked: boolean } | null = null;
+  // トップに戻るたびに増やす。読み込み途中の写真を、捨てたあとの編集へ持ち込まない。
+  let photoSession = 0;
+  let resetAfterExport = false;
 
   const stage = must(root, "#stage");
   const previewTransport = must(root, "#previewTransport");
@@ -813,10 +816,13 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     syncLanguageNav(root, locale, view);
     const enteringStudio = view === "studio" && activeView !== "studio";
     if (view !== "studio") {
+      const leavingStudio = activeView === "studio";
       studioTrace.onLeaveStudio();
       stopPlayback();
       cancelExport();
       closeExportPanel();
+      // 確認ダイアログの「トップに戻る」もブラウザの戻るもここを通る。次は空の選び直しから。
+      if (leavingStudio) resetSession();
     }
     const firstPaint = activeView === null;
     if (activeView !== view) {
@@ -934,6 +940,32 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     characterSize = next;
     syncCharacterRadios(characterSize);
     paint();
+  };
+
+  /** 写真と設定を捨て、写真を選ぶ前の状態に戻す。 */
+  const resetSession = () => {
+    // 書き出しはキャンセル済み。描いている途中の写真は閉じず、終わってから捨てる。
+    if (recording) {
+      resetAfterExport = true;
+      return;
+    }
+    photoSession += 1;
+    aspectResume = null;
+    const dropped = photos;
+    photos = [];
+    picker.value = "";
+    revokePhotos(dropped);
+    clearFeedback("photo");
+    clearFeedback("preview");
+    clearFeedback("save");
+    applyAspect(DEFAULT_ASPECT);
+    applySwap(DEFAULT_SWAP_STYLE);
+    applyFilter("none");
+    applyColor("none");
+    applyCharacterSize(DEFAULT_CHARACTER_SIZE);
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.currentTime > 0) scrubTo(0);
+    paint();
+    refreshButtons();
   };
 
   video.addEventListener("loadeddata", () => {
@@ -1061,17 +1093,25 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     photosBusy = true;
     refreshButtons();
     setFeedback("photo", msg("statusPhotosLoading"), "busy");
+    const session = photoSession;
     try {
       const compositorReady = ensureCompositor();
       const added = await loadPhotos(imageFiles, {
         onProgress: (current, total) => {
+          if (session !== photoSession) return;
           setFeedback("photo", msg("statusPhotosLoadingProgress", { current, total }), "busy");
         },
       });
+      // 読み込み中にトップへ戻っていたら、この写真は使わない。
+      if (session !== photoSession) {
+        revokePhotos(added);
+        return;
+      }
       photos = appendAll(photos, added);
       renderThumbs();
       await compositorReady;
       await ensureTimelines();
+      if (session !== photoSession) return;
       paint();
       if (added.length === 0) {
         rejectPhotos("decode");
@@ -1083,6 +1123,7 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
     } catch (error) {
       renderThumbs();
       paint();
+      if (session !== photoSession) return;
       rejectPhotos(error instanceof Error && error.message === HEIC_UNSUPPORTED_MESSAGE ? "heic" : "decode");
       setErrorFeedback("photo", error, "statusLoadFailed");
     } finally {
@@ -1262,6 +1303,10 @@ export async function boot(root: HTMLElement, options: BootOptions = {}): Promis
       refreshButtons();
       if (!pendingExport) closeExportPanel();
       paint();
+      if (resetAfterExport) {
+        resetAfterExport = false;
+        resetSession();
+      }
     }
   };
 
