@@ -75,6 +75,7 @@ describe("createCompositor", () => {
       resolutionScale: previewResolutionScale("landscape"),
       createKeyer: () => null,
     });
+    compositor.setAspect("landscape");
     const photo = await makePhoto("#e24a3d");
     const video = document.createElement("video");
     const timeline = { slots: [0, 0.5], slotPhotoOrder: [0, 1] };
@@ -146,6 +147,8 @@ describe("createCompositor", () => {
       resolutionScale: 1,
       createKeyer: () => null,
     });
+    // The sample rows below are fractions of the 16:9 plate filling the landscape frame.
+    compositor.setAspect("landscape");
     const photo = await makePhoto("#22ccee");
     const characterCanvas = document.createElement("canvas");
     characterCanvas.width = 1280;

@@ -123,6 +123,7 @@ describe("portrait horizontal cut", () => {
   it("still draws the downward outline on the landscape plate", async () => {
     const photo = await redPhoto();
     const compositor = createCompositor({ resolutionScale: 1, createKeyer: () => null });
+    compositor.setAspect("landscape");
     const plate = document.createElement("canvas");
     plate.width = 1280;
     plate.height = 720;
