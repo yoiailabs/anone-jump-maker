@@ -18,10 +18,10 @@
   --space-md: 1.5rem;
   --space-lg: 2rem;
   --space-xl: 3rem;
-  --page-pad-top: var(--space-lg);
+  --page-pad-top: 1.85rem;
   --page-pad-x: 1.15rem;
-  --page-pad-bottom: calc(var(--space-xl) + var(--space-sm));
-  --section-gap: var(--space-xl);
+  --page-pad-bottom: 3.8rem;
+  --section-gap: 2.35rem;
   --thumb-size: 6rem;
   --thumb-radius: 0.7rem;
 }
@@ -63,6 +63,14 @@ body {
   gap: var(--section-gap);
   position: relative;
   z-index: 1;
+}
+
+/* 共通スケールは表示中のトップと pick に限定し、規約ページと edit は従来どおり。 */
+.app:has(> #makerView:not([hidden])),
+.app:has(> #studioView[data-phase="pick"]:not([hidden])) {
+  --page-pad-top: var(--space-lg);
+  --page-pad-bottom: calc(var(--space-xl) + var(--space-sm));
+  --section-gap: var(--space-xl);
 }
 
 .app-view {
