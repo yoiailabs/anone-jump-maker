@@ -107,6 +107,7 @@ describe("photo blur at preview / export resolutions", () => {
     for (let x = 0; x < 64; x += 8) ctx.fillRect(x, 0, 4, 36);
     const bitmap = await createImageBitmap(source);
     const comp = createCompositor({ resolutionScale: previewResolutionScale("landscape"), createKeyer: () => null });
+    comp.setAspect("landscape");
     const video = document.createElement("video");
     const read = vi.spyOn(CanvasRenderingContext2D.prototype, "getImageData");
     const draw = (filter: ImageFilter) => comp.draw(video, [{ id: "edge", name: "edge", bitmap, thumbUrl: "" }], { slots: [0] }, 0.2, "zoom", filter);

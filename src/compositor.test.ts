@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync, writeFileSync } from "node:fs";
+import { beforeAll, describe, expect, it } from "vitest";
 import appSrc from "./app.ts?raw";
 import compositorSrc from "./compositor.ts?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
@@ -36,6 +37,10 @@ import {
   swapFx,
   usesBlurBackdrop,
 } from "./layout.ts";
+
+import templateCuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
+import { photoForSlot, slotForTime } from "./timeline.ts";
+import type { AspectMode, SwapStyle } from "./layout.ts";
 
 const F = 1 / TEMPLATE_FPS;
 
@@ -282,5 +287,97 @@ describe("character size draw path", () => {
     expect(appSrc).toContain('input[name="character"]');
     expect(appSrc).toContain("characterSize");
     expect(appSrc).toContain("applyCharacterSize");
+  });
+});
+
+// 段0の公開関数の結果を固定する表。本番の draw 経路そのものの検証ではない。
+// 意図した仕様変更時の再採録: node scripts/update-frame-boundaries.mjs
+// 再採録後は JSON の差分を確認する。段1では同じ表で planFrame の結果も検証する。
+describe("frame boundary safety table", () => {
+  const slots = [0, 0.5, 1];
+  const roundedCut = templateCuts.slots[4]!;
+  // 丸めた slot と実フレーム時刻の両方を通し、slot の許容を外す回帰も検出する。
+  // 実フレーム時刻の行は現行のずれもそのまま固定している。丸めで切り上がった slot では
+  // zoom の入れ替わりが1フレーム遅れ、jump のカット時に写真が縮まない（FRAME_EPS と jumpCycle の k < 0）。
+  // 時刻の出し方を変えてこの行が落ちたら、回帰か仕様の修正かをここで判断する。
+  const frameCut = templateCuts.slotFrames[4]! / templateCuts.fps;
+  const inputs = [
+    { label: "start", slots, cut: 0, n: 0 },
+    { label: "cut-2f", slots, cut: 0.5, n: -2 },
+    { label: "cut-1f", slots, cut: 0.5, n: -1 },
+    { label: "cut", slots, cut: 0.5, n: 0 },
+    { label: "cut+1f", slots, cut: 0.5, n: 1 },
+    { label: "cut+3f", slots, cut: 0.5, n: 3 },
+    { label: "tail", slots, cut: 1, n: 14 },
+    { label: "rounded cut-1f", slots: templateCuts.slots, cut: roundedCut, n: -1 },
+    { label: "rounded cut", slots: templateCuts.slots, cut: roundedCut, n: 0 },
+    { label: "rounded cut+1f", slots: templateCuts.slots, cut: roundedCut, n: 1 },
+    { label: "template frame cut-1f", slots: templateCuts.slots, cut: frameCut, n: -1 },
+    { label: "template frame cut", slots: templateCuts.slots, cut: frameCut, n: 0 },
+    { label: "template frame cut+1f", slots: templateCuts.slots, cut: frameCut, n: 1 },
+    { label: "empty slots", slots: [], cut: 0.5, n: 0 },
+    { label: "no photos", slots, cut: 0.5, n: 0, photos: [] },
+    { label: "tall photo", slots, cut: 0.5, n: 1, photoSize: { width: 1200, height: 1600 } },
+  ];
+  const cases = (["landscape", "portrait"] satisfies AspectMode[]).flatMap((aspect) =>
+    (["jump", "zoom"] satisfies SwapStyle[]).flatMap((style) =>
+      inputs.map((input) => ({
+        photos: ["a", "b"],
+        photoSize: { width: 1600, height: 1200 },
+        ...input,
+        aspect,
+        style,
+        name: `${aspect} ${style} ${input.label}`,
+      })),
+    ),
+  );
+
+  function observe(row: (typeof cases)[number]) {
+    const time = row.cut + row.n * F;
+    const fx = swapFx(time, row.slots, row.style, row.aspect);
+    const panel = mainPanelRect(OUTPUTS[row.aspect].width, OUTPUTS[row.aspect].height, row.aspect);
+    return {
+      slot: slotForTime(time, row.slots),
+      photo: photoForSlot(row.photos, fx.plateSlot) ?? null,
+      fx,
+      // 写真0枚では描画対象がない。ほかの行ではパネル寸法を通した配置を固定する。
+      dest: row.photos.length === 0 ? null : plateDest(
+        row.photoSize.width, row.photoSize.height, panel.w, panel.h, fx, row.style,
+      ),
+    };
+  }
+
+  let boundaries: Record<string, ReturnType<typeof observe>>;
+  beforeAll(() => {
+    const fixture = new URL("./fixtures/frame-boundaries.json", import.meta.url);
+    if (process.env.UPDATE_FRAME_BOUNDARIES === "1") {
+      // 生成スクリプトからの明示的な再採録時だけ、現行コードの出力を保存する。
+      writeFileSync(fixture, `${JSON.stringify(Object.fromEntries(cases.map((row) => [row.name, observe(row)])), null, 2)}\n`);
+    }
+    boundaries = JSON.parse(readFileSync(fixture, "utf8"));
+    expect(Object.keys(boundaries)).toEqual(cases.map((row) => row.name));
+  });
+
+  it.each(cases)("$name", (row) => {
+    const actual = observe(row);
+    const expected = boundaries[row.name]!;
+    expect(actual.slot).toBe(expected.slot);
+    expect(actual.photo).toBe(expected.photo);
+    const { plateSlot, cutIndex, backdrop, ...continuousFx } = actual.fx;
+    const { plateSlot: expectedPlate, cutIndex: expectedCut, backdrop: expectedBackdrop, ...expectedFx } = expected.fx;
+    expect({ plateSlot, cutIndex, backdrop }).toEqual({
+      plateSlot: expectedPlate, cutIndex: expectedCut, backdrop: expectedBackdrop,
+    });
+    expect(Object.keys(continuousFx).sort()).toEqual(Object.keys(expectedFx).sort());
+    for (const key of Object.keys(continuousFx) as (keyof typeof continuousFx)[]) {
+      expect(continuousFx[key], key).toBeCloseTo(expectedFx[key], 9);
+    }
+    if (actual.dest === null || expected.dest === null) {
+      expect(actual.dest).toBe(expected.dest);
+    } else {
+      for (const key of ["x", "y", "w", "h"] as const) {
+        expect(Math.abs(actual.dest[key] - expected.dest[key]), key).toBeLessThanOrEqual(1e-6);
+      }
+    }
   });
 });

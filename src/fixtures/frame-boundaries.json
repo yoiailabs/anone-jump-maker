@@ -1,0 +1,1582 @@
+{
+  "landscape jump start": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.947,
+      "dy": 0.175,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -240.03840000000014,
+      "y": -246.62880000000007,
+      "w": 2400.0768000000003,
+      "h": 1800.0576
+    }
+  },
+  "landscape jump cut-2f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.03333333333333336,
+      "flashScreen": 0.022222222222222244,
+      "flashGlobal": 0.006666666666666672,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.9701875,
+      "dy": 0.09843749999999998,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -269.4215999999999,
+      "y": -351.3536999999999,
+      "w": 2458.8432,
+      "h": 1844.1323999999997
+    }
+  },
+  "landscape jump cut-1f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.13333333333333333,
+      "flashScreen": 0.08888888888888889,
+      "flashGlobal": 0.026666666666666665,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.959421875,
+      "dy": 0.133984375,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -255.77940000000012,
+      "y": -302.73142500000006,
+      "w": 2431.5588000000002,
+      "h": 1823.6691
+    }
+  },
+  "landscape jump cut": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.947,
+      "dy": 0.175,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -240.03840000000014,
+      "y": -246.62880000000007,
+      "w": 2400.0768000000003,
+      "h": 1800.0576
+    }
+  },
+  "landscape jump cut+1f": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.16874999999999998,
+      "flashScreen": 0.1125,
+      "flashGlobal": 0.03375,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9610612244897959,
+      "dy": 0.12276100425079305,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -257.8567836734694,
+      "y": -316.41070316424566,
+      "w": 2435.713567346939,
+      "h": 1826.7851755102042
+    }
+  },
+  "landscape jump cut+3f": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.018750000000000034,
+      "flashScreen": 0.012500000000000023,
+      "flashGlobal": 0.0037500000000000064,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9826938775510204,
+      "dy": 0.048311501648175506,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -285.26968163265315,
+      "y": -417.37583944446027,
+      "w": 2490.5393632653063,
+      "h": 1867.9045224489796
+    }
+  },
+  "landscape jump tail": {
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 2,
+      "scale": 0.959421875,
+      "dy": 0.13398437500000013,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": -255.77940000000012,
+      "y": -302.7314249999999,
+      "w": 2431.5588000000002,
+      "h": 1823.6691
+    }
+  },
+  "landscape jump rounded cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.13333333333333292,
+      "flashScreen": 0.08888888888888863,
+      "flashGlobal": 0.026666666666666585,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 3,
+      "scale": 0.9701874006249173,
+      "dy": 0.0984378281252733,
+      "cutIndex": 3
+    },
+    "dest": {
+      "x": -269.4214740718953,
+      "y": -351.35325117862635,
+      "w": 2458.8429481437906,
+      "h": 1844.132211107843
+    }
+  },
+  "landscape jump rounded cut": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 0.947,
+      "dy": 0.175,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -240.03840000000014,
+      "y": -246.62880000000007,
+      "w": 2400.0768000000003,
+      "h": 1800.0576
+    }
+  },
+  "landscape jump rounded cut+1f": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.16874999999999965,
+      "flashScreen": 0.11249999999999978,
+      "flashGlobal": 0.03374999999999993,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 0.9610612244897959,
+      "dy": 0.12276100425079291,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -257.8567836734694,
+      "y": -316.4107031642458,
+      "w": 2435.713567346939,
+      "h": 1826.7851755102042
+    }
+  },
+  "landscape jump template frame cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.13333200000333273,
+      "flashScreen": 0.08888800000222183,
+      "flashGlobal": 0.026666400000666547,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 3,
+      "scale": 0.9701875000000001,
+      "dy": 0.09843749999999976,
+      "cutIndex": 3
+    },
+    "dest": {
+      "x": -269.4216000000001,
+      "y": -351.35370000000023,
+      "w": 2458.8432000000003,
+      "h": 1844.1324
+    }
+  },
+  "landscape jump template frame cut": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.29999800000333304,
+      "flashScreen": 0.1999986666688887,
+      "flashGlobal": 0.059999600000666606,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -307.20000000000005,
+      "y": -486.0000000000001,
+      "w": 2534.4,
+      "h": 1900.8000000000002
+    }
+  },
+  "landscape jump template frame cut+1f": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.16875112500187478,
+      "flashScreen": 0.11250075000124987,
+      "flashGlobal": 0.03375022500037496,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 0.9610610946937694,
+      "dy": 0.12276147483515237,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -257.85661919594463,
+      "y": -316.4100715749939,
+      "w": 2435.7132383918893,
+      "h": 1826.7849287939168
+    }
+  },
+  "landscape jump empty slots": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -307.20000000000005,
+      "y": -486.0000000000001,
+      "w": 2534.4,
+      "h": 1900.8000000000002
+    }
+  },
+  "landscape jump no photos": {
+    "slot": 1,
+    "photo": null,
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.947,
+      "dy": 0.175,
+      "cutIndex": 1
+    },
+    "dest": null
+  },
+  "landscape jump tall photo": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.16874999999999998,
+      "flashScreen": 0.1125,
+      "flashGlobal": 0.03375,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9610612244897959,
+      "dy": 0.12276100425079305,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -257.85678367346964,
+      "y": -1026.827160307103,
+      "w": 2435.7135673469393,
+      "h": 3247.618089795919
+    }
+  },
+  "landscape zoom start": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": 0,
+      "y": -180,
+      "w": 1920,
+      "h": 1440
+    }
+  },
+  "landscape zoom cut-2f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "blur": 3.552713678800501e-18,
+      "rgb": 8.881784197001253e-19,
+      "lift": 2.2204460492503132e-17,
+      "haze": 0,
+      "wave": 6.661338147750939e-19,
+      "plateSlot": 0,
+      "scale": 0.9886868909025207,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": 10.860584733580026,
+      "y": -171.85456144981492,
+      "w": 1898.27883053284,
+      "h": 1423.7091228996298
+    }
+  },
+  "landscape zoom cut-1f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "blur": 0.008000000000000004,
+      "rgb": 0.002000000000000001,
+      "lift": 0.05000000000000007,
+      "haze": 0,
+      "wave": 0.0015000000000000007,
+      "plateSlot": 0,
+      "scale": 0.9461854806739026,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": 51.66193855305346,
+      "y": -141.2535460852099,
+      "w": 1816.676122893893,
+      "h": 1362.5070921704198
+    }
+  },
+  "landscape zoom cut": {
+    "slot": 1,
+    "photo": "a",
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": 128.6400000000001,
+      "y": -83.51999999999998,
+      "w": 1662.7199999999998,
+      "h": 1247.04
+    }
+  },
+  "landscape zoom cut+1f": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "blur": 0.014000000000000004,
+      "rgb": 0.004,
+      "lift": 5.551115123125783e-17,
+      "haze": 0.24999999999999994,
+      "wave": 0.0015000000000000005,
+      "plateSlot": 1,
+      "scale": 1.115,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -110.39999999999986,
+      "y": -262.79999999999995,
+      "w": 2140.7999999999997,
+      "h": 1605.6
+    }
+  },
+  "landscape zoom cut+3f": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "blur": 1.734723475976807e-18,
+      "rgb": 4.336808689942018e-19,
+      "lift": 0,
+      "haze": 6.938893903907228e-17,
+      "wave": 0,
+      "plateSlot": 1,
+      "scale": 1.0046,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -4.41599999999994,
+      "y": -183.3119999999999,
+      "w": 1928.8319999999999,
+      "h": 1446.6239999999998
+    }
+  },
+  "landscape zoom tail": {
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "plateSlot": 2,
+      "scale": 1,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": 0,
+      "y": -180,
+      "w": 1920,
+      "h": 1440
+    }
+  },
+  "landscape zoom rounded cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "blur": 0.007999999999999976,
+      "rgb": 0.001999999999999994,
+      "lift": 0.04999999999999985,
+      "haze": 0,
+      "wave": 0.0014999999999999953,
+      "plateSlot": 3,
+      "scale": 0.9461854806739027,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": 51.66193855305346,
+      "y": -141.2535460852099,
+      "w": 1816.676122893893,
+      "h": 1362.5070921704198
+    }
+  },
+  "landscape zoom rounded cut": {
+    "slot": 4,
+    "photo": "b",
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 3,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": 128.6400000000001,
+      "y": -83.51999999999998,
+      "w": 1662.7199999999998,
+      "h": 1247.04
+    }
+  },
+  "landscape zoom rounded cut+1f": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "blur": 0.013999999999999962,
+      "rgb": 0.003999999999999989,
+      "lift": 0,
+      "haze": 0.24999999999999947,
+      "wave": 0.0014999999999999953,
+      "plateSlot": 4,
+      "scale": 1.1149999999999993,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -110.39999999999941,
+      "y": -262.7999999999995,
+      "w": 2140.799999999999,
+      "h": 1605.599999999999
+    }
+  },
+  "landscape zoom template frame cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "blur": 0.007999919999999964,
+      "rgb": 0.001999979999999991,
+      "lift": 0.04999949999999978,
+      "haze": 0,
+      "wave": 0.0014999849999999932,
+      "plateSlot": 3,
+      "scale": 0.9461860860853534,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": 51.661357358060854,
+      "y": -141.25398198145433,
+      "w": 1816.6772852838783,
+      "h": 1362.5079639629087
+    }
+  },
+  "landscape zoom template frame cut": {
+    "slot": 4,
+    "photo": "b",
+    "fx": {
+      "blur": 0.026999809999999975,
+      "rgb": 0.006499954999999993,
+      "lift": 0.34999699999999956,
+      "haze": 0,
+      "wave": 0.003999974999999997,
+      "plateSlot": 3,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": 128.6400000000001,
+      "y": -83.51999999999998,
+      "w": 1662.7199999999998,
+      "h": 1247.04
+    }
+  },
+  "landscape zoom template frame cut+1f": {
+    "slot": 4,
+    "photo": "b",
+    "fx": {
+      "blur": 0.014000129999999979,
+      "rgb": 0.004000024999999996,
+      "lift": 0.000003499999999379,
+      "haze": 0.24999750000000043,
+      "wave": 0.0015000249999999955,
+      "plateSlot": 3,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": 128.6400000000001,
+      "y": -83.51999999999998,
+      "w": 1662.7199999999998,
+      "h": 1247.04
+    }
+  },
+  "landscape zoom empty slots": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": 0,
+      "y": -180,
+      "w": 1920,
+      "h": 1440
+    }
+  },
+  "landscape zoom no photos": {
+    "slot": 1,
+    "photo": null,
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": null
+  },
+  "landscape zoom tall photo": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "blur": 0.014000000000000004,
+      "rgb": 0.004,
+      "lift": 5.551115123125783e-17,
+      "haze": 0.24999999999999994,
+      "wave": 0.0015000000000000005,
+      "plateSlot": 1,
+      "scale": 1.115,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -110.40000000000009,
+      "y": -887.2,
+      "w": 2140.8,
+      "h": 2854.4
+    }
+  },
+  "portrait jump start": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.947,
+      "dy": 0.0984375,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -1060.0512,
+      "y": -185.43840000000017,
+      "w": 3200.1024,
+      "h": 2400.0768000000003
+    }
+  },
+  "portrait jump cut-2f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.03333333333333336,
+      "flashScreen": 0.022222222222222244,
+      "flashGlobal": 0.006666666666666672,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.9701875,
+      "dy": 0.055371093749999996,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -1099.2288,
+      "y": -297.50910000000016,
+      "w": 3278.4576,
+      "h": 2458.8432000000003
+    }
+  },
+  "portrait jump cut-1f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.13333333333333333,
+      "flashScreen": 0.08888888888888889,
+      "flashGlobal": 0.026666666666666665,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 0.959421875,
+      "dy": 0.0753662109375,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -1081.0392000000002,
+      "y": -245.47627500000013,
+      "w": 3242.0784000000003,
+      "h": 2431.5588000000002
+    }
+  },
+  "portrait jump cut": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.947,
+      "dy": 0.0984375,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -1060.0512,
+      "y": -185.43840000000017,
+      "w": 3200.1024,
+      "h": 2400.0768000000003
+    }
+  },
+  "portrait jump cut+1f": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.16874999999999998,
+      "flashScreen": 0.1125,
+      "flashGlobal": 0.03375,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9610612244897959,
+      "dy": 0.06905306489107109,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -1083.8090448979594,
+      "y": -259.67489908261314,
+      "w": 3247.618089795919,
+      "h": 2435.7135673469393
+    }
+  },
+  "portrait jump cut+3f": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.018750000000000034,
+      "flashScreen": 0.012500000000000023,
+      "flashGlobal": 0.0037500000000000064,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9826938775510204,
+      "dy": 0.027175219677098725,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -1120.3595755102044,
+      "y": -367.49325985262385,
+      "w": 3320.719151020409,
+      "h": 2490.5393632653067
+    }
+  },
+  "portrait jump tail": {
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 2,
+      "scale": 0.959421875,
+      "dy": 0.07536621093750008,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": -1081.0392000000002,
+      "y": -245.476275,
+      "w": 3242.0784000000003,
+      "h": 2431.5588000000002
+    }
+  },
+  "portrait jump rounded cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.13333333333333292,
+      "flashScreen": 0.08888888888888863,
+      "flashGlobal": 0.026666666666666585,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 3,
+      "scale": 0.9701874006249173,
+      "dy": 0.05537127832046623,
+      "cutIndex": 3
+    },
+    "dest": {
+      "x": -1099.2286320958603,
+      "y": -297.50861969660014,
+      "w": 3278.4572641917207,
+      "h": 2458.8429481437906
+    }
+  },
+  "portrait jump rounded cut": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 0.947,
+      "dy": 0.0984375,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -1060.0512,
+      "y": -185.43840000000017,
+      "w": 3200.1024,
+      "h": 2400.0768000000003
+    }
+  },
+  "portrait jump rounded cut+1f": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.16874999999999965,
+      "flashScreen": 0.11249999999999978,
+      "flashGlobal": 0.03374999999999993,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 0.9610612244897959,
+      "dy": 0.06905306489107102,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -1083.8090448979594,
+      "y": -259.6748990826133,
+      "w": 3247.618089795919,
+      "h": 2435.7135673469393
+    }
+  },
+  "portrait jump template frame cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.13333200000333273,
+      "flashScreen": 0.08888800000222183,
+      "flashGlobal": 0.026666400000666547,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 3,
+      "scale": 0.9701875000000001,
+      "dy": 0.05537109374999987,
+      "cutIndex": 3
+    },
+    "dest": {
+      "x": -1099.2288000000003,
+      "y": -297.5091000000006,
+      "w": 3278.4576000000006,
+      "h": 2458.8432000000007
+    }
+  },
+  "portrait jump template frame cut": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.29999800000333304,
+      "flashScreen": 0.1999986666688887,
+      "flashGlobal": 0.059999600000666606,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -1149.6000000000001,
+      "y": -441.6,
+      "w": 3379.2000000000003,
+      "h": 2534.4
+    }
+  },
+  "portrait jump template frame cut+1f": {
+    "slot": 4,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0.16875112500187478,
+      "flashScreen": 0.11250075000124987,
+      "flashGlobal": 0.03375022500037496,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 4,
+      "scale": 0.9610610946937694,
+      "dy": 0.06905332959477321,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -1083.808825594593,
+      "y": -259.67422637398005,
+      "w": 3247.617651189186,
+      "h": 2435.7132383918893
+    }
+  },
+  "portrait jump empty slots": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -1149.6000000000001,
+      "y": -441.6,
+      "w": 3379.2000000000003,
+      "h": 2534.4
+    }
+  },
+  "portrait jump no photos": {
+    "slot": 1,
+    "photo": null,
+    "fx": {
+      "flashAdd": 0.3,
+      "flashScreen": 0.2,
+      "flashGlobal": 0.06,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.947,
+      "dy": 0.0984375,
+      "cutIndex": 1
+    },
+    "dest": null
+  },
+  "portrait jump tall photo": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "flashAdd": 0.16874999999999998,
+      "flashScreen": 0.1125,
+      "flashGlobal": 0.03375,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 1,
+      "scale": 0.9610612244897959,
+      "dy": 0.06905306489107109,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -373.3925877551021,
+      "y": -259.6748990826129,
+      "w": 1826.7851755102042,
+      "h": 2435.713567346939
+    }
+  },
+  "portrait zoom start": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -740,
+      "y": 0,
+      "w": 2560,
+      "h": 1920
+    }
+  },
+  "portrait zoom cut-2f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "blur": 0.004571428571428573,
+      "rgb": 0.0011428571428571432,
+      "lift": 0.02857142857142858,
+      "haze": 0,
+      "wave": 0.0008571428571428574,
+      "plateSlot": 0,
+      "scale": 0.9687215713678701,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -699.9636113508739,
+      "y": 30.02729148684466,
+      "w": 2479.9272227017477,
+      "h": 1859.9454170263107
+    }
+  },
+  "portrait zoom cut-1f": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "blur": 0.01342857142857143,
+      "rgb": 0.003285714285714286,
+      "lift": 0.13571428571428573,
+      "haze": 0,
+      "wave": 0.0022142857142857146,
+      "plateSlot": 0,
+      "scale": 0.927325618195065,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -646.9767912896832,
+      "y": 69.76740653273748,
+      "w": 2373.9535825793664,
+      "h": 1780.465186934525
+    }
+  },
+  "portrait zoom cut": {
+    "slot": 1,
+    "photo": "a",
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  "portrait zoom cut+1f": {
+    "slot": 1,
+    "photo": "a",
+    "fx": {
+      "blur": 0.017714285714285717,
+      "rgb": 0.004714285714285714,
+      "lift": 0.10000000000000003,
+      "haze": 0.17857142857142855,
+      "wave": 0.0022142857142857146,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  "portrait zoom cut+3f": {
+    "slot": 1,
+    "photo": "b",
+    "fx": {
+      "blur": 0.0017142857142857153,
+      "rgb": 0.0004285714285714288,
+      "lift": 0,
+      "haze": 0.06857142857142862,
+      "wave": 0,
+      "plateSlot": 1,
+      "scale": 1.0182757403081426,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -763.3929475944226,
+      "y": -17.544710695817002,
+      "w": 2606.785895188845,
+      "h": 1955.089421391634
+    }
+  },
+  "portrait zoom tail": {
+    "slot": 2,
+    "photo": "a",
+    "fx": {
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "plateSlot": 2,
+      "scale": 1,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": false,
+      "cutIndex": 2
+    },
+    "dest": {
+      "x": -740,
+      "y": 0,
+      "w": 2560,
+      "h": 1920
+    }
+  },
+  "portrait zoom rounded cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "blur": 0.013428571428571387,
+      "rgb": 0.0032857142857142755,
+      "lift": 0.13571428571428504,
+      "haze": 0,
+      "wave": 0.0022142857142857086,
+      "plateSlot": 3,
+      "scale": 0.9273256181950651,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -646.9767912896832,
+      "y": 69.76740653273748,
+      "w": 2373.9535825793664,
+      "h": 1780.465186934525
+    }
+  },
+  "portrait zoom rounded cut": {
+    "slot": 4,
+    "photo": "b",
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 3,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  "portrait zoom rounded cut+1f": {
+    "slot": 4,
+    "photo": "b",
+    "fx": {
+      "blur": 0.017714285714285686,
+      "rgb": 0.004714285714285709,
+      "lift": 0.0999999999999992,
+      "haze": 0.17857142857142913,
+      "wave": 0.0022142857142857086,
+      "plateSlot": 3,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  "portrait zoom template frame cut-1f": {
+    "slot": 3,
+    "photo": "b",
+    "fx": {
+      "blur": 0.013428435714285652,
+      "rgb": 0.003285682142857128,
+      "lift": 0.1357121428571419,
+      "haze": 0,
+      "wave": 0.002214267857142849,
+      "plateSlot": 3,
+      "scale": 0.9273261291858143,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -646.9774453578423,
+      "y": 69.76691598161835,
+      "w": 2373.9548907156845,
+      "h": 1780.4661680367633
+    }
+  },
+  "portrait zoom template frame cut": {
+    "slot": 4,
+    "photo": "b",
+    "fx": {
+      "blur": 0.026999864285714267,
+      "rgb": 0.006499967857142852,
+      "lift": 0.3499978571428568,
+      "haze": 0,
+      "wave": 0.00399998214285714,
+      "plateSlot": 3,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  "portrait zoom template frame cut+1f": {
+    "slot": 4,
+    "photo": "b",
+    "fx": {
+      "blur": 0.017714378571428553,
+      "rgb": 0.004714303571428568,
+      "lift": 0.10000249999999958,
+      "haze": 0.17856964285714316,
+      "wave": 0.0022143035714285685,
+      "plateSlot": 3,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 4
+    },
+    "dest": {
+      "x": -568.48,
+      "y": 128.63999999999987,
+      "w": 2216.96,
+      "h": 1662.7200000000003
+    }
+  },
+  "portrait zoom empty slots": {
+    "slot": 0,
+    "photo": "a",
+    "fx": {
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "blur": 0,
+      "rgb": 0,
+      "lift": 0,
+      "haze": 0,
+      "wave": 0,
+      "backdrop": false,
+      "plateSlot": 0,
+      "scale": 1,
+      "dy": 0,
+      "cutIndex": 0
+    },
+    "dest": {
+      "x": -740,
+      "y": 0,
+      "w": 2560,
+      "h": 1920
+    }
+  },
+  "portrait zoom no photos": {
+    "slot": 1,
+    "photo": null,
+    "fx": {
+      "blur": 0.027,
+      "rgb": 0.0065,
+      "lift": 0.35,
+      "haze": 0,
+      "wave": 0.004,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": null
+  },
+  "portrait zoom tall photo": {
+    "slot": 1,
+    "photo": "a",
+    "fx": {
+      "blur": 0.017714285714285717,
+      "rgb": 0.004714285714285714,
+      "lift": 0.10000000000000003,
+      "haze": 0.17857142857142855,
+      "wave": 0.0022142857142857146,
+      "plateSlot": 0,
+      "scale": 0.866,
+      "dy": 0,
+      "flashAdd": 0,
+      "flashScreen": 0,
+      "flashGlobal": 0,
+      "backdrop": true,
+      "cutIndex": 1
+    },
+    "dest": {
+      "x": -83.51999999999998,
+      "y": 128.6400000000001,
+      "w": 1247.04,
+      "h": 1662.7199999999998
+    }
+  }
+}

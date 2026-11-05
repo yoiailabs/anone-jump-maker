@@ -4,7 +4,7 @@ import { t, type Locale } from "../src/i18n.ts";
 import { PHOTO_MAX_COUNT } from "../src/photo-list.ts";
 import { playbackPositions } from "../src/timeline.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../src/share.ts";
-import { blockAnalytics, expectVisibleText, fileChooserFor, jpegInput, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, chooseOption, expectVisibleText, fileChooserFor, jpegInput, openEditorTab, openStudio, PHOTO_FILE, stubShortTemplate, stripZwsp, waitForAppReady } from "./helpers.ts";
 
 test.beforeEach(async ({ page }) => {
   await blockAnalytics(page);
@@ -123,14 +123,25 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#previewToggle")).toBeVisible();
   await expect(page.locator("#previewStatus")).toHaveAttribute("data-state", "stopped");
   await expect(page.locator("#previewStatus")).toHaveAttribute("aria-label", "停止中");
+  // 既定は縦。1280x720 の縦プレビューは細く、状態アイコンを省く（studio.css の 8.5rem 未満）。
+  // アイコンは横の広いプレビューで確かめ、あとで縦へ戻す。
+  await expect(page.locator('input[name="aspect"][value="portrait"]')).toBeChecked();
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+  await chooseOption(page, "aspect", "landscape");
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
   await expect(page.locator(".preview-status-icon-pause")).toBeVisible();
   await expect(page.locator(".preview-status-icon-play")).toBeHidden();
   await expect(page.locator("#previewStatusLabel")).toHaveCount(0);
   await expect(page.locator("#restartBtn")).toHaveCount(0);
   await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
+  // 向きはプレビューの下でいつでも選べる。編集シートは「写真」タブから、エフェクトは「うごき」タブ。
   await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeVisible();
+  await expect(page.locator('.studio-sheet input[name="aspect"]')).toHaveCount(0);
   await expect(page.locator('#studioView input[name="swap"][value="zoom"]')).toBeChecked();
+  await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeHidden();
+  await openEditorTab(page, "motion");
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeVisible();
+  await openEditorTab(page, "photos");
   await expect(page.locator("#aspectPopover")).toHaveCount(0);
   expect(
     await page.evaluate(() =>
@@ -181,9 +192,10 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await mute.click();
   await expect(mute).toContainText(/音声オフ|音声オン/);
 
-  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+  await chooseOption(page, "aspect", "portrait");
   await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
 
+  await openEditorTab(page, "motion");
   const zoomOption = page.locator('#studioView label:has(input[name="swap"][value="zoom"])');
   const jumpOption = page.locator('#studioView label:has(input[name="swap"][value="jump"])');
   await expect(zoomOption).toBeVisible();
@@ -194,9 +206,9 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await jumpOption.click();
   await expect(page.locator('#studioView input[name="swap"][value="jump"]')).toBeChecked();
 
-  await page.locator('#studioView label:has(input[name="filter"][value="blur-weak"])').click();
+  await chooseOption(page, "filter", "blur-weak");
 
-  await page.locator('#studioView label:has(input[name="character"][value="1.2"])').click();
+  await chooseOption(page, "character", "1.2");
   await expect(page.locator('#studioView input[name="character"][value="1.2"]')).toBeChecked();
   await expect(page.locator("#stage")).toBeVisible();
   await expect(page.locator("#saveBtn")).toBeEnabled();
@@ -296,11 +308,15 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#thumbsHint")).toBeHidden();
 
   await uploadPhoto(page);
+  // The thumbnails' ＋ is the only way to add more; the big button stays in the DOM for boot, out of sight.
   await expect(page.locator("#pickerLabel")).toHaveText("写真を追加");
-  await expect(page.locator("#pickHint")).toHaveText(t("ja", "makerPhotoCountHint"));
+  await expect(page.locator(".file-btn")).toBeHidden();
+  await expect(page.locator("#pickHint")).toBeHidden();
+  await expect(page.locator("#picker")).toBeAttached();
   await expectVisibleText(page.locator("#thumbsHint"), "長押しして画像の順序を変更できます。");
   await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(1);
   await expect(page.locator(".thumb-add")).toBeVisible();
+  await expect(page.locator(".thumb-add")).toHaveAccessibleName("写真を追加");
 
   const extra = await jpegInput("extra.jpg");
   const chooser = await fileChooserFor(page, () => page.locator(".thumb-add").click());
@@ -332,6 +348,8 @@ test("adds, reorders, and removes photos after the first pick", async ({ page })
   await expect(page.locator("#thumbs")).toBeHidden();
   await expect(page.locator(".thumb-add")).toBeHidden();
   await expect(page.locator("#pickerLabel")).toHaveText("写真を選ぶ");
+  await expect(page.locator(".file-btn")).toBeVisible();
+  await expect(page.locator("#pickHint")).toBeVisible();
   await expect(page.locator("#previewTransport")).toBeHidden();
 });
 
@@ -343,6 +361,7 @@ test("keeps at most 32 photos and disables adding at the cap", async ({ page }) 
   await expect(page.locator("#thumbs img").nth(0)).toHaveAttribute("alt", "p0.jpg");
   await expect(page.locator("#thumbs img").nth(PHOTO_MAX_COUNT - 1)).toHaveAttribute("alt", `p${PHOTO_MAX_COUNT - 1}.jpg`);
   await expect(page.locator(".thumb-add")).toBeDisabled();
+  await expect(page.locator("#picker")).toBeDisabled();
   await expect(page.locator("#pickerLabel")).toHaveText(t("ja", "makerPhotosFull", { n: PHOTO_MAX_COUNT }));
   await expect
     .poll(async () => stripZwsp((await page.locator("#thumbsHint").textContent()) ?? ""))
@@ -517,7 +536,7 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
     await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/^anone-zoom-16x9\.(mp4|webm)$/);
+    expect(download.suggestedFilename()).toMatch(/^anone-zoom-9x16\.(mp4|webm)$/);
     await expect(page.locator("#exportStatus")).toBeHidden();
     await expect(page.locator("#exportStatus")).toHaveText("");
     await expect(page.locator("#saveFeedback")).toBeHidden();
@@ -612,7 +631,7 @@ test("download opens a file share sheet when the browser can share files", async
         }
       ).__fileShareCalls[0],
   );
-  expect(payload?.name).toMatch(/^anone-zoom-16x9\.(mp4|webm)$/);
+  expect(payload?.name).toMatch(/^anone-zoom-9x16\.(mp4|webm)$/);
   expect(payload?.type).toMatch(/^video\/(mp4|webm)$/);
   expect(payload?.size ?? 0).toBeGreaterThan(0);
   expect(payload?.text).toBe(SHARE_TEXT);
@@ -891,7 +910,9 @@ for (const locale of ["ja", "en"] as const) {
     });
     await uploadPhoto(page, { name: "striped-photo.png", mimeType: "image/png", buffer: Buffer.from(photo, "base64") });
     await expect(page.locator("#saveBtn")).toBeEnabled();
-    await expect(page.getByRole("radiogroup")).toHaveCount(5);
+    // 4 行の設定はタブに分かれていても、全部マウントされている。向きはプレビュー下の切り替え。
+    await expect(page.locator(".studio-option-row")).toHaveCount(4);
+    await expect(page.locator(".aspect-switch")).toHaveCount(1);
     await expect(page.locator("#filterLabel")).toHaveText(locale === "ja" ? "ブラー" : "Blur");
     await expect(page.locator('input[name="filter"][value="none"]')).toBeChecked();
     await expect(page.locator('input[name="color_filter"][value="none"]')).toBeChecked();
@@ -939,6 +960,7 @@ for (const locale of ["ja", "en"] as const) {
     expect(await page.locator('input[name="color_filter"]').evaluateAll((inputs) =>
       inputs.map((input) => (input as HTMLInputElement).value),
     )).toEqual(["none", "dynamic", "dramatic", "film"]);
+    await openEditorTab(page, "look");
     await page.locator('label:has(input[name="color_filter"][value="film"])').click();
     await expect.poll(photoPixels).not.toEqual(original);
     const film = await photoPixels();
@@ -956,6 +978,9 @@ for (const locale of ["ja", "en"] as const) {
     expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
       .toEqual({ time: pausedTime, paused: true, seeking: false });
 
+    // 縦（既定）→ 横 → 縦 → 横。切り替えてもフィルターは残り、横で書き出す。
+    await chooseOption(page, "aspect", "landscape");
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
     await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
     await page.locator('label:has(input[name="aspect"][value="landscape"])').click();

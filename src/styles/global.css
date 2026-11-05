@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 /* 既存の見た目をソース・オブ・トゥルースにする。Tailwind / shadcn より後に置く。 */
 @import "../styles.css";
+@import "./studio.css";
 
 @custom-variant dark (&:is(.dark *));
 

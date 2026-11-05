@@ -86,9 +86,9 @@ import {
 import templateCuts from "../public/official-assets/template/landscape-cuts.json" with { type: "json" };
 
 describe("output size", () => {
-  it("lists landscape first and uses it as the default", () => {
-    expect(DEFAULT_ASPECT).toBe("landscape");
-    expect(ASPECT_MODES).toEqual(["landscape", "portrait"]);
+  it("lists portrait first and uses it as the default", () => {
+    expect(DEFAULT_ASPECT).toBe("portrait");
+    expect(ASPECT_MODES).toEqual(["portrait", "landscape"]);
   });
 
   it("lists zoom first and uses it as the default effect", () => {

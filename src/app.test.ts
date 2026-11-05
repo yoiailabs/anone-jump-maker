@@ -4,6 +4,7 @@ import { loadTimeline, loadTimelines, templateSrcPath } from "./app.ts";
 import appSrc from "./app.ts?raw";
 import compositorSrc from "./compositor.ts?raw";
 import makerSrc from "./components/MakerApp.tsx?raw";
+import sheetSrc from "./components/StudioSheet.tsx?raw";
 import offlineSrc from "./offline-encode.ts?raw";
 
 describe("templateSrcPath", () => {
@@ -61,15 +62,20 @@ describe("preview save CTA", () => {
     expect(makerSrc).not.toContain('id="previewDialog"');
     expect(makerSrc).toContain('id="previewSeek"');
     expect(makerSrc).toContain('id="previewTime"');
-    expect(makerSrc).toContain('className="studio-options"');
-    expect(makerSrc).toContain('id="studioOptionsTitle"');
+    // 設定は編集シートのタブに分ける。radio 自体は今までどおり radiogroup の行。
+    expect(sheetSrc).toContain('className="studio-sheet studio-options"');
+    expect(sheetSrc).toContain('id="studioOptionsTitle"');
+    expect(sheetSrc).toContain('role="tablist"');
+    expect(sheetSrc).toContain('role="tab"');
+    expect(makerSrc).toContain("<StudioSheet");
     expect(makerSrc).toContain('className="studio-option-row"');
     expect(makerSrc).toContain('role="radiogroup"');
-    expect(makerSrc).not.toContain('role="tab"');
     expect(makerSrc).not.toContain("popoverTarget");
-    expect(makerSrc.indexOf('id="onDeviceNote"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
-    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf('id="stage"'));
-    expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf("{OPTION_ROWS.map"));
+    // プレビューの上に保存、下に写真選びのシート。写真を選ぶ前は CSS の order で選ぶ導線を先に見せる。
+    expect(makerSrc.indexOf('id="onDeviceNote"')).toBeLessThan(makerSrc.indexOf('id="saveBtn"'));
+    expect(makerSrc.indexOf('id="saveBtn"')).toBeLessThan(makerSrc.indexOf('id="stage"'));
+    expect(makerSrc.indexOf('id="previewSeek"')).toBeLessThan(makerSrc.indexOf('id="picker"'));
+    expect(makerSrc.indexOf('id="picker"')).toBeLessThan(makerSrc.indexOf("optionRows(PANEL_ROWS.motion)"));
     expect(appSrc).toContain("formatPreviewClock");
     expect(makerSrc).not.toContain('id="restartBtn"');
     expect(makerSrc).toContain('id="previewToggle"');
@@ -118,8 +124,15 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("? swapValue : DEFAULT_SWAP_STYLE");
     expect(makerSrc.indexOf('["aspect", "studioOptionAspect"')).toBeLessThan(makerSrc.indexOf('["swap", "studioOptionEffect"'));
     expect(makerSrc.indexOf('["swap", "studioOptionEffect"')).toBeLessThan(makerSrc.indexOf('["filter", "studioOptionFilter"'));
-    expect(makerSrc.indexOf('["filter", "studioOptionFilter"')).toBeLessThan(
+    // タブ順: 写真（向き）→ うごき（エフェクト・キャラ）→ 見た目（フィルター・ブラー）。
+    expect(makerSrc.indexOf('["swap", "studioOptionEffect"')).toBeLessThan(
       makerSrc.indexOf('["character", "studioOptionCharacter"'),
+    );
+    expect(makerSrc.indexOf('["character", "studioOptionCharacter"')).toBeLessThan(
+      makerSrc.indexOf('["filter", "studioOptionFilter"'),
+    );
+    expect(makerSrc.indexOf('["filter", "studioOptionFilter"')).toBeLessThan(
+      makerSrc.indexOf('["blur", "studioOptionBlur"'),
     );
     expect(appSrc).not.toContain('msg("statusPaused")');
     expect(appSrc).not.toContain('msg("statusPreviewing")');
@@ -138,21 +151,25 @@ describe("preview save CTA", () => {
     expect(appSrc).toContain("shouldLoopPreviewPlayback");
     expect(appSrc).not.toContain('must(root, "#restartBtn")');
     expect(makerSrc).not.toContain('id="previewMuteHint"');
-    expect(makerSrc.indexOf('id="muteBtn"')).toBeLessThan(makerSrc.indexOf('id="saveBtn"'));
+    // 保存はプレビュー上部のバー、ミュートはプレビューの中。
+    expect(makerSrc.indexOf('className="studio-player-bar"')).toBeLessThan(makerSrc.indexOf('id="saveBtn"'));
+    expect(makerSrc.indexOf('id="saveBtn"')).toBeLessThan(makerSrc.indexOf('id="muteBtn"'));
     expect(makerSrc).toContain('className="preview-transport"');
     expect(makerSrc).toContain('<div className="stage" id="stage"');
     expect(makerSrc).not.toContain("<BrowsersNote");
     expect(makerSrc).not.toContain('id="browsersNote"');
     expect(makerSrc).not.toContain("previewStageAria");
     expect(appSrc).toContain('stage.addEventListener("click"');
-    expect(makerSrc).toContain('<button type="button" className="studio-empty" id="studioEmpty"');
+    expect(makerSrc).toMatch(/<button\s+type="button"\s+className="studio-empty"\s+id="studioEmpty"/);
     expect(makerSrc).not.toContain(">{t(locale, \"studioEmpty\")}");
     expect(appSrc).toContain('studioEmpty.addEventListener("click"');
     expect(appSrc).toContain("saveBtn.disabled = saveDisabled");
     expect(makerSrc).toContain("<dialog");
     expect(makerSrc).toContain('id="exportPanel"');
     expect(makerSrc.indexOf('id="saveBtn"')).toBeLessThan(makerSrc.indexOf('id="exportPanel"'));
-    expect(makerSrc.indexOf('id="exportPanel"')).toBeLessThan(makerSrc.indexOf('id="saveFeedback"'));
+    // 保存の結果はプレビューの下（保存ボタンと同じプレイヤー内）に出す。
+    expect(makerSrc.indexOf('id="saveBtn"')).toBeLessThan(makerSrc.indexOf('id="saveFeedback"'));
+    expect(makerSrc.indexOf('id="saveFeedback"')).toBeLessThan(makerSrc.indexOf('id="exportPanel"'));
     expect(appSrc).toContain("exportPanel.showModal()");
     expect(appSrc).toContain("exportPanel.close()");
     expect(appSrc).not.toContain("exportPanel.scrollIntoView");

@@ -166,6 +166,9 @@ describe("shared preview / WebCodecs photo processing", () => {
     const p = await photo();
     const preview = createCompositor({ resolutionScale: 1 / 6, createKeyer: () => null });
     const saved = createCompositor({ resolutionScale: 1 / 6, createKeyer: () => null });
+    // 320×180 の書き出しと (160, 70) の比較は横の出力サイズが前提。
+    preview.setAspect("landscape");
+    saved.setAspect("landscape");
     const video = document.createElement("video");
     let currentTime = 0;
     Object.defineProperties(video, {

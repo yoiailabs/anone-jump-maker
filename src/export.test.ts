@@ -496,7 +496,6 @@ describe("decoded export frames", () => {
     expect(frameIsCurrentForTime(90 / 30, 89 / 30, 1 / 30)).toBe(false);
     const tail = assignFramesToTimes([0, 1 / 30, 2 / 30], [0, 1 / 30, 2 / 30, 3 / 30], 1 / 30);
     expect(tail).toEqual([0, 1 / 30, 2 / 30, 2 / 30]);
-    expect(assignFramesToTimes([0], [0, 0.2], 1 / 30)[1]).toBeNull();
     expect(assignFramesToTimes([0.04, 0.04 + 1 / 30], [0, 1 / 30, 2 / 30], 1 / 30)).toEqual([
       0.04,
       0.04,
@@ -686,5 +685,26 @@ describe("iOS export timing", () => {
     later = 1;
     expect(result).toBe(EXPORT_CHARACTER_FALLBACK);
     expect(later).toBe(1);
+  });
+});
+
+// assignFramesToTimes の規則の固定。本番ループ（offline-encode.ts）は段1で同じ関数に寄せる。
+// 本番は最初の null で throw する。末尾保持の最終値（0.2秒）は本番では届かず、既存の補助関数テストを集約したもの。
+// 段1では偽の非同期イテレータで draw の PTS 列、各 sample の close が1回、null 位置での throw を検証する。
+describe("held frame boundary safety table", () => {
+  const d = 1 / 30;
+  const tolerance = 3 / EXPORT_FPS + 1e-3;
+  it.each([
+    { name: "half frame inclusive", frames: [0, d / 2], times: [0], expected: [d / 2] },
+    { name: "first PTS just inside probe", frames: [tolerance - 1e-8], times: [0], expected: [tolerance - 1e-8] },
+    { name: "first PTS at probe limit", frames: [tolerance], times: [0], expected: [null] },
+    { name: "tail hold expires", frames: [0], times: [0, 3 * d, tolerance, 0.2], expected: [0, 0, null, null] },
+    { name: "missing PTS holds then advances", frames: [0, 4 * d], times: [0, d, 2 * d, 3 * d, 4 * d], expected: [0, 0, 0, 0, 4 * d] },
+    { name: "gap uses one upcoming frame", frames: [0, 0.2, 0.21], times: [0, 0.12, 0.2], expected: [0, 0.2, 0.21] },
+    { name: "gap beyond probe", frames: [0, 0.3], times: [0, 0.15], expected: [0, null] },
+    { name: "no PTS", frames: [], times: [0], expected: [null] },
+    { name: "24fps half frame differs from fixed probe width", frames: [0, 0.018, 0.03], times: [0, 0.03 + 0.11], frameDuration: 1 / 24, expected: [0.018, null] },
+  ])("$name", ({ frames, times, expected, frameDuration = d }) => {
+    expect(assignFramesToTimes(frames, times, frameDuration)).toEqual(expected);
   });
 });

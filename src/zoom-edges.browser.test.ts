@@ -206,6 +206,7 @@ describe("zoom plate edges", () => {
 describe("frame FX edge sampling", () => {
   it("clamps each RGB channel without changing the channel shift in the interior", async () => {
     const compositor = createCompositor({ resolutionScale: 1 / 3, createKeyer: () => null });
+    compositor.setAspect("landscape");
     const canvas = document.createElement("canvas");
     canvas.width = 640;
     canvas.height = 360;
@@ -247,6 +248,7 @@ describe("frame FX edge sampling", () => {
     // 640×360 は 24 行帯の整数境界、638×359 は小数境界も検査する。
     for (const resolutionScale of [1 / 3, 0.3325]) {
       const compositor = createCompositor({ resolutionScale, createKeyer: () => null });
+      compositor.setAspect("landscape");
       const photo = await makePhoto(64, 36, false);
       try {
         const fx: SwapFx = { ...swapFx(0.2, timeline.slots, "zoom"), ...effects };
