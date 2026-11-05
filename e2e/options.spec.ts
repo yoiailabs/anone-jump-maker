@@ -210,9 +210,10 @@ test("initial programmatic selection before boot reveals film", async ({ page })
   await expectRevealed(page.locator(filmSelector));
 });
 
-test("back navigation restores portrait, jump and film and reveals the restored choice", async ({ page }) => {
+test("back navigation restores landscape, jump and film and reveals the restored choice", async ({ page }) => {
   await openEnlarged(page);
-  await chooseOption(page, "aspect", "portrait");
+  // 既定は縦。既定でない横を選び、戻ってきたときに横のままかを見る。
+  await chooseOption(page, "aspect", "landscape");
   await chooseOption(page, "swap", "jump");
   await openEditorTab(page, "look");
   await page.locator(`${filterFrame} .option-scroll`).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
@@ -221,10 +222,10 @@ test("back navigation restores portrait, jump and film and reveals the restored 
   await page.goBack();
   await waitForAppReady(page);
   await page.addStyleTag({ content: "html { font-size: 130% !important; }" });
-  await expect(page.locator('input[name="aspect"][value="portrait"]')).toBeChecked();
+  await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
   await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
   await expect(page.locator(filmSelector)).toBeChecked();
-  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
   // Photos live only in memory; without the back/forward cache they are picked again.
   if ((await page.locator("#studioView").getAttribute("data-phase")) === "pick") await openEditor(page);
   await openEditorTab(page, "look");

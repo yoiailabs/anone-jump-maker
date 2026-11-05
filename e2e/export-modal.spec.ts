@@ -85,7 +85,7 @@ test("generation blocks Escape, backdrop clicks and background focus until cance
     await expect(page.locator("#exportPanel:modal")).toHaveCount(1);
     await expect(page.locator("#saveBtn")).toBeDisabled();
     await expect(page.locator(".studio-options input:enabled")).toHaveCount(0);
-    await expect(page.locator('input[name="aspect"][value="landscape"]')).toBeChecked();
+    await expect(page.locator('input[name="aspect"][value="portrait"]')).toBeChecked();
     await page.setViewportSize({ width: 412, height: 200 });
     await expectWithinViewport(dialog, page);
     expect(await dialog.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -235,7 +235,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 412, height: 839 
       await expect(dialog).toBeVisible();
       const download = page.waitForEvent("download");
       await page.locator("#downloadExportBtn").click();
-      expect((await download).suggestedFilename()).toMatch(/^anone-zoom-16x9\.(mp4|webm)$/);
+      expect((await download).suggestedFilename()).toMatch(/^anone-zoom-9x16\.(mp4|webm)$/);
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
       await expect(dialog).not.toHaveAttribute("data-open");

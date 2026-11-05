@@ -10,7 +10,8 @@ import { SiteFooter } from "@/components/SiteFooter.tsx";
 import { pathForApp, t, type AppView, type Locale, type MessageKey } from "../i18n.ts";
 import { studioStatusKey, type StudioTab } from "../studio-sheet.ts";
 import { StudioSheet } from "@/components/StudioSheet.tsx";
-import { DEFAULT_ASPECT, DEFAULT_SWAP_STYLE } from "../layout.ts";
+import { StudioBack } from "@/components/StudioBack.tsx";
+import { ASPECT_MODES, DEFAULT_ASPECT, DEFAULT_SWAP_STYLE } from "../layout.ts";
 import { JUMP_LOOP_WATCH_HREF, linkBannersHtml } from "../links.ts";
 import { reactionEmbedHtml } from "../reactions.ts";
 import { MORE_JUMPS_HREF, SHARE_TEXT } from "../share.ts";
@@ -124,14 +125,6 @@ function StudioStatusPill({ locale }: { locale: Locale }) {
   );
 }
 
-function BackMark() {
-  return (
-    <svg className="studio-back-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M14.5 6 8.5 12l6 6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 /** 横＝横長、縦＝縦長の枠。文字が読めなくても向きが分かるように添える。 */
 function AspectMark({ value }: { value: string }) {
   const landscape = value === "landscape";
@@ -195,10 +188,11 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const landingLogoRef = useRef<HTMLImageElement>(null);
   const options = useSyncExternalStore(subscribeOptions, getOptions, getInitialOptions);
   const optionChoices = {
-    aspect: [
-      { value: "landscape", label: t(locale, "makerLandscape"), defaultChecked: true },
-      { value: "portrait", label: t(locale, "makerPortrait") },
-    ],
+    aspect: ASPECT_MODES.map((value) => ({
+      value,
+      label: t(locale, value === "portrait" ? "makerPortrait" : "makerLandscape"),
+      defaultChecked: value === DEFAULT_ASPECT,
+    })),
     swap: [
       { value: "zoom", label: t(locale, "makerZoom"), defaultChecked: DEFAULT_SWAP_STYLE === "zoom" },
       { value: "jump", label: t(locale, "makerJump"), defaultChecked: DEFAULT_SWAP_STYLE === "jump" },
@@ -276,7 +270,6 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
   const makerHidden = initialView !== "maker";
   const studioHidden = initialView !== "studio";
   const logoSize = makerLogoStackedSize(locale);
-  const backLabel = t(locale, "studioBack");
 
   return (
     <>
@@ -386,15 +379,7 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
           </header>
           <section className="studio-stage studio-player" aria-label={t(locale, "previewTitle")}>
             <div className="studio-player-bar">
-              {/* 主役の保存と取り違えないよう、反対の端に小さなアイコンで置く。 */}
-              <a
-                className="studio-back"
-                href={pathForApp(locale, "maker")}
-                aria-label={backLabel}
-                title={backLabel}
-              >
-                <BackMark />
-              </a>
+              <StudioBack locale={locale} editing={editing} />
               <Button
                 variant="site"
                 type="button"

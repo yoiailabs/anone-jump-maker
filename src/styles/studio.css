@@ -101,6 +101,8 @@
 }
 
 #studioView[data-phase="pick"] .stage {
+  /* styles.css の幅の式は枠 3.5px×2 が前提。枠が 2px×2 なので合わせ、縦（既定）でも高さを 75svh に収める。 */
+  width: min(100%, calc((75svh - 4px) * var(--stage-ratio) + 4px));
   border: 2px dashed color-mix(in srgb, var(--studio-accent) 45%, white);
   border-radius: var(--studio-radius-player);
   background: var(--studio-accent-soft);
@@ -239,6 +241,125 @@ html:has(#studioView[data-phase="edit"]:not([hidden])) .offscreen-video {
 .studio-back-mark {
   width: 1.4rem;
   height: 1.4rem;
+}
+
+/* 編集から離れる前の確認。書き出しと同じネイティブ dialog に、この画面の水色をまとわせる。 */
+html:has(#studioLeave[open]) {
+  overflow: hidden;
+}
+
+#studioView .studio-leave {
+  box-sizing: border-box;
+  width: min(22rem, calc(100vw - 2rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  margin: auto;
+  padding: 1.5rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-card);
+  background: var(--studio-surface);
+  color: var(--studio-ink);
+  box-shadow: 0 24px 64px rgb(14 34 56 / 32%);
+  text-align: center;
+}
+
+#studioView .studio-leave[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  animation: studio-leave-in 220ms ease both;
+}
+
+/* ::backdrop はトークンを継がないブラウザがあるので、プレイヤーの紺を直に書く。 */
+#studioView .studio-leave::backdrop {
+  background: rgb(14 34 56 / 55%);
+}
+
+@keyframes studio-leave-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+}
+
+.studio-leave-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+.studio-leave-body {
+  margin: 0;
+  color: var(--studio-mute);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.studio-leave-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+/* 続けるは塗りの主ボタン。戻るは枠だけにして、並んでも取り違えない。 */
+.studio-leave-actions button {
+  min-height: 3.25rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform var(--studio-motion-press) ease, background-color var(--studio-motion-press) ease;
+}
+
+.studio-leave-stay {
+  border: 2px solid var(--studio-accent);
+  background: var(--studio-accent);
+  color: #fff;
+  box-shadow: 0 6px 18px rgb(10 111 168 / 24%);
+}
+
+.studio-leave-go {
+  border: 2px solid var(--studio-border);
+  background: var(--studio-surface);
+  color: var(--studio-ink);
+}
+
+.studio-leave-go:hover {
+  background: var(--studio-sheet);
+}
+
+.studio-leave-actions button:active {
+  transform: scale(0.98);
+}
+
+.studio-leave-actions button:focus-visible {
+  outline: 3px solid var(--studio-ink);
+  outline-offset: 3px;
+}
+
+/* 低い画面はボタンを横に並べて、縦に収める。 */
+@media (max-height: 34rem) {
+  #studioView .studio-leave {
+    width: min(26rem, calc(100vw - 2rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    padding: 1.1rem 1.25rem 1rem;
+  }
+
+  .studio-leave-actions {
+    flex-direction: row;
+    margin-top: 0.3rem;
+  }
+
+  .studio-leave-actions button {
+    flex: 1 1 0;
+    min-height: 2.75rem;
+  }
 }
 
 #studioView .btn.preview-save-btn {
@@ -863,7 +984,8 @@ html:has(#studioView[data-phase="edit"]:not([hidden])) .offscreen-video {
     padding: 0;
   }
 
-  #studioView[data-phase="edit"] {
+  /* id の詳細度が .app-view[hidden] に勝つので、トップへ戻ったあとに出たままにならないよう外す。 */
+  #studioView[data-phase="edit"]:not([hidden]) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) clamp(17rem, 40%, 24rem);
     grid-template-rows: minmax(0, 1fr);
@@ -935,17 +1057,20 @@ html:has(#studioView[data-phase="edit"]:not([hidden])) .offscreen-video {
   .sheet-grip,
   .aspect-switch label,
   .studio-back,
+  .studio-leave-actions button,
   .studio-empty-mark {
     transition: none !important;
   }
 
   #studioView[data-phase="edit"] .studio-player > *,
-  #studioView[data-phase="edit"] .studio-sheet {
+  #studioView[data-phase="edit"] .studio-sheet,
+  #studioView .studio-leave[open] {
     animation: none;
   }
 
   .sheet-tab:active,
   .studio-back:active,
+  .studio-leave-actions button:active,
   .aspect-switch label:active:not(:has(input:disabled)),
   #studioView .option-segments label:active:not(:has(input:disabled)) {
     transform: none;

@@ -62,7 +62,8 @@ for (const locale of ["ja", "en", "ko", "zh"]) {
       await expect(page.locator("#previewSeek")).toBeEnabled();
       await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "edit");
 
-      for (const aspect of ["landscape", "portrait", "landscape"] as const) {
+      // Portrait first: that is the default, measured as it comes up, then both ways across.
+      for (const aspect of ["portrait", "landscape", "portrait"] as const) {
         await chooseOption(page, "aspect", aspect);
         await expect(page.locator("#stage")).toHaveAttribute("data-aspect", aspect);
         await expect(canvas).toHaveAttribute("width", aspect === "landscape" ? "640" : "360");

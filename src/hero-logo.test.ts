@@ -85,8 +85,10 @@ describe("stacked maker hero logo", () => {
     expect(studio).not.toContain("anone-logo-horizontal");
     expect(studio).not.toContain('id="toLanding"');
     // 戻る導線はプレビュー上部の小さなアイコン 1 つだけ（旧 #toLanding は使わない）。
-    expect(studio.match(/className="studio-back"/g)).toHaveLength(1);
-    expect(studio).toContain("aria-label={backLabel}");
+    expect(studio.match(/<StudioBack /g)).toHaveLength(1);
+    const backSrc = readFileSync(new URL("./components/StudioBack.tsx", import.meta.url), "utf8");
+    expect(backSrc.match(/className="studio-back"/g)).toHaveLength(1);
+    expect(backSrc).toContain("aria-label={label}");
     expect(studio.indexOf('id="studioTitle"')).toBeLessThan(studio.indexOf("<LanguageNav"));
     expect(makerSrc).not.toContain("samplePhotosBtn");
     expect(makerSrc).not.toContain("makerTrySamples");

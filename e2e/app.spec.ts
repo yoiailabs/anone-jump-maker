@@ -123,6 +123,12 @@ test("loads a photo then previews, mutes, and switches aspect in Chromium and We
   await expect(page.locator("#previewToggle")).toBeVisible();
   await expect(page.locator("#previewStatus")).toHaveAttribute("data-state", "stopped");
   await expect(page.locator("#previewStatus")).toHaveAttribute("aria-label", "停止中");
+  // 既定は縦。1280x720 の縦プレビューは細く、状態アイコンを省く（studio.css の 8.5rem 未満）。
+  // アイコンは横の広いプレビューで確かめ、あとで縦へ戻す。
+  await expect(page.locator('input[name="aspect"][value="portrait"]')).toBeChecked();
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+  await chooseOption(page, "aspect", "landscape");
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
   await expect(page.locator(".preview-status-icon-pause")).toBeVisible();
   await expect(page.locator(".preview-status-icon-play")).toBeHidden();
   await expect(page.locator("#previewStatusLabel")).toHaveCount(0);
@@ -523,7 +529,7 @@ test("saves a short clip when an encoder plan exists, and explains when it does 
     const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
     await page.locator("#downloadExportBtn").click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/^anone-zoom-16x9\.(mp4|webm)$/);
+    expect(download.suggestedFilename()).toMatch(/^anone-zoom-9x16\.(mp4|webm)$/);
     await expect(page.locator("#exportStatus")).toBeHidden();
     await expect(page.locator("#exportStatus")).toHaveText("");
     await expect(page.locator("#saveFeedback")).toBeHidden();
@@ -618,7 +624,7 @@ test("download opens a file share sheet when the browser can share files", async
         }
       ).__fileShareCalls[0],
   );
-  expect(payload?.name).toMatch(/^anone-zoom-16x9\.(mp4|webm)$/);
+  expect(payload?.name).toMatch(/^anone-zoom-9x16\.(mp4|webm)$/);
   expect(payload?.type).toMatch(/^video\/(mp4|webm)$/);
   expect(payload?.size ?? 0).toBeGreaterThan(0);
   expect(payload?.text).toBe(SHARE_TEXT);
@@ -965,7 +971,10 @@ for (const locale of ["ja", "en"] as const) {
     expect(await video.evaluate((el: HTMLVideoElement) => ({ time: el.currentTime, paused: el.paused, seeking: el.seeking })))
       .toEqual({ time: pausedTime, paused: true, seeking: false });
 
-    await chooseOption(page, "aspect", "portrait");
+    // 縦（既定）→ 横 → 縦 → 横。切り替えてもフィルターは残り、横で書き出す。
+    await chooseOption(page, "aspect", "landscape");
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
+    await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
     await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");

@@ -131,6 +131,9 @@ test("tabs switch panels by click and by arrow, Home and End keys", async ({ pag
 
 test("the handle collapses and reopens the sheet by click and keyboard, growing the preview", async ({ page }) => {
   await openEditor(page);
+  // Portrait is the default; fold in landscape first, then in portrait.
+  await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
   const handle = page.locator("#sheetHandle");
   await expect(handle).toHaveAttribute("aria-expanded", "true");
   // The name starts with the visible hint so voice control users can say what they see,

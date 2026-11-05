@@ -24,6 +24,8 @@ test("portrait preview plays landscape audio on the picture element", async ({ p
 
 test("switching from landscape to portrait keeps the picture clock and its own audio", async ({ page }) => {
   await uploadPhoto(page);
+  // Portrait is the default; start this one in landscape.
+  await switchAspect(page, "landscape");
   await page.locator("#previewToggle").click();
   await expect(page.locator("#stage")).toHaveAttribute("aria-pressed", "true");
   await switchAspect(page, "portrait");

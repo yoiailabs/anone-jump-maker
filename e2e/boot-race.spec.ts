@@ -53,14 +53,15 @@ test("binds controls and the picker before landscape-cuts.json returns", async (
   await expect(page.locator("#landingHashtags")).toHaveText(SHARE_TEXT);
 
   await openStudio(page);
-  // 向きは写真を選んだあとのプレビューの下にある。cuts が返る前でも選べる。
+  // 向きは写真を選んだあとのプレビューの下にある。cuts が返る前でも選べる（既定の縦から横へ）。
   await page.locator("#picker").setInputFiles(PHOTO_FILE.path);
-  await page.locator('#studioView label:has(input[name="aspect"][value="portrait"])').click();
+  await page.locator('#studioView label:has(input[name="aspect"][value="landscape"])').click();
 
   releaseCuts();
   await waitForAppReady(page);
   await expect(page.locator("#thumbs img")).toHaveCount(1, { timeout: 20_000 });
-  await expect(page.locator('#studioView input[name="aspect"][value="portrait"]')).toBeChecked();
+  await expect(page.locator('#studioView input[name="aspect"][value="landscape"]')).toBeChecked();
+  await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
   await expect(page.locator("#previewSeek")).toBeEnabled();
   await expect(page.locator("#previewTransport")).toBeVisible();
   await expect(page.locator("#photoFeedback")).toHaveText("");

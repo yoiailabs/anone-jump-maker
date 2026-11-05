@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { t } from "../src/i18n.ts";
-import { blockAnalytics, jpegInput, stubShortTemplate, waitForAppReady } from "./helpers.ts";
+import { blockAnalytics, chooseOption, expectVisibleText, jpegInput, stubShortTemplate, waitForAppReady } from "./helpers.ts";
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1280, height: 900 };
@@ -69,7 +69,7 @@ for (const viewport of [PHONE, DESKTOP, PHONE_LANDSCAPE]) {
     await expect(group).toBeVisible();
     await expect(group).toBeInViewport({ ratio: 1 });
     await expect(page.locator(".studio-sheet .aspect-switch")).toHaveCount(0);
-    await expect(landscape).toBeChecked();
+    await expect(portrait).toBeChecked();
     const [switchBox, stageBox, sheetBox] = [
       await box(page, ".aspect-switch"),
       await box(page, "#stage"),
@@ -85,11 +85,11 @@ for (const viewport of [PHONE, DESKTOP, PHONE_LANDSCAPE]) {
     expect(switchBox.height).toBeGreaterThanOrEqual(44);
 
     await page.getByRole("tab", { name: t("ja", "studioTabLook") }).click();
-    await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
-    await expect(portrait).toBeChecked();
-    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+    await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
+    await expect(landscape).toBeChecked();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
     // The chosen side reads as selected: a white pill with the accent label.
-    await expect(page.locator('label:has(input[name="aspect"][value="portrait"])')).toHaveCSS(
+    await expect(page.locator('label:has(input[name="aspect"][value="landscape"])')).toHaveCSS(
       "background-color",
       "rgb(255, 255, 255)",
     );
@@ -101,17 +101,122 @@ for (const viewport of [PHONE, DESKTOP, PHONE_LANDSCAPE]) {
     }
     // Still there with the sheet folded (or beside the sheet on low landscape screens).
     await expect(group).toBeInViewport({ ratio: 1 });
-    await page.locator('label:has(input[name="aspect"][value="landscape"])').click();
-    await expect(landscape).toBeChecked();
-    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
+    await page.locator('label:has(input[name="aspect"][value="portrait"])').click();
+    await expect(portrait).toBeChecked();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
 
     // Keyboard: arrows move the choice, with a visible ring on the focused pill.
-    await landscape.focus();
+    await portrait.focus();
     await page.keyboard.press("ArrowRight");
-    await expect(portrait).toBeChecked();
-    await expect(portrait).toBeFocused();
+    await expect(landscape).toBeChecked();
+    await expect(landscape).toBeFocused();
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "landscape");
+    await expect(page.locator('label:has(input[name="aspect"][value="landscape"])')).toHaveCSS("outline-style", "solid");
+  });
+
+  test(`${size}: a fresh studio starts in portrait, with portrait on the left`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/make");
+    await waitForAppReady(page);
+    await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "pick");
+    await expect(page.locator('input[name="aspect"][value="portrait"]')).toBeChecked();
+    await expect(page.locator('input[name="aspect"][value="landscape"]')).not.toBeChecked();
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
-    await expect(page.locator('label:has(input[name="aspect"][value="portrait"])')).toHaveCSS("outline-style", "solid");
+    expect(await page.locator('.aspect-switch input[name="aspect"]').evaluateAll((inputs) =>
+      inputs.map((input) => (input as HTMLInputElement).value))).toEqual(["portrait", "landscape"]);
+    // Nothing flips the aspect (or resizes the preview canvas) on the way from pick to edit.
+    await page.evaluate(() => {
+      const changes: string[] = [];
+      (window as unknown as { __aspectChanges: string[] }).__aspectChanges = changes;
+      new MutationObserver((records) => {
+        for (const record of records) changes.push(`${(record.target as Element).id || (record.target as Element).className}:${record.attributeName}`);
+      }).observe(document.querySelector("#stage")!, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-aspect", "width", "height"],
+      });
+    });
+    const files = await Promise.all([jpegInput("a.jpg"), jpegInput("b.jpg")]);
+    await page.locator("#picker").setInputFiles(files);
+    await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(2, { timeout: 20_000 });
+    await expect(page.locator("#previewSeek")).toBeEnabled();
+    await expect(page.locator("#stage canvas.stage-canvas")).toHaveAttribute("width", "360");
+    await expect(page.locator("#stage canvas.stage-canvas")).toHaveAttribute("height", "640");
+    await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
+    expect(await page.evaluate(() => (window as unknown as { __aspectChanges: string[] }).__aspectChanges)).toEqual([]);
+    // Seen left to right: portrait, then landscape, on one row.
+    const [portraitBox, landscapeBox] = [
+      await box(page, '.aspect-switch label:has(input[value="portrait"])'),
+      await box(page, '.aspect-switch label:has(input[value="landscape"])'),
+    ];
+    expect(portraitBox.x + portraitBox.width).toBeLessThanOrEqual(landscapeBox.x + 0.5);
+    expect(Math.abs(portraitBox.y - landscapeBox.y)).toBeLessThan(2);
+  });
+
+  test(`${size}: back asks first while editing; staying keeps the work, leaving goes to the top`, async ({ page }) => {
+    await openEditor(page, viewport);
+    // A choice away from the defaults, to see that nothing is reset.
+    await chooseOption(page, "swap", "jump");
+    const back = page.locator(".studio-back");
+    const dialog = page.getByRole("alertdialog", { name: t("ja", "studioLeaveTitle") });
+    const stay = dialog.getByRole("button", { name: t("ja", "studioLeaveStay") });
+    const leave = dialog.getByRole("button", { name: t("ja", "studioLeaveConfirm") });
+    await expect(back).toHaveAttribute("aria-haspopup", "dialog");
+    const expectStillEditing = async () => {
+      expect(new URL(page.url()).pathname).toBe("/make");
+      await expect(page.locator("#studioView")).toBeVisible();
+      await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "edit");
+      await expect(page.locator(".thumb[data-photo-id]")).toHaveCount(2);
+      await expect(page.locator('input[name="swap"][value="jump"]')).toBeChecked();
+    };
+
+    await back.click();
+    await expect(dialog).toBeVisible();
+    await expect(page.locator("#studioLeave:modal")).toHaveCount(1);
+    await expect(dialog).toHaveAttribute("aria-describedby", "studioLeaveBody");
+    await expectVisibleText(page.locator("#studioLeaveBody"), t("ja", "studioLeaveBody", { make: t("ja", "makerMakeVideo") }));
+    await expect(dialog).toBeInViewport({ ratio: 1 });
+    // Opens on the safe choice, which is the filled button; leaving is the outlined one.
+    await expect(stay).toBeFocused();
+    await expect(stay).toHaveCSS("background-color", "rgb(10, 111, 168)");
+    await expect(leave).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    for (const button of [stay, leave]) {
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
+    // The page behind does not scroll, and Tab stays inside.
+    await expect(page.locator("html")).toHaveCSS("overflow-y", "hidden");
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await page.keyboard.press("Tab");
+    await expect(leave).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(stay).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(leave).toBeFocused();
+
+    await stay.click();
+    await expect(dialog).toBeHidden();
+    await expect(back).toBeFocused();
+    await expectStillEditing();
+
+    // Escape stays too.
+    await back.click();
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(back).toBeFocused();
+    await expectStillEditing();
+
+    await back.click();
+    await leave.click();
+    await expect(page.locator("#makerView")).toBeVisible();
+    await expect(page.locator("#studioView")).toBeHidden();
+    expect(new URL(page.url()).pathname).toBe("/");
+    await expect(page.locator("#makerTitle")).toBeFocused();
+    await expect(page.locator("#studioLeave:modal")).toHaveCount(0);
+
+    // As the dialog says, the photos and settings are still there from 動画をつくる.
+    await page.locator("#toStudio").click();
+    await expectStillEditing();
   });
 
   test(`${size}: wheel and scroll over the preview move neither the page nor the player`, async ({ page, browserName, isMobile }) => {
@@ -200,4 +305,33 @@ test("the seek bar still seeks and the sheet panel still scrolls on its own", as
     await expect.poll(() => panels.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   }
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
+test("before any photo, the way back goes straight to the top", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/make");
+  await waitForAppReady(page);
+  await expect(page.locator("#studioView")).toHaveAttribute("data-phase", "pick");
+  // The player bar (and its back button) waits for photos; the logo leads back meanwhile.
+  await expect(page.locator(".studio-back")).toBeHidden();
+  await page.locator("#studioHome").click();
+  await expect(page.locator("#makerView")).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/");
+  await expect(page.locator("#studioLeave:modal")).toHaveCount(0);
+});
+
+test("back never stacks a second dialog over the export panel", async ({ page }) => {
+  await openEditor(page, DESKTOP);
+  await page.locator("#saveBtn").click();
+  const panel = page.locator("#exportPanel");
+  const panelOpen = () => panel.evaluate((el) => (el as HTMLDialogElement).open);
+  await expect
+    .poll(async () => (await panelOpen()) || (await page.locator("#saveFeedback").isVisible()), { timeout: 45_000 })
+    .toBe(true);
+  test.skip(!(await panelOpen()), "No video encoder here, so the export panel never opens.");
+  // The page behind the panel is inert; even a scripted click must not open the leave dialog.
+  await page.locator(".studio-back").evaluate((el) => (el as HTMLElement).click());
+  expect(await page.locator("#studioLeave").evaluate((el) => (el as HTMLDialogElement).open)).toBe(false);
+  expect(await panelOpen()).toBe(true);
+  expect(new URL(page.url()).pathname).toBe("/make");
 });
