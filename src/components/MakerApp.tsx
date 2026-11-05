@@ -277,7 +277,6 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
         <div className="app-view" id="makerView" hidden={makerHidden}>
           <header className="hero">
             <HeaderGitHub id="makerHeaderGitHub" locale={locale} />
-            <LanguageNav locale={locale} view="maker" />
             <h1 id="makerTitle">
               <img
                 ref={landingLogoRef}

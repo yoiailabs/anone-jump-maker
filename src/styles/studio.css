@@ -51,9 +51,32 @@
 }
 
 /* ---- pick: 見出し → 写真を選ぶ → 空のプレビュー → 言語 ---- */
+#studioView[data-phase="pick"] {
+  gap: var(--space-lg);
+}
+
+#studioView[data-phase="pick"] .studio-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+#studioView[data-phase="pick"] .studio-title,
+#studioView[data-phase="pick"] .studio-top .make-note {
+  margin: 0;
+}
+
+#studioView[data-phase="pick"] .make-cta {
+  gap: var(--space-xs);
+}
+
+#studioView[data-phase="pick"] .pick-row {
+  gap: var(--space-sm);
+}
+
 #studioView[data-phase="pick"] .studio-sheet {
   order: 1;
-  margin-top: calc(0.4rem - var(--section-gap));
+  margin-top: 0;
 }
 
 #studioView[data-phase="pick"] .studio-player {
@@ -62,6 +85,7 @@
 
 #studioView[data-phase="pick"] .lang-switch {
   order: 3;
+  margin: 0;
 }
 
 #studioView[data-phase="pick"] .studio-player-bar,

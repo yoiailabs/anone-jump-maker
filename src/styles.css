@@ -11,10 +11,17 @@
   font-family: "Zen Maru Gothic", "Noto Sans KR", "Noto Sans SC",
     "Hiragino Maru Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo",
     "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  --page-pad-top: 1.85rem;
+  /* トップと studio pick の縦リズム用。詰めすぎない。
+     補足は xs、関連要素は sm/md、主要導線は lg、セクションは xl。 */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --page-pad-top: var(--space-lg);
   --page-pad-x: 1.15rem;
-  --page-pad-bottom: 3.8rem;
-  --section-gap: 2.35rem;
+  --page-pad-bottom: calc(var(--space-xl) + var(--space-sm));
+  --section-gap: var(--space-xl);
   --thumb-size: 6rem;
   --thumb-radius: 0.7rem;
 }
@@ -100,18 +107,7 @@ body {
 }
 
 .notes .lang-switch {
-  margin: 0.35rem 0 0;
-}
-
-.hero .lang-switch {
-  padding-inline: 2.75rem;
-  box-sizing: border-box;
-}
-
-@media (max-width: 22rem) {
-  .hero .lang-switch {
-    padding-inline: 1.6rem;
-  }
+  margin: 0;
 }
 
 .lang-switch a {
@@ -173,9 +169,9 @@ body {
 }
 
 /* トップの縦積みロゴだけ。跳ねの伸縮は下辺を軸にする。
-   上の余白は言語リンクに触れずに跳ねられる分。 */
+   上の余白は GitHub のタップ領域とロゴの跳ねのために残す。 */
 #makerTitle {
-  margin-top: 1.5rem;
+  margin: calc(var(--space-xl) + var(--space-xs)) 0 0;
 }
 
 #makerTitle .hero-logo {
@@ -187,10 +183,6 @@ body {
   #makerView .hero-logo,
   #studioView .hero-logo {
     width: min(100%, 16rem);
-  }
-
-  #makerView .hero h1 {
-    margin: 1.5rem 0 0.45rem;
   }
 }
 
@@ -236,8 +228,8 @@ html[lang="ja"] .ja-phrase {
 }
 
 .hero .loop-wrap {
-  /* 影の下に、言語切替や説明ブロックと同じ 0.85rem の余白を残す。 */
-  margin: 0.15rem 0 calc(var(--loop-shadow-y) + 0.85rem);
+  /* 傾きと影を見込み、サムネ下に lg と影の分を確保する。 */
+  margin: var(--space-md) 0 calc(var(--loop-shadow-y) + var(--space-lg));
 }
 
 .make-cta {
@@ -259,14 +251,18 @@ html[lang="ja"] .ja-phrase {
   gap: 0.8rem;
 }
 
-#makerView .hero + .maker-story {
-  margin-top: calc(0.65rem - var(--section-gap));
+#makerView {
+  gap: var(--space-lg);
+}
+
+#makerView .notes {
+  margin-top: var(--space-sm);
 }
 
 .maker-story {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-md);
   text-align: center;
 }
 
@@ -1477,7 +1473,7 @@ a.btn:focus-visible {
 .links {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: var(--space-sm);
 }
 
 /* 公式見出しが正。MV と反応の見出しも同じタイポ・ウェイト・余白。 */

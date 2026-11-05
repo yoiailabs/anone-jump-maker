@@ -63,15 +63,14 @@ test.describe("language switcher", () => {
     await waitForAppReady(page);
   });
 
-  test("switches from the header and footer menus", async ({ page }) => {
-    const headerEn = page.locator("#makerView .hero .lang-switch a[lang='en']");
+  test("switches from the single landing footer menu", async ({ page }) => {
+    await expect(page.locator("#makerView .hero .lang-switch")).toHaveCount(0);
+    await expect(page.locator("#makerView .lang-switch")).toHaveCount(1);
     const footerEn = page.locator("#makerView .notes .lang-switch a[lang='en']");
-    await expect(headerEn).toBeVisible();
     await expect(footerEn).toBeVisible();
-    await expect(headerEn).toHaveAttribute("href", "/en");
     await expect(footerEn).toHaveAttribute("href", "/en");
 
-    await headerEn.click();
+    await footerEn.click();
     await page.waitForURL(/\/en\/?$/);
     await waitForAppReady(page);
     await expect(page.locator("#makerTitle .hero-logo")).toBeVisible();
@@ -326,31 +325,38 @@ test.describe("source repository link", () => {
     await stubShortTemplate(page);
   });
 
-  test("keeps the language links on one row clear of the GitHub target at 320px", async ({ page }) => {
+  test("keeps footer languages tappable on one row and the GitHub target clear of the logo at 320px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     for (const path of ["/", "/en", "/ko", "/zh"]) {
       await page.goto(path);
       await waitForAppReady(page);
       await page.evaluate(() => document.fonts.ready);
-      const { links, github } = await page.evaluate(() => {
+      const { links, github, logo } = await page.evaluate(() => {
         const mark = document.querySelector("#makerHeaderGitHub")!;
         const box = mark.getBoundingClientRect();
         const target = getComputedStyle(mark, "::before");
         const left = parseFloat(target.left);
         const top = parseFloat(target.top);
         return {
-          links: [...document.querySelectorAll("#makerView .hero .lang-switch a")].map((link) => {
+          links: [...document.querySelectorAll("#makerView .notes .lang-switch a")].map((link) => {
             const { x, y, width, height } = link.getBoundingClientRect();
             return { x, y, width, height };
           }),
+          logo: document.querySelector("#makerTitle .hero-logo")!.getBoundingClientRect().toJSON(),
           github: { x: box.x + left, y: box.y + top,
             width: box.width - left - parseFloat(target.right),
             height: box.height - top - parseFloat(target.bottom) },
         };
       });
+      expect(github.width).toBeGreaterThanOrEqual(43.9);
+      expect(github.height).toBeGreaterThanOrEqual(43.9);
+      expect(boxesOverlap(github, logo)).toBe(false);
       expect(links).toHaveLength(4);
       for (const link of links) {
         expect(Math.abs(link.y - links[0].y)).toBeLessThan(1);
+        expect(link.height).toBeGreaterThanOrEqual(44);
+        expect(link.x).toBeGreaterThanOrEqual(0);
+        expect(link.x + link.width).toBeLessThanOrEqual(320);
         expect(boxesOverlap(github, link)).toBe(false);
       }
       for (const selector of ["#toStudio", "#toCommunity"]) {
@@ -396,12 +402,6 @@ test.describe("source repository link", () => {
       );
       expect(footerBox && privacyBox && Math.abs(footerBox.y - privacyBox.y) < 8).toBe(true);
       const iconBox = await page.locator("#makerHeaderGitHub").boundingBox();
-      const links = page.locator("#makerView .hero .lang-switch a");
-      const linkCount = await links.count();
-      for (let index = 0; index < linkCount; index += 1) {
-        const linkBox = await links.nth(index).boundingBox();
-        expect(iconBox && linkBox && !boxesOverlap(iconBox, linkBox)).toBe(true);
-      }
       const logoBox = await page.locator("#makerTitle .hero-logo").boundingBox();
       expect(iconBox && logoBox && !boxesOverlap(iconBox, logoBox)).toBe(true);
     }
