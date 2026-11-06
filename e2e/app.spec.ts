@@ -799,10 +799,11 @@ test("studio header uses the stacked hero logo and keeps language links at the b
   expect(studioAlign.titleAlign).toBe("center");
   expect(studioAlign.headAlign).toBe(termsAlign.headAlign);
   expect(studioAlign.titleAlign).toBe(termsAlign.titleAlign);
-  expect(studioAlign.titleMarginTop).toBe(termsAlign.titleMarginTop);
+  // pick の見出しは親の gap で縦リズムを作る。規約の h1 margin には依存しない。
+  expect(studioAlign.titleMarginTop).toBe(0);
   expect(studioAlign.titleMarginLeft).toBe(termsAlign.titleMarginLeft);
   expect(studioAlign.titleMarginRight).toBe(termsAlign.titleMarginRight);
-  expect(studioAlign.titleMarginBottom).toBe(termsAlign.titleMarginBottom);
+  expect(studioAlign.titleMarginBottom).toBe(0);
   expect(Math.abs(studioAlign.headMid - studioAlign.markMid)).toBeLessThan(2);
   expect(Math.abs(termsAlign.headMid - termsAlign.markMid)).toBeLessThan(2);
   await page.goto("/make");

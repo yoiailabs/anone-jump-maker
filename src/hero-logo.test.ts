@@ -94,7 +94,12 @@ describe("stacked maker hero logo", () => {
     expect(makerSrc).not.toContain("makerTrySamples");
     expect(makerSrc).not.toContain("<JaLede");
     expect(makerSrc).not.toContain("makerLede");
-    expect(makerSrc).toMatch(/<LanguageNav[\s\S]*id="makerTitle"/);
+    const hero = landing.slice(landing.indexOf('<header className="hero">'), landing.indexOf("</header>"));
+    const notes = landing.slice(landing.indexOf('<footer className="notes">'));
+    expect(hero).not.toContain("<LanguageNav");
+    expect(landing.match(/<LanguageNav /g)).toHaveLength(1);
+    expect(notes.match(/<LanguageNav /g)).toHaveLength(1);
+    expect(studio.match(/<LanguageNav /g)).toHaveLength(1);
     expect(makerSrc).toContain('className="make-cta"');
     expect(makerSrc).toContain('<footer className="notes">');
     for (const locale of LOCALES) {

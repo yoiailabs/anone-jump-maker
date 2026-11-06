@@ -273,16 +273,10 @@ export default function MakerApp({ initialView, locale }: MakerAppProps) {
 
   return (
     <>
-      <div className="sky" aria-hidden="true">
-        <span className="blob blob-lime" />
-        <span className="blob blob-teal" />
-        <span className="blob blob-coral" />
-      </div>
       <div className="app">
         <div className="app-view" id="makerView" hidden={makerHidden}>
           <header className="hero">
             <HeaderGitHub id="makerHeaderGitHub" locale={locale} />
-            <LanguageNav locale={locale} view="maker" />
             <h1 id="makerTitle">
               <img
                 ref={landingLogoRef}

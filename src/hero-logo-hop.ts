@@ -5,7 +5,7 @@ import { JUMP_CYCLE_FRAMES, JUMP_DROP_FRAC, jumpCycle } from "./layout.ts";
  * 跳ね上がり（指数 2.3）と着地（二次曲線）を踏む。振幅だけ数ピクセルに抑える。
  * 後の拍ほど短く小さくして、3 回で静かに止まる。
  * 接地では横につぶれ、空中では縦に伸びる（ぽよんぽよん）。面積はほぼ保つ。
- * 伸びはつぶれより小さく、言語リンクに触れない範囲に収める。
+ * 伸びはつぶれより小さく、GitHub のタップ領域（::before の約44px）に触れない範囲に収める。
  */
 export const HERO_LOGO_HOPS = [
   { amplitudePx: 16, durationMs: 420 },

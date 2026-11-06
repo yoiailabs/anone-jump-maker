@@ -1,5 +1,5 @@
-export const PWA_THEME_COLOR = "#F6EFE2";
-export const PWA_BACKGROUND_COLOR = "#F6EFE2";
+export const PWA_THEME_COLOR = "#E8F4F9";
+export const PWA_BACKGROUND_COLOR = "#E8F4F9";
 export const PWA_MANIFEST_HREF = "/manifest.webmanifest";
 export const PWA_SERVICE_WORKER_HREF = "/sw.js";
 export const PWA_APPLE_TOUCH_ICON_HREF = "/icons/apple-touch-icon.png";

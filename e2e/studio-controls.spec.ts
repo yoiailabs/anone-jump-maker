@@ -237,6 +237,8 @@ for (const viewport of [PHONE, DESKTOP, PHONE_LANDSCAPE]) {
     await expectChecked({ swap: "zoom", character: "standard", color_filter: "none", filter: "none", aspect: "portrait" });
     await expect(page.locator("#stage")).toHaveAttribute("data-aspect", "portrait");
     await expect(page.locator("#saveBtn")).toBeDisabled();
+    // 無効でも主ボタンの色のままなので、薄くして押せないことを示す。
+    await expect(page.locator("#saveBtn")).toHaveCSS("opacity", "0.38");
   });
 
   test(`${size}: wheel and scroll over the preview move neither the page nor the player`, async ({ page, browserName, isMobile }) => {
