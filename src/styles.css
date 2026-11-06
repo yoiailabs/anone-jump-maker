@@ -68,9 +68,16 @@ body {
 /* 共通スケールは表示中のトップと pick に限定し、規約ページと edit は従来どおり。 */
 .app:has(> #makerView:not([hidden])),
 .app:has(> #studioView[data-phase="pick"]:not([hidden])) {
-  --page-pad-top: var(--space-lg);
   --page-pad-bottom: calc(var(--space-xl) + var(--space-sm));
   --section-gap: var(--space-xl);
+}
+
+.app:has(> #makerView:not([hidden])) {
+  --page-pad-top: var(--space-md);
+}
+
+.app:has(> #studioView[data-phase="pick"]:not([hidden])) {
+  --page-pad-top: var(--space-lg);
 }
 
 .app-view {
@@ -260,17 +267,18 @@ html[lang="ja"] .ja-phrase {
 }
 
 #makerView {
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
 #makerView .notes {
-  margin-top: var(--space-sm);
+  /* 親の md と合わせ、ハッシュタグからセクションまで xl を保つ。 */
+  margin-top: var(--space-md);
 }
 
 .maker-story {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   text-align: center;
 }
 

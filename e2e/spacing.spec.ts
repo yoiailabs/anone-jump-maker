@@ -34,8 +34,8 @@ async function expectVerticalGaps(page: Page, selectors: string[], minimums: num
   });
 }
 
-async function expectSharedPageSpacing(page: Page) {
-  await expect(page.locator(".app")).toHaveCSS("padding-top", "32px");
+async function expectSharedPageSpacing(page: Page, paddingTop = "32px") {
+  await expect(page.locator(".app")).toHaveCSS("padding-top", paddingTop);
   await expect(page.locator(".app")).toHaveCSS("padding-bottom", "64px");
   await expect(page.locator(".app")).toHaveCSS("gap", "48px");
 }
@@ -59,14 +59,14 @@ for (const viewport of [
         await page.goto(base || "/");
         await waitForAppReady(page);
         await page.evaluate(() => document.fonts.ready);
-        await expectSharedPageSpacing(page);
+        await expectSharedPageSpacing(page, "24px");
         await expect(page.locator("#makerView .hero .lang-switch")).toHaveCount(0);
         await expect(page.locator("#makerView .lang-switch")).toHaveCount(1);
         await expect(page.locator("#makerView .notes .lang-switch")).toHaveCount(1);
         await expectVerticalGaps(page, [
           "#makerTitle .hero-logo", ".loop-link", "#toStudio", "#toCommunity",
           "#landingHashtags", "#makerView .notes",
-        ], [16, 38, 32, 24, 48]);
+        ], [16, 38, 24, 16, 48]);
         // ループの下は傾き込みで 38px 以上（影 14px ＋空き 24px）。
         await expect(page.locator("#toStudio")).toBeInViewport({ ratio: 1 });
       });
