@@ -62,7 +62,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@sentry/browser": "^11.10.0",
-    "astro": "^7.4.4",
+    "astro": "^7.4.7",
     "budoux": "^0.10.2",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
