@@ -1,0 +1,28 @@
+# First policy PR is a built-in floor; a maintainer must merge it by hand.
+# Public repository: keep this file free of personal or private information
+# other than the maintainer GitHub login required by rabi.
+#
+# merge.auto is empty on purpose: implementation PRs wait for a confirmation-
+# environment OK, recorded as rabi task approve --sha. See risk-tiers.md.
+
+schema = 1
+default-tier = "high"
+
+[classifier]
+doc = "risk-tiers.md"
+
+[ci]
+app = "github-actions"
+required = [
+  "Unit tests",
+  "Browser and e2e tests",
+  { name = "Workers Builds: anone", app = "cloudflare-workers-and-pages" },
+]
+
+[merge]
+auto = []
+method = "squash"
+delete-branch = true
+
+[approval]
+approvers = ["aku11i"]
